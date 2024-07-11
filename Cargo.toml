@@ -1,0 +1,18 @@
+[package]
+name = "executorch"
+version = "0.1.0"
+authors = ["Barak Ugav <barakugav@gmail.com>"]
+edition = "2021"
+repository = "https://github.com/barakugav/executorch-rs"
+license = "Apache-2.0"
+license-file = "LICENSE"
+
+[dependencies]
+log = "0.4.22"
+
+[build-dependencies]
+bindgen = "0.69.4"
+cc = "1.1.6"
+
+[dev-dependencies]
+env_logger = "0.11.3"
