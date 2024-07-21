@@ -72,6 +72,10 @@ fn generate_bindings() {
         .opaque_type("torch::executor::util::MallocMemoryAllocator")
         .opaque_type("torch::executor::util::FileDataLoader")
         // .opaque_type("torch::executor::Result__bindgen_ty_1")
+        .rustified_enum("torch::executor::ScalarType")
+        .rustified_enum("torch::executor::Tag")
+        .rustified_enum("torch::executor::Program_Verification")
+        .rustified_enum("torch::executor::TensorShapeDynamism")
         .header(wrapper_h.as_os_str().to_str().unwrap())
         // Tell cargo to invalidate the built crate whenever any of the included header files changed.
         // .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
@@ -100,6 +104,8 @@ fn libexecutorch_link() {
     //     .. \
     //     && cd .. \
     //     && cmake --build cmake-out -j13
+
+    // TODO check USE_ATEN_LIB=true/false in CI
 
     println!("cargo::rustc-link-lib=c++");
     println!("cargo::rustc-link-lib=static=executorch");

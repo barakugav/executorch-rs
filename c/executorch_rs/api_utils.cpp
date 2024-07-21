@@ -52,5 +52,55 @@ namespace executorch_rs
     {
         return torch::executor::util::MallocMemoryAllocator();
     }
+    torch::executor::HierarchicalAllocator HierarchicalAllocator_new(torch::executor::Span<torch::executor::Span<uint8_t>> buffers)
+    {
+        return torch::executor::HierarchicalAllocator(buffers);
+    }
 
+    // Tensor
+
+    size_t Tensor_nbytes(const exec_aten::Tensor *tensor)
+    {
+        return tensor->nbytes();
+    }
+    ssize_t Tensor_size(const exec_aten::Tensor *tensor, ssize_t dim)
+    {
+        return tensor->size(dim);
+    }
+    ssize_t Tensor_dim(const exec_aten::Tensor *tensor)
+    {
+        return tensor->dim();
+    }
+    ssize_t Tensor_numel(const exec_aten::Tensor *tensor)
+    {
+        return tensor->numel();
+    }
+    exec_aten::ScalarType Tensor_scalar_type(const exec_aten::Tensor *tensor)
+    {
+        return tensor->scalar_type();
+    }
+    ssize_t Tensor_element_size(const exec_aten::Tensor *tensor)
+    {
+        return tensor->element_size();
+    }
+    const exec_aten::ArrayRef<exec_aten::SizesType> Tensor_sizes(const exec_aten::Tensor *tensor)
+    {
+        return tensor->sizes();
+    }
+    const exec_aten::ArrayRef<exec_aten::DimOrderType> Tensor_dim_order(const exec_aten::Tensor *tensor)
+    {
+        return tensor->dim_order();
+    }
+    const exec_aten::ArrayRef<exec_aten::StridesType> Tensor_strides(const exec_aten::Tensor *tensor)
+    {
+        return tensor->strides();
+    }
+    const void *Tensor_const_data_ptr(const exec_aten::Tensor *tensor)
+    {
+        return tensor->const_data_ptr();
+    }
+    void *Tensor_mutable_data_ptr(const exec_aten::Tensor *tensor)
+    {
+        return tensor->mutable_data_ptr();
+    }
 }

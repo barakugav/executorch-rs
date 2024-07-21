@@ -8,6 +8,7 @@ license = "Apache-2.0"
 license-file = "LICENSE"
 
 [dependencies]
+ndarray = "0.15.6"
 log = "0.4.22"
 
 [build-dependencies]
