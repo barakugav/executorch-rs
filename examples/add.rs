@@ -43,14 +43,14 @@ fn main() {
     let sizes1 = [1];
     let data_order1 = [0];
     let strides1 = [1];
-    let mut input_tensor1 = TensorImpl::new(&sizes1, data1.as_mut_ptr(), &data_order1, &strides1);
+    let mut input_tensor1 = TensorImpl::new(&sizes1, &mut data1, &data_order1, &strides1);
     let input_evalue1 = EValue::from_tensor(Tensor::new(&mut input_tensor1));
 
     let mut data2 = vec![1.0_f32; 1];
     let sizes2 = [1];
     let data_order2 = [0];
     let strides2 = [1];
-    let mut input_tensor2 = TensorImpl::new(&sizes2, data2.as_mut_ptr(), &data_order2, &strides2);
+    let mut input_tensor2 = TensorImpl::new(&sizes2, &mut data2, &data_order2, &strides2);
     let input_evalue2 = EValue::from_tensor(Tensor::new(&mut input_tensor2));
 
     let mut method_exe = method.start_execution();

@@ -50,10 +50,19 @@ fn generate_bindings() {
         .emit_builtins()
         .enable_function_attribute_detection()
         .generate_cstr(true)
-        .allowlist_file(&format!(
-            "{}/[a-zA-Z0-9_/]+.h",
-            executorch_dir.to_str().unwrap(),
-        ))
+        .allowlist_item("et_pal_init")
+        .allowlist_item("torch::executor::Result")
+        .allowlist_item("torch::executor::EValue")
+        .allowlist_item("torch::executor::Program")
+        .allowlist_item("torch::executor::DataLoader")
+        .allowlist_item("torch::executor::MemoryManager")
+        .allowlist_item("torch::executor::MethodMeta")
+        .allowlist_item("torch::executor::util::MallocMemoryAllocator")
+        .allowlist_item("torch::executor::util::FileDataLoader")
+        .blocklist_item("std::.*")
+        .blocklist_item("torch::executor::Method_StepState")
+        .blocklist_item("torch::executor::Method_InitializationState")
+        .blocklist_item("torch::executor::Program_kMinHeadBytes")
         .allowlist_file(&format!(
             "{}/[a-zA-Z0-9_/]+.hpp",
             c_api_dir.join("executorch_rs").to_str().unwrap(),
@@ -62,23 +71,29 @@ fn generate_bindings() {
         // .blocklist_function("torch::executor::.*method_meta.*")
         .no_copy(".*") // TODO: specific some exact types, regex act weird
         .manually_drop_union(".*")
-        // .vtable_generation(true)
-        // .bindgen_wrapper_union(".*")
-        // .no_copy("torch::executor::.*")
-        // .no_copy("torch::executor::optional_storage_t")
         .opaque_type("std::.*")
         .opaque_type("torch::executor::Program")
+        .opaque_type("torch::executor::EventTracer")
+        .opaque_type("torch::executor::EventTracerEntry")
+        .opaque_type("torch::executor::FreeableBuffer")
+        .opaque_type("torch::executor::Method")
         .opaque_type("torch::executor::MethodMeta")
+        .opaque_type("torch::executor::TensorImpl")
+        .opaque_type("torch::executor::DataLoader")
         .opaque_type("torch::executor::util::MallocMemoryAllocator")
         .opaque_type("torch::executor::util::FileDataLoader")
-        // .opaque_type("torch::executor::Result__bindgen_ty_1")
+        .opaque_type("torch::executor::Half")
+        .opaque_type("torch::executor::MemoryAllocator")
+        .opaque_type("torch::executor::HierarchicalAllocator")
+        .opaque_type("torch::executor::TensorInfo")
+        .rustified_enum("torch::executor::Error")
         .rustified_enum("torch::executor::ScalarType")
         .rustified_enum("torch::executor::Tag")
         .rustified_enum("torch::executor::Program_Verification")
+        .rustified_enum("torch::executor::Program_HeaderStatus")
         .rustified_enum("torch::executor::TensorShapeDynamism")
         .header(wrapper_h.as_os_str().to_str().unwrap())
-        // Tell cargo to invalidate the built crate whenever any of the included header files changed.
-        // .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
+        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .generate()
         .expect("Unable to generate bindings");
 

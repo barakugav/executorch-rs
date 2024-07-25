@@ -256,7 +256,7 @@ pub struct TensorImpl<'a>(et_c::TensorImpl, PhantomData<&'a ()>);
 impl<'a> TensorImpl<'a> {
     pub fn new<S: Scalar>(
         sizes: &'a [SizesType],
-        data: *mut S,
+        data: &mut [S],
         data_order: &'a [DimOrderType],
         strides: &'a [StridesType],
     ) -> Self {
@@ -264,7 +264,7 @@ impl<'a> TensorImpl<'a> {
         assert_eq!(dim, data_order.len());
         assert_eq!(dim, strides.len());
         let sizes = sizes as *const _ as *mut SizesType;
-        let data = data as *mut _;
+        let data = data.as_mut_ptr() as *mut _;
         let dim_order = data_order as *const _ as *mut DimOrderType;
         let strides = strides as *const _ as *mut StridesType;
         let impl_ = unsafe {
