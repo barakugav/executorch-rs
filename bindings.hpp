@@ -4,4 +4,4 @@
 #include "executorch/runtime/executor/memory_manager.h"
 #include "executorch/runtime/core/hierarchical_allocator.h"
 
-#include "executorch_rs/api_utils.hpp"
+#include "c_ext/api_utils.hpp"
