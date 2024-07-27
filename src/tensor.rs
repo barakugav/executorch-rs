@@ -1,6 +1,6 @@
-use std::marker::PhantomData;
+use std::{marker::PhantomData, mem::MaybeUninit, ptr};
 
-use ndarray::{ArrayViewD, ArrayViewMut, IxDyn, ShapeBuilder};
+use ndarray::{ArrayView, ArrayViewD, ArrayViewMut, Axis, Dimension, IxDyn, ShapeBuilder};
 
 use crate::{c_link, et_c, et_rs_c, Error, Result};
 
@@ -127,8 +127,8 @@ impl Scalar for bool {
 
 pub struct Tensor<'a>(pub(crate) et_c::Tensor, PhantomData<&'a ()>);
 impl<'a> Tensor<'a> {
-    pub fn new(tensor_impl: &'a mut TensorImpl<'a>) -> Self {
-        let impl_ = &mut tensor_impl.0;
+    pub fn new(tensor_impl: &'a TensorImpl<'a>) -> Self {
+        let impl_ = &tensor_impl.0 as *const _ as *mut _;
         Self(et_c::Tensor { impl_ }, PhantomData)
     }
 
@@ -252,16 +252,20 @@ pub struct TensorImpl<'a>(et_c::TensorImpl, PhantomData<&'a ()>);
 impl<'a> TensorImpl<'a> {
     pub fn new<S: Scalar>(
         sizes: &'a [SizesType],
-        data: &mut [S],
-        data_order: &'a [DimOrderType],
+        data: &'a [S],
+        data_order: Option<&'a [DimOrderType]>,
         strides: &'a [StridesType],
     ) -> Self {
         let dim = sizes.len();
-        assert_eq!(dim, data_order.len());
+        if let Some(data_order) = &data_order {
+            assert_eq!(dim, data_order.len());
+        }
         assert_eq!(dim, strides.len());
         let sizes = sizes as *const _ as *mut SizesType;
-        let data = data.as_mut_ptr() as *mut _;
-        let dim_order = data_order as *const _ as *mut DimOrderType;
+        let data = data as *const _ as *mut _;
+        let dim_order = data_order
+            .map(|p| p as *const _ as *mut DimOrderType)
+            .unwrap_or(ptr::null_mut());
         let strides = strides as *const _ as *mut StridesType;
         let impl_ = unsafe {
             et_c::TensorImpl::new(
@@ -275,5 +279,45 @@ impl<'a> TensorImpl<'a> {
             )
         };
         Self(impl_, PhantomData)
+    }
+
+    pub fn from_array<S: Scalar, D: Dimension>(array: ArrayView<'a, S, D>) -> impl AsRef<Self> {
+        struct Wrapper<'a, S: Scalar> {
+            sizes: Vec<SizesType>,
+            strides: Vec<StridesType>,
+            tensor_impl: MaybeUninit<TensorImpl<'a>>,
+            _phantom: PhantomData<S>,
+        }
+        impl<'a, S: Scalar> AsRef<TensorImpl<'a>> for Wrapper<'a, S> {
+            fn as_ref(&self) -> &TensorImpl<'a> {
+                unsafe { self.tensor_impl.assume_init_ref() }
+            }
+        }
+
+        let mut wrapper = Wrapper::<'a, S> {
+            sizes: array
+                .shape()
+                .iter()
+                .map(|&size| size as SizesType)
+                .collect(),
+            strides: (0..array.ndim())
+                .map(|d| array.stride_of(Axis(d)) as StridesType)
+                .collect(),
+            tensor_impl: MaybeUninit::uninit(),
+            _phantom: PhantomData,
+        };
+        let impl_ = unsafe {
+            et_c::TensorImpl::new(
+                S::TYPE.into_c_scalar_type(),
+                array.ndim() as isize,
+                wrapper.sizes.as_slice() as *const _ as *mut SizesType,
+                array.as_ptr() as *mut _,
+                ptr::null_mut(),
+                wrapper.strides.as_slice() as *const _ as *mut StridesType,
+                et_c::TensorShapeDynamism::STATIC,
+            )
+        };
+        wrapper.tensor_impl.write(Self(impl_, PhantomData));
+        wrapper
     }
 }
