@@ -18,7 +18,7 @@ pub enum Tag {
     ListOptionalTensor = et_c::Tag::ListOptionalTensor as u8,
 }
 
-pub struct EValue<'a>(et_c::EValue, PhantomData<&'a ()>);
+pub struct EValue<'a>(pub(crate) et_c::EValue, PhantomData<&'a ()>);
 impl<'a> EValue<'a> {
     unsafe fn new(value: et_c::EValue) -> Self {
         Self(value, PhantomData)
@@ -95,7 +95,7 @@ impl<'a> EValue<'a> {
         unsafe {
             EValue::new(et_c::EValue {
                 payload: et_c::EValue_Payload {
-                    as_tensor: ManuallyDrop::new(tensor.into_inner()),
+                    as_tensor: ManuallyDrop::new(tensor.0),
                 },
                 tag: et_c::Tag::Tensor,
             })
@@ -157,14 +157,6 @@ impl<'a> EValue<'a> {
             et_c::Tag::ListScalar => Tag::ListScalar,
             et_c::Tag::ListOptionalTensor => Tag::ListOptionalTensor,
         })
-    }
-
-    pub(crate) fn inner(&self) -> &et_c::EValue {
-        &self.0
-    }
-
-    pub(crate) fn into_inner(self) -> et_c::EValue {
-        self.0
     }
 }
 
