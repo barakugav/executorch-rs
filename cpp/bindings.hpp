@@ -10,4 +10,8 @@
 #include "executorch/extension/data_loader/file_data_loader.h"
 #endif
 
+#if defined(EXECUTORCH_RS_EXTENSION_MODULE)
+#include "executorch/extension/module/module.h"
+#endif
+
 #include "executorch_rs_ext/api_utils.hpp"

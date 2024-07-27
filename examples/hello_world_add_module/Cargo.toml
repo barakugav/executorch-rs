@@ -1,0 +1,17 @@
+[package]
+publish = false
+name = "example-hellow-world-add-module"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+executorch = { path = "../../", features = [
+    "extension-data-loader",
+    "extension-module",
+] }
+log = "0.4.22"
+env_logger = "0.11.3"
+ndarray = "0.15.6"
+
+[build-dependencies]
+envsubst = "0.2.1"

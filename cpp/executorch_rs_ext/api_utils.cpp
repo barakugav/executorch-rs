@@ -8,6 +8,27 @@ namespace executorch_rs
 
     namespace
     {
+        template <typename T>
+        struct ManuallyDrop
+        {
+            union
+            {
+                T value;
+            };
+            ManuallyDrop(T &&value) : value(std::move(value)) {}
+            ~ManuallyDrop() {}
+        };
+
+        template <typename T>
+        RawVec<T> crate_RawVec(std::vector<T> &&vec)
+        {
+            auto vec2 = ManuallyDrop<std::vector<T>>(std::move(vec));
+            return RawVec<T>{
+                .data = vec2.value.data(),
+                .len = vec2.value.size(),
+                .cap = vec2.value.capacity(),
+            };
+        }
 
         static_assert(sizeof(Result_i64) == sizeof(torch::executor::Result<int64_t>), "Result_i64 size mismatch");
         // static_assert(offsetof(Result_i64, value_) == offsetof(torch::executor::Result<int64_t>, value_), "Result_i64 value_ offset mismatch");
@@ -103,4 +124,20 @@ namespace executorch_rs
     {
         return tensor->mutable_data_ptr();
     }
+
+#if defined(EXECUTORCH_RS_EXTENSION_MODULE)
+    torch::executor::Module Module_new(const char *file_path)
+    {
+        std::string file_path_str = file_path;
+        return torch::executor::Module(file_path_str);
+    }
+
+    torch::executor::Result<RawVec<torch::executor::EValue>> Module_execute(torch::executor::Module *module, const char *method_name, const torch::executor::EValue *inputs, size_t inputs_size)
+    {
+        std::string method_name_str = method_name;
+        std::vector<torch::executor::EValue> inputs_vec(inputs, inputs + inputs_size);
+        std::vector<torch::executor::EValue> outputs = ET_UNWRAP(module->execute(method_name_str, inputs_vec));
+        return crate_RawVec(std::move(outputs));
+    }
+#endif
 }

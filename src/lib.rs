@@ -18,6 +18,11 @@ pub use memory::{HierarchicalAllocator, MallocMemoryAllocator, MemoryManager};
 mod program;
 pub use program::{Method, MethodMeta, Program, ProgramVerification};
 
+#[cfg(feature = "extension-module")]
+mod module;
+#[cfg(feature = "extension-module")]
+pub use module::Module;
+
 mod evalue;
 pub use evalue::{EValue, Tag};
 

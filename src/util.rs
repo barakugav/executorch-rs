@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::et_c;
+use crate::{et_c, et_rs_c};
 
 pub trait IntoRust {
     type RsType;
@@ -19,5 +19,12 @@ impl<'a, T> Span<'a, T> {
             },
             PhantomData,
         )
+    }
+}
+
+impl<T> IntoRust for et_rs_c::RawVec<T> {
+    type RsType = Vec<T>;
+    fn rs(self) -> Self::RsType {
+        unsafe { Vec::from_raw_parts(self.data, self.len, self.cap) }
     }
 }

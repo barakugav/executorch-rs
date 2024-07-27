@@ -1,5 +1,5 @@
 [workspace]
-members = ['examples/hello_world_add']
+members = ['examples/hello_world_add', 'examples/hello_world_add_module']
 
 [package]
 name = "executorch"
@@ -11,6 +11,7 @@ license = "Apache-2.0"
 
 [features]
 extension-data-loader = []
+extension-module = []
 
 [dependencies]
 ndarray = "0.15.6"
