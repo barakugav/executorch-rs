@@ -8,7 +8,9 @@ mod error;
 pub use error::{Error, Result};
 
 mod data_loader;
-pub use data_loader::{DataLoader, FileDataLoader};
+pub use data_loader::DataLoader;
+#[cfg(feature = "extension-data-loader")]
+pub use data_loader::FileDataLoader;
 
 mod memory;
 pub use memory::{HierarchicalAllocator, MallocMemoryAllocator, MemoryManager};

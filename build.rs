@@ -65,6 +65,12 @@ fn generate_bindings(executorch_headers: &Path) {
     let bindings_h = Path::new(&env!("CARGO_MANIFEST_DIR"))
         .join("cpp")
         .join("bindings.hpp");
+    let bindings_defines_h = c_ext_dir.parent().unwrap().join("executorch_rs_defines.h");
+    let mut bindings_defines = String::new();
+    if cfg!(feature = "extension-data-loader") {
+        bindings_defines.push_str("#define EXECUTORCH_RS_EXTENSION_DATA_LOADER\n");
+    }
+
     println!("cargo::rerun-if-changed={}", bindings_h.to_str().unwrap());
     let bindings = bindgen::Builder::default()
         .clang_arg(format!(
@@ -80,6 +86,12 @@ fn generate_bindings(executorch_headers: &Path) {
         .emit_builtins()
         .enable_function_attribute_detection()
         .generate_cstr(true)
+        .header_contents(bindings_defines_h.to_str().unwrap(), &bindings_defines)
+        .header(bindings_h.as_os_str().to_str().unwrap())
+        .allowlist_file(&format!(
+            "{}/[a-zA-Z0-9_/]+.hpp",
+            c_ext_dir.to_str().unwrap(),
+        ))
         .allowlist_item("et_pal_init")
         .allowlist_item("torch::executor::Result")
         .allowlist_item("torch::executor::EValue")
@@ -93,12 +105,6 @@ fn generate_bindings(executorch_headers: &Path) {
         .blocklist_item("torch::executor::Method_StepState")
         .blocklist_item("torch::executor::Method_InitializationState")
         .blocklist_item("torch::executor::Program_kMinHeadBytes")
-        .allowlist_file(&format!(
-            "{}/[a-zA-Z0-9_/]+.hpp",
-            c_ext_dir.to_str().unwrap(),
-        ))
-        .no_copy(".*") // TODO: specific some exact types, regex act weird
-        .manually_drop_union(".*")
         .opaque_type("std::.*")
         .opaque_type("torch::executor::Program")
         .opaque_type("torch::executor::EventTracer")
@@ -120,7 +126,8 @@ fn generate_bindings(executorch_headers: &Path) {
         .rustified_enum("torch::executor::Program_Verification")
         .rustified_enum("torch::executor::Program_HeaderStatus")
         .rustified_enum("torch::executor::TensorShapeDynamism")
-        .header(bindings_h.as_os_str().to_str().unwrap())
+        .no_copy(".*") // TODO: specific some exact types, regex act weird
+        .manually_drop_union(".*")
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .generate()
         .expect("Unable to generate bindings");
@@ -152,13 +159,13 @@ fn link_executorch() {
     println!("cargo::rustc-link-lib=static=executorch");
     println!("cargo::rustc-link-lib=static=executorch_no_prim_ops");
 
-    // if cfg!(feature = "extension-data-loader") {
-    println!(
-        "cargo::rustc-link-search={}/extension/data_loader/",
-        libs_dir
-    );
-    println!("cargo::rustc-link-lib=static=extension_data_loader");
-    // }
+    if cfg!(feature = "extension-data-loader") {
+        println!(
+            "cargo::rustc-link-search={}/extension/data_loader/",
+            libs_dir
+        );
+        println!("cargo::rustc-link-lib=static=extension_data_loader");
+    }
 }
 
 fn cpp_ext_dir() -> PathBuf {

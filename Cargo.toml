@@ -9,8 +9,8 @@ edition = "2021"
 repository = "https://github.com/barakugav/executorch-rs"
 license = "Apache-2.0"
 
-# [fetures]
-# extension-data-loader = []
+[features]
+extension-data-loader = []
 
 [dependencies]
 ndarray = "0.15.6"
