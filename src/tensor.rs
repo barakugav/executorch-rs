@@ -125,7 +125,7 @@ impl Scalar for bool {
     const TYPE: ScalarType = ScalarType::Bool;
 }
 
-pub struct Tensor<'a>(et_c::Tensor, PhantomData<&'a ()>);
+pub struct Tensor<'a>(pub(crate) et_c::Tensor, PhantomData<&'a ()>);
 impl<'a> Tensor<'a> {
     pub fn new(tensor_impl: &'a mut TensorImpl<'a>) -> Self {
         let impl_ = &mut tensor_impl.0;
@@ -235,10 +235,6 @@ impl<'a> Tensor<'a> {
 
         unsafe { ArrayViewMut::from_shape_ptr(shape.strides(strides), ptr) }
             .permuted_axes(dim_order)
-    }
-
-    pub(crate) fn into_inner(self) -> et_c::Tensor {
-        self.0
     }
 }
 

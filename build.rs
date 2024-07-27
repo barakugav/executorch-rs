@@ -132,11 +132,6 @@ fn generate_bindings(executorch_headers: &Path) {
 }
 
 fn link_executorch() {
-    println!("cargo::rustc-link-lib=c++");
-    println!("cargo::rustc-link-lib=static=executorch");
-    println!("cargo::rustc-link-lib=static=executorch_no_prim_ops");
-    println!("cargo::rustc-link-lib=static=extension_data_loader");
-
     let libs_dir = std::env::var("EXECUTORCH_RS_EXECUTORCH_LIB_DIR")
         .expect("EXECUTORCH_RS_EXECUTORCH_LIB_DIR is not set, can't locate executorch static libs");
     let libs_dir = envsubst::substitute(
@@ -150,11 +145,20 @@ fn link_executorch() {
         )]),
     )
     .unwrap();
+
+    println!("cargo::rustc-link-lib=c++");
+
     println!("cargo::rustc-link-search={}", libs_dir);
+    println!("cargo::rustc-link-lib=static=executorch");
+    println!("cargo::rustc-link-lib=static=executorch_no_prim_ops");
+
+    // if cfg!(feature = "extension-data-loader") {
     println!(
         "cargo::rustc-link-search={}/extension/data_loader/",
         libs_dir
     );
+    println!("cargo::rustc-link-lib=static=extension_data_loader");
+    // }
 }
 
 fn cpp_ext_dir() -> PathBuf {

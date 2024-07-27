@@ -1,8 +1,6 @@
 use executorch::{
-    evalue::{EValue, Tag},
-    tensor::{Tensor, TensorImpl},
-    FileDataLoader, HierarchicalAllocator, MallocMemoryAllocator, MemoryManager, Program,
-    ProgramVerification, Span,
+    EValue, FileDataLoader, HierarchicalAllocator, MallocMemoryAllocator, MemoryManager, Program,
+    ProgramVerification, Span, Tag, Tensor, TensorImpl,
 };
 use ndarray::array;
 use std::vec;
