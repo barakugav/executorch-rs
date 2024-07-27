@@ -1,9 +1,8 @@
 use executorch::{
-    evalue::{EValue, Tag},
-    tensor::{Tensor, TensorImpl},
-    FileDataLoader, HierarchicalAllocator, MallocMemoryAllocator, MemoryManager, Program,
-    ProgramVerification, Span,
+    EValue, FileDataLoader, HierarchicalAllocator, MallocMemoryAllocator, MemoryManager, Program,
+    ProgramVerification, Span, Tag, Tensor, TensorImpl,
 };
+use ndarray::array;
 use std::vec;
 
 fn main() {
@@ -61,7 +60,8 @@ fn main() {
     let outputs = method_exe.execute().unwrap();
     let output = outputs.get_output(0);
     assert_eq!(output.tag(), Some(Tag::Tensor));
-    let output = output.as_tensor();
+    let output = output.as_tensor().as_array::<f32>();
 
-    println!("Output tensor computed: {:?}", output.as_array::<f32>());
+    println!("Output tensor computed: {:?}", output);
+    assert_eq!(output, array![2.0].into_dyn());
 }
