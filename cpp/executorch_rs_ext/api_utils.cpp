@@ -1,7 +1,7 @@
 
 #include <cstddef>
 
-#include "c_ext/api_utils.hpp"
+#include "executorch_rs_ext/api_utils.hpp"
 
 namespace executorch_rs
 {

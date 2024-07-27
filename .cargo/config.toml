@@ -1,0 +1,2 @@
+[env]
+EXECUTORCH_RS_EXECUTORCH_LIB_DIR = "${EXECUTORCH_RS_TOP}/cpp/executorch/cmake-out"

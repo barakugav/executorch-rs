@@ -163,9 +163,9 @@ impl<'a> EValue<'a> {
         &self.0
     }
 
-    pub(crate) fn into_inner(self) -> et_c::EValue {
-        self.0
-    }
+    // pub(crate) fn into_inner(self) -> et_c::EValue {
+    //     self.0
+    // }
 }
 
 impl From<i64> for EValue<'static> {

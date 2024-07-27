@@ -1,3 +1,5 @@
+#![deny(warnings)]
+
 mod c_link;
 use c_link::executorch_c::root::executorch_rs as et_rs_c;
 use c_link::executorch_c::root::torch::executor as et_c;
