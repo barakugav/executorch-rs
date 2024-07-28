@@ -30,7 +30,7 @@ mod tensor;
 pub use tensor::{Tensor, TensorImpl};
 
 mod util;
-pub use util::Span;
+pub use util::{Span, SpanMut};
 
 pub fn pal_init() {
     unsafe { c_link::executorch_c::root::et_pal_init() };

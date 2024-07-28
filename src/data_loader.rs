@@ -38,4 +38,11 @@ mod file_data_loader {
             })
         }
     }
+    impl Drop for FileDataLoader {
+        fn drop(&mut self) {
+            unsafe {
+                et_c::util::FileDataLoader_FileDataLoader_destructor(&mut *self.0.borrow_mut())
+            };
+        }
+    }
 }

@@ -19,10 +19,10 @@ impl<'a> Program<'a> {
         ))
     }
 
-    pub fn method_meta(&self, method_name: &str) -> Result<MethodMeta> {
+    pub fn method_meta(&self, method_name: &str) -> Result<MethodMeta<'a>> {
         let method_name = CString::new(method_name).unwrap();
         let meta = unsafe { et_rs_c::Program_method_meta(&self.0, method_name.as_ptr()) }.rs()?;
-        Ok(MethodMeta::new(meta))
+        Ok(MethodMeta(meta, PhantomData))
     }
 
     pub fn load_method(
@@ -36,18 +36,19 @@ impl<'a> Program<'a> {
             self.0
                 .load_method(method_name.as_ptr(), &mut *memory_manager, ptr::null_mut())
         };
-        Ok(Method(method.rs()?))
+        Ok(Method(method.rs()?, PhantomData))
+    }
+}
+impl Drop for Program<'_> {
+    fn drop(&mut self) {
+        unsafe { et_rs_c::Program_destructor(&mut self.0) };
     }
 }
 
 pub type ProgramVerification = et_c::Program_Verification;
 
-pub struct MethodMeta(et_c::MethodMeta);
-impl MethodMeta {
-    fn new(method_meta: et_c::MethodMeta) -> Self {
-        Self(method_meta)
-    }
-
+pub struct MethodMeta<'a>(et_c::MethodMeta, PhantomData<&'a ()>);
+impl<'a> MethodMeta<'a> {
     pub fn num_memory_planned_buffers(&self) -> usize {
         unsafe { self.0.num_memory_planned_buffers() }
     }
@@ -59,9 +60,9 @@ impl MethodMeta {
     }
 }
 
-pub struct Method(et_c::Method);
-impl Method {
-    pub fn start_execution(&mut self) -> Execution {
+pub struct Method<'a>(et_c::Method, PhantomData<&'a ()>);
+impl<'a> Method<'a> {
+    pub fn start_execution<'b>(&'b mut self) -> Execution<'a, 'b> {
         Execution::new(self)
     }
 
@@ -69,13 +70,18 @@ impl Method {
         unsafe { self.0.inputs_size() }
     }
 }
+impl Drop for Method<'_> {
+    fn drop(&mut self) {
+        unsafe { et_c::Method_Method_destructor(&mut self.0) };
+    }
+}
 
-pub struct Execution<'a> {
-    method: &'a mut Method,
+pub struct Execution<'a, 'b> {
+    method: &'b mut Method<'a>,
     set_inputs: u64,
 }
-impl<'a> Execution<'a> {
-    fn new(method: &'a mut Method) -> Self {
+impl<'a, 'b> Execution<'a, 'b> {
+    fn new(method: &'b mut Method<'a>) -> Self {
         assert!(
             method.inputs_size() <= u64::BITS as usize,
             "more that 64 inputs for method, unsupported"
@@ -86,13 +92,13 @@ impl<'a> Execution<'a> {
         }
     }
 
-    pub fn set_input(&mut self, input: &'a EValue<'a>, input_idx: usize) -> Result<()> {
+    pub fn set_input(&mut self, input: &'b EValue, input_idx: usize) -> Result<()> {
         unsafe { self.method.0.set_input(&input.0, input_idx) }.rs()?;
         self.set_inputs |= 1 << input_idx;
         Ok(())
     }
 
-    pub fn execute(self) -> Result<Outputs<'a>> {
+    pub fn execute(self) -> Result<Outputs<'a, 'b>> {
         assert_eq!(
             self.set_inputs,
             (1 << self.method.inputs_size()) - 1,
@@ -102,18 +108,17 @@ impl<'a> Execution<'a> {
         Ok(Outputs::new(self.method))
     }
 }
-pub struct Outputs<'a> {
-    method: &'a mut Method,
+pub struct Outputs<'a, 'b> {
+    method: &'b mut Method<'a>,
 }
-impl<'a> Outputs<'a> {
-    fn new(method: &'a mut Method) -> Self {
+impl<'a, 'b> Outputs<'a, 'b> {
+    fn new(method: &'b mut Method<'a>) -> Self {
         Self { method }
     }
 
     pub fn get_output(&self, output_idx: usize) -> &'a EValue<'a> {
-        let val = unsafe { self.method.0.get_output(output_idx) };
+        let val = unsafe { &*self.method.0.get_output(output_idx) };
         // SAFETY: et_c::EValue as EValue has the same memory layout
-        let ptr = val as *const EValue;
-        unsafe { &*ptr }
+        unsafe { std::mem::transmute::<&et_c::EValue, &EValue<'a>>(val) }
     }
 }
