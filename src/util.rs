@@ -46,6 +46,11 @@ pub(crate) fn str2chars<'a>(s: &'a str) -> Result<&'a [std::os::raw::c_char], &'
     let chars: *const std::os::raw::c_char = bytes.as_ptr().cast();
     Ok(unsafe { std::slice::from_raw_parts(chars, bytes.len()) })
 }
+#[allow(dead_code)]
+pub(crate) fn chars2string(chars: Vec<std::os::raw::c_char>) -> String {
+    let bytes = unsafe { std::mem::transmute::<Vec<std::os::raw::c_char>, Vec<u8>>(chars) };
+    String::from_utf8(bytes).unwrap()
+}
 
 impl<T> IntoRust for et_rs_c::RawVec<T> {
     type RsType = Vec<T>;

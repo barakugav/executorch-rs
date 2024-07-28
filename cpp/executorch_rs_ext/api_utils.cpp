@@ -148,14 +148,41 @@ namespace executorch_rs
     }
 
 #if defined(EXECUTORCH_RS_EXTENSION_MODULE)
-    torch::executor::Module Module_new(torch::executor::Span<char> file_path)
+    torch::executor::Module Module_new(torch::executor::Span<char> file_path, torch::executor::Module::MlockConfig mlock_config, torch::executor::EventTracer *event_tracer)
     {
         std::string file_path_str(file_path.begin(), file_path.end());
-        return torch::executor::Module(file_path_str);
+        std::unique_ptr<torch::executor::EventTracer> event_tracer2(event_tracer);
+        return torch::executor::Module(file_path_str, mlock_config, std::move(event_tracer2));
     }
     void Module_destructor(torch::executor::Module *module)
     {
         module->~Module();
+    }
+    torch::executor::Result<RawVec<RawVec<char>>> Module_method_names(torch::executor::Module *module)
+    {
+        std::unordered_set<std::string> method_names = ET_UNWRAP(module->method_names());
+        std::vector<RawVec<char>> method_names_vec;
+        for (const std::string &method_name : method_names)
+        {
+            std::vector<char> method_name_vec(method_name.begin(), method_name.end());
+            method_names_vec.push_back(crate_RawVec(std::move(method_name_vec)));
+        }
+        return crate_RawVec(std::move(method_names_vec));
+    }
+    torch::executor::Error Module_load_method(torch::executor::Module *module, torch::executor::Span<char> method_name)
+    {
+        std::string method_name_str(method_name.begin(), method_name.end());
+        return module->load_method(method_name_str);
+    }
+    bool Module_is_method_loaded(const torch::executor::Module *module, torch::executor::Span<char> method_name)
+    {
+        std::string method_name_str(method_name.begin(), method_name.end());
+        return module->is_method_loaded(method_name_str);
+    }
+    Result_MethodMeta Module_method_meta(torch::executor::Module *module, torch::executor::Span<char> method_name)
+    {
+        std::string method_name_str(method_name.begin(), method_name.end());
+        return crate_Result_MethodMeta(module->method_meta(method_name_str));
     }
     torch::executor::Result<RawVec<torch::executor::EValue>> Module_execute(torch::executor::Module *module, torch::executor::Span<char> method_name, torch::executor::Span<torch::executor::EValue> inputs)
     {

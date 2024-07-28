@@ -31,7 +31,7 @@ Execute the model in Rust:
 use executorch::{EValue, Module, Tag, Tensor, TensorImpl};
 use ndarray::array;
 
-let mut module = Module::new("model.pte");
+let mut module = Module::new("model.pte", None);
 
 let data1 = array![1.0_f32];
 let input_tensor1 = TensorImpl::from_array(data1.view());

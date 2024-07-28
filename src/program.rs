@@ -22,7 +22,7 @@ impl<'a> Program<'a> {
     pub fn method_meta(&self, method_name: &str) -> Result<MethodMeta<'a>> {
         let method_name = CString::new(method_name).unwrap();
         let meta = unsafe { et_rs_c::Program_method_meta(&self.0, method_name.as_ptr()) }.rs()?;
-        Ok(MethodMeta(meta, PhantomData))
+        Ok(unsafe { MethodMeta::new(meta) })
     }
 
     pub fn load_method(
@@ -49,6 +49,10 @@ pub type ProgramVerification = et_c::Program_Verification;
 
 pub struct MethodMeta<'a>(et_c::MethodMeta, PhantomData<&'a ()>);
 impl<'a> MethodMeta<'a> {
+    pub(crate) unsafe fn new(meta: et_c::MethodMeta) -> Self {
+        Self(meta, PhantomData)
+    }
+
     pub fn num_memory_planned_buffers(&self) -> usize {
         unsafe { self.0.num_memory_planned_buffers() }
     }
