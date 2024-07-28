@@ -250,7 +250,7 @@ impl<'a, S: Scalar> TryFrom<Tensor<'a>> for ArrayViewD<'a, S> {
 
 pub struct TensorImpl<'a>(et_c::TensorImpl, PhantomData<&'a ()>);
 impl<'a> TensorImpl<'a> {
-    pub fn new<S: Scalar>(
+    pub fn from_slice<S: Scalar>(
         sizes: &'a [SizesType],
         data: &'a [S],
         data_order: Option<&'a [DimOrderType]>,

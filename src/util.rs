@@ -8,8 +8,23 @@ pub trait IntoRust {
 }
 
 #[allow(dead_code)]
-pub struct Span<'a, T>(et_c::Span<T>, PhantomData<&'a T>);
+pub struct Span<'a, T>(pub(crate) et_c::Span<T>, PhantomData<&'a T>);
 impl<'a, T> Span<'a, T> {
+    pub fn new(s: &'a [T]) -> Self {
+        Self(
+            et_c::Span {
+                data_: s.as_ptr() as *mut T,
+                length_: s.len(),
+                _phantom_0: PhantomData,
+            },
+            PhantomData,
+        )
+    }
+}
+
+#[allow(dead_code)]
+pub struct SpanMut<'a, T>(pub(crate) et_c::Span<T>, PhantomData<&'a T>);
+impl<'a, T> SpanMut<'a, T> {
     pub fn new(s: &'a mut [T]) -> Self {
         Self(
             et_c::Span {
@@ -20,6 +35,16 @@ impl<'a, T> Span<'a, T> {
             PhantomData,
         )
     }
+}
+
+#[allow(dead_code)]
+pub(crate) fn str2chars<'a>(s: &'a str) -> Result<&'a [std::os::raw::c_char], &'static str> {
+    let bytes = s.as_bytes();
+    if let Some(_) = bytes.iter().position(|&b| b == 0) {
+        return Err("String contains null byte");
+    }
+    let chars: *const std::os::raw::c_char = bytes.as_ptr().cast();
+    Ok(unsafe { std::slice::from_raw_parts(chars, bytes.len()) })
 }
 
 impl<T> IntoRust for et_rs_c::RawVec<T> {

@@ -2,8 +2,7 @@ use std::cell::RefCell;
 use std::marker::PhantomData;
 use std::ptr;
 
-use crate::util::Span;
-use crate::{et_c, et_rs_c};
+use crate::{et_c, et_rs_c, SpanMut};
 
 pub struct MallocMemoryAllocator(et_c::util::MallocMemoryAllocator);
 impl MallocMemoryAllocator {
@@ -20,8 +19,10 @@ impl AsMut<et_c::MemoryAllocator> for MallocMemoryAllocator {
 
 pub struct HierarchicalAllocator(et_c::HierarchicalAllocator);
 impl HierarchicalAllocator {
-    pub fn new(buffers: Span<Span<u8>>) -> Self {
-        Self(unsafe { et_rs_c::HierarchicalAllocator_new(std::mem::transmute(buffers)) })
+    pub fn new(buffers: SpanMut<SpanMut<u8>>) -> Self {
+        // Safety: The transmute is safe because the memory layout of SpanMut<u8> and et_c::Span<et_c::Span<u8>> is the same.
+        let buffers: et_c::Span<et_c::Span<u8>> = unsafe { std::mem::transmute(buffers) };
+        Self(unsafe { et_rs_c::HierarchicalAllocator_new(buffers) })
     }
 }
 

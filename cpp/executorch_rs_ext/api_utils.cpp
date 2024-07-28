@@ -126,16 +126,16 @@ namespace executorch_rs
     }
 
 #if defined(EXECUTORCH_RS_EXTENSION_MODULE)
-    torch::executor::Module Module_new(const char *file_path)
+    torch::executor::Module Module_new(torch::executor::Span<char> file_path)
     {
-        std::string file_path_str = file_path;
+        std::string file_path_str(file_path.begin(), file_path.end());
         return torch::executor::Module(file_path_str);
     }
 
-    torch::executor::Result<RawVec<torch::executor::EValue>> Module_execute(torch::executor::Module *module, const char *method_name, const torch::executor::EValue *inputs, size_t inputs_size)
+    torch::executor::Result<RawVec<torch::executor::EValue>> Module_execute(torch::executor::Module *module, torch::executor::Span<char> method_name, torch::executor::Span<torch::executor::EValue> inputs)
     {
-        std::string method_name_str = method_name;
-        std::vector<torch::executor::EValue> inputs_vec(inputs, inputs + inputs_size);
+        std::string method_name_str(method_name.begin(), method_name.end());
+        std::vector<torch::executor::EValue> inputs_vec(inputs.begin(), inputs.end());
         std::vector<torch::executor::EValue> outputs = ET_UNWRAP(module->execute(method_name_str, inputs_vec));
         return crate_RawVec(std::move(outputs));
     }

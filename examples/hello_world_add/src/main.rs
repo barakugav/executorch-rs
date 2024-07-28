@@ -2,7 +2,7 @@
 
 use executorch::{
     EValue, FileDataLoader, HierarchicalAllocator, MallocMemoryAllocator, MemoryManager, Program,
-    ProgramVerification, Span, Tag, Tensor, TensorImpl,
+    ProgramVerification, SpanMut, Tag, Tensor, TensorImpl,
 };
 use ndarray::array;
 use std::vec;
@@ -30,10 +30,11 @@ fn main() {
         .collect::<Vec<_>>();
     let mut planned_arenas = planned_buffers
         .iter_mut()
-        .map(|buffer| Span::new(buffer.as_mut_slice()))
+        .map(|buffer| SpanMut::new(buffer.as_mut_slice()))
         .collect::<Vec<_>>();
 
-    let mut planned_memory = HierarchicalAllocator::new(Span::new(planned_arenas.as_mut_slice()));
+    let mut planned_memory =
+        HierarchicalAllocator::new(SpanMut::new(planned_arenas.as_mut_slice()));
 
     let mut method_allocator = MallocMemoryAllocator::new();
     let mut memory_manager = MemoryManager::new(&mut method_allocator, &mut planned_memory);

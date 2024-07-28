@@ -67,8 +67,8 @@ namespace executorch_rs
     void *Tensor_mutable_data_ptr(const exec_aten::Tensor *tensor);
 
 #if defined(EXECUTORCH_RS_EXTENSION_MODULE)
-    torch::executor::Module Module_new(const char *file_path);
-    torch::executor::Result<RawVec<torch::executor::EValue>> Module_execute(torch::executor::Module *module, const char *method_name, const torch::executor::EValue *inputs, size_t inputs_size);
+    torch::executor::Module Module_new(torch::executor::Span<char> file_path);
+    torch::executor::Result<RawVec<torch::executor::EValue>> Module_execute(torch::executor::Module *module, torch::executor::Span<char> method_name, torch::executor::Span<torch::executor::EValue> inputs);
 #endif
 
 }
