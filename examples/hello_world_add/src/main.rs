@@ -18,7 +18,7 @@ fn main() {
 
     let program = Program::load(
         &mut file_data_loader,
-        ProgramVerification::InternalConsistency,
+        Some(ProgramVerification::InternalConsistency),
     )
     .unwrap();
 

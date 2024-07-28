@@ -1,4 +1,4 @@
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
 use std::ptr;
 
@@ -6,25 +6,64 @@ use crate::evalue::EValue;
 use crate::util::IntoRust;
 use crate::{et_c, et_rs_c, DataLoader, MemoryManager, Result};
 
+/// A deserialized ExecuTorch program binary.
 pub struct Program<'a>(et_c::Program, PhantomData<&'a ()>);
 impl<'a> Program<'a> {
+    /// Loads a Program from the provided loader. The Program will hold a pointer
+    /// to the loader, which must outlive the returned Program instance.
+    ///
+    /// # Arguments
+    ///
+    /// * `data_loader` - The source to load program data from. The Program will
+    /// hold a pointer to this loader, which must outlive the returned Program
+    /// instance.
+    /// * `verification` - The type of verification to do before returning success.
+    /// Defaults to `ProgramVerification::Minimal`.
+    ///
+    /// # Returns
+    ///
+    /// A new instance of Program.
     pub fn load(
         data_loader: &'a impl DataLoader,
-        verification: ProgramVerification,
+        verification: Option<ProgramVerification>,
     ) -> Result<Self> {
         let mut data_loader = data_loader.data_loader();
+        let verification = verification.unwrap_or(ProgramVerification::Minimal);
         Ok(Self(
             unsafe { et_c::Program::load(&mut *data_loader, verification) }.rs()?,
             PhantomData,
         ))
     }
 
-    pub fn method_meta(&self, method_name: &str) -> Result<MethodMeta<'a>> {
-        let method_name = CString::new(method_name).unwrap();
-        let meta = unsafe { et_rs_c::Program_method_meta(&self.0, method_name.as_ptr()) }.rs()?;
-        Ok(unsafe { MethodMeta::new(meta) })
+    /// Returns the number of methods in the program.
+    pub fn num_methods(&self) -> usize {
+        unsafe { self.0.num_methods() }
     }
 
+    /// Returns the name of the method at particular index.
+    ///
+    /// # Arguments
+    ///
+    /// * `method_index` - The index of the method name to retrieve. Must be less than the value returned by `num_methods()`.
+    ///
+    /// # Returns
+    ///
+    /// The name of the requested method. The pointer is owned by the Program, and has the same lifetime as the Program.
+    pub fn get_method_name(&self, method_index: usize) -> Result<&'a str> {
+        let method_name = unsafe { et_c::Program_get_method_name(&self.0, method_index) }.rs()?;
+        Ok(unsafe { CStr::from_ptr(method_name).to_str().unwrap() })
+    }
+
+    /// Loads the named method and prepares it for execution.
+    ///
+    /// # Arguments
+    ///
+    /// * `method_name` - The name of the method to load.
+    /// * `memory_manager` - The allocators to use during initialization and execution of the loaded method.
+    ///
+    /// # Returns
+    ///
+    /// The loaded method on success, or an error on failure.
     pub fn load_method(
         &self,
         method_name: &str,
@@ -32,11 +71,36 @@ impl<'a> Program<'a> {
     ) -> Result<Method> {
         let method_name = CString::new(method_name).unwrap();
         let mut memory_manager = memory_manager.0.borrow_mut();
+        let event_tracer = ptr::null_mut(); // TODO: support event tracer
         let method = unsafe {
             self.0
-                .load_method(method_name.as_ptr(), &mut *memory_manager, ptr::null_mut())
+                .load_method(method_name.as_ptr(), &mut *memory_manager, event_tracer)
         };
         Ok(Method(method.rs()?, PhantomData))
+    }
+
+    /// Gathers metadata for the named method.
+    ///
+    /// # Arguments
+    ///
+    /// * `method_name` - The name of the method to get metadata for.
+    pub fn method_meta(&self, method_name: &str) -> Result<MethodMeta<'a>> {
+        let method_name = CString::new(method_name).unwrap();
+        let meta = unsafe { et_rs_c::Program_method_meta(&self.0, method_name.as_ptr()) }.rs()?;
+        Ok(unsafe { MethodMeta::new(meta) })
+    }
+
+    /// Looks for an ExecuTorch program header in the provided data.
+    ///
+    /// # Arguments
+    ///
+    /// * `data` - The data from the beginning of a file that might contain an ExecuTorch program.
+    ///
+    /// # Returns
+    ///
+    /// A value describing the presence of a header in the data.
+    pub fn check_header(data: &[u8]) -> HeaderStatus {
+        unsafe { et_c::Program::check_header(data.as_ptr() as *const _, data.len()) }
     }
 }
 impl Drop for Program<'_> {
@@ -46,6 +110,7 @@ impl Drop for Program<'_> {
 }
 
 pub type ProgramVerification = et_c::Program_Verification;
+pub type HeaderStatus = et_c::Program_HeaderStatus;
 
 pub struct MethodMeta<'a>(et_c::MethodMeta, PhantomData<&'a ()>);
 impl<'a> MethodMeta<'a> {
