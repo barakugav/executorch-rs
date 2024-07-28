@@ -27,7 +27,7 @@ mod evalue;
 pub use evalue::{EValue, Tag};
 
 mod tensor;
-pub use tensor::{Tensor, TensorImpl};
+pub use tensor::{Tensor, TensorImpl, TensorInfo};
 
 mod util;
 pub use util::{Span, SpanMut};

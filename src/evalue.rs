@@ -1,6 +1,6 @@
 use std::{marker::PhantomData, mem::ManuallyDrop};
 
-use crate::{et_c, et_rs_c, tensor::Tensor, Error, Result};
+use crate::{et_c, et_rs_c, tensor::Tensor, util::IntoRust, Error, Result};
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -16,6 +16,25 @@ pub enum Tag {
     ListTensor = et_c::Tag::ListTensor as u8,
     ListScalar = et_c::Tag::ListScalar as u8,
     ListOptionalTensor = et_c::Tag::ListOptionalTensor as u8,
+}
+impl IntoRust for &et_c::Tag {
+    type RsType = Option<Tag>;
+    fn rs(self) -> Self::RsType {
+        Some(match self {
+            et_c::Tag::None => return None,
+            et_c::Tag::Tensor => Tag::Tensor,
+            et_c::Tag::String => Tag::String,
+            et_c::Tag::Double => Tag::Double,
+            et_c::Tag::Int => Tag::Int,
+            et_c::Tag::Bool => Tag::Bool,
+            et_c::Tag::ListBool => Tag::ListBool,
+            et_c::Tag::ListDouble => Tag::ListDouble,
+            et_c::Tag::ListInt => Tag::ListInt,
+            et_c::Tag::ListTensor => Tag::ListTensor,
+            et_c::Tag::ListScalar => Tag::ListScalar,
+            et_c::Tag::ListOptionalTensor => Tag::ListOptionalTensor,
+        })
+    }
 }
 
 pub struct EValue<'a>(pub(crate) et_c::EValue, PhantomData<&'a ()>);
@@ -143,20 +162,7 @@ impl<'a> EValue<'a> {
     }
 
     pub fn tag(&self) -> Option<Tag> {
-        Some(match self.0.tag {
-            et_c::Tag::None => return None,
-            et_c::Tag::Tensor => Tag::Tensor,
-            et_c::Tag::String => Tag::String,
-            et_c::Tag::Double => Tag::Double,
-            et_c::Tag::Int => Tag::Int,
-            et_c::Tag::Bool => Tag::Bool,
-            et_c::Tag::ListBool => Tag::ListBool,
-            et_c::Tag::ListDouble => Tag::ListDouble,
-            et_c::Tag::ListInt => Tag::ListInt,
-            et_c::Tag::ListTensor => Tag::ListTensor,
-            et_c::Tag::ListScalar => Tag::ListScalar,
-            et_c::Tag::ListOptionalTensor => Tag::ListOptionalTensor,
-        })
+        self.0.tag.rs()
     }
 }
 impl Drop for EValue<'_> {
