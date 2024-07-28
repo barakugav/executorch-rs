@@ -73,8 +73,12 @@ namespace executorch_rs
     void EValue_destructor(torch::executor::EValue *evalue);
 
 #if defined(EXECUTORCH_RS_EXTENSION_MODULE)
-    torch::executor::Module Module_new(torch::executor::Span<char> file_path);
+    torch::executor::Module Module_new(torch::executor::Span<char> file_path, torch::executor::Module::MlockConfig mlock_config, torch::executor::EventTracer *event_tracer);
     void Module_destructor(torch::executor::Module *module);
+    torch::executor::Result<RawVec<RawVec<char>>> Module_method_names(torch::executor::Module *module);
+    torch::executor::Error Module_load_method(torch::executor::Module *module, torch::executor::Span<char> method_name);
+    bool Module_is_method_loaded(const torch::executor::Module *module, torch::executor::Span<char> method_name);
+    Result_MethodMeta Module_method_meta(const torch::executor::Module *module, torch::executor::Span<char> method_name);
     torch::executor::Result<RawVec<torch::executor::EValue>> Module_execute(torch::executor::Module *module, torch::executor::Span<char> method_name, torch::executor::Span<torch::executor::EValue> inputs);
 #endif
 

@@ -2,7 +2,7 @@ use std::{marker::PhantomData, mem::MaybeUninit, ptr};
 
 use ndarray::{ArrayView, ArrayViewD, ArrayViewMut, Axis, Dimension, IxDyn, ShapeBuilder};
 
-use crate::{c_link, et_c, et_rs_c, Error, Result};
+use crate::{c_link, et_c, et_rs_c, Error, Result, Span};
 
 pub type SizesType = c_link::executorch_c::root::exec_aten::SizesType;
 pub type DimOrderType = c_link::executorch_c::root::exec_aten::DimOrderType;
@@ -324,5 +324,39 @@ impl<'a> TensorImpl<'a> {
         };
         wrapper.tensor_impl.write(Self(impl_, PhantomData));
         wrapper
+    }
+}
+
+/// Metadata about a specific tensor of an ExecuTorch Program.
+///
+/// The program used to create the MethodMeta object that created this
+/// TensorInfo must outlive this TensorInfo.
+pub struct TensorInfo<'a>(et_c::TensorInfo, PhantomData<&'a ()>);
+impl<'a> TensorInfo<'a> {
+    pub(crate) unsafe fn new(info: et_c::TensorInfo) -> Self {
+        Self(info, PhantomData)
+    }
+
+    /// Returns the sizes of the tensor.
+    pub fn sizes(&self) -> &'a [i32] {
+        let span = unsafe { et_c::TensorInfo_sizes(&self.0) };
+        unsafe { Span::new(span) }.into()
+    }
+
+    /// Returns the dim order of the tensor.
+    pub fn dim_order(&self) -> &'a [u8] {
+        let span = unsafe { et_c::TensorInfo_dim_order(&self.0) };
+        unsafe { Span::new(span) }.into()
+    }
+
+    /// Returns the scalar type of the input/output.
+    pub fn scalar_type(&self) -> Option<ScalarType> {
+        let scalar_type = unsafe { et_c::TensorInfo_scalar_type(&self.0) };
+        ScalarType::from_c_scalar_type(scalar_type)
+    }
+
+    /// Returns the size of the tensor in bytes.
+    pub fn nbytes(&self) -> usize {
+        unsafe { et_c::TensorInfo_nbytes(&self.0) }
     }
 }

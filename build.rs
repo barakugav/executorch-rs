@@ -143,6 +143,7 @@ fn generate_bindings(executorch_headers: &Path) {
         .rustified_enum("torch::executor::Program_Verification")
         .rustified_enum("torch::executor::Program_HeaderStatus")
         .rustified_enum("torch::executor::TensorShapeDynamism")
+        .rustified_enum("torch::executor::Module_MlockConfig")
         .no_copy(".*") // TODO: specific some exact types, regex act weird
         .manually_drop_union(".*")
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))

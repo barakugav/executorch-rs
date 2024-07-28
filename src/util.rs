@@ -10,7 +10,11 @@ pub trait IntoRust {
 #[allow(dead_code)]
 pub struct Span<'a, T>(pub(crate) et_c::Span<T>, PhantomData<&'a T>);
 impl<'a, T> Span<'a, T> {
-    pub fn new(s: &'a [T]) -> Self {
+    pub(crate) unsafe fn new(span: et_c::Span<T>) -> Self {
+        Self(span, PhantomData)
+    }
+
+    pub fn from_slice(s: &'a [T]) -> Self {
         Self(
             et_c::Span {
                 data_: s.as_ptr() as *mut T,
@@ -19,6 +23,11 @@ impl<'a, T> Span<'a, T> {
             },
             PhantomData,
         )
+    }
+}
+impl<'a, T> From<Span<'a, T>> for &'a [T] {
+    fn from(s: Span<'a, T>) -> Self {
+        unsafe { std::slice::from_raw_parts(s.0.data_, s.0.length_) }
     }
 }
 
@@ -45,6 +54,11 @@ pub(crate) fn str2chars<'a>(s: &'a str) -> Result<&'a [std::os::raw::c_char], &'
     }
     let chars: *const std::os::raw::c_char = bytes.as_ptr().cast();
     Ok(unsafe { std::slice::from_raw_parts(chars, bytes.len()) })
+}
+#[allow(dead_code)]
+pub(crate) fn chars2string(chars: Vec<std::os::raw::c_char>) -> String {
+    let bytes = unsafe { std::mem::transmute::<Vec<std::os::raw::c_char>, Vec<u8>>(chars) };
+    String::from_utf8(bytes).unwrap()
 }
 
 impl<T> IntoRust for et_rs_c::RawVec<T> {

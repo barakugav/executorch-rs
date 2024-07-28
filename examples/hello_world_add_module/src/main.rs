@@ -10,7 +10,7 @@ fn main() {
 
     executorch::pal_init();
 
-    let mut module = Module::new("model.pte");
+    let mut module = Module::new("model.pte", None);
 
     let data1 = array![1.0_f32];
     let input_tensor1 = TensorImpl::from_array(data1.view());
