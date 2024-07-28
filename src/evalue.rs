@@ -1,6 +1,6 @@
 use std::{marker::PhantomData, mem::ManuallyDrop};
 
-use crate::{et_c, tensor::Tensor, Error, Result};
+use crate::{et_c, et_rs_c, tensor::Tensor, Error, Result};
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -159,6 +159,11 @@ impl<'a> EValue<'a> {
         })
     }
 }
+impl Drop for EValue<'_> {
+    fn drop(&mut self) {
+        unsafe { et_rs_c::EValue_destructor(&mut self.0) }
+    }
+}
 
 impl From<i64> for EValue<'static> {
     fn from(val: i64) -> Self {
@@ -193,10 +198,11 @@ impl<'a> From<&'a [bool]> for EValue<'a> {
 
 impl TryFrom<EValue<'_>> for i64 {
     type Error = Error;
-    fn try_from(value: EValue<'_>) -> Result<i64> {
+    fn try_from(mut value: EValue<'_>) -> Result<i64> {
         match value.tag() {
             Some(Tag::Int) => Ok(unsafe {
-                let inner = ManuallyDrop::into_inner(value.0.payload.copyable_union);
+                value.0.tag = et_c::Tag::None;
+                let inner = ManuallyDrop::take(&mut value.0.payload.copyable_union);
                 ManuallyDrop::into_inner(inner.as_int)
             }),
             _ => Err(Error::InvalidType),
@@ -205,10 +211,11 @@ impl TryFrom<EValue<'_>> for i64 {
 }
 impl TryFrom<EValue<'_>> for f64 {
     type Error = Error;
-    fn try_from(value: EValue<'_>) -> Result<f64> {
+    fn try_from(mut value: EValue<'_>) -> Result<f64> {
         match value.tag() {
             Some(Tag::Double) => Ok(unsafe {
-                let inner = ManuallyDrop::into_inner(value.0.payload.copyable_union);
+                value.0.tag = et_c::Tag::None;
+                let inner = ManuallyDrop::take(&mut value.0.payload.copyable_union);
                 ManuallyDrop::into_inner(inner.as_double)
             }),
             _ => Err(Error::InvalidType),
@@ -217,10 +224,11 @@ impl TryFrom<EValue<'_>> for f64 {
 }
 impl TryFrom<EValue<'_>> for bool {
     type Error = Error;
-    fn try_from(value: EValue<'_>) -> Result<bool> {
+    fn try_from(mut value: EValue<'_>) -> Result<bool> {
         match value.tag() {
             Some(Tag::Bool) => Ok(unsafe {
-                let inner = ManuallyDrop::into_inner(value.0.payload.copyable_union);
+                value.0.tag = et_c::Tag::None;
+                let inner = ManuallyDrop::take(&mut value.0.payload.copyable_union);
                 ManuallyDrop::into_inner(inner.as_bool)
             }),
             _ => Err(Error::InvalidType),
@@ -229,10 +237,11 @@ impl TryFrom<EValue<'_>> for bool {
 }
 impl<'a> TryFrom<EValue<'a>> for &'a [std::os::raw::c_char] {
     type Error = Error;
-    fn try_from(value: EValue<'_>) -> Result<&'_ [std::os::raw::c_char]> {
+    fn try_from(mut value: EValue<'_>) -> Result<&'_ [std::os::raw::c_char]> {
         match value.tag() {
             Some(Tag::String) => Ok(unsafe {
-                let inner = ManuallyDrop::into_inner(value.0.payload.copyable_union);
+                value.0.tag = et_c::Tag::None;
+                let inner = ManuallyDrop::take(&mut value.0.payload.copyable_union);
                 let arr = ManuallyDrop::into_inner(inner.as_string);
                 std::slice::from_raw_parts(arr.Data, arr.Length)
             }),
@@ -242,10 +251,11 @@ impl<'a> TryFrom<EValue<'a>> for &'a [std::os::raw::c_char] {
 }
 impl<'a> TryFrom<EValue<'a>> for &'a [f64] {
     type Error = Error;
-    fn try_from(value: EValue<'_>) -> Result<&'_ [f64]> {
+    fn try_from(mut value: EValue<'_>) -> Result<&'_ [f64]> {
         match value.tag() {
             Some(Tag::ListDouble) => Ok(unsafe {
-                let inner = ManuallyDrop::into_inner(value.0.payload.copyable_union);
+                value.0.tag = et_c::Tag::None;
+                let inner = ManuallyDrop::take(&mut value.0.payload.copyable_union);
                 let arr = ManuallyDrop::into_inner(inner.as_double_list);
                 std::slice::from_raw_parts(arr.Data, arr.Length)
             }),
@@ -255,10 +265,11 @@ impl<'a> TryFrom<EValue<'a>> for &'a [f64] {
 }
 impl<'a> TryFrom<EValue<'a>> for &'a [bool] {
     type Error = Error;
-    fn try_from(value: EValue<'_>) -> Result<&'_ [bool]> {
+    fn try_from(mut value: EValue<'_>) -> Result<&'_ [bool]> {
         match value.tag() {
             Some(Tag::ListBool) => Ok(unsafe {
-                let inner = ManuallyDrop::into_inner(value.0.payload.copyable_union);
+                value.0.tag = et_c::Tag::None;
+                let inner = ManuallyDrop::take(&mut value.0.payload.copyable_union);
                 let arr = ManuallyDrop::into_inner(inner.as_bool_list);
                 std::slice::from_raw_parts(arr.Data, arr.Length)
             }),
@@ -268,10 +279,11 @@ impl<'a> TryFrom<EValue<'a>> for &'a [bool] {
 }
 impl<'a> TryFrom<EValue<'a>> for Tensor<'a> {
     type Error = Error;
-    fn try_from(value: EValue<'a>) -> Result<Tensor<'a>> {
+    fn try_from(mut value: EValue<'a>) -> Result<Tensor<'a>> {
         match value.tag() {
             Some(Tag::Tensor) => Ok(unsafe {
-                let inner = ManuallyDrop::into_inner(value.0.payload.as_tensor);
+                value.0.tag = et_c::Tag::None;
+                let inner = ManuallyDrop::take(&mut value.0.payload.as_tensor);
                 Tensor::from_inner(inner)
             }),
             _ => Err(Error::InvalidType),
@@ -285,8 +297,7 @@ impl<'a> TryFrom<&EValue<'a>> for &Tensor<'a> {
             Some(Tag::Tensor) => Ok(unsafe {
                 let inner = &*value.0.payload.as_tensor;
                 // SAFETY: et_c::Tensor has the same memory layout as Tensor
-                let ptr = inner as *const et_c::Tensor as *const Tensor<'a>;
-                &*ptr
+                std::mem::transmute::<&et_c::Tensor, &Tensor>(inner)
             }),
             _ => Err(Error::InvalidType),
         }

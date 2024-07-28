@@ -46,17 +46,6 @@ impl IntoRust for et_c::Error {
     }
 }
 
-fn to_bytes<T>(val: &T) -> Vec<u8> {
-    (0..std::mem::size_of_val(val))
-        .map(|i| unsafe {
-            let ptr = val as *const _;
-            let ptr = ptr as usize;
-            let ptr = ptr as *const u8;
-            *ptr.add(i)
-        })
-        .collect()
-}
-
 pub type Result<T> = std::result::Result<T, Error>;
 impl<T> IntoRust for et_c::Result<T> {
     type RsType = Result<T>;
@@ -65,8 +54,6 @@ impl<T> IntoRust for et_c::Result<T> {
             let value = unsafe { ManuallyDrop::into_inner(self.__bindgen_anon_1.value_) };
             Ok(value)
         } else {
-            println!("{:?}", to_bytes(&self));
-
             let err: et_c::Error =
                 unsafe { ManuallyDrop::into_inner(self.__bindgen_anon_1.error_) };
             Err(err.rs().err().unwrap_or_else(|| {

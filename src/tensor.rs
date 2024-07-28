@@ -237,6 +237,11 @@ impl<'a> Tensor<'a> {
             .permuted_axes(dim_order)
     }
 }
+impl Drop for et_c::Tensor {
+    fn drop(&mut self) {
+        unsafe { et_rs_c::Tensor_destructor(self) }
+    }
+}
 
 impl<'a, S: Scalar> TryFrom<Tensor<'a>> for ArrayViewD<'a, S> {
     type Error = Error;

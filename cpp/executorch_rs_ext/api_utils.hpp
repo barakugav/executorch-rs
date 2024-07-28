@@ -48,9 +48,12 @@ namespace executorch_rs
     };
 
     Result_MethodMeta Program_method_meta(const torch::executor::Program *program, const char *method_name);
+    void Program_destructor(torch::executor::Program *program);
     Result_i64 MethodMeta_memory_planned_buffer_size(const torch::executor::MethodMeta *method_meta, size_t index);
     torch::executor::util::MallocMemoryAllocator MallocMemoryAllocator_new();
+    void MallocMemoryAllocator_destructor(torch::executor::util::MallocMemoryAllocator *allocator);
     torch::executor::HierarchicalAllocator HierarchicalAllocator_new(torch::executor::Span<torch::executor::Span<uint8_t>> buffers);
+    void HierarchicalAllocator_destructor(torch::executor::HierarchicalAllocator *allocator);
 
     // Tensor
 
@@ -65,9 +68,13 @@ namespace executorch_rs
     const exec_aten::ArrayRef<exec_aten::StridesType> Tensor_strides(const exec_aten::Tensor *tensor);
     const void *Tensor_const_data_ptr(const exec_aten::Tensor *tensor);
     void *Tensor_mutable_data_ptr(const exec_aten::Tensor *tensor);
+    void Tensor_destructor(exec_aten::Tensor *tensor);
+
+    void EValue_destructor(torch::executor::EValue *evalue);
 
 #if defined(EXECUTORCH_RS_EXTENSION_MODULE)
     torch::executor::Module Module_new(torch::executor::Span<char> file_path);
+    void Module_destructor(torch::executor::Module *module);
     torch::executor::Result<RawVec<torch::executor::EValue>> Module_execute(torch::executor::Module *module, torch::executor::Span<char> method_name, torch::executor::Span<torch::executor::EValue> inputs);
 #endif
 

@@ -53,3 +53,16 @@ impl<T> IntoRust for et_rs_c::RawVec<T> {
         unsafe { Vec::from_raw_parts(self.data, self.len, self.cap) }
     }
 }
+
+// Debug func
+#[allow(dead_code)]
+pub(crate) fn to_bytes<T>(val: &T) -> Vec<u8> {
+    (0..std::mem::size_of_val(val))
+        .map(|i| unsafe {
+            let ptr = val as *const _;
+            let ptr = ptr as usize;
+            let ptr = ptr as *const u8;
+            *ptr.add(i)
+        })
+        .collect()
+}

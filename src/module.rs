@@ -24,3 +24,8 @@ impl Module {
         Ok(outputs)
     }
 }
+impl Drop for Module {
+    fn drop(&mut self) {
+        unsafe { et_rs_c::Module_destructor(&mut self.0) };
+    }
+}
