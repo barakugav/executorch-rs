@@ -2,23 +2,50 @@ use std::mem::ManuallyDrop;
 
 use crate::{et_c, et_rs_c, util::IntoRust};
 
+/// ExecuTorch Error type.
 #[derive(Debug)]
 #[repr(u8)]
 pub enum Error {
+    /* System errors */
+    //
+    /// An internal error occurred.
     Internal = et_c::Error::Internal as u8,
+    /// Status indicating the executor is in an invalid state for a target
     InvalidState = et_c::Error::InvalidState as u8,
+    /// Status indicating there are no more steps of execution to run
     EndOfMethod = et_c::Error::EndOfMethod as u8,
+
+    /* Logical errors */
+    //
+    /// Operation is not supported in the current context.
     NotSupported = et_c::Error::NotSupported as u8,
+    /// Operation is not yet implemented.
     NotImplemented = et_c::Error::NotImplemented as u8,
+    /// User provided an invalid argument.
     InvalidArgument = et_c::Error::InvalidArgument as u8,
+    /// Object is an invalid type for the operation.
     InvalidType = et_c::Error::InvalidType as u8,
+    /// Operator(s) missing in the operator registry.
     OperatorMissing = et_c::Error::OperatorMissing as u8,
+
+    /* Resource errors */
+    //
+    /// Requested resource could not be found.
     NotFound = et_c::Error::NotFound as u8,
+    /// Could not allocate the requested memory.
     MemoryAllocationFailed = et_c::Error::MemoryAllocationFailed as u8,
+    /// Could not access a resource.
     AccessFailed = et_c::Error::AccessFailed as u8,
+    /// Error caused by the contents of a program.
     InvalidProgram = et_c::Error::InvalidProgram as u8,
+
+    /* Delegate errors */
+    //
+    /// Init stage: Backend receives an incompatible delegate version.
     DelegateInvalidCompatibility = et_c::Error::DelegateInvalidCompatibility as u8,
+    /// Init stage: Backend fails to allocate memory.
     DelegateMemoryAllocationFailed = et_c::Error::DelegateMemoryAllocationFailed as u8,
+    /// Execute stage: The handle is invalid.
     DelegateInvalidHandle = et_c::Error::DelegateInvalidHandle as u8,
 }
 
