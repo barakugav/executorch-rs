@@ -222,8 +222,8 @@ impl<'a> MethodMeta<'a> {
 
 pub struct Method<'a>(et_c::Method, PhantomData<&'a ()>);
 impl<'a> Method<'a> {
-    pub fn start_execution<'b>(&'b mut self) -> Execution<'a, 'b> {
-        Execution::new(self)
+    pub fn start_execution<'b>(&'b mut self) -> Execution<'b> {
+        Execution::new(&mut self.0)
     }
 
     pub fn inputs_size(&self) -> usize {
@@ -236,14 +236,14 @@ impl Drop for Method<'_> {
     }
 }
 
-pub struct Execution<'a, 'b> {
-    method: &'b mut Method<'a>,
+pub struct Execution<'a> {
+    method: &'a mut et_c::Method,
     set_inputs: u64,
 }
-impl<'a, 'b> Execution<'a, 'b> {
-    fn new(method: &'b mut Method<'a>) -> Self {
+impl<'a> Execution<'a> {
+    fn new(method: &'a mut et_c::Method) -> Self {
         assert!(
-            method.inputs_size() <= u64::BITS as usize,
+            unsafe { method.inputs_size() } <= u64::BITS as usize,
             "more that 64 inputs for method, unsupported"
         );
         Self {
@@ -252,32 +252,32 @@ impl<'a, 'b> Execution<'a, 'b> {
         }
     }
 
-    pub fn set_input(&mut self, input: &'b EValue, input_idx: usize) -> Result<()> {
-        unsafe { self.method.0.set_input(&input.0, input_idx) }.rs()?;
+    pub fn set_input<'b: 'a>(&mut self, input: &'b EValue, input_idx: usize) -> Result<()> {
+        unsafe { self.method.set_input(&input.0, input_idx) }.rs()?;
         self.set_inputs |= 1 << input_idx;
         Ok(())
     }
 
-    pub fn execute(self) -> Result<Outputs<'a, 'b>> {
+    pub fn execute(self) -> Result<Outputs<'a>> {
         assert_eq!(
             self.set_inputs,
-            (1 << self.method.inputs_size()) - 1,
+            (1 << unsafe { self.method.inputs_size() }) - 1,
             "some inputs were not set"
         );
-        unsafe { self.method.0.execute() }.rs()?;
+        unsafe { self.method.execute() }.rs()?;
         Ok(Outputs::new(self.method))
     }
 }
-pub struct Outputs<'a, 'b> {
-    method: &'b mut Method<'a>,
+pub struct Outputs<'a> {
+    method: &'a mut et_c::Method,
 }
-impl<'a, 'b> Outputs<'a, 'b> {
-    fn new(method: &'b mut Method<'a>) -> Self {
+impl<'a> Outputs<'a> {
+    fn new(method: &'a mut et_c::Method) -> Self {
         Self { method }
     }
 
     pub fn get_output(&self, output_idx: usize) -> &'a EValue<'a> {
-        let val = unsafe { &*self.method.0.get_output(output_idx) };
+        let val = unsafe { &*self.method.get_output(output_idx) };
         // SAFETY: et_c::EValue as EValue has the same memory layout
         unsafe { std::mem::transmute::<&et_c::EValue, &EValue<'a>>(val) }
     }
