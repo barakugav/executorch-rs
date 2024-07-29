@@ -1,8 +1,9 @@
 #![deny(warnings)]
 
+use executorch::data_loader::FileDataLoader;
 use executorch::{
-    EValue, FileDataLoader, HierarchicalAllocator, MallocMemoryAllocator, MemoryManager, Program,
-    ProgramVerification, SpanMut, Tag, Tensor, TensorImpl,
+    EValue, HierarchicalAllocator, MallocMemoryAllocator, MemoryManager, Program,
+    ProgramVerification, Span, Tag, Tensor, TensorImpl,
 };
 use ndarray::array;
 use std::vec;
@@ -14,7 +15,7 @@ fn main() {
 
     executorch::pal_init();
 
-    let mut file_data_loader = FileDataLoader::new("model.pte").unwrap();
+    let mut file_data_loader = FileDataLoader::new("model.pte", None).unwrap();
 
     let program = Program::load(
         &mut file_data_loader,
@@ -30,14 +31,15 @@ fn main() {
         .collect::<Vec<_>>();
     let mut planned_arenas = planned_buffers
         .iter_mut()
-        .map(|buffer| SpanMut::new(buffer.as_mut_slice()))
+        .map(|buffer| Span::from_slice(buffer.as_mut_slice()))
         .collect::<Vec<_>>();
 
     let mut planned_memory =
-        HierarchicalAllocator::new(SpanMut::new(planned_arenas.as_mut_slice()));
+        HierarchicalAllocator::new(Span::from_slice(planned_arenas.as_mut_slice()));
 
     let mut method_allocator = MallocMemoryAllocator::new();
-    let mut memory_manager = MemoryManager::new(&mut method_allocator, &mut planned_memory);
+    let mut memory_manager =
+        MemoryManager::new(method_allocator.as_mut(), Some(&mut planned_memory), None);
 
     let mut method = program.load_method("forward", &mut memory_manager).unwrap();
 

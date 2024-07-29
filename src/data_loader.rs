@@ -2,39 +2,69 @@ use std::cell::RefMut;
 
 use crate::et_c;
 
+/// Loads from a data source.
 pub trait DataLoader {
     fn data_loader(&self) -> RefMut<et_c::DataLoader>;
 }
 
 #[cfg(feature = "extension-data-loader")]
-pub use file_data_loader::FileDataLoader;
+pub use file_data_loader::{BufferDataLoader, FileDataLoader, MlockConfig, MmapDataLoader};
 
 #[cfg(feature = "extension-data-loader")]
 mod file_data_loader {
     use std::cell::{RefCell, RefMut};
     use std::ffi::CString;
+    use std::marker::PhantomData;
     use std::path::Path;
 
     use crate::util::IntoRust;
-    use crate::{et_c, Result};
+    use crate::{et_c, et_rs_c, Result};
 
     use super::DataLoader;
 
+    /// A DataLoader that loads segments from a file, allocating the memory
+    /// with `malloc()`.
+    ///
+    /// Note that this will keep the file open for the duration of its lifetime, to
+    /// avoid the overhead of opening it again for every Load() call.
     pub struct FileDataLoader(RefCell<et_c::util::FileDataLoader>);
     impl FileDataLoader {
-        pub fn new(file_name: impl AsRef<Path>) -> Result<Self> {
+        /// Creates a new FileDataLoader that wraps the named file.
+        ///
+        /// # Arguments
+        ///
+        /// * `file_name` - Path to the file to read from.
+        /// * `alignment` - Alignment in bytes of pointers returned by this instance. Must be a power of two.
+        /// Defaults to 16.
+        ///
+        /// # Returns
+        ///
+        /// A new FileDataLoader on success.
+        ///
+        /// # Errors
+        ///
+        /// * `Error::InvalidArgument` - `alignment` is not a power of two.
+        /// * `Error::AccessFailed` - `file_name` could not be opened, or its size could not be found.
+        /// * `Error::MemoryAllocationFailed` - Internal memory allocation failure.
+        ///
+        /// # Panics
+        ///
+        /// Panics if `file_name` is not a valid UTF-8 string or if it contains a null byte.
+        pub fn new(file_name: impl AsRef<Path>, alignment: Option<usize>) -> Result<Self> {
             let file_name = file_name.as_ref().to_str().expect("Invalid file name");
             let file_name = CString::new(file_name).unwrap();
-            let loader =
-                unsafe { et_c::util::FileDataLoader::from(file_name.as_ptr(), 16) }.rs()?;
+            let alignment = alignment.unwrap_or(16);
+            let loader: et_c::util::FileDataLoader =
+                unsafe { et_c::util::FileDataLoader::from(file_name.as_ptr(), alignment) }.rs()?;
             Ok(Self(RefCell::new(loader)))
         }
     }
     impl DataLoader for FileDataLoader {
         fn data_loader(&self) -> RefMut<et_c::DataLoader> {
-            RefMut::map(self.0.borrow_mut(), |loader| {
-                let ptr = loader as *mut _ as *mut et_c::DataLoader;
-                unsafe { &mut *ptr }
+            RefMut::map(self.0.borrow_mut(), |loader| unsafe {
+                std::mem::transmute::<&mut et_c::util::FileDataLoader, &mut et_c::DataLoader>(
+                    loader,
+                )
             })
         }
     }
@@ -45,4 +75,76 @@ mod file_data_loader {
             };
         }
     }
+
+    /// A DataLoader that loads segments from a file, allocating the memory
+    /// with `mmap()`.
+    ///
+    /// Note that this will keep the file open for the duration of its lifetime, to
+    /// avoid the overhead of opening it again for every Load() call.
+    pub struct MmapDataLoader(RefCell<et_c::util::MmapDataLoader>);
+    impl MmapDataLoader {
+        /// Creates a new MmapDataLoader that wraps the named file.
+        /// Fails if the file can't be opened for reading or if its size can't be found.
+        ///
+        /// # Arguments
+        ///
+        /// * `file_name` - Path to the file to read from. The file will be kept open until the MmapDataLoader is
+        /// destroyed, to avoid the overhead of opening it again for every Load() call.
+        /// * `mlock_config` - How and whether to lock loaded pages with `mlock()`. Defaults to `MlockConfig::UseMlock`.
+        ///
+        /// # Returns
+        ///
+        /// A new MmapDataLoader on success.
+        pub fn new(file_name: impl AsRef<Path>, mlock_config: Option<MlockConfig>) -> Result<Self> {
+            let file_name = file_name.as_ref().to_str().expect("Invalid file name");
+            let file_name = CString::new(file_name).unwrap();
+            let mlock_config = mlock_config.unwrap_or(MlockConfig::UseMlock);
+            let loader: et_c::util::MmapDataLoader =
+                unsafe { et_c::util::MmapDataLoader::from(file_name.as_ptr(), mlock_config) }
+                    .rs()?;
+            Ok(Self(RefCell::new(loader)))
+        }
+    }
+    impl DataLoader for MmapDataLoader {
+        fn data_loader(&self) -> RefMut<et_c::DataLoader> {
+            RefMut::map(self.0.borrow_mut(), |loader| unsafe {
+                std::mem::transmute::<&mut et_c::util::MmapDataLoader, &mut et_c::DataLoader>(
+                    loader,
+                )
+            })
+        }
+    }
+    impl Drop for MmapDataLoader {
+        fn drop(&mut self) {
+            unsafe {
+                et_c::util::MmapDataLoader_MmapDataLoader_destructor(&mut *self.0.borrow_mut())
+            };
+        }
+    }
+
+    /// A DataLoader that wraps a pre-allocated buffer. The FreeableBuffers
+    /// that it returns do not actually free any data.
+    ///
+    /// This can be used to wrap data that is directly embedded into the firmware
+    /// image, or to wrap data that was allocated elsewhere.
+    pub struct BufferDataLoader<'a>(RefCell<et_c::util::BufferDataLoader>, PhantomData<&'a ()>);
+    impl<'a> BufferDataLoader<'a> {
+        /// Creates a new BufferDataLoader that wraps the given data.
+        pub fn new(data: &'a [u8]) -> Self {
+            let loader: et_c::util::BufferDataLoader =
+                unsafe { et_rs_c::BufferDataLoader_new(data.as_ptr() as *const _, data.len()) };
+            Self(RefCell::new(loader), PhantomData)
+        }
+    }
+    impl<'a> DataLoader for BufferDataLoader<'a> {
+        fn data_loader(&self) -> RefMut<et_c::DataLoader> {
+            RefMut::map(self.0.borrow_mut(), |loader| unsafe {
+                std::mem::transmute::<&mut et_c::util::BufferDataLoader, &mut et_c::DataLoader>(
+                    loader,
+                )
+            })
+        }
+    }
+
+    pub type MlockConfig = et_c::util::MmapDataLoader_MlockConfig;
 }

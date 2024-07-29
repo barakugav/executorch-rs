@@ -106,6 +106,8 @@ fn generate_bindings(executorch_headers: &Path) {
         .allowlist_item("torch::executor::util::MallocMemoryAllocator")
         // extension-data-loader
         .allowlist_item("torch::executor::util::FileDataLoader")
+        .allowlist_item("torch::executor::util::MmapDataLoader")
+        .allowlist_item("torch::executor::util::BufferDataLoader")
         // extension-module
         .allowlist_item("torch::executor::Module")
         .blocklist_item("std::.*")
@@ -135,6 +137,8 @@ fn generate_bindings(executorch_headers: &Path) {
         .opaque_type("torch::executor::TensorInfo")
         // extension-data-loader
         .opaque_type("torch::executor::util::FileDataLoader")
+        .opaque_type("torch::executor::util::MmapDataLoader")
+        .opaque_type("torch::executor::util::BufferDataLoader")
         // extension-module
         .opaque_type("torch::executor::Module")
         .rustified_enum("torch::executor::Error")
@@ -143,6 +147,9 @@ fn generate_bindings(executorch_headers: &Path) {
         .rustified_enum("torch::executor::Program_Verification")
         .rustified_enum("torch::executor::Program_HeaderStatus")
         .rustified_enum("torch::executor::TensorShapeDynamism")
+        // extension-data-loader
+        .rustified_enum("torch::executor::util::MmapDataLoader_MlockConfig")
+        // extension-module
         .rustified_enum("torch::executor::Module_MlockConfig")
         .no_copy(".*") // TODO: specific some exact types, regex act weird
         .manually_drop_union(".*")

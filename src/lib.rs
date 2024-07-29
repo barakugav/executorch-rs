@@ -7,10 +7,7 @@ use c_link::executorch_c::root::torch::executor as et_c;
 mod error;
 pub use error::{Error, Result};
 
-mod data_loader;
-pub use data_loader::DataLoader;
-#[cfg(feature = "extension-data-loader")]
-pub use data_loader::FileDataLoader;
+pub mod data_loader;
 
 mod memory;
 pub use memory::{HierarchicalAllocator, MallocMemoryAllocator, MemoryManager};
@@ -27,10 +24,10 @@ mod evalue;
 pub use evalue::{EValue, Tag};
 
 mod tensor;
-pub use tensor::{Tensor, TensorImpl, TensorInfo};
+pub use tensor::{Tensor, TensorImpl, TensorInfo, TensorMut};
 
 mod util;
-pub use util::{Span, SpanMut};
+pub use util::{ArrayRef, Span};
 
 pub fn pal_init() {
     unsafe { c_link::executorch_c::root::et_pal_init() };

@@ -1,8 +1,11 @@
-use std::{marker::PhantomData, mem::MaybeUninit, ptr};
+use std::marker::PhantomData;
+use std::mem::MaybeUninit;
+use std::ops::{Deref, DerefMut};
+use std::ptr;
 
 use ndarray::{ArrayView, ArrayViewD, ArrayViewMut, Axis, Dimension, IxDyn, ShapeBuilder};
 
-use crate::{c_link, et_c, et_rs_c, Error, Result, Span};
+use crate::{c_link, et_c, et_rs_c, Span};
 
 pub type SizesType = c_link::executorch_c::root::exec_aten::SizesType;
 pub type DimOrderType = c_link::executorch_c::root::exec_aten::DimOrderType;
@@ -125,14 +128,14 @@ impl Scalar for bool {
     const TYPE: ScalarType = ScalarType::Bool;
 }
 
-pub struct Tensor<'a>(pub(crate) et_c::Tensor, PhantomData<&'a ()>);
-impl<'a> Tensor<'a> {
-    pub fn new(tensor_impl: &'a TensorImpl<'a>) -> Self {
+pub struct TensorBase<'a>(pub(crate) et_c::Tensor, PhantomData<&'a ()>);
+impl<'a> TensorBase<'a> {
+    unsafe fn new(tensor_impl: &'a TensorImplBase<'_>) -> Self {
         let impl_ = &tensor_impl.0 as *const _ as *mut _;
         Self(et_c::Tensor { impl_ }, PhantomData)
     }
 
-    pub(crate) unsafe fn from_inner(tensor: et_c::Tensor) -> Self {
+    unsafe fn from_inner(tensor: et_c::Tensor) -> Self {
         Self(tensor, PhantomData)
     }
 
@@ -182,7 +185,12 @@ impl<'a> Tensor<'a> {
         }
     }
 
-    pub fn as_array<S: Scalar>(&self) -> ArrayViewD<'a, S> {
+    pub fn as_tensor<'b>(&'b self) -> Tensor<'b> {
+        let impl_ = self.0.impl_ as *const _;
+        Tensor::new(unsafe { &*(impl_) })
+    }
+
+    pub fn as_array<'b, S: Scalar>(&'b self) -> ArrayViewD<'b, S> {
         if self.scalar_type() != Some(S::TYPE) {
             panic!("Invalid type");
         }
@@ -208,13 +216,51 @@ impl<'a> Tensor<'a> {
 
         unsafe { ArrayViewD::from_shape_ptr(shape.strides(strides), ptr) }.permuted_axes(dim_order)
     }
+}
+impl Drop for et_c::Tensor {
+    fn drop(&mut self) {
+        unsafe { et_rs_c::Tensor_destructor(self) }
+    }
+}
 
-    pub unsafe fn as_array_mut<S: Scalar>(&self) -> ArrayViewMut<'a, S, IxDyn> {
+pub struct Tensor<'a> {
+    pub(crate) base: TensorBase<'a>,
+}
+impl<'a> Tensor<'a> {
+    pub fn new(tensor_impl: &'a TensorImpl<'_>) -> Self {
+        Self {
+            base: unsafe { TensorBase::new(tensor_impl.deref()) },
+        }
+    }
+
+    pub(crate) unsafe fn from_inner(tensor: et_c::Tensor) -> Self {
+        Self {
+            base: TensorBase::from_inner(tensor),
+        }
+    }
+}
+impl<'a> Deref for Tensor<'a> {
+    type Target = TensorBase<'a>;
+    fn deref(&self) -> &Self::Target {
+        &self.base
+    }
+}
+pub struct TensorMut<'a> {
+    pub(crate) base: TensorBase<'a>,
+}
+impl<'a> TensorMut<'a> {
+    pub fn new<'b: 'a>(tensor_impl: &'b mut TensorImplMut<'a>) -> Self {
+        Self {
+            base: unsafe { TensorBase::new(tensor_impl.deref_mut()) },
+        }
+    }
+
+    pub fn as_array_mut<'b, S: Scalar>(&'b mut self) -> ArrayViewMut<'b, S, IxDyn> {
         if self.scalar_type() != Some(S::TYPE) {
             panic!("Invalid type");
         }
 
-        let ptr = unsafe { et_rs_c::Tensor_mutable_data_ptr(&self.0) } as *mut S;
+        let ptr = unsafe { et_rs_c::Tensor_mutable_data_ptr(&self.base.0) } as *mut S;
 
         let shape = self
             .sizes()
@@ -237,25 +283,16 @@ impl<'a> Tensor<'a> {
             .permuted_axes(dim_order)
     }
 }
-impl Drop for et_c::Tensor {
-    fn drop(&mut self) {
-        unsafe { et_rs_c::Tensor_destructor(self) }
+impl<'a> Deref for TensorMut<'a> {
+    type Target = TensorBase<'a>;
+    fn deref(&self) -> &Self::Target {
+        &self.base
     }
 }
 
-impl<'a, S: Scalar> TryFrom<Tensor<'a>> for ArrayViewD<'a, S> {
-    type Error = Error;
-    fn try_from(tensor: Tensor<'a>) -> Result<Self> {
-        if tensor.scalar_type() != Some(S::TYPE) {
-            return Err(Error::InvalidType);
-        }
-        Ok(tensor.as_array())
-    }
-}
-
-pub struct TensorImpl<'a>(et_c::TensorImpl, PhantomData<&'a ()>);
-impl<'a> TensorImpl<'a> {
-    pub fn from_slice<S: Scalar>(
+pub struct TensorImplBase<'a>(et_c::TensorImpl, PhantomData<&'a ()>);
+impl<'a> TensorImplBase<'a> {
+    unsafe fn from_slice<S: Scalar>(
         sizes: &'a [SizesType],
         data: &'a [S],
         data_order: Option<&'a [DimOrderType]>,
@@ -284,6 +321,22 @@ impl<'a> TensorImpl<'a> {
             )
         };
         Self(impl_, PhantomData)
+    }
+}
+
+pub struct TensorImpl<'a> {
+    pub(crate) base: TensorImplBase<'a>,
+}
+impl<'a> TensorImpl<'a> {
+    pub fn from_slice<S: Scalar>(
+        sizes: &'a [SizesType],
+        data: &'a [S],
+        data_order: Option<&'a [DimOrderType]>,
+        strides: &'a [StridesType],
+    ) -> Self {
+        Self {
+            base: unsafe { TensorImplBase::from_slice(sizes, data, data_order, strides) },
+        }
     }
 
     pub fn from_array<S: Scalar, D: Dimension>(array: ArrayView<'a, S, D>) -> impl AsRef<Self> {
@@ -322,8 +375,87 @@ impl<'a> TensorImpl<'a> {
                 et_c::TensorShapeDynamism::STATIC,
             )
         };
-        wrapper.tensor_impl.write(Self(impl_, PhantomData));
+        wrapper.tensor_impl.write(TensorImpl {
+            base: TensorImplBase(impl_, PhantomData),
+        });
         wrapper
+    }
+}
+impl<'a> Deref for TensorImpl<'a> {
+    type Target = TensorImplBase<'a>;
+    fn deref(&self) -> &Self::Target {
+        &self.base
+    }
+}
+
+pub struct TensorImplMut<'a> {
+    pub(crate) base: TensorImplBase<'a>,
+}
+impl<'a> TensorImplMut<'a> {
+    pub fn from_slice<S: Scalar>(
+        sizes: &'a [SizesType],
+        data: &'a mut [S],
+        data_order: Option<&'a [DimOrderType]>,
+        strides: &'a [StridesType],
+    ) -> Self {
+        Self {
+            base: unsafe { TensorImplBase::from_slice(sizes, data, data_order, strides) },
+        }
+    }
+
+    pub fn from_array<S: Scalar, D: Dimension>(
+        mut array: ArrayViewMut<'a, S, D>,
+    ) -> impl AsRef<Self> {
+        struct Wrapper<'a, S: Scalar> {
+            sizes: Vec<SizesType>,
+            strides: Vec<StridesType>,
+            tensor_impl: MaybeUninit<TensorImplMut<'a>>,
+            _phantom: PhantomData<S>,
+        }
+        impl<'a, S: Scalar> AsRef<TensorImplMut<'a>> for Wrapper<'a, S> {
+            fn as_ref(&self) -> &TensorImplMut<'a> {
+                unsafe { self.tensor_impl.assume_init_ref() }
+            }
+        }
+
+        let mut wrapper = Wrapper::<'a, S> {
+            sizes: array
+                .shape()
+                .iter()
+                .map(|&size| size as SizesType)
+                .collect(),
+            strides: (0..array.ndim())
+                .map(|d| array.stride_of(Axis(d)) as StridesType)
+                .collect(),
+            tensor_impl: MaybeUninit::uninit(),
+            _phantom: PhantomData,
+        };
+        let impl_ = unsafe {
+            et_c::TensorImpl::new(
+                S::TYPE.into_c_scalar_type(),
+                array.ndim() as isize,
+                wrapper.sizes.as_slice() as *const _ as *mut SizesType,
+                array.as_mut_ptr() as *mut _,
+                ptr::null_mut(),
+                wrapper.strides.as_slice() as *const _ as *mut StridesType,
+                et_c::TensorShapeDynamism::STATIC,
+            )
+        };
+        wrapper.tensor_impl.write(TensorImplMut {
+            base: TensorImplBase(impl_, PhantomData),
+        });
+        wrapper
+    }
+}
+impl<'a> Deref for TensorImplMut<'a> {
+    type Target = TensorImplBase<'a>;
+    fn deref(&self) -> &Self::Target {
+        &self.base
+    }
+}
+impl<'a> DerefMut for TensorImplMut<'a> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.base
     }
 }
 
@@ -340,13 +472,13 @@ impl<'a> TensorInfo<'a> {
     /// Returns the sizes of the tensor.
     pub fn sizes(&self) -> &'a [i32] {
         let span = unsafe { et_c::TensorInfo_sizes(&self.0) };
-        unsafe { Span::new(span) }.into()
+        unsafe { Span::new(span) }.as_slice()
     }
 
     /// Returns the dim order of the tensor.
     pub fn dim_order(&self) -> &'a [u8] {
         let span = unsafe { et_c::TensorInfo_dim_order(&self.0) };
-        unsafe { Span::new(span) }.into()
+        unsafe { Span::new(span) }.as_slice()
     }
 
     /// Returns the scalar type of the input/output.

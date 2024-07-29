@@ -6,6 +6,10 @@
 #include "executorch/runtime/core/exec_aten/exec_aten.h"
 #include "executorch/extension/memory_allocator/malloc_memory_allocator.h"
 
+#if defined(EXECUTORCH_RS_EXTENSION_DATA_LOADER)
+#include "executorch/extension/data_loader/buffer_data_loader.h"
+#endif
+
 #if defined(EXECUTORCH_RS_EXTENSION_MODULE)
 #include "executorch/extension/module/module.h"
 #endif
@@ -72,14 +76,18 @@ namespace executorch_rs
 
     void EValue_destructor(torch::executor::EValue *evalue);
 
+#if defined(EXECUTORCH_RS_EXTENSION_DATA_LOADER)
+    torch::executor::util::BufferDataLoader BufferDataLoader_new(const void *data, size_t size);
+#endif
+
 #if defined(EXECUTORCH_RS_EXTENSION_MODULE)
-    torch::executor::Module Module_new(torch::executor::Span<char> file_path, torch::executor::Module::MlockConfig mlock_config, torch::executor::EventTracer *event_tracer);
+    torch::executor::Module Module_new(torch::executor::ArrayRef<char> file_path, torch::executor::Module::MlockConfig mlock_config, torch::executor::EventTracer *event_tracer);
     void Module_destructor(torch::executor::Module *module);
     torch::executor::Result<RawVec<RawVec<char>>> Module_method_names(torch::executor::Module *module);
-    torch::executor::Error Module_load_method(torch::executor::Module *module, torch::executor::Span<char> method_name);
-    bool Module_is_method_loaded(const torch::executor::Module *module, torch::executor::Span<char> method_name);
-    Result_MethodMeta Module_method_meta(const torch::executor::Module *module, torch::executor::Span<char> method_name);
-    torch::executor::Result<RawVec<torch::executor::EValue>> Module_execute(torch::executor::Module *module, torch::executor::Span<char> method_name, torch::executor::Span<torch::executor::EValue> inputs);
+    torch::executor::Error Module_load_method(torch::executor::Module *module, torch::executor::ArrayRef<char> method_name);
+    bool Module_is_method_loaded(const torch::executor::Module *module, torch::executor::ArrayRef<char> method_name);
+    Result_MethodMeta Module_method_meta(const torch::executor::Module *module, torch::executor::ArrayRef<char> method_name);
+    torch::executor::Result<RawVec<torch::executor::EValue>> Module_execute(torch::executor::Module *module, torch::executor::ArrayRef<char> method_name, torch::executor::ArrayRef<torch::executor::EValue> inputs);
 #endif
 
 }

@@ -1,6 +1,8 @@
-use std::{marker::PhantomData, mem::ManuallyDrop};
+use std::marker::PhantomData;
+use std::mem::ManuallyDrop;
 
-use crate::{et_c, et_rs_c, tensor::Tensor, util::IntoRust, Error, Result};
+use crate::util::IntoRust;
+use crate::{et_c, et_rs_c, tensor::Tensor, ArrayRef, Error, Result};
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -79,22 +81,25 @@ impl<'a> EValue<'a> {
     }
 
     pub fn from_chars(chars: &'a [std::os::raw::c_char]) -> EValue<'a> {
+        let chars = ArrayRef::from_slice(chars);
         let value = et_c::EValue_Payload_TriviallyCopyablePayload {
-            as_string: ManuallyDrop::new(unsafe { array_ref(chars) }),
+            as_string: ManuallyDrop::new(chars.0),
         };
         unsafe { EValue::new_trivially_copyable(value, et_c::Tag::String) }
     }
 
     pub fn from_f64_arr(arr: &'a [f64]) -> EValue<'a> {
+        let arr = ArrayRef::from_slice(arr);
         let value = et_c::EValue_Payload_TriviallyCopyablePayload {
-            as_double_list: ManuallyDrop::new(unsafe { array_ref(arr) }),
+            as_double_list: ManuallyDrop::new(arr.0),
         };
         unsafe { EValue::new_trivially_copyable(value, et_c::Tag::ListDouble) }
     }
 
     pub fn from_bool_arr(arr: &'a [bool]) -> EValue<'a> {
+        let arr = ArrayRef::from_slice(arr);
         let value = et_c::EValue_Payload_TriviallyCopyablePayload {
-            as_bool_list: ManuallyDrop::new(unsafe { array_ref(arr) }),
+            as_bool_list: ManuallyDrop::new(arr.0),
         };
         unsafe { EValue::new_trivially_copyable(value, et_c::Tag::ListBool) }
     }
@@ -114,7 +119,7 @@ impl<'a> EValue<'a> {
         unsafe {
             EValue::new(et_c::EValue {
                 payload: et_c::EValue_Payload {
-                    as_tensor: ManuallyDrop::new(tensor.0),
+                    as_tensor: ManuallyDrop::new(tensor.base.0),
                 },
                 tag: et_c::Tag::Tensor,
             })
@@ -307,14 +312,6 @@ impl<'a> TryFrom<&EValue<'a>> for &Tensor<'a> {
             }),
             _ => Err(Error::InvalidType),
         }
-    }
-}
-
-unsafe fn array_ref<T>(s: &[T]) -> et_c::ArrayRef<T> {
-    et_c::ArrayRef {
-        Data: s.as_ptr(),
-        Length: s.len(),
-        _phantom_0: PhantomData,
     }
 }
 
