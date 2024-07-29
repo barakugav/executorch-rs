@@ -119,7 +119,7 @@ impl<'a> EValue<'a> {
         unsafe {
             EValue::new(et_c::EValue {
                 payload: et_c::EValue_Payload {
-                    as_tensor: ManuallyDrop::new(tensor.0),
+                    as_tensor: ManuallyDrop::new(tensor.base.0),
                 },
                 tag: et_c::Tag::Tensor,
             })
