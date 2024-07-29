@@ -147,6 +147,13 @@ namespace executorch_rs
         evalue->~EValue();
     }
 
+#if defined(EXECUTORCH_RS_EXTENSION_DATA_LOADER)
+    torch::executor::util::BufferDataLoader BufferDataLoader_new(const void *data, size_t size)
+    {
+        return torch::executor::util::BufferDataLoader(data, size);
+    }
+#endif
+
 #if defined(EXECUTORCH_RS_EXTENSION_MODULE)
     torch::executor::Module Module_new(torch::executor::ArrayRef<char> file_path, torch::executor::Module::MlockConfig mlock_config, torch::executor::EventTracer *event_tracer)
     {

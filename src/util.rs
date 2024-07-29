@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use crate::{et_c, et_rs_c};
 
-pub trait IntoRust {
+pub(crate) trait IntoRust {
     type RsType;
     fn rs(self) -> Self::RsType;
 }

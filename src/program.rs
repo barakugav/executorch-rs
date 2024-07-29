@@ -2,9 +2,10 @@ use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
 use std::ptr;
 
+use crate::data_loader::DataLoader;
 use crate::evalue::EValue;
 use crate::util::IntoRust;
-use crate::{et_c, et_rs_c, DataLoader, MemoryManager, Result, Tag, TensorInfo};
+use crate::{et_c, et_rs_c, MemoryManager, Result, Tag, TensorInfo};
 
 /// A deserialized ExecuTorch program binary.
 pub struct Program<'a>(et_c::Program, PhantomData<&'a ()>);

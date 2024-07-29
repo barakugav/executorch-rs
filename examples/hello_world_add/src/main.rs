@@ -1,7 +1,8 @@
 #![deny(warnings)]
 
+use executorch::data_loader::FileDataLoader;
 use executorch::{
-    EValue, FileDataLoader, HierarchicalAllocator, MallocMemoryAllocator, MemoryManager, Program,
+    EValue, HierarchicalAllocator, MallocMemoryAllocator, MemoryManager, Program,
     ProgramVerification, Span, Tag, Tensor, TensorImpl,
 };
 use ndarray::array;
@@ -14,7 +15,7 @@ fn main() {
 
     executorch::pal_init();
 
-    let mut file_data_loader = FileDataLoader::new("model.pte").unwrap();
+    let mut file_data_loader = FileDataLoader::new("model.pte", None).unwrap();
 
     let program = Program::load(
         &mut file_data_loader,

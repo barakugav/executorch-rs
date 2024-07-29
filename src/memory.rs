@@ -15,8 +15,11 @@ impl MallocMemoryAllocator {
 }
 impl MemoryAllocator for MallocMemoryAllocator {
     fn memory_allocator(&mut self) -> &mut et_c::MemoryAllocator {
-        let ptr = &mut self.0 as *mut _ as *mut et_c::MemoryAllocator;
-        unsafe { &mut *ptr }
+        unsafe {
+            std::mem::transmute::<&mut et_c::util::MallocMemoryAllocator, &mut et_c::MemoryAllocator>(
+                &mut self.0,
+            )
+        }
     }
 }
 impl Drop for MallocMemoryAllocator {
