@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::path::Path;
 use std::ptr;
 
-use crate::{et_c, et_rs_c, util::IntoRust, EValue, Result, Span};
+use crate::{et_c, et_rs_c, util::IntoRust, ArrayRef, EValue, Result};
 use crate::{util, MethodMeta, ProgramVerification};
 
 /// A facade class for loading programs and executing methods within them.
@@ -25,7 +25,7 @@ impl Module {
     /// If the file path is not a valid UTF-8 string or contains a null character.
     pub fn new(file_path: impl AsRef<Path>, mlock_config: Option<MlockConfig>) -> Self {
         let file_path = file_path.as_ref().to_str().unwrap();
-        let file_path = Span::from_slice(util::str2chars(file_path).unwrap());
+        let file_path = ArrayRef::from_slice(util::str2chars(file_path).unwrap());
         let mlock_config = mlock_config.unwrap_or(MlockConfig::UseMlock);
         let event_tracer = ptr::null_mut(); // TODO: support event tracer
         Self(unsafe { et_rs_c::Module_new(file_path.0, mlock_config, event_tracer) })
@@ -85,7 +85,7 @@ impl Module {
     ///
     /// If the method name is not a valid UTF-8 string or contains a null character.
     pub fn load_method(&mut self, method_name: &str) -> Result<()> {
-        let method_name = Span::from_slice(util::str2chars(method_name).unwrap());
+        let method_name = ArrayRef::from_slice(util::str2chars(method_name).unwrap());
         unsafe { et_rs_c::Module_load_method(&mut self.0, method_name.0) }.rs()
     }
 
@@ -103,7 +103,7 @@ impl Module {
     ///
     /// If the method name is not a valid UTF-8 string or contains a null character.
     pub fn is_method_loaded(&self, method_name: &str) -> bool {
-        let method_name = Span::from_slice(util::str2chars(method_name).unwrap());
+        let method_name = ArrayRef::from_slice(util::str2chars(method_name).unwrap());
         unsafe { et_rs_c::Module_is_method_loaded(&self.0, method_name.0) }
     }
 
@@ -122,7 +122,7 @@ impl Module {
     ///
     /// If the method name is not a valid UTF-8 string or contains a null character.
     pub fn method_meta<'a>(&'a self, method_name: &str) -> Result<MethodMeta<'a>> {
-        let method_name = Span::from_slice(util::str2chars(method_name).unwrap());
+        let method_name = ArrayRef::from_slice(util::str2chars(method_name).unwrap());
         let meta = unsafe { et_rs_c::Module_method_meta(&self.0, method_name.0) }.rs()?;
         Ok(unsafe { MethodMeta::new(meta) })
     }
@@ -147,10 +147,10 @@ impl Module {
         method_name: &str,
         inputs: &[EValue],
     ) -> Result<Vec<EValue<'a>>> {
-        let method_name = Span::from_slice(util::str2chars(method_name).unwrap());
+        let method_name = ArrayRef::from_slice(util::str2chars(method_name).unwrap());
         // Safety: The transmute is safe because the memory layout of EValue and et_c::EValue is the same.
         let inputs = unsafe { std::mem::transmute::<&[EValue], &[et_c::EValue]>(inputs) };
-        let inputs = Span::from_slice(inputs);
+        let inputs = ArrayRef::from_slice(inputs);
         let outputs =
             unsafe { et_rs_c::Module_execute(&mut self.0, method_name.0, inputs.0) }.rs()?;
         let outputs = outputs.rs();

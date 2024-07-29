@@ -7,6 +7,64 @@ pub trait IntoRust {
     fn rs(self) -> Self::RsType;
 }
 
+/// Represents a constant reference to an array (0 or more elements
+/// consecutively in memory), i.e. a start pointer and a length.  It allows
+/// various APIs to take consecutive elements easily and conveniently.
+///
+/// This class does not own the underlying data, it is expected to be used in
+/// situations where the data resides in some other buffer, whose lifetime
+/// extends past that of the ArrayRef. For this reason, it is not in general
+/// safe to store an ArrayRef.
+///
+/// Span and ArrayRef are extremely similar with the difference being ArrayRef
+/// views a list of constant elements and Span views a list of mutable elements.
+/// Clients should decide between the two based on if the list elements for their
+/// use case should be mutable.
+///
+/// This is intended to be trivially copyable, so it should be passed by
+/// value.
+#[allow(dead_code)]
+pub struct ArrayRef<'a, T>(pub(crate) et_c::ArrayRef<T>, PhantomData<&'a ()>);
+impl<'a, T> ArrayRef<'a, T> {
+    // pub(crate) unsafe fn new(arr: et_c::ArrayRef<T>) -> Self {
+    //     Self(arr, PhantomData)
+    // }
+
+    /// Create an ArrayRef from a slice.
+    ///
+    /// The given slice must outlive the ArrayRef.
+    pub fn from_slice(s: &'a [T]) -> Self {
+        Self(
+            et_c::ArrayRef {
+                Data: s.as_ptr(),
+                Length: s.len(),
+                _phantom_0: PhantomData,
+            },
+            PhantomData,
+        )
+    }
+
+    /// Get the underlying slice.
+    pub fn as_slice(&self) -> &'a [T] {
+        unsafe { std::slice::from_raw_parts(self.0.Data, self.0.Length) }
+    }
+}
+
+/// Represent a reference to an array (0 or more elements
+/// consecutively in memory), i.e. a start pointer and a length.  It allows
+/// various APIs to take consecutive elements easily and conveniently.
+///
+/// This class does not own the underlying data, it is expected to be used in
+/// situations where the data resides in some other buffer, whose lifetime
+/// extends past that of the Span.
+///
+/// Span and ArrayRef are extremely similar with the difference being ArrayRef
+/// views a list of constant elements and Span views a list of mutable elements.
+/// Clients should decide between the two based on if the list elements for their
+/// use case should be mutable.
+///
+/// This is intended to be trivially copyable, so it should be passed by
+/// value.
 #[allow(dead_code)]
 pub struct Span<'a, T>(pub(crate) et_c::Span<T>, PhantomData<&'a T>);
 impl<'a, T> Span<'a, T> {
@@ -14,27 +72,10 @@ impl<'a, T> Span<'a, T> {
         Self(span, PhantomData)
     }
 
-    pub fn from_slice(s: &'a [T]) -> Self {
-        Self(
-            et_c::Span {
-                data_: s.as_ptr() as *mut T,
-                length_: s.len(),
-                _phantom_0: PhantomData,
-            },
-            PhantomData,
-        )
-    }
-}
-impl<'a, T> From<Span<'a, T>> for &'a [T] {
-    fn from(s: Span<'a, T>) -> Self {
-        unsafe { std::slice::from_raw_parts(s.0.data_, s.0.length_) }
-    }
-}
-
-#[allow(dead_code)]
-pub struct SpanMut<'a, T>(pub(crate) et_c::Span<T>, PhantomData<&'a T>);
-impl<'a, T> SpanMut<'a, T> {
-    pub fn new(s: &'a mut [T]) -> Self {
+    /// Create a Span from a mutable slice.
+    ///
+    /// The given slice must outlive the Span.
+    pub fn from_slice(s: &'a mut [T]) -> Self {
         Self(
             et_c::Span {
                 data_: s.as_mut_ptr(),
@@ -43,6 +84,11 @@ impl<'a, T> SpanMut<'a, T> {
             },
             PhantomData,
         )
+    }
+
+    /// Get the underlying slice.
+    pub fn as_slice(&self) -> &'a mut [T] {
+        unsafe { std::slice::from_raw_parts_mut(self.0.data_, self.0.length_) }
     }
 }
 

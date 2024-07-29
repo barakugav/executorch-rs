@@ -340,13 +340,13 @@ impl<'a> TensorInfo<'a> {
     /// Returns the sizes of the tensor.
     pub fn sizes(&self) -> &'a [i32] {
         let span = unsafe { et_c::TensorInfo_sizes(&self.0) };
-        unsafe { Span::new(span) }.into()
+        unsafe { Span::new(span) }.as_slice()
     }
 
     /// Returns the dim order of the tensor.
     pub fn dim_order(&self) -> &'a [u8] {
         let span = unsafe { et_c::TensorInfo_dim_order(&self.0) };
-        unsafe { Span::new(span) }.into()
+        unsafe { Span::new(span) }.as_slice()
     }
 
     /// Returns the scalar type of the input/output.
