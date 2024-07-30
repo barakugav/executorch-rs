@@ -1,4 +1,5 @@
 use std::marker::PhantomData;
+use std::mem::ManuallyDrop;
 
 use crate::{et_c, et_rs_c};
 
@@ -125,4 +126,18 @@ pub(crate) fn to_bytes<T>(val: &T) -> Vec<u8> {
             *ptr.add(i)
         })
         .collect()
+}
+
+/// Transmute from A to B.
+///
+/// Like transmute, but does not have the compile-time size check which blocks
+/// using regular transmute in some cases.
+///
+/// **Panics** if the size of A and B are different.
+#[inline]
+pub(crate) unsafe fn unlimited_transmute<A, B>(data: A) -> B {
+    // safe when sizes are equal and caller guarantees that representations are equal
+    assert_eq!(std::mem::size_of::<A>(), std::mem::size_of::<B>());
+    let old_data = ManuallyDrop::new(data);
+    (&*old_data as *const A as *const B).read()
 }

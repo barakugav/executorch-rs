@@ -1,16 +1,17 @@
+use std::any::TypeId;
 use std::marker::PhantomData;
 use std::mem::MaybeUninit;
-use std::ops::{Deref, DerefMut};
 use std::ptr;
 
 use ndarray::{ArrayView, ArrayViewD, ArrayViewMut, Axis, Dimension, IxDyn, ShapeBuilder};
 
-use crate::{c_link, et_c, et_rs_c, Span};
+use crate::{c_link, et_c, et_rs_c, util, Span};
 
 pub type SizesType = c_link::executorch_c::root::exec_aten::SizesType;
 pub type DimOrderType = c_link::executorch_c::root::exec_aten::DimOrderType;
 pub type StridesType = c_link::executorch_c::root::exec_aten::StridesType;
 
+/// Data types (dtypes) that can be used as element types in Tensors.
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum ScalarType {
@@ -99,6 +100,8 @@ impl ScalarType {
 }
 pub trait Scalar {
     const TYPE: ScalarType;
+
+    // TODO: forbid external impl of this trait
 }
 impl Scalar for u8 {
     const TYPE: ScalarType = ScalarType::Byte;
@@ -128,42 +131,65 @@ impl Scalar for bool {
     const TYPE: ScalarType = ScalarType::Bool;
 }
 
-pub struct TensorBase<'a>(pub(crate) et_c::Tensor, PhantomData<&'a ()>);
-impl<'a> TensorBase<'a> {
-    unsafe fn new(tensor_impl: &'a TensorImplBase<'_>) -> Self {
+/// A minimal Tensor type whose API is a source compatible subset of at::Tensor.
+///
+/// NOTE: Instances of this class do not own the TensorImpl given to it,
+/// which means that the caller must guarantee that the TensorImpl lives longer
+/// than any Tensor instances that point to it.
+///
+/// See the documentation on TensorImpl for details about the return/parameter
+/// types used here and how they relate to at::Tensor.
+pub struct TensorBase<'a, D: Data>(pub(crate) et_c::Tensor, PhantomData<(&'a (), D)>);
+impl<'a, D: Data> TensorBase<'a, D> {
+    unsafe fn new_impl(tensor_impl: &'a TensorImplBase<'_, D>) -> Self {
         let impl_ = &tensor_impl.0 as *const _ as *mut _;
         Self(et_c::Tensor { impl_ }, PhantomData)
     }
 
-    unsafe fn from_inner(tensor: et_c::Tensor) -> Self {
+    pub(crate) unsafe fn from_inner(tensor: et_c::Tensor) -> Self {
         Self(tensor, PhantomData)
     }
 
+    /// Returns the size of the tensor in bytes.
+    ///
+    /// NOTE: Only the alive space is returned not the total capacity of the
+    /// underlying data blob.
     pub fn nbytes(&self) -> usize {
         unsafe { et_rs_c::Tensor_nbytes(&self.0) }
     }
 
+    /// Returns the size of the tensor at the given dimension.
+    ///
+    /// NOTE: that size() intentionally does not return SizeType even though it
+    /// returns an element of an array of SizeType. This is to help make calls of
+    /// this method more compatible with at::Tensor, and more consistent with the
+    /// rest of the methods on this class and in ETensor.
     pub fn size(&self, dim: isize) -> isize {
         unsafe { et_rs_c::Tensor_size(&self.0, dim) }
     }
 
+    /// Returns the tensor's number of dimensions.
     pub fn dim(&self) -> isize {
         unsafe { et_rs_c::Tensor_dim(&self.0) }
     }
 
+    /// Returns the number of elements in the tensor.
     pub fn numel(&self) -> isize {
         unsafe { et_rs_c::Tensor_numel(&self.0) }
     }
 
+    /// Returns the type of the elements in the tensor (int32, float, bool, etc).
     pub fn scalar_type(&self) -> Option<ScalarType> {
         let scalar_type = unsafe { et_rs_c::Tensor_scalar_type(&self.0) };
         ScalarType::from_c_scalar_type(scalar_type)
     }
 
+    /// Returns the size in bytes of one element of the tensor.
     pub fn element_size(&self) -> isize {
         unsafe { et_rs_c::Tensor_element_size(&self.0) }
     }
 
+    /// Returns the sizes of the tensor at each dimension.
     pub fn sizes(&self) -> &'a [SizesType] {
         unsafe {
             let arr = et_rs_c::Tensor_sizes(&self.0);
@@ -171,6 +197,7 @@ impl<'a> TensorBase<'a> {
         }
     }
 
+    /// Returns the order the dimensions are laid out in memory.
     pub fn dim_order(&self) -> &'a [DimOrderType] {
         unsafe {
             let arr = et_rs_c::Tensor_dim_order(&self.0);
@@ -178,6 +205,7 @@ impl<'a> TensorBase<'a> {
         }
     }
 
+    /// Returns the strides of the tensor at each dimension.
     pub fn strides(&self) -> &'a [StridesType] {
         unsafe {
             let arr = et_rs_c::Tensor_strides(&self.0);
@@ -185,36 +213,82 @@ impl<'a> TensorBase<'a> {
         }
     }
 
-    pub fn as_tensor<'b>(&'b self) -> Tensor<'b> {
-        let impl_ = self.0.impl_ as *const _;
-        Tensor::new(unsafe { &*(impl_) })
+    /// Returns a pointer of type S to the constant underlying data blob.
+    pub fn as_ptr<S: Scalar>(&self) -> *const S {
+        assert_eq!(self.scalar_type(), Some(S::TYPE), "Invalid type");
+        (unsafe { et_rs_c::Tensor_const_data_ptr(&self.0) }) as *const S
     }
 
-    pub fn as_array<'b, S: Scalar>(&'b self) -> ArrayViewD<'b, S> {
-        if self.scalar_type() != Some(S::TYPE) {
-            panic!("Invalid type");
+    /// Returns a pointer to the constant underlying data blob.
+    ///
+    /// Safety: The caller must access the values in the returned pointer according to the type of the tensor.
+    pub unsafe fn as_ptr_bytes(&self) -> *const u8 {
+        (unsafe { et_rs_c::Tensor_const_data_ptr(&self.0) }) as *const u8
+    }
+
+    pub fn as_array<'b, S: Scalar + 'static, Dim: Dimension + 'static>(
+        &'b self,
+    ) -> ArrayView<'b, S, Dim> {
+        let ptr = self.as_ptr::<S>();
+        match Dim::NDIM {
+            None => {
+                // dynamic array
+                assert_eq!(TypeId::of::<Dim>(), TypeId::of::<IxDyn>());
+                let shape = self.sizes().iter().map(|d| *d as usize).collect::<Vec<_>>();
+                let strides = self
+                    .strides()
+                    .iter()
+                    .map(|s| *s as usize)
+                    .collect::<Vec<_>>();
+                let dim_order = self
+                    .dim_order()
+                    .iter()
+                    .map(|o| *o as usize)
+                    .collect::<Vec<_>>();
+                let arr = unsafe {
+                    ArrayViewD::from_shape_ptr(shape.strides(strides), ptr).permuted_axes(dim_order)
+                };
+                assert_eq!(
+                    TypeId::of::<ArrayView<'_, S, IxDyn>>(),
+                    TypeId::of::<ArrayView<'_, S, Dim>>()
+                );
+                unsafe {
+                    util::unlimited_transmute::<ArrayView<'_, S, IxDyn>, ArrayView<'_, S, Dim>>(arr)
+                }
+            }
+            Some(ndim) if ndim == self.dim() as usize => {
+                // safe because Dim == D2
+                let mut dim = Dim::default();
+                let mut strides = Dim::default();
+                let mut dim_order = Dim::default();
+                assert_eq!(dim.ndim(), self.dim() as usize);
+                assert_eq!(strides.ndim(), self.dim() as usize);
+                assert_eq!(dim_order.ndim(), self.dim() as usize);
+                for (i, d) in self.sizes().iter().enumerate() {
+                    dim[i] = *d as usize;
+                }
+                for (i, s) in self.strides().iter().enumerate() {
+                    strides[i] = *s as usize;
+                }
+                for (i, s) in self.dim_order().iter().enumerate() {
+                    dim_order[i] = *s as usize;
+                }
+
+                unsafe { ArrayView::from_shape_ptr(dim.strides(strides), ptr) }
+                    .permuted_axes(dim_order)
+            }
+            Some(ndim) => {
+                panic!(
+                    "Invalid number of dimensions: expected {}, got {}",
+                    ndim,
+                    self.dim()
+                );
+            }
         }
+    }
 
-        let ptr = unsafe { et_rs_c::Tensor_const_data_ptr(&self.0) } as *const S;
-
-        let shape = self
-            .sizes()
-            .iter()
-            .map(|&size| size as usize)
-            .collect::<Vec<_>>();
-        let strides = self
-            .strides()
-            .iter()
-            .map(|&stride| stride as usize)
-            .collect::<Vec<_>>();
-
-        let dim_order = self
-            .dim_order()
-            .iter()
-            .map(|&dim| dim as usize)
-            .collect::<Vec<_>>();
-
-        unsafe { ArrayViewD::from_shape_ptr(shape.strides(strides), ptr) }.permuted_axes(dim_order)
+    pub fn as_array_dyn<'b, S: Scalar + 'static>(&'b self) -> ArrayViewD<'b, S> {
+        self.as_array()
     }
 }
 impl Drop for et_c::Tensor {
@@ -223,78 +297,115 @@ impl Drop for et_c::Tensor {
     }
 }
 
-pub struct Tensor<'a> {
-    pub(crate) base: TensorBase<'a>,
-}
+pub type Tensor<'a> = TensorBase<'a, View>;
 impl<'a> Tensor<'a> {
     pub fn new(tensor_impl: &'a TensorImpl<'_>) -> Self {
-        Self {
-            base: unsafe { TensorBase::new(tensor_impl.deref()) },
-        }
-    }
-
-    pub(crate) unsafe fn from_inner(tensor: et_c::Tensor) -> Self {
-        Self {
-            base: TensorBase::from_inner(tensor),
-        }
+        unsafe { Tensor::new_impl(tensor_impl) }
     }
 }
-impl<'a> Deref for Tensor<'a> {
-    type Target = TensorBase<'a>;
-    fn deref(&self) -> &Self::Target {
-        &self.base
-    }
-}
-pub struct TensorMut<'a> {
-    pub(crate) base: TensorBase<'a>,
-}
+pub type TensorMut<'a> = TensorBase<'a, ViewMut>;
 impl<'a> TensorMut<'a> {
-    pub fn new<'b: 'a>(tensor_impl: &'b mut TensorImplMut<'a>) -> Self {
-        Self {
-            base: unsafe { TensorBase::new(tensor_impl.deref_mut()) },
+    pub fn new(tensor_impl: &'a mut TensorImplMut<'_>) -> Self {
+        unsafe { Self::new_impl(tensor_impl) }
+    }
+
+    pub fn as_mut_ptr<S: Scalar>(&self) -> *mut S {
+        assert_eq!(self.scalar_type(), Some(S::TYPE), "Invalid type");
+        (unsafe { et_rs_c::Tensor_mutable_data_ptr(&self.0) }) as *mut S
+    }
+
+    pub fn as_tensor<'b>(&'b self) -> Tensor<'b> {
+        unsafe {
+            Tensor::from_inner(et_c::Tensor {
+                impl_: self.0.impl_,
+            })
         }
     }
 
-    pub fn as_array_mut<'b, S: Scalar>(&'b mut self) -> ArrayViewMut<'b, S, IxDyn> {
-        if self.scalar_type() != Some(S::TYPE) {
-            panic!("Invalid type");
+    pub fn into_tensor(self) -> Tensor<'a> {
+        unsafe {
+            Tensor::from_inner(et_c::Tensor {
+                impl_: self.0.impl_,
+            })
         }
+    }
 
-        let ptr = unsafe { et_rs_c::Tensor_mutable_data_ptr(&self.base.0) } as *mut S;
+    pub fn as_array_mut<S: Scalar + 'static, D: Dimension + 'static>(
+        &mut self,
+    ) -> ArrayViewMut<'a, S, D> {
+        let ptr = self.as_mut_ptr::<S>();
+        match D::NDIM {
+            None => {
+                // dynamic array
+                assert_eq!(TypeId::of::<D>(), TypeId::of::<IxDyn>());
+                let shape = self.sizes().iter().map(|d| *d as usize).collect::<Vec<_>>();
+                let strides = TensorBase::strides(self)
+                    .iter()
+                    .map(|s| *s as usize)
+                    .collect::<Vec<_>>();
+                let dim_order = self
+                    .dim_order()
+                    .iter()
+                    .map(|o| *o as usize)
+                    .collect::<Vec<_>>();
+                let arr = unsafe {
+                    ArrayViewMut::from_shape_ptr(shape.strides(strides), ptr)
+                        .permuted_axes(dim_order)
+                };
+                assert_eq!(
+                    TypeId::of::<ArrayViewMut<'_, S, IxDyn>>(),
+                    TypeId::of::<ArrayViewMut<'_, S, D>>()
+                );
+                unsafe {
+                    util::unlimited_transmute::<ArrayViewMut<'_, S, IxDyn>, ArrayViewMut<'_, S, D>>(
+                        arr,
+                    )
+                }
+            }
+            Some(ndim) if ndim == self.dim() as usize => {
+                // safe because D == D2
+                let mut dim = D::default();
+                let mut strides = D::default();
+                let mut dim_order = D::default();
+                assert_eq!(dim.ndim(), self.dim() as usize);
+                assert_eq!(strides.ndim(), self.dim() as usize);
+                assert_eq!(dim_order.ndim(), self.dim() as usize);
+                for (i, d) in self.sizes().iter().enumerate() {
+                    dim[i] = *d as usize;
+                }
+                for (i, s) in TensorBase::strides(self).iter().enumerate() {
+                    strides[i] = *s as usize;
+                }
+                for (i, s) in self.dim_order().iter().enumerate() {
+                    dim_order[i] = *s as usize;
+                }
 
-        let shape = self
-            .sizes()
-            .iter()
-            .map(|&size| size as usize)
-            .collect::<Vec<_>>();
-        let strides = self
-            .strides()
-            .iter()
-            .map(|&stride| stride as usize)
-            .collect::<Vec<_>>();
+                unsafe { ArrayViewMut::from_shape_ptr(dim.strides(strides), ptr) }
+                    .permuted_axes(dim_order)
+            }
+            Some(ndim) => {
+                panic!(
+                    "Invalid number of dimensions: expected {}, got {}",
+                    ndim,
+                    self.dim()
+                );
+            }
+        }
+    }
 
-        let dim_order = self
-            .dim_order()
-            .iter()
-            .map(|&dim| dim as usize)
-            .collect::<Vec<_>>();
-
-        unsafe { ArrayViewMut::from_shape_ptr(shape.strides(strides), ptr) }
-            .permuted_axes(dim_order)
+    pub fn as_array_mut_dyn<S: Scalar + 'static>(&mut self) -> ArrayViewMut<'a, S, IxDyn> {
+        self.as_array_mut()
     }
 }
-impl<'a> Deref for TensorMut<'a> {
-    type Target = TensorBase<'a>;
-    fn deref(&self) -> &Self::Target {
-        &self.base
-    }
-}
 
-pub struct TensorImplBase<'a>(et_c::TensorImpl, PhantomData<&'a ()>);
-impl<'a> TensorImplBase<'a> {
-    unsafe fn from_slice<S: Scalar>(
+pub struct TensorImplBase<'a, D: Data>(et_c::TensorImpl, PhantomData<(&'a (), D)>);
+pub type TensorImpl<'a> = TensorImplBase<'a, View>;
+pub type TensorImplMut<'a> = TensorImplBase<'a, ViewMut>;
+
+impl<'a, D: Data> TensorImplBase<'a, D> {
+    unsafe fn from_slice_impl<S: Scalar>(
         sizes: &'a [SizesType],
-        data: &'a [S],
+        data: *mut S,
         data_order: Option<&'a [DimOrderType]>,
         strides: &'a [StridesType],
     ) -> Self {
@@ -304,7 +415,6 @@ impl<'a> TensorImplBase<'a> {
         }
         assert_eq!(dim, strides.len());
         let sizes = sizes as *const _ as *mut SizesType;
-        let data = data as *const _ as *mut _;
         let dim_order = data_order
             .map(|p| p as *const _ as *mut DimOrderType)
             .unwrap_or(ptr::null_mut());
@@ -314,7 +424,7 @@ impl<'a> TensorImplBase<'a> {
                 S::TYPE.into_c_scalar_type(),
                 dim as isize,
                 sizes,
-                data,
+                data as *mut _,
                 dim_order,
                 strides,
                 et_c::TensorShapeDynamism::STATIC,
@@ -324,9 +434,6 @@ impl<'a> TensorImplBase<'a> {
     }
 }
 
-pub struct TensorImpl<'a> {
-    pub(crate) base: TensorImplBase<'a>,
-}
 impl<'a> TensorImpl<'a> {
     pub fn from_slice<S: Scalar>(
         sizes: &'a [SizesType],
@@ -334,9 +441,8 @@ impl<'a> TensorImpl<'a> {
         data_order: Option<&'a [DimOrderType]>,
         strides: &'a [StridesType],
     ) -> Self {
-        Self {
-            base: unsafe { TensorImplBase::from_slice(sizes, data, data_order, strides) },
-        }
+        let data = data.as_ptr() as *mut S;
+        unsafe { Self::from_slice_impl(sizes, data, data_order, strides) }
     }
 
     pub fn from_array<S: Scalar, D: Dimension>(array: ArrayView<'a, S, D>) -> impl AsRef<Self> {
@@ -375,22 +481,13 @@ impl<'a> TensorImpl<'a> {
                 et_c::TensorShapeDynamism::STATIC,
             )
         };
-        wrapper.tensor_impl.write(TensorImpl {
-            base: TensorImplBase(impl_, PhantomData),
-        });
+        wrapper
+            .tensor_impl
+            .write(TensorImplBase(impl_, PhantomData));
         wrapper
     }
 }
-impl<'a> Deref for TensorImpl<'a> {
-    type Target = TensorImplBase<'a>;
-    fn deref(&self) -> &Self::Target {
-        &self.base
-    }
-}
 
-pub struct TensorImplMut<'a> {
-    pub(crate) base: TensorImplBase<'a>,
-}
 impl<'a> TensorImplMut<'a> {
     pub fn from_slice<S: Scalar>(
         sizes: &'a [SizesType],
@@ -398,9 +495,7 @@ impl<'a> TensorImplMut<'a> {
         data_order: Option<&'a [DimOrderType]>,
         strides: &'a [StridesType],
     ) -> Self {
-        Self {
-            base: unsafe { TensorImplBase::from_slice(sizes, data, data_order, strides) },
-        }
+        unsafe { Self::from_slice_impl(sizes, data.as_mut_ptr(), data_order, strides) }
     }
 
     pub fn from_array<S: Scalar, D: Dimension>(
@@ -441,23 +536,21 @@ impl<'a> TensorImplMut<'a> {
                 et_c::TensorShapeDynamism::STATIC,
             )
         };
-        wrapper.tensor_impl.write(TensorImplMut {
-            base: TensorImplBase(impl_, PhantomData),
-        });
+        wrapper
+            .tensor_impl
+            .write(TensorImplBase(impl_, PhantomData));
         wrapper
     }
 }
-impl<'a> Deref for TensorImplMut<'a> {
-    type Target = TensorImplBase<'a>;
-    fn deref(&self) -> &Self::Target {
-        &self.base
-    }
-}
-impl<'a> DerefMut for TensorImplMut<'a> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.base
-    }
-}
+
+pub trait Data {}
+#[allow(dead_code)]
+pub trait DataMut: Data {}
+pub struct View {}
+impl Data for View {}
+pub struct ViewMut {}
+impl Data for ViewMut {}
+impl DataMut for ViewMut {}
 
 /// Metadata about a specific tensor of an ExecuTorch Program.
 ///
