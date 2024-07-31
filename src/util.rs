@@ -99,7 +99,7 @@ pub(crate) fn str2chars<'a>(s: &'a str) -> Result<&'a [std::os::raw::c_char], &'
     if let Some(_) = bytes.iter().position(|&b| b == 0) {
         return Err("String contains null byte");
     }
-    let chars: *const std::os::raw::c_char = bytes.as_ptr().cast();
+    let chars = bytes.as_ptr().cast::<std::os::raw::c_char>();
     Ok(unsafe { std::slice::from_raw_parts(chars, bytes.len()) })
 }
 #[allow(dead_code)]
@@ -120,9 +120,7 @@ impl<T> IntoRust for et_rs_c::RawVec<T> {
 pub(crate) fn to_bytes<T>(val: &T) -> Vec<u8> {
     (0..std::mem::size_of_val(val))
         .map(|i| unsafe {
-            let ptr = val as *const _;
-            let ptr = ptr as usize;
-            let ptr = ptr as *const u8;
+            let ptr = val as *const T as *const u8;
             *ptr.add(i)
         })
         .collect()

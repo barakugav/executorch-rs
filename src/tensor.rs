@@ -404,11 +404,11 @@ impl<'a, D: Data> TensorImplBase<'a, D> {
             assert_eq!(dim, data_order.len());
         }
         assert_eq!(dim, strides.len());
-        let sizes = sizes as *const _ as *mut SizesType;
+        let sizes = sizes.as_ptr() as *mut SizesType;
         let dim_order = data_order
-            .map(|p| p as *const _ as *mut DimOrderType)
+            .map(|p| p.as_ptr() as *mut DimOrderType)
             .unwrap_or(ptr::null_mut());
-        let strides = strides as *const _ as *mut StridesType;
+        let strides = strides.as_ptr() as *mut StridesType;
         let impl_ = unsafe {
             et_c::TensorImpl::new(
                 S::TYPE.into_c_scalar_type(),
@@ -464,10 +464,10 @@ impl<'a> TensorImpl<'a> {
             et_c::TensorImpl::new(
                 S::TYPE.into_c_scalar_type(),
                 array.ndim() as isize,
-                wrapper.sizes.as_slice() as *const _ as *mut SizesType,
+                wrapper.sizes.as_slice().as_ptr() as *mut SizesType,
                 array.as_ptr() as *mut _,
                 ptr::null_mut(),
-                wrapper.strides.as_slice() as *const _ as *mut StridesType,
+                wrapper.strides.as_slice().as_ptr() as *mut StridesType,
                 et_c::TensorShapeDynamism::STATIC,
             )
         };
@@ -519,10 +519,10 @@ impl<'a> TensorImplMut<'a> {
             et_c::TensorImpl::new(
                 S::TYPE.into_c_scalar_type(),
                 array.ndim() as isize,
-                wrapper.sizes.as_slice() as *const _ as *mut SizesType,
+                wrapper.sizes.as_slice().as_ptr() as *mut SizesType,
                 array.as_mut_ptr() as *mut _,
                 ptr::null_mut(),
-                wrapper.strides.as_slice() as *const _ as *mut StridesType,
+                wrapper.strides.as_slice().as_ptr() as *mut StridesType,
                 et_c::TensorShapeDynamism::STATIC,
             )
         };
