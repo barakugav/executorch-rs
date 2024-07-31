@@ -94,9 +94,9 @@ impl<'a, T> Span<'a, T> {
 }
 
 #[allow(dead_code)]
-pub(crate) fn str2chars<'a>(s: &'a str) -> Result<&'a [std::os::raw::c_char], &'static str> {
+pub(crate) fn str2chars(s: &str) -> Result<&[std::os::raw::c_char], &'static str> {
     let bytes = s.as_bytes();
-    if let Some(_) = bytes.iter().position(|&b| b == 0) {
+    if bytes.iter().any(|&b| b == 0) {
         return Err("String contains null byte");
     }
     let chars = bytes.as_ptr().cast::<std::os::raw::c_char>();

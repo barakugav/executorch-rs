@@ -92,7 +92,7 @@ fn generate_bindings(executorch_headers: &Path) {
         .generate_cstr(true)
         .header_contents(bindings_defines_h.to_str().unwrap(), &bindings_defines)
         .header(bindings_h.as_os_str().to_str().unwrap())
-        .allowlist_file(&format!(
+        .allowlist_file(format!(
             "{}/[a-zA-Z0-9_/]+.hpp",
             c_ext_dir.to_str().unwrap(),
         ))
