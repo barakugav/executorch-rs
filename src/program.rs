@@ -222,7 +222,7 @@ impl<'a> MethodMeta<'a> {
 
 pub struct Method<'a>(et_c::Method, PhantomData<&'a ()>);
 impl<'a> Method<'a> {
-    pub fn start_execution<'b>(&'b mut self) -> Execution<'b> {
+    pub fn start_execution(&mut self) -> Execution<'_> {
         Execution::new(&mut self.0)
     }
 

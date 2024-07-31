@@ -1,4 +1,5 @@
 use std::marker::PhantomData;
+use std::mem::ManuallyDrop;
 
 use crate::{et_c, et_rs_c};
 
@@ -93,12 +94,12 @@ impl<'a, T> Span<'a, T> {
 }
 
 #[allow(dead_code)]
-pub(crate) fn str2chars<'a>(s: &'a str) -> Result<&'a [std::os::raw::c_char], &'static str> {
+pub(crate) fn str2chars(s: &str) -> Result<&[std::os::raw::c_char], &'static str> {
     let bytes = s.as_bytes();
-    if let Some(_) = bytes.iter().position(|&b| b == 0) {
+    if bytes.iter().any(|&b| b == 0) {
         return Err("String contains null byte");
     }
-    let chars: *const std::os::raw::c_char = bytes.as_ptr().cast();
+    let chars = bytes.as_ptr().cast::<std::os::raw::c_char>();
     Ok(unsafe { std::slice::from_raw_parts(chars, bytes.len()) })
 }
 #[allow(dead_code)]
@@ -119,10 +120,22 @@ impl<T> IntoRust for et_rs_c::RawVec<T> {
 pub(crate) fn to_bytes<T>(val: &T) -> Vec<u8> {
     (0..std::mem::size_of_val(val))
         .map(|i| unsafe {
-            let ptr = val as *const _;
-            let ptr = ptr as usize;
-            let ptr = ptr as *const u8;
+            let ptr = val as *const T as *const u8;
             *ptr.add(i)
         })
         .collect()
+}
+
+/// Transmute from A to B.
+///
+/// Like transmute, but does not have the compile-time size check which blocks
+/// using regular transmute in some cases.
+///
+/// **Panics** if the size of A and B are different.
+#[inline]
+pub(crate) unsafe fn unlimited_transmute<A, B>(data: A) -> B {
+    // safe when sizes are equal and caller guarantees that representations are equal
+    assert_eq!(std::mem::size_of::<A>(), std::mem::size_of::<B>());
+    let old_data = ManuallyDrop::new(data);
+    (&*old_data as *const A as *const B).read()
 }

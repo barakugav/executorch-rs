@@ -16,6 +16,11 @@ pub struct MemoryAllocator(pub(crate) et_c::MemoryAllocator);
 /// For systems with malloc(), this can be easier than using a fixed-sized
 /// MemoryAllocator.
 pub struct MallocMemoryAllocator(et_c::util::MallocMemoryAllocator);
+impl Default for MallocMemoryAllocator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl MallocMemoryAllocator {
     /// Construct a new Malloc memory allocator.
     pub fn new() -> Self {
