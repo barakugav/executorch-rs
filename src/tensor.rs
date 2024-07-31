@@ -98,38 +98,28 @@ impl ScalarType {
         }
     }
 }
+
 pub trait Scalar {
     const TYPE: ScalarType;
-
-    // TODO: forbid external impl of this trait
+    private_decl! {}
 }
-impl Scalar for u8 {
-    const TYPE: ScalarType = ScalarType::Byte;
+macro_rules! impl_scalar {
+    ($rust_type:ident, $scalar_type_variant:ident) => {
+        impl Scalar for $rust_type {
+            const TYPE: ScalarType = ScalarType::$scalar_type_variant;
+            private_impl! {}
+        }
+    };
 }
-impl Scalar for i8 {
-    const TYPE: ScalarType = ScalarType::Char;
-}
-impl Scalar for i16 {
-    const TYPE: ScalarType = ScalarType::Short;
-}
-impl Scalar for i32 {
-    const TYPE: ScalarType = ScalarType::Int;
-}
-impl Scalar for i64 {
-    const TYPE: ScalarType = ScalarType::Long;
-}
-// impl Scalar for f16 {
-//     const TYPE: ScalarType = ScalarType::Half;
-// }
-impl Scalar for f32 {
-    const TYPE: ScalarType = ScalarType::Float;
-}
-impl Scalar for f64 {
-    const TYPE: ScalarType = ScalarType::Double;
-}
-impl Scalar for bool {
-    const TYPE: ScalarType = ScalarType::Bool;
-}
+impl_scalar!(u8, Byte);
+impl_scalar!(i8, Char);
+impl_scalar!(i16, Short);
+impl_scalar!(i32, Int);
+impl_scalar!(i64, Long);
+// impl_scalar!(f16, Half);
+impl_scalar!(f32, Float);
+impl_scalar!(f64, Double);
+impl_scalar!(bool, Bool);
 
 /// A minimal Tensor type whose API is a source compatible subset of at::Tensor.
 ///
