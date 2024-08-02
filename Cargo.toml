@@ -1,5 +1,9 @@
 [workspace]
-members = ['examples/hello_world_add', 'examples/hello_world_add_module']
+members = [
+    "executorch-sys",
+    'examples/hello_world_add',
+    'examples/hello_world_add_module',
+]
 
 [package]
 name = "executorch"
@@ -9,11 +13,8 @@ edition = "2021"
 repository = "https://github.com/barakugav/executorch-rs"
 license = "Apache-2.0"
 
-[features]
-extension-data-loader = []
-extension-module = []
-
 [dependencies]
+executorch-sys = { path = "executorch-sys" }
 ndarray = "0.15.6"
 log = "0.4.22"
 
@@ -21,3 +22,7 @@ log = "0.4.22"
 bindgen = "0.69.4"
 cc = "1.1.6"
 envsubst = "0.2.1"
+
+[features]
+extension-data-loader = ["executorch-sys/extension-data-loader"]
+extension-module = ["executorch-sys/extension-module"]
