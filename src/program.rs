@@ -25,15 +25,13 @@ impl<'a> Program<'a> {
     ///
     /// A new instance of Program.
     pub fn load(
-        data_loader: &'a impl DataLoader,
+        data_loader: &'a impl AsRef<DataLoader>,
         verification: Option<ProgramVerification>,
     ) -> Result<Self> {
-        let mut data_loader = data_loader.data_loader();
+        let data_loader = data_loader.as_ref().0.get();
         let verification = verification.unwrap_or(ProgramVerification::Minimal);
-        Ok(Self(
-            unsafe { et_c::Program::load(&mut *data_loader, verification) }.rs()?,
-            PhantomData,
-        ))
+        let program = unsafe { et_c::Program::load(data_loader, verification) }.rs()?;
+        Ok(Self(program, PhantomData))
     }
 
     /// Returns the number of methods in the program.
@@ -71,11 +69,11 @@ impl<'a> Program<'a> {
         memory_manager: &'a MemoryManager,
     ) -> Result<Method<'a>> {
         let method_name = CString::new(method_name).unwrap();
-        let mut memory_manager = memory_manager.0.borrow_mut();
+        let memory_manager = memory_manager.0.get();
         let event_tracer = ptr::null_mut(); // TODO: support event tracer
         let method = unsafe {
             self.0
-                .load_method(method_name.as_ptr(), &mut *memory_manager, event_tracer)
+                .load_method(method_name.as_ptr(), memory_manager, event_tracer)
         };
         Ok(Method(method.rs()?, PhantomData))
     }

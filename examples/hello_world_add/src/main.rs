@@ -38,10 +38,9 @@ fn main() {
         HierarchicalAllocator::new(Span::from_slice(planned_arenas.as_mut_slice()));
 
     let mut method_allocator = MallocMemoryAllocator::new();
-    let mut memory_manager =
-        MemoryManager::new(method_allocator.as_mut(), Some(&mut planned_memory), None);
+    let memory_manager = MemoryManager::new(&mut method_allocator, Some(&mut planned_memory), None);
 
-    let mut method = program.load_method("forward", &mut memory_manager).unwrap();
+    let mut method = program.load_method("forward", &memory_manager).unwrap();
 
     let data1 = array![1.0_f32];
     let input_tensor1 = TensorImpl::from_array(data1.view());
