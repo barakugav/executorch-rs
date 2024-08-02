@@ -169,7 +169,7 @@ fn link_executorch() {
     let libs_dir = envsubst::substitute(
         libs_dir,
         &HashMap::from([(
-            String::from("EXECUTORCH_RS_TOP"),
+            String::from("EXECUTORCH_RS_SYS_TOP"),
             PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .to_str()
                 .unwrap()

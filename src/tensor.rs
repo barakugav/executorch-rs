@@ -3,14 +3,14 @@ use std::marker::PhantomData;
 
 use ndarray::{ArrayBase, ArrayView, ArrayViewD, ArrayViewMut, Dimension, IxDyn, ShapeBuilder};
 
-use crate::{c_link, et_c, et_rs_c, util, Span};
+use crate::{et_c, et_rs_c, util, Span};
 
 /// A type that represents the sizes (dimensions) of a tensor.
-pub type SizesType = c_link::executorch_c::root::exec_aten::SizesType;
+pub type SizesType = executorch_sys::exec_aten::SizesType;
 /// A type that represents the order of the dimensions of a tensor.
-pub type DimOrderType = c_link::executorch_c::root::exec_aten::DimOrderType;
+pub type DimOrderType = executorch_sys::exec_aten::DimOrderType;
 /// A type that represents the strides of a tensor.
-pub type StridesType = c_link::executorch_c::root::exec_aten::StridesType;
+pub type StridesType = executorch_sys::exec_aten::StridesType;
 
 /// Data types (dtypes) that can be used as element types in Tensors.
 ///
@@ -300,11 +300,6 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// If the scalar type of the tensor does not match the type `S`.
     pub fn as_array_dyn<S: Scalar + 'static>(&self) -> ArrayViewD<'_, S> {
         self.as_array()
-    }
-}
-impl Drop for et_c::Tensor {
-    fn drop(&mut self) {
-        unsafe { et_rs_c::Tensor_destructor(self) }
     }
 }
 

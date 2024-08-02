@@ -9,12 +9,13 @@ fn main() {
     let libs_dir = envsubst::substitute(
         libs_dir,
         &HashMap::from([(
-            String::from("EXECUTORCH_RS_TOP"),
+            String::from("EXECUTORCH_RS_SYS_TOP"),
             PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .parent()
                 .unwrap()
                 .parent()
                 .unwrap()
+                .join("executorch-sys")
                 .to_str()
                 .unwrap()
                 .to_string(),

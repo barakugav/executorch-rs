@@ -1,8 +1,7 @@
 #![deny(warnings)]
 
-mod c_link;
-use c_link::executorch_c::root::executorch_rs as et_rs_c;
-use c_link::executorch_c::root::torch::executor as et_c;
+use executorch_sys::executorch_rs as et_rs_c;
+use executorch_sys::torch::executor as et_c;
 
 #[macro_use]
 mod private;
@@ -33,5 +32,5 @@ mod util;
 pub use util::{ArrayRef, Span};
 
 pub fn pal_init() {
-    unsafe { c_link::executorch_c::root::et_pal_init() };
+    unsafe { executorch_sys::et_pal_init() };
 }

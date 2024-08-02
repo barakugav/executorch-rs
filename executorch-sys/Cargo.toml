@@ -1,0 +1,15 @@
+[package]
+name = "executorch-sys"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+extension-data-loader = []
+extension-module = []
+
+[dependencies]
+
+[build-dependencies]
+bindgen = "0.69.4"
+cc = "1.1.6"
+envsubst = "0.2.1"
