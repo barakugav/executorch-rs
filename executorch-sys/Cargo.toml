@@ -1,6 +1,6 @@
 [package]
 name = "executorch-sys"
-version = "0.1.0"
+version = "0.1.0-rc.1"
 authors = ["Barak Ugav <barakugav@gmail.com>"]
 edition = "2021"
 description = "Unsafe Rust bindings for ExecuTorch - On-device AI across mobile, embedded and edge for PyTorch"
