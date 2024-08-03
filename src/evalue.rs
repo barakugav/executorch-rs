@@ -1,12 +1,19 @@
+//! Module for `EValue` and related types.
+//!
+//! `EValue` is a type-erased value that can hold different types like scalars, lists or tensors. It is used to pass
+//! arguments to and return values from the runtime.
+
+use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
 
+use crate::error::{Error, Result};
 use crate::util::{ArrayRef, IntoRust};
-use crate::{et_c, et_rs_c, tensor::Tensor, Error, Result};
+use crate::{et_c, et_rs_c, tensor::Tensor};
 
 /// A tag indicating the type of the value stored in an `EValue`.
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Tag {
     /// Tag for value `Tensor`.
     Tensor = et_c::Tag::Tensor as u8,
@@ -442,6 +449,26 @@ impl<'a> TryFrom<&EValue<'a>> for &'a [Tensor<'a>] {
         }
     }
 }
+impl Debug for EValue<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut st = f.debug_struct("EValue");
+        st.field("tag", &self.tag());
+        match self.tag() {
+            Some(Tag::Int) => st.field("value", &self.as_i64()),
+            Some(Tag::Double) => st.field("value", &self.as_f64()),
+            Some(Tag::Bool) => st.field("value", &self.as_bool()),
+            Some(Tag::Tensor) => st.field("value", &self.as_tensor()),
+            Some(Tag::String) => st.field("value", &self.as_chars()),
+            Some(Tag::ListInt) => st.field("value", &self.as_i64_arr()),
+            Some(Tag::ListDouble) => st.field("value", &self.as_f64_arr()),
+            Some(Tag::ListBool) => st.field("value", &self.as_bool_arr()),
+            Some(Tag::ListTensor) => st.field("value", &self.as_tensor_arr()),
+            Some(Tag::ListOptionalTensor) => st.field("value", &"Unsupported type"),
+            None => st.field("value", &"None"),
+        };
+        st.finish()
+    }
+}
 
 /// Helper class used to correlate EValues in the executor table, with the
 /// unwrapped list of the proper type. Because values in the runtime's values
@@ -551,9 +578,15 @@ impl<'a, T: BoxedEvalue> BoxedEvalueList<'a, T> {
         unsafe { ArrayRef::from_inner(&unwrapped_list).as_slice() }
     }
 }
+impl<T: BoxedEvalue + Debug> Debug for BoxedEvalueList<'_, T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.get().fmt(f)
+    }
+}
 
 /// A trait for types that can be used within a `BoxedEvalueList`.
 pub trait BoxedEvalue {
+    /// The `Tag` variant corresponding to boxed type.
     const TAG: Tag;
     private_decl! {}
 }

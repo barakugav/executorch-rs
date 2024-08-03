@@ -1,11 +1,38 @@
 [package]
 name = "executorch-sys"
-version = "0.1.0"
+version = "0.1.0-rc.1"
+authors = ["Barak Ugav <barakugav@gmail.com>"]
 edition = "2021"
+description = "Unsafe Rust bindings for ExecuTorch - On-device AI across mobile, embedded and edge for PyTorch"
+readme = "README.md"
+repository = "https://github.com/barakugav/executorch-rs"
+license = "Apache-2.0"
+keywords = [
+    "executorch",
+    "pytorch",
+    "ai",
+    "ml",
+    "machine-learning",
+    "mobile",
+    "embedded",
+    "edge-device",
+    "bindings",
+]
+categories = [
+    "algorithms",
+    "mathematics",
+    "embedded",
+    "no-std",
+    "no-std::no-alloc",
+]
+links = "executorch"
+
+[package.metadata.docs.rs]
+features = ["data-loader", "module"]
 
 [features]
-extension-data-loader = []
-extension-module = []
+data-loader = []
+module = []
 
 [dependencies]
 

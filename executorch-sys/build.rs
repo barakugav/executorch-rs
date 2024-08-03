@@ -104,18 +104,18 @@ fn generate_bindings(executorch_headers: &Path) {
         .allowlist_item("torch::executor::MemoryManager")
         .allowlist_item("torch::executor::MethodMeta")
         .allowlist_item("torch::executor::util::MallocMemoryAllocator")
-        // extension-data-loader
+        // feature data-loader
         .allowlist_item("torch::executor::util::FileDataLoader")
         .allowlist_item("torch::executor::util::MmapDataLoader")
         .allowlist_item("torch::executor::util::BufferDataLoader")
-        // extension-module
+        // feature module
         .allowlist_item("torch::executor::Module")
         .blocklist_item("std::.*")
         .blocklist_item("torch::executor::Method_StepState")
         .blocklist_item("torch::executor::Method_InitializationState")
         .blocklist_item("torch::executor::Program_kMinHeadBytes")
         .blocklist_item("torch::executor::EventTracerEntry")
-        // extension-module
+        // feature module
         .blocklist_item("torch::executor::Module_MethodHolder")
         .blocklist_item("torch::executor::Module_load_method")
         .blocklist_item("torch::executor::Module_is_method_loaded")
@@ -135,11 +135,11 @@ fn generate_bindings(executorch_headers: &Path) {
         .opaque_type("torch::executor::MemoryAllocator")
         .opaque_type("torch::executor::HierarchicalAllocator")
         .opaque_type("torch::executor::TensorInfo")
-        // extension-data-loader
+        // feature data-loader
         .opaque_type("torch::executor::util::FileDataLoader")
         .opaque_type("torch::executor::util::MmapDataLoader")
         .opaque_type("torch::executor::util::BufferDataLoader")
-        // extension-module
+        // feature module
         .opaque_type("torch::executor::Module")
         .rustified_enum("torch::executor::Error")
         .rustified_enum("torch::executor::ScalarType")
@@ -147,9 +147,9 @@ fn generate_bindings(executorch_headers: &Path) {
         .rustified_enum("torch::executor::Program_Verification")
         .rustified_enum("torch::executor::Program_HeaderStatus")
         .rustified_enum("torch::executor::TensorShapeDynamism")
-        // extension-data-loader
+        // feature data-loader
         .rustified_enum("torch::executor::util::MmapDataLoader_MlockConfig")
-        // extension-module
+        // feature module
         .rustified_enum("torch::executor::Module_MlockConfig")
         .no_copy(".*") // TODO: specific some exact types, regex act weird
         .manually_drop_union(".*")
@@ -164,6 +164,11 @@ fn generate_bindings(executorch_headers: &Path) {
 }
 
 fn link_executorch() {
+    if std::env::var("DOCS_RS").is_ok() {
+        // Skip linking to the static library when building documentation
+        return;
+    }
+
     let libs_dir = std::env::var("EXECUTORCH_RS_EXECUTORCH_LIB_DIR")
         .expect("EXECUTORCH_RS_EXECUTORCH_LIB_DIR is not set, can't locate executorch static libs");
     let libs_dir = envsubst::substitute(
@@ -184,7 +189,7 @@ fn link_executorch() {
     println!("cargo::rustc-link-lib=static=executorch");
     println!("cargo::rustc-link-lib=static=executorch_no_prim_ops");
 
-    if cfg!(feature = "extension-data-loader") {
+    if cfg!(feature = "data-loader") {
         println!(
             "cargo::rustc-link-search={}/extension/data_loader/",
             libs_dir
@@ -192,7 +197,7 @@ fn link_executorch() {
         println!("cargo::rustc-link-lib=static=extension_data_loader");
     }
 
-    if cfg!(feature = "extension-module") {
+    if cfg!(feature = "module") {
         println!("cargo::rustc-link-search={}/extension/module/", libs_dir);
         // TODO: extension_module or extension_module_static ?
         println!("cargo::rustc-link-lib=static=extension_module_static");
@@ -207,10 +212,10 @@ fn cpp_ext_dir() -> PathBuf {
 
 fn cpp_defines() -> Vec<&'static str> {
     let mut defines = vec![];
-    if cfg!(feature = "extension-data-loader") {
+    if cfg!(feature = "data-loader") {
         defines.push("EXECUTORCH_RS_EXTENSION_DATA_LOADER");
     }
-    if cfg!(feature = "extension-module") {
+    if cfg!(feature = "module") {
         defines.push("EXECUTORCH_RS_EXTENSION_MODULE");
     }
     defines

@@ -1,58 +1,6 @@
-# ExecuTorch-rs
+# executorch-sys
 
-`executorch` is a Rust library for executing PyTorch models in Rust.
-It is a Rust wrapper around the [ExecuTorch C++ API](https://pytorch.org/executorch).
-It depends on version `0.2.1` of the CPP API, but will advance as the API does.
-The underlying C++ library is still in alpha, and its API is subject to change together with the Rust API.
-
-## Usage
-Create a model in `Python` and export it:
-```python
-import torch
-from executorch.exir import to_edge
-from torch.export import export
-
-class Add(torch.nn.Module):
-    def __init__(self):
-        super(Add, self).__init__()
-
-    def forward(self, x: torch.Tensor, y: torch.Tensor):
-        return x + y
-
-
-aten_dialect = export(Add(), (torch.ones(1), torch.ones(1)))
-edge_program = to_edge(aten_dialect)
-executorch_program = edge_program.to_executorch()
-with open("model.pte", "wb") as file:
-    file.write(executorch_program.buffer)
-```
-Execute the model in Rust:
-```rust
-use executorch::evalue::{EValue, Tag};
-use executorch::module::Module;
-use executorch::tensor::{Tensor, TensorImpl};
-use ndarray::array;
-
-let mut module = Module::new("model.pte", None);
-
-let data1 = array![1.0_f32];
-let input_tensor1 = TensorImpl::from_array(data1.view());
-let input_evalue1 = EValue::from_tensor(Tensor::new(input_tensor1.as_ref()));
-
-let data2 = array![1.0_f32];
-let input_tensor2 = TensorImpl::from_array(data2.view());
-let input_evalue2 = EValue::from_tensor(Tensor::new(input_tensor2.as_ref()));
-
-let outputs = module.forward(&[input_evalue1, input_evalue2]).unwrap();
-assert_eq!(outputs.len(), 1);
-let output = outputs.into_iter().next().unwrap();
-assert_eq!(output.tag(), Some(Tag::Tensor));
-let output = output.as_tensor();
-
-println!("Output tensor computed: {:?}", output);
-assert_eq!(array![2.0_f32], output.as_array());
-```
-See `example/hello_world_add` and `example/hello_world_add_module` for the complete examples.
+For a general description of the project, see the the `executorch` crate.
 
 ## Build
 To build the library, you need to build the C++ library first.

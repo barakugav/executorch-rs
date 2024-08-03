@@ -1,6 +1,8 @@
 #![deny(warnings)]
 
-use executorch::{EValue, Module, Tag, Tensor, TensorImpl};
+use executorch::evalue::{EValue, Tag};
+use executorch::module::Module;
+use executorch::tensor::{Tensor, TensorImpl};
 use ndarray::array;
 
 fn main() {
@@ -8,7 +10,7 @@ fn main() {
         .filter_level(log::LevelFilter::Debug)
         .init();
 
-    executorch::pal_init();
+    executorch::platform::pal_init();
 
     let mut module = Module::new("model.pte", None);
 
@@ -24,8 +26,8 @@ fn main() {
     assert_eq!(outputs.len(), 1);
     let output = outputs.into_iter().next().unwrap();
     assert_eq!(output.tag(), Some(Tag::Tensor));
-    let output = output.as_tensor().as_array_dyn::<f32>();
+    let output = output.as_tensor();
 
     println!("Output tensor computed: {:?}", output);
-    assert_eq!(output, array![2.0].into_dyn());
+    assert_eq!(array![2.0_f32], output.as_array());
 }

@@ -1,4 +1,7 @@
+//! Tensor struct is a type erased input or output tensor to a executorch program.
+
 use std::any::TypeId;
+use std::fmt::Debug;
 use std::marker::PhantomData;
 
 use ndarray::{ArrayBase, ArrayView, ArrayViewD, ArrayViewMut, Dimension, IxDyn, ShapeBuilder};
@@ -20,28 +23,51 @@ pub type StridesType = executorch_sys::exec_aten::StridesType;
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum ScalarType {
+    /// 8-bit unsigned integer, `u8`
     Byte = et_c::ScalarType::Byte as u8,
+    /// 8-bit signed, integer, `i8`
     Char = et_c::ScalarType::Char as u8,
+    /// 16-bit signed integer, `i16`
     Short = et_c::ScalarType::Short as u8,
+    /// 32-bit signed integer, `i32`
     Int = et_c::ScalarType::Int as u8,
+    /// 64-bit signed integer, `i64`
     Long = et_c::ScalarType::Long as u8,
+    /// **\[Unsupported\]** 16-bit floating point
     Half = et_c::ScalarType::Half as u8,
+    /// 32-bit floating point, `f32`
     Float = et_c::ScalarType::Float as u8,
+    /// 64-bit floating point, `f64`
     Double = et_c::ScalarType::Double as u8,
+    /// **\[Unsupported\]** 16-bit complex floating point
     ComplexHalf = et_c::ScalarType::ComplexHalf as u8,
+    /// **\[Unsupported\]** 32-bit complex floating point
     ComplexFloat = et_c::ScalarType::ComplexFloat as u8,
+    /// **\[Unsupported\]** 64-bit complex floating point
     ComplexDouble = et_c::ScalarType::ComplexDouble as u8,
+    /// Boolean, `bool`
     Bool = et_c::ScalarType::Bool as u8,
+    /// **\[Unsupported\]** 8-bit quantized integer
     QInt8 = et_c::ScalarType::QInt8 as u8,
+    /// **\[Unsupported\]** 8-bit quantized unsigned integer
     QUInt8 = et_c::ScalarType::QUInt8 as u8,
+    /// **\[Unsupported\]** 32-bit quantized integer
     QInt32 = et_c::ScalarType::QInt32 as u8,
+    /// **\[Unsupported\]** 16-bit floating point using the bfloat16 format
     BFloat16 = et_c::ScalarType::BFloat16 as u8,
+    /// **\[Unsupported\]**
     QUInt4x2 = et_c::ScalarType::QUInt4x2 as u8,
+    /// **\[Unsupported\]**
     QUInt2x4 = et_c::ScalarType::QUInt2x4 as u8,
+    /// **\[Unsupported\]**
     Bits1x8 = et_c::ScalarType::Bits1x8 as u8,
+    /// **\[Unsupported\]**
     Bits2x4 = et_c::ScalarType::Bits2x4 as u8,
+    /// **\[Unsupported\]**
     Bits4x2 = et_c::ScalarType::Bits4x2 as u8,
+    /// **\[Unsupported\]**
     Bits8 = et_c::ScalarType::Bits8 as u8,
+    /// **\[Unsupported\]**
     Bits16 = et_c::ScalarType::Bits16 as u8,
 }
 impl ScalarType {
@@ -106,6 +132,7 @@ impl ScalarType {
 
 /// A trait for types that can be used as scalar types in Tensors.
 pub trait Scalar {
+    /// The `ScalarType` enum variant of the implementing type.
     const TYPE: ScalarType;
     private_decl! {}
 }
@@ -483,6 +510,61 @@ impl<'a, D: Data> TensorImplBase<'a, D> {
     }
 }
 
+impl<D: Data> Debug for TensorBase<'_, D> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut st = f.debug_struct("Tensor");
+        st.field("scalar_type", &self.scalar_type());
+
+        fn add_data_field<D: Data, S: Scalar + Debug + 'static>(
+            this: &TensorBase<'_, D>,
+            st: &mut std::fmt::DebugStruct,
+        ) {
+            match this.dim() {
+                0 => st.field("data", &this.as_array::<S, ndarray::Ix0>()),
+                1 => st.field("data", &this.as_array::<S, ndarray::Ix1>()),
+                2 => st.field("data", &this.as_array::<S, ndarray::Ix2>()),
+                3 => st.field("data", &this.as_array::<S, ndarray::Ix3>()),
+                4 => st.field("data", &this.as_array::<S, ndarray::Ix4>()),
+                5 => st.field("data", &this.as_array::<S, ndarray::Ix5>()),
+                6 => st.field("data", &this.as_array::<S, ndarray::Ix6>()),
+                _ => st.field("data", &this.as_array_dyn::<S>()),
+            };
+        }
+        fn add_data_field_unsupported(st: &mut std::fmt::DebugStruct) {
+            st.field("data", &"unsupported");
+        }
+        match self.scalar_type() {
+            Some(ScalarType::Byte) => add_data_field::<_, u8>(self, &mut st),
+            Some(ScalarType::Char) => add_data_field::<_, i8>(self, &mut st),
+            Some(ScalarType::Short) => add_data_field::<_, i16>(self, &mut st),
+            Some(ScalarType::Int) => add_data_field::<_, i32>(self, &mut st),
+            Some(ScalarType::Long) => add_data_field::<_, i64>(self, &mut st),
+            Some(ScalarType::Half) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::Float) => add_data_field::<_, f32>(self, &mut st),
+            Some(ScalarType::Double) => add_data_field::<_, f64>(self, &mut st),
+            Some(ScalarType::ComplexHalf) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::ComplexFloat) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::ComplexDouble) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::Bool) => add_data_field::<_, bool>(self, &mut st),
+            Some(ScalarType::QInt8) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::QUInt8) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::QInt32) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::BFloat16) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::QUInt4x2) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::QUInt2x4) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::Bits1x8) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::Bits2x4) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::Bits4x2) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::Bits8) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::Bits16) => add_data_field_unsupported(&mut st),
+            None => {
+                st.field("data", &"None");
+            }
+        };
+        st.finish()
+    }
+}
+
 /// An immutable tensor implementation that does not own the underlying data.
 pub type TensorImpl<'a> = TensorImplBase<'a, View>;
 impl<'a> TensorImpl<'a> {
@@ -701,6 +783,17 @@ impl<'a> TensorInfo<'a> {
         unsafe { et_c::TensorInfo_nbytes(&self.0) }
     }
 }
+impl Debug for TensorInfo<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TensorInfo")
+            .field("sizes", &self.sizes())
+            .field("dim_order", &self.dim_order())
+            .field("scalar_type", &self.scalar_type())
+            .field("nbytes", &self.nbytes())
+            .finish()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use ndarray::{arr1, arr2, Array1, Array2, Array3, Ix3};

@@ -1,12 +1,26 @@
+//! A higher-level for simple execution of programs.
+//!
+//! This module provides a higher-level interface for loading programs and executing methods within them.
+//! Compared to the lower-level [`program`](crate::program) interface, the `module` interface is more user-friendly,
+//! uses the default memory allocator, and provides automatic memory management.
+//!
+//! This module is enabled by the `module` feature.
+//!
+//! See the `hello_world_add_module` example for how to load and execute a module.
+
 use std::collections::HashSet;
 use std::path::Path;
 use std::ptr;
 
+use crate::error::Result;
+use crate::evalue::EValue;
+use crate::program::{MethodMeta, ProgramVerification};
 use crate::util::{self, ArrayRef, IntoRust};
-use crate::{et_c, et_rs_c, EValue, Result};
-use crate::{MethodMeta, ProgramVerification};
+use crate::{et_c, et_rs_c};
 
 /// A facade class for loading programs and executing methods within them.
+///
+/// See the `hello_world_add_module` example for how to load and execute a module.
 pub struct Module(et_c::Module);
 impl Module {
     /// Constructs an instance by loading a program from a file with specified
@@ -180,4 +194,5 @@ impl Drop for Module {
     }
 }
 
+/// Enum to define memory locking behavior.
 pub type MlockConfig = et_c::Module_MlockConfig;

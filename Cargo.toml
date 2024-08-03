@@ -7,14 +7,38 @@ members = [
 
 [package]
 name = "executorch"
-version = "0.1.0"
+version = "0.1.0-rc.1"
 authors = ["Barak Ugav <barakugav@gmail.com>"]
 edition = "2021"
+description = "Rust bindings for ExecuTorch - On-device AI across mobile, embedded and edge for PyTorch"
+readme = "README.md"
 repository = "https://github.com/barakugav/executorch-rs"
 license = "Apache-2.0"
+keywords = [
+    "executorch",
+    "pytorch",
+    "ai",
+    "ml",
+    "machine-learning",
+    "mobile",
+    "embedded",
+    "edge-device",
+    "bindings",
+]
+categories = [
+    "algorithms",
+    "mathematics",
+    "embedded",
+    "no-std",
+    "no-std::no-alloc",
+]
+include = ["Cargo.toml", "src/", "README.md", "LICENSE"]
+
+[package.metadata.docs.rs]
+features = ["data-loader", "module"]
 
 [dependencies]
-executorch-sys = { path = "executorch-sys" }
+executorch-sys = { path = "executorch-sys", version = "0.1.0-rc.1" }
 ndarray = "0.15.6"
 log = "0.4.22"
 
@@ -24,5 +48,5 @@ cc = "1.1.6"
 envsubst = "0.2.1"
 
 [features]
-extension-data-loader = ["executorch-sys/extension-data-loader"]
-extension-module = ["executorch-sys/extension-module"]
+data-loader = ["executorch-sys/data-loader"]
+module = ["executorch-sys/module"]

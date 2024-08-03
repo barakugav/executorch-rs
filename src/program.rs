@@ -1,13 +1,27 @@
+//! Lower-level API for loading and executing ExecuTorch programs.
+//!
+//! This module is the lowest level API for the ExecuTorch library. It provides the ability to load and execute
+//! programs, while controlling memory allocation and execution.
+//!
+//! See the `hello_world_add` example for how to load and execute a program.
+
 use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
+use std::ops::Index;
 use std::ptr;
 
 use crate::data_loader::DataLoader;
+use crate::error::Result;
 use crate::evalue::EValue;
+use crate::evalue::Tag;
+use crate::memory::MemoryManager;
+use crate::tensor::TensorInfo;
 use crate::util::IntoRust;
-use crate::{et_c, et_rs_c, MemoryManager, Result, Tag, TensorInfo};
+use crate::{et_c, et_rs_c};
 
 /// A deserialized ExecuTorch program binary.
+///
+/// See the `hello_world_add` example for how to load and execute a program.
 pub struct Program<'a>(et_c::Program, PhantomData<&'a ()>);
 impl<'a> Program<'a> {
     /// Loads a Program from the provided loader. The Program will hold a pointer
@@ -108,7 +122,9 @@ impl Drop for Program<'_> {
     }
 }
 
+/// Types of validation that the Program can do before parsing the data.
 pub type ProgramVerification = et_c::Program_Verification;
+/// Describes the presence of an ExecuTorch program header.
 pub type HeaderStatus = et_c::Program_HeaderStatus;
 
 /// Describes a a method in an ExecuTorch program.
@@ -218,12 +234,16 @@ impl<'a> MethodMeta<'a> {
     }
 }
 
+/// An executable method of an ExecuTorch program. Maps to a python method like
+/// `forward()` on the original `nn.Module`.
 pub struct Method<'a>(et_c::Method, PhantomData<&'a ()>);
 impl<'a> Method<'a> {
+    /// Starts the execution of the method.
     pub fn start_execution(&mut self) -> Execution<'_> {
         Execution::new(&mut self.0)
     }
 
+    /// Returns the number of inputs the Method expects.
     pub fn inputs_size(&self) -> usize {
         unsafe { self.0.inputs_size() }
     }
@@ -234,6 +254,7 @@ impl Drop for Method<'_> {
     }
 }
 
+/// An method execution builder used to set inputs and execute the method.
 pub struct Execution<'a> {
     method: &'a mut et_c::Method,
     set_inputs: u64,
@@ -250,12 +271,23 @@ impl<'a> Execution<'a> {
         }
     }
 
+    /// Sets the internal input value to be equivalent to the provided value.
+    ///
+    /// # Arguments
+    ///
+    /// * `input` - The evalue to copy into the method input. If the evalue is a tensor, the data is copied in most
+    /// cases, so the tensor passed in here does not always need to outlive this call. But there is a case where the
+    /// Method will keep a pointer to the tensor's data. Based on the memory plan of the method, the inputs may not
+    /// have buffer space pre-allocated for them. In this case the executor will alias the memory of the tensors
+    /// provided as inputs here rather then deepcopy the input into the memory planned arena.
+    /// * `input_idx` - Zero-based index of the input to set. Must be less than the value returned by inputs_size().
     pub fn set_input<'b: 'a>(&mut self, input: &'b EValue, input_idx: usize) -> Result<()> {
         unsafe { self.method.set_input(&input.0, input_idx) }.rs()?;
         self.set_inputs |= 1 << input_idx;
         Ok(())
     }
 
+    /// Execute the method.
     pub fn execute(self) -> Result<Outputs<'a>> {
         assert_eq!(
             self.set_inputs,
@@ -266,6 +298,10 @@ impl<'a> Execution<'a> {
         Ok(Outputs::new(self.method))
     }
 }
+
+/// The outputs of a method execution.
+///
+/// Access the outputs of a method execution by indexing into the Outputs object.
 pub struct Outputs<'a> {
     method: &'a mut et_c::Method,
 }
@@ -274,8 +310,16 @@ impl<'a> Outputs<'a> {
         Self { method }
     }
 
-    pub fn get_output(&self, output_idx: usize) -> &'a EValue<'a> {
-        let val = unsafe { &*self.method.get_output(output_idx) };
+    /// Returns the number of outputs the Method returns.
+    pub fn len(&self) -> usize {
+        unsafe { self.method.outputs_size() }
+    }
+}
+impl<'a> Index<usize> for Outputs<'a> {
+    type Output = EValue<'a>;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        let val = unsafe { &*self.method.get_output(index) };
         // SAFETY: et_c::EValue as EValue has the same memory layout
         unsafe { std::mem::transmute::<&et_c::EValue, &EValue<'a>>(val) }
     }

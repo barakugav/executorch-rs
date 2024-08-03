@@ -1,22 +1,31 @@
+//! Data loaders for loading execution plans (models) from a data source.
+//!
+//! Data loaders are used to load execution plans from a data source, such as a file or a buffer.
+//! To include the data loader functionality, enable the `data-loader` feature.
+
 use std::cell::UnsafeCell;
 
 use crate::et_c;
 
 /// Loads from a data source.
+///
+/// This struct is like a base class for data loaders. All other data loaders implement `AsRef<DataLoader>` and other
+/// structs, such as `Program`, take a reference to `DataLoader` instead of the concrete data loader type.
 pub struct DataLoader(pub(crate) UnsafeCell<et_c::DataLoader>);
 
-#[cfg(feature = "extension-data-loader")]
+#[cfg(feature = "data-loader")]
 pub use file_data_loader::{BufferDataLoader, FileDataLoader, MlockConfig, MmapDataLoader};
 
-#[cfg(feature = "extension-data-loader")]
+#[cfg(feature = "data-loader")]
 mod file_data_loader {
     use std::cell::UnsafeCell;
     use std::ffi::CString;
     use std::marker::PhantomData;
     use std::path::Path;
 
+    use crate::error::Result;
     use crate::util::IntoRust;
-    use crate::{et_c, et_rs_c, Result};
+    use crate::{et_c, et_rs_c};
 
     use super::DataLoader;
 
@@ -138,5 +147,10 @@ mod file_data_loader {
         }
     }
 
+    /// Describes how and whether to lock loaded pages with `mlock()`.
+    ///
+    /// Using `mlock()` typically loads all of the pages immediately, and will
+    /// typically ensure that they are not swapped out. The actual behavior
+    /// will depend on the host system.
     pub type MlockConfig = et_c::util::MmapDataLoader_MlockConfig;
 }
