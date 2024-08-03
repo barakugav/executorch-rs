@@ -72,5 +72,5 @@ Note that the `portable_ops_lib` is linked with `+whole-archive` to ensure that 
 
 ## Cargo Features
 - `default`: disables all features.
-- `extension-data-loader`: include the `FileDataLoader` strut. The `libextension_data_loader.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON`.
-- `extension-module`: include the `Module` strut. The `libextension_module_static.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`.
+- `data-loader`: include the `FileDataLoader` strut. The `libextension_data_loader.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON`.
+- `module`: include the `Module` strut. The `libextension_module_static.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`.

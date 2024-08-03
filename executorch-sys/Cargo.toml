@@ -28,8 +28,8 @@ categories = [
 links = "executorch"
 
 [features]
-extension-data-loader = []
-extension-module = []
+data-loader = []
+module = []
 
 [dependencies]
 

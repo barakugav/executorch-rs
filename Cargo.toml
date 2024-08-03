@@ -45,5 +45,5 @@ cc = "1.1.6"
 envsubst = "0.2.1"
 
 [features]
-extension-data-loader = ["executorch-sys/extension-data-loader"]
-extension-module = ["executorch-sys/extension-module"]
+data-loader = ["executorch-sys/data-loader"]
+module = ["executorch-sys/module"]

@@ -5,10 +5,10 @@ use crate::et_c;
 /// Loads from a data source.
 pub struct DataLoader(pub(crate) UnsafeCell<et_c::DataLoader>);
 
-#[cfg(feature = "extension-data-loader")]
+#[cfg(feature = "data-loader")]
 pub use file_data_loader::{BufferDataLoader, FileDataLoader, MlockConfig, MmapDataLoader};
 
-#[cfg(feature = "extension-data-loader")]
+#[cfg(feature = "data-loader")]
 mod file_data_loader {
     use std::cell::UnsafeCell;
     use std::ffi::CString;
