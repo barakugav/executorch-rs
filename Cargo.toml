@@ -17,11 +17,7 @@ license = "Apache-2.0"
 keywords = [
     "executorch",
     "pytorch",
-    "ai",
-    "ml",
     "machine-learning",
-    "mobile",
-    "embedded",
     "edge-device",
     "bindings",
 ]
