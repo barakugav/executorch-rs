@@ -1,3 +1,8 @@
+//! Module for `EValue` and related types.
+//!
+//! `EValue` is a type-erased value that can hold different types like scalars, lists or tensors. It is used to pass
+//! arguments to and return values from the runtime.
+
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
@@ -581,6 +586,7 @@ impl<T: BoxedEvalue + Debug> Debug for BoxedEvalueList<'_, T> {
 
 /// A trait for types that can be used within a `BoxedEvalueList`.
 pub trait BoxedEvalue {
+    /// The `Tag` variant corresponding to boxed type.
     const TAG: Tag;
     private_decl! {}
 }

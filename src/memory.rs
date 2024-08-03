@@ -1,3 +1,9 @@
+//! Memory management classes.
+//!
+//! The ExecuTorch library allow the user to control memory allocation using the structs in the module.
+//! This enable using the library in embedded systems where dynamic memory allocation is not allowed, or when allocation
+//! is a performance bottleneck.
+
 use std::cell::UnsafeCell;
 use std::marker::PhantomData;
 use std::ptr;

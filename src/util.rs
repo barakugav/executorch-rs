@@ -1,3 +1,9 @@
+//! Utility functions and types.
+//!
+//! Most of the structs in this module may seems redundant in Rust, but they are wrappers around C++ types
+//! that are used in the C++ API. Some structs and functions accept these types as arguments, so they are
+//! necessary to interact with the C++ API.
+
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;

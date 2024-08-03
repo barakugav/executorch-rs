@@ -10,7 +10,7 @@ fn main() {
         .filter_level(log::LevelFilter::Debug)
         .init();
 
-    executorch::pal_init();
+    executorch::platform::pal_init();
 
     let mut module = Module::new("model.pte", None);
 

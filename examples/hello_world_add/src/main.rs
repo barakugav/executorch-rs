@@ -15,7 +15,7 @@ fn main() {
         .filter_level(log::LevelFilter::Debug)
         .init();
 
-    executorch::pal_init();
+    executorch::platform::pal_init();
 
     let mut file_data_loader = FileDataLoader::new("model.pte", None).unwrap();
 
@@ -58,7 +58,7 @@ fn main() {
     method_exe.set_input(&input_evalue2, 1).unwrap();
 
     let outputs = method_exe.execute().unwrap();
-    let output = outputs.get_output(0);
+    let output = &outputs[0];
     assert_eq!(output.tag(), Some(Tag::Tensor));
     let output = output.as_tensor();
 

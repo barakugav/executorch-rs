@@ -1,3 +1,5 @@
+//! Tensor struct is a type erased input or output tensor to a executorch program.
+
 use std::any::TypeId;
 use std::fmt::Debug;
 use std::marker::PhantomData;
@@ -21,28 +23,51 @@ pub type StridesType = executorch_sys::exec_aten::StridesType;
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum ScalarType {
+    /// 8-bit unsigned integer, `u8`
     Byte = et_c::ScalarType::Byte as u8,
+    /// 8-bit signed, integer, `i8`
     Char = et_c::ScalarType::Char as u8,
+    /// 16-bit signed integer, `i16`
     Short = et_c::ScalarType::Short as u8,
+    /// 32-bit signed integer, `i32`
     Int = et_c::ScalarType::Int as u8,
+    /// 64-bit signed integer, `i64`
     Long = et_c::ScalarType::Long as u8,
+    /// **\[Unsupported\]** 16-bit floating point
     Half = et_c::ScalarType::Half as u8,
+    /// 32-bit floating point, `f32`
     Float = et_c::ScalarType::Float as u8,
+    /// 64-bit floating point, `f64`
     Double = et_c::ScalarType::Double as u8,
+    /// **\[Unsupported\]** 16-bit complex floating point
     ComplexHalf = et_c::ScalarType::ComplexHalf as u8,
+    /// **\[Unsupported\]** 32-bit complex floating point
     ComplexFloat = et_c::ScalarType::ComplexFloat as u8,
+    /// **\[Unsupported\]** 64-bit complex floating point
     ComplexDouble = et_c::ScalarType::ComplexDouble as u8,
+    /// Boolean, `bool`
     Bool = et_c::ScalarType::Bool as u8,
+    /// **\[Unsupported\]** 8-bit quantized integer
     QInt8 = et_c::ScalarType::QInt8 as u8,
+    /// **\[Unsupported\]** 8-bit quantized unsigned integer
     QUInt8 = et_c::ScalarType::QUInt8 as u8,
+    /// **\[Unsupported\]** 32-bit quantized integer
     QInt32 = et_c::ScalarType::QInt32 as u8,
+    /// **\[Unsupported\]** 16-bit floating point using the bfloat16 format
     BFloat16 = et_c::ScalarType::BFloat16 as u8,
+    /// **\[Unsupported\]**
     QUInt4x2 = et_c::ScalarType::QUInt4x2 as u8,
+    /// **\[Unsupported\]**
     QUInt2x4 = et_c::ScalarType::QUInt2x4 as u8,
+    /// **\[Unsupported\]**
     Bits1x8 = et_c::ScalarType::Bits1x8 as u8,
+    /// **\[Unsupported\]**
     Bits2x4 = et_c::ScalarType::Bits2x4 as u8,
+    /// **\[Unsupported\]**
     Bits4x2 = et_c::ScalarType::Bits4x2 as u8,
+    /// **\[Unsupported\]**
     Bits8 = et_c::ScalarType::Bits8 as u8,
+    /// **\[Unsupported\]**
     Bits16 = et_c::ScalarType::Bits16 as u8,
 }
 impl ScalarType {
@@ -107,6 +132,7 @@ impl ScalarType {
 
 /// A trait for types that can be used as scalar types in Tensors.
 pub trait Scalar {
+    /// The `ScalarType` enum variant of the implementing type.
     const TYPE: ScalarType;
     private_decl! {}
 }

@@ -1,3 +1,5 @@
+//! Error types used in the `executortorch` crate.
+
 use std::mem::ManuallyDrop;
 
 use crate::{et_c, et_rs_c, util::IntoRust};
@@ -98,7 +100,8 @@ impl IntoRust for et_c::Error {
     }
 }
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub(crate) type Result<T> = std::result::Result<T, Error>;
+
 impl<T> IntoRust for et_c::Result<T> {
     type RsType = Result<T>;
     fn rs(self) -> Self::RsType {

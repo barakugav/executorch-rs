@@ -123,6 +123,6 @@ println!("cargo::rustc-link-search={}/kernels/portable/", libs_dir);
 Note that the `portable_ops_lib` is linked with `+whole-archive` to ensure that all symbols are included in the binary.
 
 ## Cargo Features
-- `default`: disables all features.
-- `data-loader`: include the `FileDataLoader` strut. The `libextension_data_loader.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON`.
-- `module`: include the `Module` strut. The `libextension_module_static.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`.
+By default all features are disabled.
+- `data-loader`: include the `FileDataLoader` struct. The `libextension_data_loader.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON`.
+- `module`: include the `Module` struct. The `libextension_module_static.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`.
