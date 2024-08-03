@@ -164,6 +164,11 @@ fn generate_bindings(executorch_headers: &Path) {
 }
 
 fn link_executorch() {
+    if std::env::var("DOCS_RS").is_ok() {
+        // Skip linking to the static library when building documentation
+        return;
+    }
+
     let libs_dir = std::env::var("EXECUTORCH_RS_EXECUTORCH_LIB_DIR")
         .expect("EXECUTORCH_RS_EXECUTORCH_LIB_DIR is not set, can't locate executorch static libs");
     let libs_dir = envsubst::substitute(
