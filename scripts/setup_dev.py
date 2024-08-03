@@ -3,7 +3,12 @@ import shutil
 import subprocess
 from pathlib import Path
 
-DEV_EXECUTORCH_DIR = Path(__file__).parent.parent.resolve() / "cpp" / "executorch"
+DEV_EXECUTORCH_DIR = (
+    Path(__file__).parent.parent.resolve()
+    / "executorch-sys"
+    / "third-party"
+    / "executorch"
+)
 
 
 def main():
@@ -30,6 +35,7 @@ def main():
 
 def clone_executorch():
     if not DEV_EXECUTORCH_DIR.exists():
+        DEV_EXECUTORCH_DIR.parent.mkdir(parents=True, exist_ok=True)
         # git clone --depth 1 --branch v0.2.1 https://github.com/pytorch/executorch.git
         subprocess.check_call(
             [

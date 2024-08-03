@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
 
 const EXECUTORCH_VERSION: &str = "0.2.1";
 
@@ -11,42 +10,12 @@ fn main() {
         EXECUTORCH_VERSION
     );
 
-    let dev_executorch = Path::new(&env!("CARGO_MANIFEST_DIR"))
-        .join("cpp")
-        .join("executorch");
-    let executorch_headers = if dev_executorch.exists() {
-        dev_executorch
-    } else {
-        download_executorch()
-    };
-    build_c_extension(&executorch_headers);
-    generate_bindings(&executorch_headers);
+    build_c_extension();
+    generate_bindings();
     link_executorch();
 }
 
-fn download_executorch() -> PathBuf {
-    let cpp_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap()).join("cpp");
-    let executorch_dir = cpp_dir.join("executorch");
-    if !executorch_dir.exists() {
-        std::fs::create_dir_all(&cpp_dir).unwrap();
-        exe_cmd(
-            &[
-                "git",
-                "clone",
-                "--depth",
-                "1",
-                "--branch",
-                format!("v{}", EXECUTORCH_VERSION).as_str(),
-                "https://github.com/pytorch/executorch.git",
-            ],
-            &cpp_dir,
-            "Failed to clone executorch",
-        );
-    }
-    executorch_dir
-}
-
-fn build_c_extension(executorch_headers: &Path) {
+fn build_c_extension() {
     let c_ext_dir = cpp_ext_dir();
     let mut builder = cc::Build::new();
     builder
@@ -54,7 +23,7 @@ fn build_c_extension(executorch_headers: &Path) {
         .std("c++17")
         .files([c_ext_dir.join("api_utils.cpp")])
         .include(c_ext_dir.parent().unwrap())
-        .include(executorch_headers.parent().unwrap());
+        .include(executorch_headers().parent().unwrap());
     for define in cpp_defines() {
         builder.define(define, None);
     }
@@ -63,7 +32,7 @@ fn build_c_extension(executorch_headers: &Path) {
     println!("cargo::rerun-if-changed={}", c_ext_dir.to_str().unwrap());
 }
 
-fn generate_bindings(executorch_headers: &Path) {
+fn generate_bindings() {
     let c_ext_dir = cpp_ext_dir();
 
     let bindings_h = Path::new(&env!("CARGO_MANIFEST_DIR"))
@@ -79,7 +48,7 @@ fn generate_bindings(executorch_headers: &Path) {
     let bindings = bindgen::Builder::default()
         .clang_arg(format!(
             "-I{}",
-            executorch_headers.parent().unwrap().to_str().unwrap()
+            executorch_headers().parent().unwrap().to_str().unwrap()
         ))
         .clang_arg(format!(
             "-I{}",
@@ -204,6 +173,12 @@ fn link_executorch() {
     }
 }
 
+fn executorch_headers() -> PathBuf {
+    Path::new(&env!("CARGO_MANIFEST_DIR"))
+        .join("cpp")
+        .join("executorch")
+}
+
 fn cpp_ext_dir() -> PathBuf {
     Path::new(&env!("CARGO_MANIFEST_DIR"))
         .join("cpp")
@@ -219,16 +194,4 @@ fn cpp_defines() -> Vec<&'static str> {
         defines.push("EXECUTORCH_RS_EXTENSION_MODULE");
     }
     defines
-}
-
-#[track_caller]
-fn exe_cmd(args: &[&str], current_dir: &Path, err_msg: &str) {
-    let status = Command::new(args[0])
-        .args(&args[1..])
-        .current_dir(current_dir)
-        .stderr(Stdio::inherit())
-        .stdout(Stdio::inherit())
-        .status()
-        .expect(err_msg);
-    assert!(status.success(), "{}", err_msg);
 }
