@@ -17,7 +17,7 @@ fn main() {
 
     executorch::platform::pal_init();
 
-    let mut file_data_loader = FileDataLoader::new("model.pte", None).unwrap();
+    let mut file_data_loader = FileDataLoader::from_cstr(cstr::cstr!(b"model.pte"), None).unwrap();
 
     let program = Program::load(
         &mut file_data_loader,
@@ -25,7 +25,7 @@ fn main() {
     )
     .unwrap();
 
-    let method_meta = program.method_meta("forward").unwrap();
+    let method_meta = program.method_meta(cstr::cstr!(b"forward")).unwrap();
 
     let num_memory_planned_buffers = method_meta.num_memory_planned_buffers();
     let mut planned_buffers = (0..num_memory_planned_buffers)
@@ -42,7 +42,9 @@ fn main() {
     let mut method_allocator = MallocMemoryAllocator::new();
     let memory_manager = MemoryManager::new(&mut method_allocator, Some(&mut planned_memory), None);
 
-    let mut method = program.load_method("forward", &memory_manager).unwrap();
+    let mut method = program
+        .load_method(cstr::cstr!(b"forward"), &memory_manager)
+        .unwrap();
 
     let data1 = array![1.0_f32];
     let input_tensor1 = TensorImpl::from_array(data1.view());

@@ -5,10 +5,13 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-executorch = { path = "../../", features = ["data-loader"] }
+executorch = { path = "../../", default-features = false, features = [
+    "data-loader",
+] }
 log = "0.4.22"
 env_logger = "0.11.3"
 ndarray = "0.15.6"
+cstr = "0.2.12"
 
 [build-dependencies]
 envsubst = "0.2.1"

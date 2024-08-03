@@ -47,7 +47,9 @@ cc = "1.1.6"
 envsubst = "0.2.1"
 
 [features]
+default = ["std"]
+std = []
 data-loader = ["executorch-sys/data-loader"]
-module = ["executorch-sys/module"]
+module = ["executorch-sys/module", "std"]
 f16 = ["half"]
 complex = ["num-complex"]

@@ -284,17 +284,21 @@ impl<'a, D: Data> TensorBase<'a, D> {
             None => {
                 // dynamic array
                 assert_eq!(TypeId::of::<Dim>(), TypeId::of::<IxDyn>());
-                let shape = self.sizes().iter().map(|d| *d as usize).collect::<Vec<_>>();
+                let shape = self
+                    .sizes()
+                    .iter()
+                    .map(|d| *d as usize)
+                    .collect::<crate::Vec<_>>();
                 let strides = self
                     .strides()
                     .iter()
                     .map(|s| *s as usize)
-                    .collect::<Vec<_>>();
+                    .collect::<crate::Vec<_>>();
                 let dim_order = self
                     .dim_order()
                     .iter()
                     .map(|o| *o as usize)
-                    .collect::<Vec<_>>();
+                    .collect::<crate::Vec<_>>();
                 let arr = unsafe {
                     ArrayViewD::from_shape_ptr(shape.strides(strides), ptr).permuted_axes(dim_order)
                 };
@@ -406,16 +410,20 @@ impl<'a> TensorMut<'a> {
             None => {
                 // dynamic array
                 assert_eq!(TypeId::of::<D>(), TypeId::of::<IxDyn>());
-                let shape = self.sizes().iter().map(|d| *d as usize).collect::<Vec<_>>();
+                let shape = self
+                    .sizes()
+                    .iter()
+                    .map(|d| *d as usize)
+                    .collect::<crate::Vec<_>>();
                 let strides = TensorBase::strides(self)
                     .iter()
                     .map(|s| *s as usize)
-                    .collect::<Vec<_>>();
+                    .collect::<crate::Vec<_>>();
                 let dim_order = self
                     .dim_order()
                     .iter()
                     .map(|o| *o as usize)
-                    .collect::<Vec<_>>();
+                    .collect::<crate::Vec<_>>();
                 let arr = unsafe {
                     ArrayViewMut::from_shape_ptr(shape.strides(strides), ptr)
                         .permuted_axes(dim_order)
@@ -551,55 +559,45 @@ impl<D: Data> Debug for TensorBase<'_, D> {
             Some(ScalarType::Int) => add_data_field::<_, i32>(self, &mut st),
             Some(ScalarType::Long) => add_data_field::<_, i64>(self, &mut st),
             Some(ScalarType::Half) => {
-                cfg_if::cfg_if! {
-                    if #[cfg(feature = "f16")] {
-                        add_data_field::<_, half::f16>(self, &mut st);
-                    } else {
-                        add_data_field_unsupported(&mut st);
-                    }
-                }
+                cfg_if::cfg_if! { if #[cfg(feature = "f16")] {
+                    add_data_field::<_, half::f16>(self, &mut st);
+                } else {
+                    add_data_field_unsupported(&mut st);
+                } }
             }
             Some(ScalarType::Float) => add_data_field::<_, f32>(self, &mut st),
             Some(ScalarType::Double) => add_data_field::<_, f64>(self, &mut st),
             Some(ScalarType::ComplexHalf) => {
-                cfg_if::cfg_if! {
-                    if #[cfg(all(feature = "complex", feature = "f16"))] {
-                        add_data_field::<_, num_complex::Complex<half::f16>>(self, &mut st);
-                    } else {
-                        add_data_field_unsupported(&mut st);
-                    }
-                }
+                cfg_if::cfg_if! { if #[cfg(all(feature = "complex", feature = "f16"))] {
+                    add_data_field::<_, num_complex::Complex<half::f16>>(self, &mut st);
+                } else {
+                    add_data_field_unsupported(&mut st);
+                } }
             }
             Some(ScalarType::ComplexFloat) => {
-                cfg_if::cfg_if! {
-                    if #[cfg(feature = "complex")] {
-                        add_data_field::<_, num_complex::Complex32>(self, &mut st);
-                    } else {
-                        add_data_field_unsupported(&mut st);
-                    }
-                }
+                cfg_if::cfg_if! { if #[cfg(feature = "complex")] {
+                    add_data_field::<_, num_complex::Complex32>(self, &mut st);
+                } else {
+                    add_data_field_unsupported(&mut st);
+                } }
             }
             Some(ScalarType::ComplexDouble) => {
-                cfg_if::cfg_if! {
-                    if #[cfg(feature = "complex")] {
-                        add_data_field::<_, num_complex::Complex64>(self, &mut st);
-                    } else {
-                        add_data_field_unsupported(&mut st);
-                    }
-                }
+                cfg_if::cfg_if! { if #[cfg(feature = "complex")] {
+                    add_data_field::<_, num_complex::Complex64>(self, &mut st);
+                } else {
+                    add_data_field_unsupported(&mut st);
+                } }
             }
             Some(ScalarType::Bool) => add_data_field::<_, bool>(self, &mut st),
             Some(ScalarType::QInt8) => add_data_field_unsupported(&mut st),
             Some(ScalarType::QUInt8) => add_data_field_unsupported(&mut st),
             Some(ScalarType::QInt32) => add_data_field_unsupported(&mut st),
             Some(ScalarType::BFloat16) => {
-                cfg_if::cfg_if! {
-                    if #[cfg(feature = "f16")] {
-                        add_data_field::<_, half::bf16>(self, &mut st);
-                    } else {
-                        add_data_field_unsupported(&mut st);
-                    }
-                }
+                cfg_if::cfg_if! { if #[cfg(feature = "f16")] {
+                    add_data_field::<_, half::bf16>(self, &mut st);
+                } else {
+                    add_data_field_unsupported(&mut st);
+                } }
             }
             Some(ScalarType::QUInt4x2) => add_data_field_unsupported(&mut st),
             Some(ScalarType::QUInt2x4) => add_data_field_unsupported(&mut st),
@@ -703,13 +701,13 @@ impl<'a> TensorImplMut<'a> {
 pub struct ArrayAsTensorBase<'a, D: Data> {
     // The sizes field is not used directly, but it must be alive as the tensor impl has a reference to it
     #[allow(dead_code)]
-    sizes: Vec<SizesType>,
+    sizes: crate::Vec<SizesType>,
     // The dim_order field is not used directly, but it must be alive as the tensor impl has a reference to it
     #[allow(dead_code)]
-    dim_order: Vec<DimOrderType>,
+    dim_order: crate::Vec<DimOrderType>,
     // The strides field is not used directly, but it must be alive as the tensor impl has a reference to it
     #[allow(dead_code)]
-    strides: Vec<StridesType>,
+    strides: crate::Vec<StridesType>,
     tensor_impl: TensorImplBase<'a, D>,
 }
 /// A variant of `ArrayAsTensorBase` for an immutable tensor
@@ -720,13 +718,13 @@ impl<'a, D: Data> ArrayAsTensorBase<'a, D> {
     unsafe fn from_array<S: Scalar, ArrS: ndarray::RawData, Dim: Dimension>(
         array: ArrayBase<ArrS, Dim>,
     ) -> ArrayAsTensorBase<'a, D> {
-        let sizes: Vec<SizesType> = array
+        let sizes: crate::Vec<SizesType> = array
             .shape()
             .iter()
             .map(|&size| size.try_into().unwrap())
             .collect();
-        let dim_order: Vec<DimOrderType> = (0..array.ndim() as DimOrderType).collect();
-        let strides: Vec<StridesType> = ndarray::ArrayBase::strides(&array)
+        let dim_order: crate::Vec<DimOrderType> = (0..array.ndim() as DimOrderType).collect();
+        let strides: crate::Vec<StridesType> = ndarray::ArrayBase::strides(&array)
             .iter()
             .map(|&s| s.try_into().unwrap())
             .collect();
@@ -1007,7 +1005,7 @@ mod tests {
 
     #[test]
     fn test_tensor_with_scalar_type() {
-        fn test_scalar_type<S: Scalar>(data_allocator: impl FnOnce(usize) -> Vec<S>) {
+        fn test_scalar_type<S: Scalar>(data_allocator: impl FnOnce(usize) -> crate::Vec<S>) {
             let sizes = [2, 4, 17];
             let data = data_allocator(2 * 4 * 17);
             let dim_order = [0, 1, 2];

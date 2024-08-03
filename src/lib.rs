@@ -69,6 +69,20 @@
 //! To use the library you must compile the C++ executorch library yourself, as there are many configurations that
 //! determines which modules, backends, and operations are supported. See the `executorch-sys` crate for more info.
 
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(not(feature = "std"))]
+extern crate core as std;
+
+// #[cfg(all(feature = "alloc", not(feature = "std")))]
+cfg_if::cfg_if! { if #[cfg(feature = "std")] {
+    pub use std::vec::Vec;
+} else {
+    pub use alloc::vec::Vec;
+} }
+
+extern crate alloc;
+
 use executorch_sys::executorch_rs as et_rs_c;
 use executorch_sys::torch::executor as et_c;
 

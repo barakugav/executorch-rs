@@ -19,9 +19,8 @@ pub use file_data_loader::{BufferDataLoader, FileDataLoader, MlockConfig, MmapDa
 #[cfg(feature = "data-loader")]
 mod file_data_loader {
     use std::cell::UnsafeCell;
-    use std::ffi::CString;
+    use std::ffi::CStr;
     use std::marker::PhantomData;
-    use std::path::Path;
 
     use crate::error::Result;
     use crate::util::IntoRust;
@@ -36,7 +35,7 @@ mod file_data_loader {
     /// avoid the overhead of opening it again for every Load() call.
     pub struct FileDataLoader(UnsafeCell<et_c::util::FileDataLoader>);
     impl FileDataLoader {
-        /// Creates a new FileDataLoader that wraps the named file.
+        /// Creates a new FileDataLoader given a `Path`.
         ///
         /// # Arguments
         ///
@@ -57,9 +56,40 @@ mod file_data_loader {
         /// # Panics
         ///
         /// Panics if `file_name` is not a valid UTF-8 string or if it contains a null byte.
-        pub fn new(file_name: impl AsRef<Path>, alignment: Option<usize>) -> Result<Self> {
+        #[cfg(feature = "std")]
+        pub fn from_path(
+            file_name: impl AsRef<std::path::Path>,
+            alignment: Option<usize>,
+        ) -> Result<Self> {
             let file_name = file_name.as_ref().to_str().expect("Invalid file name");
-            let file_name = CString::new(file_name).unwrap();
+            let file_name = std::ffi::CString::new(file_name).unwrap();
+            Self::from_cstr(&file_name, alignment)
+        }
+
+        /// Creates a new FileDataLoader given a `CStr`.
+        ///
+        /// This function is useful when compiling with `no_std`.
+        ///
+        /// # Arguments
+        ///
+        /// * `file_name` - Path to the file to read from.
+        /// * `alignment` - Alignment in bytes of pointers returned by this instance. Must be a power of two.
+        /// Defaults to 16.
+        ///
+        /// # Returns
+        ///
+        /// A new FileDataLoader on success.
+        ///
+        /// # Errors
+        ///
+        /// * `Error::InvalidArgument` - `alignment` is not a power of two.
+        /// * `Error::AccessFailed` - `file_name` could not be opened, or its size could not be found.
+        /// * `Error::MemoryAllocationFailed` - Internal memory allocation failure.
+        ///
+        /// # Safety
+        ///
+        /// The `file_name` should be a valid UTF-8 string and not contains a null byte other than the one at the end.
+        pub fn from_cstr(file_name: &CStr, alignment: Option<usize>) -> Result<Self> {
             let alignment = alignment.unwrap_or(16);
             let loader =
                 unsafe { et_c::util::FileDataLoader::from(file_name.as_ptr(), alignment) }.rs()?;
@@ -86,7 +116,8 @@ mod file_data_loader {
     /// avoid the overhead of opening it again for every Load() call.
     pub struct MmapDataLoader(UnsafeCell<et_c::util::MmapDataLoader>);
     impl MmapDataLoader {
-        /// Creates a new MmapDataLoader that wraps the named file.
+        /// Creates a new MmapDataLoader from a `Path`.
+        ///
         /// Fails if the file can't be opened for reading or if its size can't be found.
         ///
         /// # Arguments
@@ -98,9 +129,39 @@ mod file_data_loader {
         /// # Returns
         ///
         /// A new MmapDataLoader on success.
-        pub fn new(file_name: impl AsRef<Path>, mlock_config: Option<MlockConfig>) -> Result<Self> {
+        ///
+        /// # Panics
+        ///
+        /// Panics if `file_name` is not a valid UTF-8 string or if it contains a null byte.
+        #[cfg(feature = "std")]
+        pub fn from_path(
+            file_name: impl AsRef<std::path::Path>,
+            mlock_config: Option<MlockConfig>,
+        ) -> Result<Self> {
             let file_name = file_name.as_ref().to_str().expect("Invalid file name");
-            let file_name = CString::new(file_name).unwrap();
+            let file_name = std::ffi::CString::new(file_name).unwrap();
+            Self::from_cstr(&file_name, mlock_config)
+        }
+
+        /// Creates a new MmapDataLoader from a `CStr`.
+        ///
+        /// This function is useful when compiling with `no_std`.
+        /// Fails if the file can't be opened for reading or if its size can't be found.
+        ///
+        /// # Arguments
+        ///
+        /// * `file_name` - Path to the file to read from. The file will be kept open until the MmapDataLoader is
+        /// destroyed, to avoid the overhead of opening it again for every Load() call.
+        /// * `mlock_config` - How and whether to lock loaded pages with `mlock()`. Defaults to `MlockConfig::UseMlock`.
+        ///
+        /// # Returns
+        ///
+        /// A new MmapDataLoader on success.
+        ///
+        /// # Safety
+        ///
+        /// The `file_name` should be a valid UTF-8 string and not contains a null byte other than the one at the end.
+        pub fn from_cstr(file_name: &CStr, mlock_config: Option<MlockConfig>) -> Result<Self> {
             let mlock_config = mlock_config.unwrap_or(MlockConfig::UseMlock);
             let loader: et_c::util::MmapDataLoader =
                 unsafe { et_c::util::MmapDataLoader::from(file_name.as_ptr(), mlock_config) }

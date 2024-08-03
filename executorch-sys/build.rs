@@ -59,6 +59,7 @@ fn generate_bindings() {
         .emit_builtins()
         .enable_function_attribute_detection()
         .generate_cstr(true)
+        .use_core()
         .header_contents(bindings_defines_h.to_str().unwrap(), &bindings_defines)
         .header(bindings_h.as_os_str().to_str().unwrap())
         .allowlist_file(format!(

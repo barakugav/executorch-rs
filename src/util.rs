@@ -9,7 +9,7 @@ use std::hash::Hash;
 use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
 
-use crate::{et_c, et_rs_c};
+use crate::et_c;
 
 pub(crate) trait IntoRust {
     type RsType;
@@ -193,21 +193,23 @@ impl<T: Debug> Debug for Optional<T> {
 }
 
 #[allow(dead_code)]
-pub(crate) fn str2chars(s: &str) -> Result<&[std::os::raw::c_char], &'static str> {
+pub(crate) fn str2chars(s: &str) -> Result<&[std::ffi::c_char], &'static str> {
     let bytes = s.as_bytes();
     if bytes.iter().any(|&b| b == 0) {
         return Err("String contains null byte");
     }
-    let chars = bytes.as_ptr().cast::<std::os::raw::c_char>();
+    let chars = bytes.as_ptr().cast::<std::ffi::c_char>();
     Ok(unsafe { std::slice::from_raw_parts(chars, bytes.len()) })
 }
 #[allow(dead_code)]
-pub(crate) fn chars2string(chars: Vec<std::os::raw::c_char>) -> String {
-    let bytes = unsafe { std::mem::transmute::<Vec<std::os::raw::c_char>, Vec<u8>>(chars) };
+#[cfg(feature = "std")]
+pub(crate) fn chars2string(chars: Vec<std::ffi::c_char>) -> String {
+    let bytes = unsafe { std::mem::transmute::<Vec<std::ffi::c_char>, Vec<u8>>(chars) };
     String::from_utf8(bytes).unwrap()
 }
 
-impl<T> IntoRust for et_rs_c::RawVec<T> {
+#[cfg(feature = "std")]
+impl<T> IntoRust for crate::et_rs_c::RawVec<T> {
     type RsType = Vec<T>;
     fn rs(self) -> Self::RsType {
         unsafe { Vec::from_raw_parts(self.data, self.len, self.cap) }
@@ -216,6 +218,7 @@ impl<T> IntoRust for et_rs_c::RawVec<T> {
 
 // Debug func
 #[allow(dead_code)]
+#[cfg(feature = "std")]
 pub(crate) fn to_bytes<T>(val: &T) -> Vec<u8> {
     (0..std::mem::size_of_val(val))
         .map(|i| unsafe {

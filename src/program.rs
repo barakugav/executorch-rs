@@ -5,7 +5,7 @@
 //!
 //! See the `hello_world_add` example for how to load and execute a program.
 
-use std::ffi::{CStr, CString};
+use std::ffi::CStr;
 use std::marker::PhantomData;
 use std::ops::Index;
 use std::ptr;
@@ -79,10 +79,9 @@ impl<'a> Program<'a> {
     /// The loaded method on success, or an error on failure.
     pub fn load_method(
         &self,
-        method_name: &str,
+        method_name: &CStr,
         memory_manager: &'a MemoryManager,
     ) -> Result<Method<'a>> {
-        let method_name = CString::new(method_name).unwrap();
         let memory_manager = memory_manager.0.get();
         let event_tracer = ptr::null_mut(); // TODO: support event tracer
         let method = unsafe {
@@ -97,8 +96,7 @@ impl<'a> Program<'a> {
     /// # Arguments
     ///
     /// * `method_name` - The name of the method to get metadata for.
-    pub fn method_meta(&self, method_name: &str) -> Result<MethodMeta<'a>> {
-        let method_name = CString::new(method_name).unwrap();
+    pub fn method_meta(&self, method_name: &CStr) -> Result<MethodMeta<'a>> {
         let meta = unsafe { et_rs_c::Program_method_meta(&self.0, method_name.as_ptr()) }.rs()?;
         Ok(unsafe { MethodMeta::new(meta) })
     }
