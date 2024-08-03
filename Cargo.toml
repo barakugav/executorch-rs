@@ -10,8 +10,29 @@ name = "executorch"
 version = "0.1.0"
 authors = ["Barak Ugav <barakugav@gmail.com>"]
 edition = "2021"
+description = "Rust bindings for Executorch 0.2.1 - On-device AI across mobile, embedded and edge for PyTorch"
+readme = "README.md"
 repository = "https://github.com/barakugav/executorch-rs"
 license = "Apache-2.0"
+keywords = [
+    "executorch",
+    "pytorch",
+    "ai",
+    "ml",
+    "machine-learning",
+    "mobile",
+    "embedded",
+    "edge-device",
+    "bindings",
+]
+categories = [
+    "algorithms",
+    "mathematics",
+    "embedded",
+    "no-std",
+    "no-std::no-alloc",
+]
+include = ["Cargo.toml", "src/", "README.md", "LICENSE"]
 
 [dependencies]
 executorch-sys = { path = "executorch-sys" }
