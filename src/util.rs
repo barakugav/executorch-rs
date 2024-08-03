@@ -100,6 +100,59 @@ impl<'a, T> Span<'a, T> {
     }
 }
 
+/// Leaner optional class, subset of c10, std, and boost optional APIs.
+pub struct Optional<T>(et_c::optional<T>);
+impl<T> Optional<T> {
+    /// Create a new Optional based on the given Option.
+    pub fn new(val: Option<T>) -> Self {
+        let is_some = val.is_some();
+        Self(et_c::optional::<T> {
+            trivial_init: et_c::optional_trivial_init_t { _address: 0 },
+            storage_: val
+                .map(|value| et_c::optional_storage_t {
+                    value_: ManuallyDrop::new(value),
+                })
+                .unwrap_or(et_c::optional_storage_t {
+                    dummy_: ManuallyDrop::new(0),
+                }),
+            init_: is_some,
+            _phantom_0: PhantomData,
+        })
+    }
+
+    /// Get an optional reference to the value.
+    pub fn as_ref(&self) -> Option<&T> {
+        self.0.init_.then(|| unsafe { &*self.0.storage_.value_ })
+    }
+
+    /// Convert this Optional into an Option.
+    pub fn into_option(mut self) -> Option<T> {
+        self.0.init_.then(|| {
+            self.0.init_ = false;
+            unsafe { ManuallyDrop::take(&mut self.0.storage_.value_) }
+        })
+    }
+}
+impl<T> Drop for Optional<T> {
+    fn drop(&mut self) {
+        if self.0.init_ {
+            unsafe {
+                ManuallyDrop::drop(&mut self.0.storage_.value_);
+            }
+        }
+    }
+}
+impl<T> From<Optional<T>> for Option<T> {
+    fn from(opt: Optional<T>) -> Option<T> {
+        opt.into_option()
+    }
+}
+impl<T> From<Option<T>> for Optional<T> {
+    fn from(opt: Option<T>) -> Optional<T> {
+        Optional::new(opt)
+    }
+}
+
 #[allow(dead_code)]
 pub(crate) fn str2chars(s: &str) -> Result<&[std::os::raw::c_char], &'static str> {
     let bytes = s.as_bytes();

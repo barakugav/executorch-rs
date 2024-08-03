@@ -1,8 +1,8 @@
 use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
 
-use crate::util::IntoRust;
-use crate::{et_c, et_rs_c, tensor::Tensor, ArrayRef, Error, Result};
+use crate::util::{ArrayRef, IntoRust};
+use crate::{et_c, et_rs_c, tensor::Tensor, Error, Result};
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]

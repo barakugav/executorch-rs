@@ -2,7 +2,8 @@ use std::cell::UnsafeCell;
 use std::marker::PhantomData;
 use std::ptr;
 
-use crate::{et_c, et_rs_c, Span};
+use crate::util::Span;
+use crate::{et_c, et_rs_c};
 
 /// A class that does simple allocation based on a size and returns the pointer
 /// to the memory address. It bookmarks a buffer with certain size. The

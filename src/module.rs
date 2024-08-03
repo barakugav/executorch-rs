@@ -2,8 +2,9 @@ use std::collections::HashSet;
 use std::path::Path;
 use std::ptr;
 
-use crate::{et_c, et_rs_c, util::IntoRust, ArrayRef, EValue, Result};
-use crate::{util, MethodMeta, ProgramVerification};
+use crate::util::{self, ArrayRef, IntoRust};
+use crate::{et_c, et_rs_c, EValue, Result};
+use crate::{MethodMeta, ProgramVerification};
 
 /// A facade class for loading programs and executing methods within them.
 pub struct Module(et_c::Module);

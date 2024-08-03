@@ -3,7 +3,8 @@ use std::marker::PhantomData;
 
 use ndarray::{ArrayBase, ArrayView, ArrayViewD, ArrayViewMut, Dimension, IxDyn, ShapeBuilder};
 
-use crate::{et_c, et_rs_c, util, Span};
+use crate::util::{self, Span};
+use crate::{et_c, et_rs_c};
 
 /// A type that represents the sizes (dimensions) of a tensor.
 pub type SizesType = executorch_sys::exec_aten::SizesType;

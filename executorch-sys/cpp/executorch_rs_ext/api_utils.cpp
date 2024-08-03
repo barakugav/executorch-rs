@@ -5,7 +5,6 @@
 
 namespace executorch_rs
 {
-
     namespace
     {
         template <typename T>
