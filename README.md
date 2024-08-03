@@ -45,10 +45,10 @@ let outputs = module.forward(&[input_evalue1, input_evalue2]).unwrap();
 assert_eq!(outputs.len(), 1);
 let output = outputs.into_iter().next().unwrap();
 assert_eq!(output.tag(), Some(Tag::Tensor));
-let output = output.as_tensor().as_array::<f32>();
+let output = output.as_tensor();
 
 println!("Output tensor computed: {:?}", output);
-assert_eq!(output, array![2.0].into_dyn());
+assert_eq!(array![2.0_f32], output.as_array());
 ```
 See `example/hello_world_add` and `example/hello_world_add_module` for the complete examples.
 

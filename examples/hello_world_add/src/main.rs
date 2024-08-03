@@ -59,8 +59,8 @@ fn main() {
     let outputs = method_exe.execute().unwrap();
     let output = outputs.get_output(0);
     assert_eq!(output.tag(), Some(Tag::Tensor));
-    let output = output.as_tensor().as_array_dyn::<f32>();
+    let output = output.as_tensor();
 
     println!("Output tensor computed: {:?}", output);
-    assert_eq!(output, array![2.0].into_dyn());
+    assert_eq!(array![2.0_f32], output.as_array());
 }

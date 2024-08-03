@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+use std::hash::Hash;
 use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
 
@@ -57,6 +59,11 @@ impl<'a, T> ArrayRef<'a, T> {
         unsafe { std::slice::from_raw_parts(self.0.Data, self.0.Length) }
     }
 }
+impl<T: Debug> Debug for ArrayRef<'_, T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.as_slice().fmt(f)
+    }
+}
 
 /// Represent a reference to an array (0 or more elements
 /// consecutively in memory), i.e. a start pointer and a length.  It allows
@@ -97,6 +104,11 @@ impl<'a, T> Span<'a, T> {
     /// Get the underlying slice.
     pub fn as_slice(&self) -> &'a mut [T] {
         unsafe { std::slice::from_raw_parts_mut(self.0.data_, self.0.length_) }
+    }
+}
+impl<T: Debug> Debug for Span<'_, T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.as_slice().fmt(f)
     }
 }
 
@@ -150,6 +162,27 @@ impl<T> From<Optional<T>> for Option<T> {
 impl<T> From<Option<T>> for Optional<T> {
     fn from(opt: Option<T>) -> Optional<T> {
         Optional::new(opt)
+    }
+}
+impl<T: Clone> Clone for Optional<T> {
+    fn clone(&self) -> Self {
+        Self::new(self.as_ref().cloned())
+    }
+}
+impl<T: PartialEq> PartialEq for Optional<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.as_ref() == other.as_ref()
+    }
+}
+impl<T: Eq> Eq for Optional<T> {}
+impl<T: Hash> Hash for Optional<T> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.as_ref().hash(state)
+    }
+}
+impl<T: Debug> Debug for Optional<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.as_ref().fmt(f)
     }
 }
 

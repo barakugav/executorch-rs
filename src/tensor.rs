@@ -1,4 +1,5 @@
 use std::any::TypeId;
+use std::fmt::Debug;
 use std::marker::PhantomData;
 
 use ndarray::{ArrayBase, ArrayView, ArrayViewD, ArrayViewMut, Dimension, IxDyn, ShapeBuilder};
@@ -483,6 +484,61 @@ impl<'a, D: Data> TensorImplBase<'a, D> {
     }
 }
 
+impl<D: Data> Debug for TensorBase<'_, D> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut st = f.debug_struct("Tensor");
+        st.field("scalar_type", &self.scalar_type());
+
+        fn add_data_field<D: Data, S: Scalar + Debug + 'static>(
+            this: &TensorBase<'_, D>,
+            st: &mut std::fmt::DebugStruct,
+        ) {
+            match this.dim() {
+                0 => st.field("data", &this.as_array::<S, ndarray::Ix0>()),
+                1 => st.field("data", &this.as_array::<S, ndarray::Ix1>()),
+                2 => st.field("data", &this.as_array::<S, ndarray::Ix2>()),
+                3 => st.field("data", &this.as_array::<S, ndarray::Ix3>()),
+                4 => st.field("data", &this.as_array::<S, ndarray::Ix4>()),
+                5 => st.field("data", &this.as_array::<S, ndarray::Ix5>()),
+                6 => st.field("data", &this.as_array::<S, ndarray::Ix6>()),
+                _ => st.field("data", &this.as_array_dyn::<S>()),
+            };
+        }
+        fn add_data_field_unsupported(st: &mut std::fmt::DebugStruct) {
+            st.field("data", &"unsupported");
+        }
+        match self.scalar_type() {
+            Some(ScalarType::Byte) => add_data_field::<_, u8>(self, &mut st),
+            Some(ScalarType::Char) => add_data_field::<_, i8>(self, &mut st),
+            Some(ScalarType::Short) => add_data_field::<_, i16>(self, &mut st),
+            Some(ScalarType::Int) => add_data_field::<_, i32>(self, &mut st),
+            Some(ScalarType::Long) => add_data_field::<_, i64>(self, &mut st),
+            Some(ScalarType::Half) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::Float) => add_data_field::<_, f32>(self, &mut st),
+            Some(ScalarType::Double) => add_data_field::<_, f64>(self, &mut st),
+            Some(ScalarType::ComplexHalf) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::ComplexFloat) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::ComplexDouble) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::Bool) => add_data_field::<_, bool>(self, &mut st),
+            Some(ScalarType::QInt8) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::QUInt8) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::QInt32) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::BFloat16) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::QUInt4x2) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::QUInt2x4) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::Bits1x8) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::Bits2x4) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::Bits4x2) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::Bits8) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::Bits16) => add_data_field_unsupported(&mut st),
+            None => {
+                st.field("data", &"None");
+            }
+        };
+        st.finish()
+    }
+}
+
 /// An immutable tensor implementation that does not own the underlying data.
 pub type TensorImpl<'a> = TensorImplBase<'a, View>;
 impl<'a> TensorImpl<'a> {
@@ -701,6 +757,17 @@ impl<'a> TensorInfo<'a> {
         unsafe { et_c::TensorInfo_nbytes(&self.0) }
     }
 }
+impl Debug for TensorInfo<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TensorInfo")
+            .field("sizes", &self.sizes())
+            .field("dim_order", &self.dim_order())
+            .field("scalar_type", &self.scalar_type())
+            .field("nbytes", &self.nbytes())
+            .finish()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use ndarray::{arr1, arr2, Array1, Array2, Array3, Ix3};

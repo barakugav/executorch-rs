@@ -3,7 +3,7 @@ use std::mem::ManuallyDrop;
 use crate::{et_c, et_rs_c, util::IntoRust};
 
 /// ExecuTorch Error type.
-#[derive(Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 #[repr(u8)]
 pub enum Error {
     /* System errors */
@@ -48,6 +48,31 @@ pub enum Error {
     /// Execute stage: The handle is invalid.
     DelegateInvalidHandle = et_c::Error::DelegateInvalidHandle as u8,
 }
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let msg = match self {
+            Error::Internal => "An internal error occurred",
+            Error::InvalidState => "Executor is in an invalid state for a target",
+            Error::EndOfMethod => "No more steps of execution to run",
+            Error::NotSupported => "Operation is not supported in the current context",
+            Error::NotImplemented => "Operation is not yet implemented",
+            Error::InvalidArgument => "User provided an invalid argument",
+            Error::InvalidType => "Object is an invalid type for the operation",
+            Error::OperatorMissing => "Operator(s) missing in the operator registry",
+            Error::NotFound => "Requested resource could not be found",
+            Error::MemoryAllocationFailed => "Could not allocate the requested memory",
+            Error::AccessFailed => "Could not access a resource",
+            Error::InvalidProgram => "Error caused by the contents of a program",
+            Error::DelegateInvalidCompatibility => {
+                "Backend receives an incompatible delegate version"
+            }
+            Error::DelegateMemoryAllocationFailed => "Backend fails to allocate memory",
+            Error::DelegateInvalidHandle => "The handle is invalid",
+        };
+        write!(f, "{}", msg)
+    }
+}
+impl std::error::Error for Error {}
 
 impl IntoRust for et_c::Error {
     type RsType = Result<()>;
@@ -120,5 +145,22 @@ impl IntoRust for et_rs_c::Result_MethodMeta {
                 Error::Internal
             }))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::Error;
+
+    #[test]
+    fn test_error_send() {
+        fn assert_send<T: Send>() {}
+        assert_send::<Error>();
+    }
+
+    #[test]
+    fn test_error_sync() {
+        fn assert_sync<T: Sync>() {}
+        assert_sync::<Error>();
     }
 }
