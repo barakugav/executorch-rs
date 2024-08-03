@@ -5,29 +5,14 @@ use executorch_sys::torch::executor as et_c;
 
 #[macro_use]
 mod private;
-
-mod error;
-pub use error::{Error, Result};
-
 pub mod data_loader;
-
-mod memory;
-pub use memory::{HierarchicalAllocator, MallocMemoryAllocator, MemoryManager};
-
-mod program;
-pub use program::{Method, MethodMeta, Program, ProgramVerification};
-
+pub mod error;
+pub mod evalue;
+pub mod memory;
 #[cfg(feature = "module")]
-mod module;
-#[cfg(feature = "module")]
-pub use module::Module;
-
-mod evalue;
-pub use evalue::{EValue, Tag};
-
-mod tensor;
-pub use tensor::{Tensor, TensorImpl, TensorInfo, TensorMut};
-
+pub mod module;
+pub mod program;
+pub mod tensor;
 pub mod util;
 
 pub fn pal_init() {

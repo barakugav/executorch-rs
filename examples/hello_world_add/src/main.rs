@@ -1,11 +1,12 @@
 #![deny(warnings)]
 
 use executorch::data_loader::FileDataLoader;
+use executorch::evalue::{EValue, Tag};
+use executorch::memory::{HierarchicalAllocator, MallocMemoryAllocator, MemoryManager};
+use executorch::program::{Program, ProgramVerification};
+use executorch::tensor::{Tensor, TensorImpl};
 use executorch::util::Span;
-use executorch::{
-    EValue, HierarchicalAllocator, MallocMemoryAllocator, MemoryManager, Program,
-    ProgramVerification, Tag, Tensor, TensorImpl,
-};
+
 use ndarray::array;
 use std::vec;
 

@@ -150,7 +150,7 @@ impl IntoRust for et_rs_c::Result_MethodMeta {
 
 #[cfg(test)]
 mod tests {
-    use crate::Error;
+    use super::Error;
 
     #[test]
     fn test_error_send() {

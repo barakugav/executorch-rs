@@ -2,8 +2,9 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
 
+use crate::error::{Error, Result};
 use crate::util::{ArrayRef, IntoRust};
-use crate::{et_c, et_rs_c, tensor::Tensor, Error, Result};
+use crate::{et_c, et_rs_c, tensor::Tensor};
 
 /// A tag indicating the type of the value stored in an `EValue`.
 #[repr(u8)]

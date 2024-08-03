@@ -3,9 +3,13 @@ use std::marker::PhantomData;
 use std::ptr;
 
 use crate::data_loader::DataLoader;
+use crate::error::Result;
 use crate::evalue::EValue;
+use crate::evalue::Tag;
+use crate::memory::MemoryManager;
+use crate::tensor::TensorInfo;
 use crate::util::IntoRust;
-use crate::{et_c, et_rs_c, MemoryManager, Result, Tag, TensorInfo};
+use crate::{et_c, et_rs_c};
 
 /// A deserialized ExecuTorch program binary.
 pub struct Program<'a>(et_c::Program, PhantomData<&'a ()>);

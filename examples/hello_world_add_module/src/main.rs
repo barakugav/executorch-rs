@@ -1,6 +1,8 @@
 #![deny(warnings)]
 
-use executorch::{EValue, Module, Tag, Tensor, TensorImpl};
+use executorch::evalue::{EValue, Tag};
+use executorch::module::Module;
+use executorch::tensor::{Tensor, TensorImpl};
 use ndarray::array;
 
 fn main() {

@@ -15,8 +15,9 @@ mod file_data_loader {
     use std::marker::PhantomData;
     use std::path::Path;
 
+    use crate::error::Result;
     use crate::util::IntoRust;
-    use crate::{et_c, et_rs_c, Result};
+    use crate::{et_c, et_rs_c};
 
     use super::DataLoader;
 

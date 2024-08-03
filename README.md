@@ -28,7 +28,9 @@ with open("model.pte", "wb") as file:
 ```
 Execute the model in Rust:
 ```rust
-use executorch::{EValue, Module, Tag, Tensor, TensorImpl};
+use executorch::evalue::{EValue, Tag};
+use executorch::module::Module;
+use executorch::tensor::{Tensor, TensorImpl};
 use ndarray::array;
 
 let mut module = Module::new("model.pte", None);
