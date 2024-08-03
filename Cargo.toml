@@ -37,6 +37,8 @@ features = ["data-loader", "module"]
 executorch-sys = { path = "executorch-sys", version = "0.1.0" }
 ndarray = "0.15.6"
 log = "0.4.22"
+half = { version = "2.4.1", optional = true }
+cfg-if = "1.0.0"
 
 [build-dependencies]
 bindgen = "0.69.4"
@@ -46,3 +48,4 @@ envsubst = "0.2.1"
 [features]
 data-loader = ["executorch-sys/data-loader"]
 module = ["executorch-sys/module"]
+f16 = ["half"]
