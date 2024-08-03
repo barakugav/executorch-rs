@@ -34,6 +34,9 @@ categories = [
 ]
 include = ["Cargo.toml", "src/", "README.md", "LICENSE"]
 
+[package.metadata.docs.rs]
+features = ["data-loader", "module"]
+
 [dependencies]
 executorch-sys = { path = "executorch-sys", version = "0.1.0-rc.1" }
 ndarray = "0.15.6"

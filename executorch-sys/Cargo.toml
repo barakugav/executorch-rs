@@ -27,6 +27,9 @@ categories = [
 ]
 links = "executorch"
 
+[package.metadata.docs.rs]
+features = ["data-loader", "module"]
+
 [features]
 data-loader = []
 module = []
