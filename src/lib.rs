@@ -11,7 +11,7 @@
 //! The following example create a simple model in Python, exports it, and then executes it in Rust:
 //!
 //! Create a model in `Python` and export it:
-//! ```python
+//! ```
 //! import torch
 //! from executorch.exir import to_edge
 //! from torch.export import export
@@ -32,7 +32,8 @@
 //! ```
 //!
 //! Execute the model in Rust:
-//! ```rustuse executorch::evalue::{EValue, Tag};
+//! ```rust
+//! rustuse executorch::evalue::{EValue, Tag};
 //! use executorch::module::Module;
 //! use executorch::tensor::{Tensor, TensorImpl};
 //! use ndarray::array;
