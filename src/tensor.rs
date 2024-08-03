@@ -265,7 +265,9 @@ impl<'a, D: Data> TensorBase<'a, D> {
 
     /// Returns a pointer to the constant underlying data blob.
     ///
-    /// Safety: The caller must access the values in the returned pointer according to the type of the tensor.
+    /// # Safety
+    ///
+    /// The caller must access the values in the returned pointer according to the type of the tensor.
     pub unsafe fn as_ptr_bytes(&self) -> *const u8 {
         (unsafe { et_rs_c::Tensor_const_data_ptr(&self.0) }) as *const u8
     }

@@ -314,6 +314,11 @@ impl<'a> Outputs<'a> {
     pub fn len(&self) -> usize {
         unsafe { self.method.outputs_size() }
     }
+
+    /// Returns true if the Method returns no outputs.
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 impl<'a> Index<usize> for Outputs<'a> {
     type Output = EValue<'a>;
