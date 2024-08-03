@@ -1,18 +1,16 @@
-use std::cell::RefMut;
+use std::cell::UnsafeCell;
 
 use crate::et_c;
 
 /// Loads from a data source.
-pub trait DataLoader {
-    fn data_loader(&self) -> RefMut<et_c::DataLoader>;
-}
+pub struct DataLoader(pub(crate) UnsafeCell<et_c::DataLoader>);
 
 #[cfg(feature = "extension-data-loader")]
 pub use file_data_loader::{BufferDataLoader, FileDataLoader, MlockConfig, MmapDataLoader};
 
 #[cfg(feature = "extension-data-loader")]
 mod file_data_loader {
-    use std::cell::{RefCell, RefMut};
+    use std::cell::UnsafeCell;
     use std::ffi::CString;
     use std::marker::PhantomData;
     use std::path::Path;
@@ -27,7 +25,7 @@ mod file_data_loader {
     ///
     /// Note that this will keep the file open for the duration of its lifetime, to
     /// avoid the overhead of opening it again for every Load() call.
-    pub struct FileDataLoader(RefCell<et_c::util::FileDataLoader>);
+    pub struct FileDataLoader(UnsafeCell<et_c::util::FileDataLoader>);
     impl FileDataLoader {
         /// Creates a new FileDataLoader that wraps the named file.
         ///
@@ -54,25 +52,21 @@ mod file_data_loader {
             let file_name = file_name.as_ref().to_str().expect("Invalid file name");
             let file_name = CString::new(file_name).unwrap();
             let alignment = alignment.unwrap_or(16);
-            let loader: et_c::util::FileDataLoader =
+            let loader =
                 unsafe { et_c::util::FileDataLoader::from(file_name.as_ptr(), alignment) }.rs()?;
-            Ok(Self(RefCell::new(loader)))
+            Ok(Self(UnsafeCell::new(loader)))
         }
     }
-    impl DataLoader for FileDataLoader {
-        fn data_loader(&self) -> RefMut<et_c::DataLoader> {
-            RefMut::map(self.0.borrow_mut(), |loader| unsafe {
-                std::mem::transmute::<&mut et_c::util::FileDataLoader, &mut et_c::DataLoader>(
-                    loader,
-                )
-            })
+    impl AsRef<DataLoader> for FileDataLoader {
+        fn as_ref(&self) -> &DataLoader {
+            // SAFETY: FileDataLoader has a single field of (UnsafeCell of) et_c::util::FileDataLoader, which is a
+            // subclass of et_c::DataLoader, and DataLoaders has a single field of (UnsafeCell of) et_c::DataLoader.
+            unsafe { std::mem::transmute::<&FileDataLoader, &DataLoader>(self) }
         }
     }
     impl Drop for FileDataLoader {
         fn drop(&mut self) {
-            unsafe {
-                et_c::util::FileDataLoader_FileDataLoader_destructor(&mut *self.0.borrow_mut())
-            };
+            unsafe { et_c::util::FileDataLoader_FileDataLoader_destructor(self.0.get_mut()) };
         }
     }
 
@@ -81,7 +75,7 @@ mod file_data_loader {
     ///
     /// Note that this will keep the file open for the duration of its lifetime, to
     /// avoid the overhead of opening it again for every Load() call.
-    pub struct MmapDataLoader(RefCell<et_c::util::MmapDataLoader>);
+    pub struct MmapDataLoader(UnsafeCell<et_c::util::MmapDataLoader>);
     impl MmapDataLoader {
         /// Creates a new MmapDataLoader that wraps the named file.
         /// Fails if the file can't be opened for reading or if its size can't be found.
@@ -102,23 +96,19 @@ mod file_data_loader {
             let loader: et_c::util::MmapDataLoader =
                 unsafe { et_c::util::MmapDataLoader::from(file_name.as_ptr(), mlock_config) }
                     .rs()?;
-            Ok(Self(RefCell::new(loader)))
+            Ok(Self(UnsafeCell::new(loader)))
         }
     }
-    impl DataLoader for MmapDataLoader {
-        fn data_loader(&self) -> RefMut<et_c::DataLoader> {
-            RefMut::map(self.0.borrow_mut(), |loader| unsafe {
-                std::mem::transmute::<&mut et_c::util::MmapDataLoader, &mut et_c::DataLoader>(
-                    loader,
-                )
-            })
+    impl AsRef<DataLoader> for MmapDataLoader {
+        fn as_ref(&self) -> &DataLoader {
+            // SAFETY: MmapDataLoader has a single field of (UnsafeCell of) et_c::util::MmapDataLoader, which is a
+            // subclass of et_c::DataLoader, and DataLoaders has a single field of (UnsafeCell of) et_c::DataLoader.
+            unsafe { std::mem::transmute::<&MmapDataLoader, &DataLoader>(self) }
         }
     }
     impl Drop for MmapDataLoader {
         fn drop(&mut self) {
-            unsafe {
-                et_c::util::MmapDataLoader_MmapDataLoader_destructor(&mut *self.0.borrow_mut())
-            };
+            unsafe { et_c::util::MmapDataLoader_MmapDataLoader_destructor(self.0.get_mut()) };
         }
     }
 
@@ -127,22 +117,24 @@ mod file_data_loader {
     ///
     /// This can be used to wrap data that is directly embedded into the firmware
     /// image, or to wrap data that was allocated elsewhere.
-    pub struct BufferDataLoader<'a>(RefCell<et_c::util::BufferDataLoader>, PhantomData<&'a ()>);
+    #[allow(dead_code)]
+    pub struct BufferDataLoader<'a>(
+        UnsafeCell<et_c::util::BufferDataLoader>,
+        PhantomData<&'a ()>,
+    );
     impl<'a> BufferDataLoader<'a> {
         /// Creates a new BufferDataLoader that wraps the given data.
         pub fn new(data: &'a [u8]) -> Self {
-            let loader: et_c::util::BufferDataLoader =
+            let loader =
                 unsafe { et_rs_c::BufferDataLoader_new(data.as_ptr() as *const _, data.len()) };
-            Self(RefCell::new(loader), PhantomData)
+            Self(UnsafeCell::new(loader), PhantomData)
         }
     }
-    impl<'a> DataLoader for BufferDataLoader<'a> {
-        fn data_loader(&self) -> RefMut<et_c::DataLoader> {
-            RefMut::map(self.0.borrow_mut(), |loader| unsafe {
-                std::mem::transmute::<&mut et_c::util::BufferDataLoader, &mut et_c::DataLoader>(
-                    loader,
-                )
-            })
+    impl AsRef<DataLoader> for BufferDataLoader<'_> {
+        fn as_ref(&self) -> &DataLoader {
+            // SAFETY: BufferDataLoader has a single field of (UnsafeCell of) et_c::util::BufferDataLoader, which is a
+            // subclass of et_c::DataLoader, and DataLoaders has a single field of (UnsafeCell of) et_c::DataLoader.
+            unsafe { std::mem::transmute::<&BufferDataLoader, &DataLoader>(self) }
         }
     }
 

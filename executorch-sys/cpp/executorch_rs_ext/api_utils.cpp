@@ -5,7 +5,6 @@
 
 namespace executorch_rs
 {
-
     namespace
     {
         template <typename T>
@@ -145,6 +144,14 @@ namespace executorch_rs
     void EValue_destructor(torch::executor::EValue *evalue)
     {
         evalue->~EValue();
+    }
+    const exec_aten::ArrayRef<int64_t> BoxedEvalueList_i64_get(const torch::executor::BoxedEvalueList<int64_t> *list)
+    {
+        return list->get();
+    }
+    const exec_aten::ArrayRef<exec_aten::Tensor> BoxedEvalueList_Tensor_get(const torch::executor::BoxedEvalueList<exec_aten::Tensor> *list)
+    {
+        return list->get();
     }
 
 #if defined(EXECUTORCH_RS_EXTENSION_DATA_LOADER)

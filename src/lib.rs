@@ -28,8 +28,7 @@ pub use evalue::{EValue, Tag};
 mod tensor;
 pub use tensor::{Tensor, TensorImpl, TensorInfo, TensorMut};
 
-mod util;
-pub use util::{ArrayRef, Span};
+pub mod util;
 
 pub fn pal_init() {
     unsafe { executorch_sys::et_pal_init() };

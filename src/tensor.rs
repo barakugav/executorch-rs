@@ -3,7 +3,8 @@ use std::marker::PhantomData;
 
 use ndarray::{ArrayBase, ArrayView, ArrayViewD, ArrayViewMut, Dimension, IxDyn, ShapeBuilder};
 
-use crate::{et_c, et_rs_c, util, Span};
+use crate::util::{self, Span};
+use crate::{et_c, et_rs_c};
 
 /// A type that represents the sizes (dimensions) of a tensor.
 pub type SizesType = executorch_sys::exec_aten::SizesType;
@@ -146,6 +147,11 @@ impl<'a, D: Data> TensorBase<'a, D> {
 
     pub(crate) unsafe fn from_inner(tensor: et_c::Tensor) -> Self {
         Self(tensor, PhantomData)
+    }
+
+    pub(crate) unsafe fn from_inner_ref(tensor: &et_c::Tensor) -> &Self {
+        // SAFETY: et_c::Tensor has the same memory layout as Tensor
+        std::mem::transmute::<&et_c::Tensor, &TensorBase<'a, D>>(tensor)
     }
 
     /// Returns the size of the tensor in bytes.

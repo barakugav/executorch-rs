@@ -1,8 +1,9 @@
-use std::cell::RefCell;
+use std::cell::UnsafeCell;
 use std::marker::PhantomData;
 use std::ptr;
 
-use crate::{et_c, et_rs_c, Span};
+use crate::util::Span;
+use crate::{et_c, et_rs_c};
 
 /// A class that does simple allocation based on a size and returns the pointer
 /// to the memory address. It bookmarks a buffer with certain size. The
@@ -78,7 +79,10 @@ impl Drop for HierarchicalAllocator {
 /// kernel and backend implementations are free to use a separate way to allocate
 /// memory (e.g., for things like scratch space). But we do suggest that backends
 /// and kernels use these provided allocators whenever possible.
-pub struct MemoryManager<'a>(pub(crate) RefCell<et_c::MemoryManager>, PhantomData<&'a ()>);
+pub struct MemoryManager<'a>(
+    pub(crate) UnsafeCell<et_c::MemoryManager>,
+    PhantomData<&'a ()>,
+);
 impl<'a> MemoryManager<'a> {
     /// Constructs a new MemoryManager.
     ///
@@ -95,7 +99,7 @@ impl<'a> MemoryManager<'a> {
     /// Must outlive the Method that uses it. May be `None` if the Method does not use kernels or delegates that
     /// allocate temporary data. This allocator will be reset after every kernel or delegate call during execution.
     pub fn new(
-        method_allocator: &'a mut MemoryAllocator,
+        method_allocator: &'a mut impl AsMut<MemoryAllocator>,
         planned_memory: Option<&'a mut HierarchicalAllocator>,
         temp_allocator: Option<&'a mut MemoryAllocator>,
     ) -> Self {
@@ -106,8 +110,8 @@ impl<'a> MemoryManager<'a> {
             .map(|x| &mut x.0 as *mut _)
             .unwrap_or(ptr::null_mut());
         Self(
-            RefCell::new(et_c::MemoryManager {
-                method_allocator_: &mut method_allocator.0,
+            UnsafeCell::new(et_c::MemoryManager {
+                method_allocator_: &mut method_allocator.as_mut().0,
                 planned_memory_: planned_memory,
                 temp_allocator_: temp_allocator,
             }),
