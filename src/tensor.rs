@@ -148,6 +148,11 @@ impl<'a, D: Data> TensorBase<'a, D> {
         Self(tensor, PhantomData)
     }
 
+    pub(crate) unsafe fn from_inner_ref(tensor: &et_c::Tensor) -> &Self {
+        // SAFETY: et_c::Tensor has the same memory layout as Tensor
+        std::mem::transmute::<&et_c::Tensor, &TensorBase<'a, D>>(tensor)
+    }
+
     /// Returns the size of the tensor in bytes.
     ///
     /// NOTE: Only the alive space is returned not the total capacity of the

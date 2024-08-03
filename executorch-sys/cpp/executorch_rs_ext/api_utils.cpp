@@ -146,6 +146,14 @@ namespace executorch_rs
     {
         evalue->~EValue();
     }
+    const exec_aten::ArrayRef<int64_t> BoxedEvalueList_i64_get(const torch::executor::BoxedEvalueList<int64_t> *list)
+    {
+        return list->get();
+    }
+    const exec_aten::ArrayRef<exec_aten::Tensor> BoxedEvalueList_Tensor_get(const torch::executor::BoxedEvalueList<exec_aten::Tensor> *list)
+    {
+        return list->get();
+    }
 
 #if defined(EXECUTORCH_RS_EXTENSION_DATA_LOADER)
     torch::executor::util::BufferDataLoader BufferDataLoader_new(const void *data, size_t size)

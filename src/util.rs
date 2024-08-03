@@ -27,9 +27,16 @@ pub(crate) trait IntoRust {
 #[allow(dead_code)]
 pub struct ArrayRef<'a, T>(pub(crate) et_c::ArrayRef<T>, PhantomData<&'a ()>);
 impl<'a, T> ArrayRef<'a, T> {
-    // pub(crate) unsafe fn new(arr: et_c::ArrayRef<T>) -> Self {
-    //     Self(arr, PhantomData)
-    // }
+    pub(crate) unsafe fn from_inner(arr: &et_c::ArrayRef<T>) -> Self {
+        Self(
+            et_c::ArrayRef::<T> {
+                Data: arr.Data,
+                Length: arr.Length,
+                _phantom_0: PhantomData,
+            },
+            PhantomData,
+        )
+    }
 
     /// Create an ArrayRef from a slice.
     ///

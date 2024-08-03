@@ -60,7 +60,6 @@ namespace executorch_rs
     void HierarchicalAllocator_destructor(torch::executor::HierarchicalAllocator *allocator);
 
     // Tensor
-
     size_t Tensor_nbytes(const exec_aten::Tensor *tensor);
     ssize_t Tensor_size(const exec_aten::Tensor *tensor, ssize_t dim);
     ssize_t Tensor_dim(const exec_aten::Tensor *tensor);
@@ -75,6 +74,8 @@ namespace executorch_rs
     void Tensor_destructor(exec_aten::Tensor *tensor);
 
     void EValue_destructor(torch::executor::EValue *evalue);
+    const exec_aten::ArrayRef<int64_t> BoxedEvalueList_i64_get(const torch::executor::BoxedEvalueList<int64_t> *list);
+    const exec_aten::ArrayRef<exec_aten::Tensor> BoxedEvalueList_Tensor_get(const torch::executor::BoxedEvalueList<exec_aten::Tensor> *list);
 
 #if defined(EXECUTORCH_RS_EXTENSION_DATA_LOADER)
     torch::executor::util::BufferDataLoader BufferDataLoader_new(const void *data, size_t size);
