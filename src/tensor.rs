@@ -33,17 +33,17 @@ pub enum ScalarType {
     Int = et_c::ScalarType::Int as u8,
     /// 64-bit signed integer, `i64`
     Long = et_c::ScalarType::Long as u8,
-    /// **\[Unsupported\]** 16-bit floating point
+    /// 16-bit floating point, `half::f16`, enabled by the `f16` feature
     Half = et_c::ScalarType::Half as u8,
     /// 32-bit floating point, `f32`
     Float = et_c::ScalarType::Float as u8,
     /// 64-bit floating point, `f64`
     Double = et_c::ScalarType::Double as u8,
-    /// **\[Unsupported\]** 16-bit complex floating point
+    /// 16-bit complex floating point, `num_complex::Complex<half::f16>`, enabled by the `complex` and `f16` features
     ComplexHalf = et_c::ScalarType::ComplexHalf as u8,
-    /// **\[Unsupported\]** 32-bit complex floating point
+    /// 32-bit complex floating point, `num_complex::Complex32`, enabled by the `complex` feature
     ComplexFloat = et_c::ScalarType::ComplexFloat as u8,
-    /// **\[Unsupported\]** 64-bit complex floating point
+    /// 64-bit complex floating point, `num_complex::Complex64`, enabled by the `complex` feature
     ComplexDouble = et_c::ScalarType::ComplexDouble as u8,
     /// Boolean, `bool`
     Bool = et_c::ScalarType::Bool as u8,
@@ -53,7 +53,7 @@ pub enum ScalarType {
     QUInt8 = et_c::ScalarType::QUInt8 as u8,
     /// **\[Unsupported\]** 32-bit quantized integer
     QInt32 = et_c::ScalarType::QInt32 as u8,
-    /// **\[Unsupported\]** 16-bit floating point using the bfloat16 format
+    /// 16-bit floating point using the bfloat16 format, `half::bf16`, enabled by the `f16` feature
     BFloat16 = et_c::ScalarType::BFloat16 as u8,
     /// **\[Unsupported\]**
     QUInt4x2 = et_c::ScalarType::QUInt4x2 as u8,
@@ -137,7 +137,7 @@ pub trait Scalar {
     private_decl! {}
 }
 macro_rules! impl_scalar {
-    ($rust_type:ident, $scalar_type_variant:ident) => {
+    ($rust_type:path, $scalar_type_variant:ident) => {
         impl Scalar for $rust_type {
             const TYPE: ScalarType = ScalarType::$scalar_type_variant;
             private_impl! {}
@@ -149,10 +149,19 @@ impl_scalar!(i8, Char);
 impl_scalar!(i16, Short);
 impl_scalar!(i32, Int);
 impl_scalar!(i64, Long);
-// impl_scalar!(f16, Half);
+#[cfg(feature = "f16")]
+impl_scalar!(half::f16, Half);
 impl_scalar!(f32, Float);
 impl_scalar!(f64, Double);
+#[cfg(all(feature = "complex", feature = "f16"))]
+impl_scalar!(num_complex::Complex<half::f16>, ComplexHalf);
+#[cfg(feature = "complex")]
+impl_scalar!(num_complex::Complex32, ComplexFloat);
+#[cfg(feature = "complex")]
+impl_scalar!(num_complex::Complex64, ComplexDouble);
 impl_scalar!(bool, Bool);
+#[cfg(feature = "f16")]
+impl_scalar!(half::bf16, BFloat16);
 
 /// A minimal Tensor type whose API is a source compatible subset of at::Tensor.
 ///
@@ -256,7 +265,9 @@ impl<'a, D: Data> TensorBase<'a, D> {
 
     /// Returns a pointer to the constant underlying data blob.
     ///
-    /// Safety: The caller must access the values in the returned pointer according to the type of the tensor.
+    /// # Safety
+    ///
+    /// The caller must access the values in the returned pointer according to the type of the tensor.
     pub unsafe fn as_ptr_bytes(&self) -> *const u8 {
         (unsafe { et_rs_c::Tensor_const_data_ptr(&self.0) }) as *const u8
     }
@@ -539,17 +550,57 @@ impl<D: Data> Debug for TensorBase<'_, D> {
             Some(ScalarType::Short) => add_data_field::<_, i16>(self, &mut st),
             Some(ScalarType::Int) => add_data_field::<_, i32>(self, &mut st),
             Some(ScalarType::Long) => add_data_field::<_, i64>(self, &mut st),
-            Some(ScalarType::Half) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::Half) => {
+                cfg_if::cfg_if! {
+                    if #[cfg(feature = "f16")] {
+                        add_data_field::<_, half::f16>(self, &mut st);
+                    } else {
+                        add_data_field_unsupported(&mut st);
+                    }
+                }
+            }
             Some(ScalarType::Float) => add_data_field::<_, f32>(self, &mut st),
             Some(ScalarType::Double) => add_data_field::<_, f64>(self, &mut st),
-            Some(ScalarType::ComplexHalf) => add_data_field_unsupported(&mut st),
-            Some(ScalarType::ComplexFloat) => add_data_field_unsupported(&mut st),
-            Some(ScalarType::ComplexDouble) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::ComplexHalf) => {
+                cfg_if::cfg_if! {
+                    if #[cfg(all(feature = "complex", feature = "f16"))] {
+                        add_data_field::<_, num_complex::Complex<half::f16>>(self, &mut st);
+                    } else {
+                        add_data_field_unsupported(&mut st);
+                    }
+                }
+            }
+            Some(ScalarType::ComplexFloat) => {
+                cfg_if::cfg_if! {
+                    if #[cfg(feature = "complex")] {
+                        add_data_field::<_, num_complex::Complex32>(self, &mut st);
+                    } else {
+                        add_data_field_unsupported(&mut st);
+                    }
+                }
+            }
+            Some(ScalarType::ComplexDouble) => {
+                cfg_if::cfg_if! {
+                    if #[cfg(feature = "complex")] {
+                        add_data_field::<_, num_complex::Complex64>(self, &mut st);
+                    } else {
+                        add_data_field_unsupported(&mut st);
+                    }
+                }
+            }
             Some(ScalarType::Bool) => add_data_field::<_, bool>(self, &mut st),
             Some(ScalarType::QInt8) => add_data_field_unsupported(&mut st),
             Some(ScalarType::QUInt8) => add_data_field_unsupported(&mut st),
             Some(ScalarType::QInt32) => add_data_field_unsupported(&mut st),
-            Some(ScalarType::BFloat16) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::BFloat16) => {
+                cfg_if::cfg_if! {
+                    if #[cfg(feature = "f16")] {
+                        add_data_field::<_, half::bf16>(self, &mut st);
+                    } else {
+                        add_data_field_unsupported(&mut st);
+                    }
+                }
+            }
             Some(ScalarType::QUInt4x2) => add_data_field_unsupported(&mut st),
             Some(ScalarType::QUInt2x4) => add_data_field_unsupported(&mut st),
             Some(ScalarType::Bits1x8) => add_data_field_unsupported(&mut st),

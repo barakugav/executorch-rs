@@ -437,7 +437,7 @@ impl<'a> TryFrom<&EValue<'a>> for &'a [Tensor<'a>] {
         match value.tag() {
             Some(Tag::ListInt) => Ok(unsafe {
                 let arr: &et_c::BoxedEvalueList<et_c::Tensor> =
-                    &*value.0.payload.copyable_union.as_tensor_list;
+                    &value.0.payload.copyable_union.as_tensor_list;
                 // SAFETY: et_c::Tensor and Tensor have the same memory layout
                 let arr = std::mem::transmute::<
                     &et_c::BoxedEvalueList<et_c::Tensor>,

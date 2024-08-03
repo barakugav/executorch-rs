@@ -126,3 +126,6 @@ Note that the `portable_ops_lib` is linked with `+whole-archive` to ensure that 
 By default all features are disabled.
 - `data-loader`: include the `FileDataLoader` struct. The `libextension_data_loader.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON`.
 - `module`: include the `Module` struct. The `libextension_module_static.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`.
+- `f16`: Support for half precision floating point numbers using the `half` crate. Models that require input
+or output tensors with `f16` data type can be operated on with this features.
+- `complex`: Support for complex numbers using the `num-complex` crate. Models that require input or output tensors with complex `32` or `64` bit floating point numbers can be operated on with this feature. If in addition the `f16` feature is enabled, complex numbers with half precision can be used.
