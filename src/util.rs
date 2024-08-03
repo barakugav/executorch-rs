@@ -9,6 +9,8 @@ use std::hash::Hash;
 use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
 
+#[cfg(feature = "alloc")]
+use crate::et_alloc;
 use crate::et_c;
 
 pub(crate) trait IntoRust {
@@ -228,16 +230,63 @@ pub(crate) fn to_bytes<T>(val: &T) -> Vec<u8> {
         .collect()
 }
 
-/// Transmute from A to B.
+/// A marker trait for dimensions that have a fixed size.
 ///
-/// Like transmute, but does not have the compile-time size check which blocks
-/// using regular transmute in some cases.
-///
-/// **Panics** if the size of A and B are different.
-#[inline]
-pub(crate) unsafe fn unlimited_transmute<A, B>(data: A) -> B {
-    // safe when sizes are equal and caller guarantees that representations are equal
-    assert_eq!(std::mem::size_of::<A>(), std::mem::size_of::<B>());
-    let old_data = ManuallyDrop::new(data);
-    (&*old_data as *const A as *const B).read()
+/// This trait is useful for functions that avoid allocations and want to define additional arrays with the same size as
+/// a given dimension.
+pub trait FixedSizeDim: ndarray::Dimension {
+    /// An array with the same fixed size as the dimension.
+    type Arr<T: Clone + Copy + Default>: DimArr<T>;
+    private_decl! {}
+}
+macro_rules! impl_fixed_size_dim {
+    ($size:expr) => {
+        impl FixedSizeDim for ndarray::Dim<[ndarray::Ix; $size]> {
+            type Arr<T: Clone + Copy + Default> = [T; $size];
+            private_impl! {}
+        }
+    };
+}
+impl_fixed_size_dim!(0);
+impl_fixed_size_dim!(1);
+impl_fixed_size_dim!(2);
+impl_fixed_size_dim!(3);
+impl_fixed_size_dim!(4);
+impl_fixed_size_dim!(5);
+impl_fixed_size_dim!(6);
+
+/// An abstraction over fixed-size arrays and regular vectors if the `alloc` feature is enabled.
+pub trait DimArr<T>: AsRef<[T]> + AsMut<[T]> {
+    /// Create an array of zeros with the given number of dimensions.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the given number of dimensions is not supported by the array. For example, if the array is a fixed
+    /// size array of size 3, it will panic if the given number of dimensions is 4. Regular vectors will never panic.
+    fn zeros(ndim: usize) -> Self;
+}
+
+macro_rules! impl_dim_arr {
+    ($size:expr) => {
+        impl<T: Clone + Copy + Default> DimArr<T> for [T; $size] {
+            fn zeros(ndim: usize) -> Self {
+                assert_eq!(ndim, $size, "Invalid dimension size");
+                [T::default(); $size]
+            }
+        }
+    };
+}
+impl_dim_arr!(0);
+impl_dim_arr!(1);
+impl_dim_arr!(2);
+impl_dim_arr!(3);
+impl_dim_arr!(4);
+impl_dim_arr!(5);
+impl_dim_arr!(6);
+
+#[cfg(feature = "alloc")]
+impl<T: Clone + Copy + Default> DimArr<T> for et_alloc::vec::Vec<T> {
+    fn zeros(ndim: usize) -> Self {
+        et_alloc::vec::Vec::from_iter(std::iter::repeat(T::default()).take(ndim))
+    }
 }

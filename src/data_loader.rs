@@ -163,7 +163,7 @@ mod file_data_loader {
         /// The `file_name` should be a valid UTF-8 string and not contains a null byte other than the one at the end.
         pub fn from_cstr(file_name: &CStr, mlock_config: Option<MlockConfig>) -> Result<Self> {
             let mlock_config = mlock_config.unwrap_or(MlockConfig::UseMlock);
-            let loader: et_c::util::MmapDataLoader =
+            let loader =
                 unsafe { et_c::util::MmapDataLoader::from(file_name.as_ptr(), mlock_config) }
                     .rs()?;
             Ok(Self(UnsafeCell::new(loader)))

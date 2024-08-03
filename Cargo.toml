@@ -48,7 +48,8 @@ envsubst = "0.2.1"
 
 [features]
 default = ["std"]
-std = []
+std = ["alloc"]
+alloc = []
 data-loader = ["executorch-sys/data-loader"]
 module = ["executorch-sys/module", "std"]
 f16 = ["half"]

@@ -4,7 +4,7 @@ use executorch::data_loader::FileDataLoader;
 use executorch::evalue::{EValue, Tag};
 use executorch::memory::{HierarchicalAllocator, MallocMemoryAllocator, MemoryManager};
 use executorch::program::{Program, ProgramVerification};
-use executorch::tensor::{Tensor, TensorImpl};
+use executorch::tensor::{Array, Tensor};
 use executorch::util::Span;
 
 use ndarray::array;
@@ -46,13 +46,13 @@ fn main() {
         .load_method(cstr::cstr!(b"forward"), &memory_manager)
         .unwrap();
 
-    let data1 = array![1.0_f32];
-    let input_tensor1 = TensorImpl::from_array(data1.view());
-    let input_evalue1 = EValue::from_tensor(Tensor::new(input_tensor1.as_ref()));
+    let input_array1 = Array::new(array![1.0_f32]);
+    let input_tensor1 = input_array1.to_tensor_impl();
+    let input_evalue1 = EValue::from_tensor(Tensor::new(&input_tensor1));
 
-    let data2 = array![1.0_f32];
-    let input_tensor2 = TensorImpl::from_array(data2.view());
-    let input_evalue2 = EValue::from_tensor(Tensor::new(input_tensor2.as_ref()));
+    let input_array2 = Array::new(array![1.0_f32]);
+    let input_tensor2 = input_array2.to_tensor_impl();
+    let input_evalue2 = EValue::from_tensor(Tensor::new(&input_tensor2));
 
     let mut method_exe = method.start_execution();
 
