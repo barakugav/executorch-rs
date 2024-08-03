@@ -38,6 +38,7 @@ executorch-sys = { path = "executorch-sys", version = "0.1.0" }
 ndarray = "0.15.6"
 log = "0.4.22"
 half = { version = "2.4.1", optional = true }
+num-complex = { version = "0.4.6", optional = true }
 cfg-if = "1.0.0"
 
 [build-dependencies]
@@ -49,3 +50,4 @@ envsubst = "0.2.1"
 data-loader = ["executorch-sys/data-loader"]
 module = ["executorch-sys/module"]
 f16 = ["half"]
+complex = ["num-complex"]

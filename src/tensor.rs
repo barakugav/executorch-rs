@@ -39,11 +39,11 @@ pub enum ScalarType {
     Float = et_c::ScalarType::Float as u8,
     /// 64-bit floating point, `f64`
     Double = et_c::ScalarType::Double as u8,
-    /// **\[Unsupported\]** 16-bit complex floating point
+    /// 16-bit complex floating point, `num_complex::Complex<half::f16>`, enabled by the `complex` and `f16` features
     ComplexHalf = et_c::ScalarType::ComplexHalf as u8,
-    /// **\[Unsupported\]** 32-bit complex floating point
+    /// 32-bit complex floating point, `num_complex::Complex32`, enabled by the `complex` feature
     ComplexFloat = et_c::ScalarType::ComplexFloat as u8,
-    /// **\[Unsupported\]** 64-bit complex floating point
+    /// 64-bit complex floating point, `num_complex::Complex64`, enabled by the `complex` feature
     ComplexDouble = et_c::ScalarType::ComplexDouble as u8,
     /// Boolean, `bool`
     Bool = et_c::ScalarType::Bool as u8,
@@ -153,6 +153,12 @@ impl_scalar!(i64, Long);
 impl_scalar!(half::f16, Half);
 impl_scalar!(f32, Float);
 impl_scalar!(f64, Double);
+#[cfg(all(feature = "complex", feature = "f16"))]
+impl_scalar!(num_complex::Complex<half::f16>, ComplexHalf);
+#[cfg(feature = "complex")]
+impl_scalar!(num_complex::Complex32, ComplexFloat);
+#[cfg(feature = "complex")]
+impl_scalar!(num_complex::Complex64, ComplexDouble);
 impl_scalar!(bool, Bool);
 #[cfg(feature = "f16")]
 impl_scalar!(half::bf16, BFloat16);
@@ -553,9 +559,33 @@ impl<D: Data> Debug for TensorBase<'_, D> {
             }
             Some(ScalarType::Float) => add_data_field::<_, f32>(self, &mut st),
             Some(ScalarType::Double) => add_data_field::<_, f64>(self, &mut st),
-            Some(ScalarType::ComplexHalf) => add_data_field_unsupported(&mut st),
-            Some(ScalarType::ComplexFloat) => add_data_field_unsupported(&mut st),
-            Some(ScalarType::ComplexDouble) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::ComplexHalf) => {
+                cfg_if::cfg_if! {
+                    if #[cfg(all(feature = "complex", feature = "f16"))] {
+                        add_data_field::<_, num_complex::Complex<half::f16>>(self, &mut st);
+                    } else {
+                        add_data_field_unsupported(&mut st);
+                    }
+                }
+            }
+            Some(ScalarType::ComplexFloat) => {
+                cfg_if::cfg_if! {
+                    if #[cfg(feature = "complex")] {
+                        add_data_field::<_, num_complex::Complex32>(self, &mut st);
+                    } else {
+                        add_data_field_unsupported(&mut st);
+                    }
+                }
+            }
+            Some(ScalarType::ComplexDouble) => {
+                cfg_if::cfg_if! {
+                    if #[cfg(feature = "complex")] {
+                        add_data_field::<_, num_complex::Complex64>(self, &mut st);
+                    } else {
+                        add_data_field_unsupported(&mut st);
+                    }
+                }
+            }
             Some(ScalarType::Bool) => add_data_field::<_, bool>(self, &mut st),
             Some(ScalarType::QInt8) => add_data_field_unsupported(&mut st),
             Some(ScalarType::QUInt8) => add_data_field_unsupported(&mut st),
