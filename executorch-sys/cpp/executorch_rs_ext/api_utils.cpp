@@ -72,6 +72,14 @@ namespace executorch_rs
         return crate_Result_i64(method_meta->memory_planned_buffer_size(index));
     }
 
+    torch::executor::MemoryAllocator MemoryAllocator_new(uint32_t size, uint8_t *base_address)
+    {
+        return torch::executor::MemoryAllocator(size, base_address);
+    }
+    void *MemoryAllocator_allocate(torch::executor::MemoryAllocator *allocator, size_t size, size_t alignment)
+    {
+        return allocator->allocate(size, alignment);
+    }
     torch::executor::util::MallocMemoryAllocator MallocMemoryAllocator_new()
     {
         return torch::executor::util::MallocMemoryAllocator();

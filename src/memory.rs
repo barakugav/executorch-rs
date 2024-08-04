@@ -15,14 +15,133 @@ use crate::{et_c, et_rs_c};
 /// to the memory address. It bookmarks a buffer with certain size. The
 /// allocation is simply checking space and growing the cur_ pointer with each
 /// allocation request.
-pub struct MemoryAllocator(pub(crate) et_c::MemoryAllocator);
+pub struct MemoryAllocator<'a>(
+    pub(crate) UnsafeCell<et_c::MemoryAllocator>,
+    PhantomData<&'a ()>,
+);
+impl<'a> MemoryAllocator<'a> {
+    /// Constructs a new memory allocator using a fixed-size buffer.
+    ///
+    /// # Arguments
+    ///
+    /// * `buffer` - The buffer to use for memory allocation.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the buffer is larger than `u32::MAX` bytes.
+    pub fn new(buffer: &'a mut [u8]) -> Self {
+        let size = buffer.len().try_into().expect("usize -> u32");
+        let base_addr = buffer.as_mut_ptr();
+        let allocator = unsafe { et_rs_c::MemoryAllocator_new(size, base_addr) };
+        Self(UnsafeCell::new(allocator), PhantomData)
+    }
+
+    /// Allocates memory of a certain size and alignment.
+    ///
+    /// # Arguments
+    ///
+    /// * `size` - The number of bytes to allocate.
+    /// * `alignment` - The alignment of the memory to allocate.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the returned pointer is not dereferenced after the allocator is dropped.
+    pub unsafe fn allocate_raw(
+        &self,
+        size: usize,
+        alignment: usize,
+    ) -> Option<*mut std::ffi::c_void> {
+        let ptr = unsafe { et_rs_c::MemoryAllocator_allocate(self.0.get(), size, alignment) };
+        if ptr.is_null() {
+            None
+        } else {
+            Some(ptr)
+        }
+    }
+
+    /// Allocates memory for a type `T` and initializes it with `Default::default()`.
+    ///
+    /// # Returns
+    ///
+    /// A mutable reference to the allocated memory, or `None` if allocation failed.
+    ///
+    /// Allocation may failed if the allocator is out of memory.
+    pub fn allocate<T: Default>(&self) -> Option<&'a mut T> {
+        let size = std::mem::size_of::<T>();
+        let alignment = std::mem::align_of::<T>();
+        let ptr = unsafe { self.allocate_raw(size, alignment) }? as *mut T;
+        unsafe { ptr.write(Default::default()) };
+        Some(unsafe { &mut *ptr })
+    }
+
+    /// Allocates memory for an array of type `T` and initializes each element with `Default::default()`.
+    ///
+    /// # Arguments
+    ///
+    /// * `len` - The number of elements in the array.
+    ///
+    /// # Returns
+    ///
+    /// A mutable reference to the allocated array, or `None` if allocation failed.
+    ///
+    /// Allocation may failed if the allocator is out of memory.
+    pub fn allocate_arr<T: Default>(&self, len: usize) -> Option<&'a mut [T]> {
+        self.allocate_arr_fn(len, |_| Default::default())
+    }
+
+    /// Allocates memory for an array of type `T` and initializes each element with the result of the closure `f`.
+    ///
+    /// # Arguments
+    ///
+    /// * `len` - The number of elements in the array.
+    /// * `f` - The closure that initializes each element.
+    ///
+    /// # Returns
+    ///
+    /// A mutable reference to the allocated array, or `None` if allocation failed.
+    ///
+    /// Allocation may failed if the allocator is out of memory.
+    pub fn allocate_arr_fn<T>(&self, len: usize, f: impl Fn(usize) -> T) -> Option<&'a mut [T]> {
+        let elm_size = std::mem::size_of::<T>();
+        let alignment = std::mem::align_of::<T>();
+        let actual_elm_size = (elm_size + alignment - 1) & !(alignment - 1);
+        let total_size = actual_elm_size * len;
+
+        let ptr = unsafe { self.allocate_raw(total_size, alignment) }? as *mut T;
+        assert_eq!(actual_elm_size, {
+            let elm0_addr =
+                (&unsafe { std::slice::from_raw_parts_mut(ptr, 2) }[0]) as *const T as usize;
+            let elm1_addr =
+                (&unsafe { std::slice::from_raw_parts_mut(ptr, 2) }[1]) as *const T as usize;
+            elm1_addr - elm0_addr
+        });
+        let slice = unsafe { std::slice::from_raw_parts_mut(ptr, len) };
+        for (i, elm) in slice.iter_mut().enumerate() {
+            let ptr = elm as *mut T;
+            unsafe { ptr.write(f(i)) };
+        }
+        Some(slice)
+    }
+}
+
+/// A trait for types that can be treated as a mutable MemoryAllocator.
+pub trait AsMemoryAllocator {
+    /// Returns a mutable reference to the MemoryAllocator.
+    fn as_memory_allocator(&mut self) -> &mut MemoryAllocator<'_>;
+}
+impl<'a> AsMemoryAllocator for MemoryAllocator<'a> {
+    fn as_memory_allocator<'b>(&'b mut self) -> &mut MemoryAllocator<'b> {
+        // SAFE: 'a is longer than 'b, so we just shorten the lifetime.
+        unsafe { std::mem::transmute::<&mut MemoryAllocator<'a>, &mut MemoryAllocator<'b>>(self) }
+    }
+}
 
 /// Dynamically allocates memory using malloc() and frees all pointers at
 /// destruction time.
 ///
 /// For systems with malloc(), this can be easier than using a fixed-sized
 /// MemoryAllocator.
-pub struct MallocMemoryAllocator(et_c::util::MallocMemoryAllocator);
+pub struct MallocMemoryAllocator(UnsafeCell<et_c::util::MallocMemoryAllocator>);
 impl Default for MallocMemoryAllocator {
     fn default() -> Self {
         Self::new()
@@ -31,24 +150,22 @@ impl Default for MallocMemoryAllocator {
 impl MallocMemoryAllocator {
     /// Construct a new Malloc memory allocator.
     pub fn new() -> Self {
-        Self(unsafe { et_rs_c::MallocMemoryAllocator_new() })
+        Self(UnsafeCell::new(unsafe {
+            et_rs_c::MallocMemoryAllocator_new()
+        }))
     }
 }
-impl AsMut<MemoryAllocator> for MallocMemoryAllocator {
-    fn as_mut(&mut self) -> &mut MemoryAllocator {
-        let allocator = unsafe {
-            std::mem::transmute::<&mut et_c::util::MallocMemoryAllocator, &mut et_c::MemoryAllocator>(
-                &mut self.0,
-            )
-        };
-        unsafe {
-            std::mem::transmute::<&mut et_c::MemoryAllocator, &mut MemoryAllocator>(allocator)
-        }
+impl AsMemoryAllocator for MallocMemoryAllocator {
+    fn as_memory_allocator(&mut self) -> &mut MemoryAllocator<'_> {
+        // Safety: MallocMemoryAllocator contains a single field of (UnsafeCell of) et_c::MemoryAllocator which is a
+        // sub class of et_c::MemoryAllocator, and MemoryAllocator contains a single field of (UnsafeCell of)
+        // et_c::MemoryAllocator.
+        unsafe { std::mem::transmute::<&mut MallocMemoryAllocator, &mut MemoryAllocator>(self) }
     }
 }
 impl Drop for MallocMemoryAllocator {
     fn drop(&mut self) {
-        unsafe { et_rs_c::MallocMemoryAllocator_destructor(&mut self.0) };
+        unsafe { et_rs_c::MallocMemoryAllocator_destructor(self.0.get()) };
     }
 }
 
@@ -63,7 +180,8 @@ impl HierarchicalAllocator {
     /// `buffers.size()` must be >= `MethodMeta::num_non_const_buffers()`.
     /// `buffers[N].size()` must be >= `MethodMeta::non_const_buffer_size(N)`.
     pub fn new(buffers: Span<Span<u8>>) -> Self {
-        // Safety: The transmute is safe because the memory layout of SpanMut<u8> and et_c::Span<et_c::Span<u8>> is the same.
+        // Safety: The transmute is safe because the memory layout of Span<Span<u8>> and et_c::Span<et_c::Span<u8>>
+        // is the same.
         let buffers: et_c::Span<et_c::Span<u8>> = unsafe { std::mem::transmute(buffers) };
         Self(unsafe { et_rs_c::HierarchicalAllocator_new(buffers) })
     }
@@ -104,8 +222,8 @@ impl<'a> MemoryManager<'a> {
     /// * `temp_allocator` - The allocator to use when allocating temporary data during kernel or delegate execution.
     /// Must outlive the Method that uses it. May be `None` if the Method does not use kernels or delegates that
     /// allocate temporary data. This allocator will be reset after every kernel or delegate call during execution.
-    pub fn new(
-        method_allocator: &'a mut impl AsMut<MemoryAllocator>,
+    pub fn new<'b: 'a>(
+        method_allocator: &'a mut impl AsMemoryAllocator,
         planned_memory: Option<&'a mut HierarchicalAllocator>,
         temp_allocator: Option<&'a mut MemoryAllocator>,
     ) -> Self {
@@ -113,11 +231,11 @@ impl<'a> MemoryManager<'a> {
             .map(|x| &mut x.0 as *mut _)
             .unwrap_or(ptr::null_mut());
         let temp_allocator = temp_allocator
-            .map(|x| &mut x.0 as *mut _)
+            .map(|x| x.0.get() as *mut _)
             .unwrap_or(ptr::null_mut());
         Self(
             UnsafeCell::new(et_c::MemoryManager {
-                method_allocator_: &mut method_allocator.as_mut().0,
+                method_allocator_: method_allocator.as_memory_allocator().0.get(),
                 planned_memory_: planned_memory,
                 temp_allocator_: temp_allocator,
             }),

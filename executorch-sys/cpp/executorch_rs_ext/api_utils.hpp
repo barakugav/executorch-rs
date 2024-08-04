@@ -54,6 +54,8 @@ namespace executorch_rs
     Result_MethodMeta Program_method_meta(const torch::executor::Program *program, const char *method_name);
     void Program_destructor(torch::executor::Program *program);
     Result_i64 MethodMeta_memory_planned_buffer_size(const torch::executor::MethodMeta *method_meta, size_t index);
+    torch::executor::MemoryAllocator MemoryAllocator_new(uint32_t size, uint8_t *base_address);
+    void *MemoryAllocator_allocate(torch::executor::MemoryAllocator *allocator, size_t size, size_t alignment);
     torch::executor::util::MallocMemoryAllocator MallocMemoryAllocator_new();
     void MallocMemoryAllocator_destructor(torch::executor::util::MallocMemoryAllocator *allocator);
     torch::executor::HierarchicalAllocator HierarchicalAllocator_new(torch::executor::Span<torch::executor::Span<uint8_t>> buffers);
