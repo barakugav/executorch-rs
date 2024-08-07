@@ -58,10 +58,37 @@
 //! assert_eq!(array![2.0_f32], output.as_array());
 //! ```
 //!
-//! The library have a few features that can be enabled or disabled, by default all are disabled:
-//! - `module`: Enable the [`module`] API, a high-level API for loading and executing PyTorch models. It is an alternative
+//! The library have a few features that can be enabled or disabled:
 //! to the lower-level `Program` API, which is mort suitable for embedded systems.
-//! - `data_loader`: Enable the [`data_loader`] module for loading data.
+//! - `data-loader`:
+//!     include the [`data_loader`] module for loading data. The `libextension_data_loader.a` static library is
+//!     required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON`.
+//! - `module`:
+//!     include the [`module`] API, a high-level API for loading and executing PyTorch models. It is an alternative to
+//!     the lower-level `Program` API, which is mort suitable for embedded systems. The `libextension_module_static.a`
+//!     static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`.
+//!     Also includes the `std` feature.
+//! - `f16`:
+//!     Support for half precision floating point numbers using the `half` crate. Models that require input or output
+//!     tensors with `f16` data type can be operated on with this features.
+//! - `complex`:
+//!     Support for complex numbers using the `num-complex` crate. Models that require input or output tensors with
+//! complex `32` or `64` bit floating point numbers can be operated on with this feature. If in addition the `f16`
+//! feature is enabled, complex numbers with half precision can be used.
+//! - `std`:
+//!     Enable the standard library. This feature is enabled by default, but can be disabled to build `executorch`
+//!     in a `no_std` environment.
+//!     See the `hello_world_add_no_std` example.
+//!     Also includes the `alloc` feature.
+//! - `alloc`:
+//!     Enable allocations.
+//!     When this feature is disabled, all methods that require allocations will not be compiled.
+//!     This feature is enabled by the `std` feature, which is enabled by default.
+//!     Its possible to enable this feature without the `std` feature, and the allocations will be done using the
+//!     `alloc` crate, that requires a global allocator to be set.
+//!
+//! By default the `std` feature is enabled.
+//!
 //!
 //! The C++ API is still in Alpha, and this Rust lib will continue to change with it. Currently the supported
 //! executorch version is `0.2.1`.
