@@ -34,7 +34,7 @@ include = ["Cargo.toml", "src/", "README.md", "LICENSE"]
 features = ["data-loader", "module", "f16", "complex"]
 
 [dependencies]
-executorch-sys = { path = "executorch-sys", version = "0.1.0" }
+executorch-sys = { path = "executorch-sys", version = "0.1.0", default-features = false }
 ndarray = "0.15.6"
 log = "0.4.22"
 half = { version = "2.4.1", optional = true }
@@ -48,7 +48,7 @@ envsubst = "0.2.1"
 
 [features]
 default = ["std"]
-std = ["alloc"]
+std = ["alloc", "executorch-sys/std"]
 alloc = []
 data-loader = ["executorch-sys/data-loader"]
 module = ["executorch-sys/module", "std"]

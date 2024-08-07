@@ -18,9 +18,13 @@ fn main() {
 fn build_c_extension() {
     let c_ext_dir = cpp_ext_dir();
     let mut builder = cc::Build::new();
+    builder.cpp(true).std("c++17");
+    // TODO: cpp executorch doesnt support nostd yet
+    // if !cfg!(feature = "std") {
+    builder.cpp_set_stdlib(None);
+    //     builder.flag("-nostdlib");
+    // }
     builder
-        .cpp(true)
-        .std("c++17")
         .files([c_ext_dir.join("api_utils.cpp")])
         .include(c_ext_dir.parent().unwrap())
         .include(executorch_headers().parent().unwrap());
@@ -153,7 +157,10 @@ fn link_executorch() {
     )
     .unwrap();
 
+    // TODO: cpp executorch doesnt support nostd yet
+    // if cfg!(feature = "std") {
     println!("cargo::rustc-link-lib=c++");
+    // }
 
     println!("cargo::rustc-link-search={}", libs_dir);
     println!("cargo::rustc-link-lib=static=executorch");
