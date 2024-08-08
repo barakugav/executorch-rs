@@ -9,7 +9,9 @@ use std::hash::Hash;
 use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
 
-use crate::{et_c, et_rs_c};
+#[cfg(feature = "alloc")]
+use crate::et_alloc;
+use crate::et_c;
 
 pub(crate) trait IntoRust {
     type RsType;
@@ -193,21 +195,23 @@ impl<T: Debug> Debug for Optional<T> {
 }
 
 #[allow(dead_code)]
-pub(crate) fn str2chars(s: &str) -> Result<&[std::os::raw::c_char], &'static str> {
+pub(crate) fn str2chars(s: &str) -> Result<&[std::ffi::c_char], &'static str> {
     let bytes = s.as_bytes();
     if bytes.iter().any(|&b| b == 0) {
         return Err("String contains null byte");
     }
-    let chars = bytes.as_ptr().cast::<std::os::raw::c_char>();
+    let chars = bytes.as_ptr().cast::<std::ffi::c_char>();
     Ok(unsafe { std::slice::from_raw_parts(chars, bytes.len()) })
 }
 #[allow(dead_code)]
-pub(crate) fn chars2string(chars: Vec<std::os::raw::c_char>) -> String {
-    let bytes = unsafe { std::mem::transmute::<Vec<std::os::raw::c_char>, Vec<u8>>(chars) };
+#[cfg(feature = "std")]
+pub(crate) fn chars2string(chars: Vec<std::ffi::c_char>) -> String {
+    let bytes = unsafe { std::mem::transmute::<Vec<std::ffi::c_char>, Vec<u8>>(chars) };
     String::from_utf8(bytes).unwrap()
 }
 
-impl<T> IntoRust for et_rs_c::RawVec<T> {
+#[cfg(feature = "std")]
+impl<T> IntoRust for crate::et_rs_c::RawVec<T> {
     type RsType = Vec<T>;
     fn rs(self) -> Self::RsType {
         unsafe { Vec::from_raw_parts(self.data, self.len, self.cap) }
@@ -216,6 +220,7 @@ impl<T> IntoRust for et_rs_c::RawVec<T> {
 
 // Debug func
 #[allow(dead_code)]
+#[cfg(feature = "std")]
 pub(crate) fn to_bytes<T>(val: &T) -> Vec<u8> {
     (0..std::mem::size_of_val(val))
         .map(|i| unsafe {
@@ -225,16 +230,63 @@ pub(crate) fn to_bytes<T>(val: &T) -> Vec<u8> {
         .collect()
 }
 
-/// Transmute from A to B.
+/// A marker trait for dimensions that have a fixed size.
 ///
-/// Like transmute, but does not have the compile-time size check which blocks
-/// using regular transmute in some cases.
-///
-/// **Panics** if the size of A and B are different.
-#[inline]
-pub(crate) unsafe fn unlimited_transmute<A, B>(data: A) -> B {
-    // safe when sizes are equal and caller guarantees that representations are equal
-    assert_eq!(std::mem::size_of::<A>(), std::mem::size_of::<B>());
-    let old_data = ManuallyDrop::new(data);
-    (&*old_data as *const A as *const B).read()
+/// This trait is useful for functions that avoid allocations and want to define additional arrays with the same size as
+/// a given dimension.
+pub trait FixedSizeDim: ndarray::Dimension {
+    /// An array with the same fixed size as the dimension.
+    type Arr<T: Clone + Copy + Default>: DimArr<T>;
+    private_decl! {}
+}
+macro_rules! impl_fixed_size_dim {
+    ($size:expr) => {
+        impl FixedSizeDim for ndarray::Dim<[ndarray::Ix; $size]> {
+            type Arr<T: Clone + Copy + Default> = [T; $size];
+            private_impl! {}
+        }
+    };
+}
+impl_fixed_size_dim!(0);
+impl_fixed_size_dim!(1);
+impl_fixed_size_dim!(2);
+impl_fixed_size_dim!(3);
+impl_fixed_size_dim!(4);
+impl_fixed_size_dim!(5);
+impl_fixed_size_dim!(6);
+
+/// An abstraction over fixed-size arrays and regular vectors if the `alloc` feature is enabled.
+pub trait DimArr<T>: AsRef<[T]> + AsMut<[T]> {
+    /// Create an array of zeros with the given number of dimensions.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the given number of dimensions is not supported by the array. For example, if the array is a fixed
+    /// size array of size 3, it will panic if the given number of dimensions is 4. Regular vectors will never panic.
+    fn zeros(ndim: usize) -> Self;
+}
+
+macro_rules! impl_dim_arr {
+    ($size:expr) => {
+        impl<T: Clone + Copy + Default> DimArr<T> for [T; $size] {
+            fn zeros(ndim: usize) -> Self {
+                assert_eq!(ndim, $size, "Invalid dimension size");
+                [T::default(); $size]
+            }
+        }
+    };
+}
+impl_dim_arr!(0);
+impl_dim_arr!(1);
+impl_dim_arr!(2);
+impl_dim_arr!(3);
+impl_dim_arr!(4);
+impl_dim_arr!(5);
+impl_dim_arr!(6);
+
+#[cfg(feature = "alloc")]
+impl<T: Clone + Copy + Default> DimArr<T> for et_alloc::vec::Vec<T> {
+    fn zeros(ndim: usize) -> Self {
+        et_alloc::vec::Vec::from_iter(std::iter::repeat(T::default()).take(ndim))
+    }
 }

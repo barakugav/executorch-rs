@@ -27,8 +27,10 @@ links = "executorch"
 features = ["data-loader", "module"]
 
 [features]
+default = ["std"]
+std = []
 data-loader = []
-module = []
+module = ["std"]
 
 [dependencies]
 

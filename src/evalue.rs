@@ -118,7 +118,7 @@ impl<'a> EValue<'a> {
     }
 
     /// Create a new `EValue` from a `&[c_char]`, aka string.
-    pub fn from_chars(chars: &'a [std::os::raw::c_char]) -> EValue<'a> {
+    pub fn from_chars(chars: &'a [std::ffi::c_char]) -> EValue<'a> {
         let chars = ArrayRef::from_slice(chars);
         let value = et_c::EValue_Payload_TriviallyCopyablePayload {
             as_string: ManuallyDrop::new(chars.0),
@@ -245,7 +245,7 @@ impl<'a> EValue<'a> {
     ///
     /// Panics if the value is not a `&[c_char]`. To check the type of the value, use the `tag` method.
     #[track_caller]
-    pub fn as_chars(&self) -> &'a [std::os::raw::c_char] {
+    pub fn as_chars(&self) -> &'a [std::ffi::c_char] {
         self.try_into().expect("Invalid type")
     }
 
@@ -315,8 +315,8 @@ impl From<bool> for EValue<'static> {
         Self::from_bool(val)
     }
 }
-impl<'a> From<&'a [std::os::raw::c_char]> for EValue<'a> {
-    fn from(chars: &'a [std::os::raw::c_char]) -> Self {
+impl<'a> From<&'a [std::ffi::c_char]> for EValue<'a> {
+    fn from(chars: &'a [std::ffi::c_char]) -> Self {
         Self::from_chars(chars)
     }
 }
@@ -383,9 +383,9 @@ impl<'a> TryFrom<EValue<'a>> for Tensor<'a> {
         }
     }
 }
-impl<'a> TryFrom<&EValue<'a>> for &'a [std::os::raw::c_char] {
+impl<'a> TryFrom<&EValue<'a>> for &'a [std::ffi::c_char] {
     type Error = Error;
-    fn try_from(value: &EValue<'_>) -> Result<&'a [std::os::raw::c_char]> {
+    fn try_from(value: &EValue<'_>) -> Result<&'a [std::ffi::c_char]> {
         match value.tag() {
             Some(Tag::String) => Ok(unsafe {
                 let arr = &*value.0.payload.copyable_union.as_string;

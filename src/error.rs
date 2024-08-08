@@ -74,6 +74,7 @@ impl std::fmt::Display for Error {
         write!(f, "{}", msg)
     }
 }
+#[cfg(feature = "std")]
 impl std::error::Error for Error {}
 
 impl IntoRust for et_c::Error {

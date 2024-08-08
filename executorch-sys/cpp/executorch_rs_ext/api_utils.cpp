@@ -72,6 +72,15 @@ namespace executorch_rs
         return crate_Result_i64(method_meta->memory_planned_buffer_size(index));
     }
 
+    torch::executor::MemoryAllocator MemoryAllocator_new(uint32_t size, uint8_t *base_address)
+    {
+        return torch::executor::MemoryAllocator(size, base_address);
+    }
+    void *MemoryAllocator_allocate(torch::executor::MemoryAllocator *allocator, size_t size, size_t alignment)
+    {
+        return allocator->allocate(size, alignment);
+    }
+#if defined(EXECUTORCH_RS_STD)
     torch::executor::util::MallocMemoryAllocator MallocMemoryAllocator_new()
     {
         return torch::executor::util::MallocMemoryAllocator();
@@ -80,7 +89,7 @@ namespace executorch_rs
     {
         allocator->~MallocMemoryAllocator();
     }
-
+#endif
     torch::executor::HierarchicalAllocator HierarchicalAllocator_new(torch::executor::Span<torch::executor::Span<uint8_t>> buffers)
     {
         return torch::executor::HierarchicalAllocator(buffers);
@@ -154,14 +163,14 @@ namespace executorch_rs
         return list->get();
     }
 
-#if defined(EXECUTORCH_RS_EXTENSION_DATA_LOADER)
+#if defined(EXECUTORCH_RS_DATA_LOADER)
     torch::executor::util::BufferDataLoader BufferDataLoader_new(const void *data, size_t size)
     {
         return torch::executor::util::BufferDataLoader(data, size);
     }
 #endif
 
-#if defined(EXECUTORCH_RS_EXTENSION_MODULE)
+#if defined(EXECUTORCH_RS_MODULE)
     torch::executor::Module Module_new(torch::executor::ArrayRef<char> file_path, torch::executor::Module::MlockConfig mlock_config, torch::executor::EventTracer *event_tracer)
     {
         std::string file_path_str(file_path.begin(), file_path.end());

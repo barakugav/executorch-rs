@@ -30,18 +30,18 @@ Execute the model in Rust:
 ```rust
 use executorch::evalue::{EValue, Tag};
 use executorch::module::Module;
-use executorch::tensor::{Tensor, TensorImpl};
+use executorch::tensor::{Array, Tensor};
 use ndarray::array;
 
 let mut module = Module::new("model.pte", None);
 
-let data1 = array![1.0_f32];
-let input_tensor1 = TensorImpl::from_array(data1.view());
-let input_evalue1 = EValue::from_tensor(Tensor::new(input_tensor1.as_ref()));
+let input_array1 = Array::new(array![1.0_f32]);
+let input_tensor1 = input_array1.to_tensor_impl();
+let input_evalue1 = EValue::from_tensor(Tensor::new(&input_tensor1));
 
-let data2 = array![1.0_f32];
-let input_tensor2 = TensorImpl::from_array(data2.view());
-let input_evalue2 = EValue::from_tensor(Tensor::new(input_tensor2.as_ref()));
+let input_array2 = Array::new(array![1.0_f32]);
+let input_tensor2 = input_array2.to_tensor_impl();
+let input_evalue2 = EValue::from_tensor(Tensor::new(&input_tensor2));
 
 let outputs = module.forward(&[input_evalue1, input_evalue2]).unwrap();
 assert_eq!(outputs.len(), 1);
@@ -52,7 +52,7 @@ let output = output.as_tensor();
 println!("Output tensor computed: {:?}", output);
 assert_eq!(array![2.0_f32], output.as_array());
 ```
-See `example/hello_world_add` and `example/hello_world_add_module` for the complete examples.
+See `example/hello_world_add` and `example/hello_world_add_no_std` for the complete examples.
 
 ## Build
 To build the library, you need to build the C++ library first.
@@ -123,9 +123,34 @@ println!("cargo::rustc-link-search={}/kernels/portable/", libs_dir);
 Note that the `portable_ops_lib` is linked with `+whole-archive` to ensure that all symbols are included in the binary.
 
 ## Cargo Features
-By default all features are disabled.
-- `data-loader`: include the `FileDataLoader` struct. The `libextension_data_loader.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON`.
-- `module`: include the `Module` struct. The `libextension_module_static.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`.
-- `f16`: Support for half precision floating point numbers using the `half` crate. Models that require input
-or output tensors with `f16` data type can be operated on with this features.
-- `complex`: Support for complex numbers using the `num-complex` crate. Models that require input or output tensors with complex `32` or `64` bit floating point numbers can be operated on with this feature. If in addition the `f16` feature is enabled, complex numbers with half precision can be used.
+- `data-loader`
+
+    include the `FileDataLoader` struct. The `libextension_data_loader.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON`.
+
+- `module`
+
+    include the `Module` struct. The `libextension_module_static.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`.
+    Also includes the `std` feature.
+
+- `f16`
+
+    Support for half precision floating point numbers using the `half` crate. Models that require input or output tensors with `f16` data type can be operated on with this features.
+
+- `complex`
+
+    Support for complex numbers using the `num-complex` crate. Models that require input or output tensors with complex `32` or `64` bit floating point numbers can be operated on with this feature. If in addition the `f16` feature is enabled, complex numbers with half precision can be used.
+
+- `std`
+
+    Enable the standard library. This feature is enabled by default, but can be disabled to build `executorch` in a `no_std` environment.
+    See the `hello_world_add_no_std` example.
+    Also includes the `alloc` feature.
+
+- `alloc`
+
+    Enable allocations.
+    When this feature is disabled, all methods that require allocations will not be compiled.
+    This feature is enabled by the `std` feature, which is enabled by default.
+    Its possible to enable this feature without the `std` feature, and the allocations will be done using the `alloc` crate, that requires a global allocator to be set.
+
+By default the `std` feature is enabled.

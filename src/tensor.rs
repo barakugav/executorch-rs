@@ -1,12 +1,13 @@
 //! Tensor struct is a type erased input or output tensor to a executorch program.
 
-use std::any::TypeId;
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
-use ndarray::{ArrayBase, ArrayView, ArrayViewD, ArrayViewMut, Dimension, IxDyn, ShapeBuilder};
+use ndarray::{ArrayBase, ArrayView, ArrayViewMut, ShapeBuilder};
 
-use crate::util::{self, Span};
+#[cfg(feature = "alloc")]
+use crate::et_alloc;
+use crate::util::{DimArr, FixedSizeDim, Span};
 use crate::{et_c, et_rs_c};
 
 /// A type that represents the sizes (dimensions) of a tensor.
@@ -278,63 +279,22 @@ impl<'a, D: Data> TensorBase<'a, D> {
     ///
     /// If the scalar type of the tensor does not match the type `S`.
     /// If the number of dimensions of the tensor does not match the number of dimensions of the  type `Dim`.
-    pub fn as_array<S: Scalar + 'static, Dim: Dimension + 'static>(&self) -> ArrayView<'_, S, Dim> {
-        let ptr = self.as_ptr::<S>();
-        match Dim::NDIM {
-            None => {
-                // dynamic array
-                assert_eq!(TypeId::of::<Dim>(), TypeId::of::<IxDyn>());
-                let shape = self.sizes().iter().map(|d| *d as usize).collect::<Vec<_>>();
-                let strides = self
-                    .strides()
-                    .iter()
-                    .map(|s| *s as usize)
-                    .collect::<Vec<_>>();
-                let dim_order = self
-                    .dim_order()
-                    .iter()
-                    .map(|o| *o as usize)
-                    .collect::<Vec<_>>();
-                let arr = unsafe {
-                    ArrayViewD::from_shape_ptr(shape.strides(strides), ptr).permuted_axes(dim_order)
-                };
-                assert_eq!(
-                    TypeId::of::<ArrayView<'_, S, IxDyn>>(),
-                    TypeId::of::<ArrayView<'_, S, Dim>>()
-                );
-                unsafe {
-                    util::unlimited_transmute::<ArrayView<'_, S, IxDyn>, ArrayView<'_, S, Dim>>(arr)
-                }
-            }
-            Some(ndim) if ndim == self.dim() as usize => {
-                // safe because Dim == D2
-                let mut dim = Dim::default();
-                let mut strides = Dim::default();
-                let mut dim_order = Dim::default();
-                assert_eq!(dim.ndim(), self.dim() as usize);
-                assert_eq!(strides.ndim(), self.dim() as usize);
-                assert_eq!(dim_order.ndim(), self.dim() as usize);
-                for (i, d) in self.sizes().iter().enumerate() {
-                    dim[i] = *d as usize;
-                }
-                for (i, s) in self.strides().iter().enumerate() {
-                    strides[i] = *s as usize;
-                }
-                for (i, s) in self.dim_order().iter().enumerate() {
-                    dim_order[i] = *s as usize;
-                }
-
-                unsafe { ArrayView::from_shape_ptr(dim.strides(strides), ptr) }
-                    .permuted_axes(dim_order)
-            }
-            Some(ndim) => {
-                panic!(
-                    "Invalid number of dimensions: expected {}, got {}",
-                    ndim,
-                    self.dim()
-                );
-            }
+    pub fn as_array<S: Scalar, Dim: Dimension>(&self) -> ArrayView<'_, S, Dim> {
+        let ndim = self.dim() as usize;
+        let mut dim = Dim::zeros(ndim);
+        let mut strides = Dim::zeros(ndim);
+        let mut dim_order = Dim::zeros(ndim);
+        for (i, d) in self.sizes().iter().enumerate() {
+            dim[i] = *d as usize;
         }
+        for (i, s) in self.strides().iter().enumerate() {
+            strides[i] = *s as usize;
+        }
+        for (i, s) in self.dim_order().iter().enumerate() {
+            dim_order[i] = *s as usize;
+        }
+        let ptr = self.as_ptr::<S>();
+        unsafe { ArrayView::from_shape_ptr(dim.strides(strides), ptr) }.permuted_axes(dim_order)
     }
 
     /// Get an array view of the tensor with dynamic number of dimensions.
@@ -342,7 +302,8 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// # Panics
     ///
     /// If the scalar type of the tensor does not match the type `S`.
-    pub fn as_array_dyn<S: Scalar + 'static>(&self) -> ArrayViewD<'_, S> {
+    #[cfg(feature = "alloc")]
+    pub fn as_array_dyn<S: Scalar>(&self) -> ArrayView<'_, S, ndarray::IxDyn> {
         self.as_array()
     }
 }
@@ -398,67 +359,22 @@ impl<'a> TensorMut<'a> {
     ///
     /// If the scalar type of the tensor does not match the type `S`.
     /// If the number of dimensions of the tensor does not match the number of dimensions of the  type `D`.
-    pub fn as_array_mut<S: Scalar + 'static, D: Dimension + 'static>(
-        &mut self,
-    ) -> ArrayViewMut<'a, S, D> {
-        let ptr = self.as_mut_ptr::<S>();
-        match D::NDIM {
-            None => {
-                // dynamic array
-                assert_eq!(TypeId::of::<D>(), TypeId::of::<IxDyn>());
-                let shape = self.sizes().iter().map(|d| *d as usize).collect::<Vec<_>>();
-                let strides = TensorBase::strides(self)
-                    .iter()
-                    .map(|s| *s as usize)
-                    .collect::<Vec<_>>();
-                let dim_order = self
-                    .dim_order()
-                    .iter()
-                    .map(|o| *o as usize)
-                    .collect::<Vec<_>>();
-                let arr = unsafe {
-                    ArrayViewMut::from_shape_ptr(shape.strides(strides), ptr)
-                        .permuted_axes(dim_order)
-                };
-                assert_eq!(
-                    TypeId::of::<ArrayViewMut<'_, S, IxDyn>>(),
-                    TypeId::of::<ArrayViewMut<'_, S, D>>()
-                );
-                unsafe {
-                    util::unlimited_transmute::<ArrayViewMut<'_, S, IxDyn>, ArrayViewMut<'_, S, D>>(
-                        arr,
-                    )
-                }
-            }
-            Some(ndim) if ndim == self.dim() as usize => {
-                // safe because D == D2
-                let mut dim = D::default();
-                let mut strides = D::default();
-                let mut dim_order = D::default();
-                assert_eq!(dim.ndim(), self.dim() as usize);
-                assert_eq!(strides.ndim(), self.dim() as usize);
-                assert_eq!(dim_order.ndim(), self.dim() as usize);
-                for (i, d) in self.sizes().iter().enumerate() {
-                    dim[i] = *d as usize;
-                }
-                for (i, s) in TensorBase::strides(self).iter().enumerate() {
-                    strides[i] = *s as usize;
-                }
-                for (i, s) in self.dim_order().iter().enumerate() {
-                    dim_order[i] = *s as usize;
-                }
-
-                unsafe { ArrayViewMut::from_shape_ptr(dim.strides(strides), ptr) }
-                    .permuted_axes(dim_order)
-            }
-            Some(ndim) => {
-                panic!(
-                    "Invalid number of dimensions: expected {}, got {}",
-                    ndim,
-                    self.dim()
-                );
-            }
+    pub fn as_array_mut<S: Scalar, Dim: Dimension>(&mut self) -> ArrayViewMut<'a, S, Dim> {
+        let ndim = self.dim() as usize;
+        let mut dim = Dim::zeros(ndim);
+        let mut strides = Dim::zeros(ndim);
+        let mut dim_order = Dim::zeros(ndim);
+        for (i, d) in self.sizes().iter().enumerate() {
+            dim[i] = *d as usize;
         }
+        for (i, s) in TensorBase::strides(self).iter().enumerate() {
+            strides[i] = *s as usize;
+        }
+        for (i, s) in self.dim_order().iter().enumerate() {
+            dim_order[i] = *s as usize;
+        }
+        let ptr = self.as_mut_ptr::<S>();
+        unsafe { ArrayViewMut::from_shape_ptr(dim.strides(strides), ptr) }.permuted_axes(dim_order)
     }
 
     /// Get a mutable array view of the tensor with dynamic number of dimensions.
@@ -466,7 +382,8 @@ impl<'a> TensorMut<'a> {
     /// # Panics
     ///
     /// If the scalar type of the tensor does not match the type `S`.
-    pub fn as_array_mut_dyn<S: Scalar + 'static>(&mut self) -> ArrayViewMut<'a, S, IxDyn> {
+    #[cfg(feature = "alloc")]
+    pub fn as_array_mut_dyn<S: Scalar>(&mut self) -> ArrayViewMut<'a, S, ndarray::IxDyn> {
         self.as_array_mut()
     }
 }
@@ -526,7 +443,7 @@ impl<D: Data> Debug for TensorBase<'_, D> {
         let mut st = f.debug_struct("Tensor");
         st.field("scalar_type", &self.scalar_type());
 
-        fn add_data_field<D: Data, S: Scalar + Debug + 'static>(
+        fn add_data_field<D: Data, S: Scalar + Debug>(
             this: &TensorBase<'_, D>,
             st: &mut std::fmt::DebugStruct,
         ) {
@@ -538,7 +455,13 @@ impl<D: Data> Debug for TensorBase<'_, D> {
                 4 => st.field("data", &this.as_array::<S, ndarray::Ix4>()),
                 5 => st.field("data", &this.as_array::<S, ndarray::Ix5>()),
                 6 => st.field("data", &this.as_array::<S, ndarray::Ix6>()),
-                _ => st.field("data", &this.as_array_dyn::<S>()),
+                _ => {
+                    cfg_if::cfg_if! { if #[cfg(feature = "alloc")] {
+                        st.field("data", &this.as_array_dyn::<S>())
+                    } else {
+                        st.field("data", &"unsupported (too many dimensions)")
+                    } }
+                }
             };
         }
         fn add_data_field_unsupported(st: &mut std::fmt::DebugStruct) {
@@ -551,55 +474,45 @@ impl<D: Data> Debug for TensorBase<'_, D> {
             Some(ScalarType::Int) => add_data_field::<_, i32>(self, &mut st),
             Some(ScalarType::Long) => add_data_field::<_, i64>(self, &mut st),
             Some(ScalarType::Half) => {
-                cfg_if::cfg_if! {
-                    if #[cfg(feature = "f16")] {
-                        add_data_field::<_, half::f16>(self, &mut st);
-                    } else {
-                        add_data_field_unsupported(&mut st);
-                    }
-                }
+                cfg_if::cfg_if! { if #[cfg(feature = "f16")] {
+                    add_data_field::<_, half::f16>(self, &mut st);
+                } else {
+                    add_data_field_unsupported(&mut st);
+                } }
             }
             Some(ScalarType::Float) => add_data_field::<_, f32>(self, &mut st),
             Some(ScalarType::Double) => add_data_field::<_, f64>(self, &mut st),
             Some(ScalarType::ComplexHalf) => {
-                cfg_if::cfg_if! {
-                    if #[cfg(all(feature = "complex", feature = "f16"))] {
-                        add_data_field::<_, num_complex::Complex<half::f16>>(self, &mut st);
-                    } else {
-                        add_data_field_unsupported(&mut st);
-                    }
-                }
+                cfg_if::cfg_if! { if #[cfg(all(feature = "complex", feature = "f16"))] {
+                    add_data_field::<_, num_complex::Complex<half::f16>>(self, &mut st);
+                } else {
+                    add_data_field_unsupported(&mut st);
+                } }
             }
             Some(ScalarType::ComplexFloat) => {
-                cfg_if::cfg_if! {
-                    if #[cfg(feature = "complex")] {
-                        add_data_field::<_, num_complex::Complex32>(self, &mut st);
-                    } else {
-                        add_data_field_unsupported(&mut st);
-                    }
-                }
+                cfg_if::cfg_if! { if #[cfg(feature = "complex")] {
+                    add_data_field::<_, num_complex::Complex32>(self, &mut st);
+                } else {
+                    add_data_field_unsupported(&mut st);
+                } }
             }
             Some(ScalarType::ComplexDouble) => {
-                cfg_if::cfg_if! {
-                    if #[cfg(feature = "complex")] {
-                        add_data_field::<_, num_complex::Complex64>(self, &mut st);
-                    } else {
-                        add_data_field_unsupported(&mut st);
-                    }
-                }
+                cfg_if::cfg_if! { if #[cfg(feature = "complex")] {
+                    add_data_field::<_, num_complex::Complex64>(self, &mut st);
+                } else {
+                    add_data_field_unsupported(&mut st);
+                } }
             }
             Some(ScalarType::Bool) => add_data_field::<_, bool>(self, &mut st),
             Some(ScalarType::QInt8) => add_data_field_unsupported(&mut st),
             Some(ScalarType::QUInt8) => add_data_field_unsupported(&mut st),
             Some(ScalarType::QInt32) => add_data_field_unsupported(&mut st),
             Some(ScalarType::BFloat16) => {
-                cfg_if::cfg_if! {
-                    if #[cfg(feature = "f16")] {
-                        add_data_field::<_, half::bf16>(self, &mut st);
-                    } else {
-                        add_data_field_unsupported(&mut st);
-                    }
-                }
+                cfg_if::cfg_if! { if #[cfg(feature = "f16")] {
+                    add_data_field::<_, half::bf16>(self, &mut st);
+                } else {
+                    add_data_field_unsupported(&mut st);
+                } }
             }
             Some(ScalarType::QUInt4x2) => add_data_field_unsupported(&mut st),
             Some(ScalarType::QUInt2x4) => add_data_field_unsupported(&mut st),
@@ -643,16 +556,6 @@ impl<'a> TensorImpl<'a> {
     ) -> Self {
         unsafe { Self::from_ptr_impl(sizes, data as *mut S, dim_order, strides) }
     }
-
-    /// Create a new TensorImpl from an immutable array view.
-    ///
-    /// A `TensorImpl` does not own the underlying data, along with the sizes and strides. The returned struct owns
-    /// a vector of sizes and strides on the heap and keep them alive as long as the `TensorImpl` is alive. The data
-    /// itself is not copied and must be valid for the lifetime of the `TensorImpl`.
-    /// The trait `AsRef` is implemented for `ArrayAsTensor` to allow it to be used as a `TensorImpl`.
-    pub fn from_array<S: Scalar, D: Dimension>(array: ArrayView<'a, S, D>) -> ArrayAsTensor<'a> {
-        ArrayAsTensor::new::<S, _>(array)
-    }
 }
 
 /// A mutable tensor implementation that does not own the underlying data.
@@ -680,96 +583,6 @@ impl<'a> TensorImplMut<'a> {
         strides: &'a [StridesType],
     ) -> Self {
         unsafe { Self::from_ptr_impl(sizes, data, dim_order, strides) }
-    }
-
-    /// Create a new TensorImplMut from a mutable array view.
-    ///
-    /// A `TensorImplMut` does not own the underlying data, along with the sizes and strides. The returned struct owns
-    /// a vector of sizes and strides on the heap and keep them alive as long as the `TensorImplMut` is alive. The data
-    /// itself is not copied and must be valid for the lifetime of the `TensorImplMut`.
-    /// The trait `AsMut` is implemented for `ArrayAsTensorMut` to allow it to be used as a `TensorImplMut`.
-    pub fn from_array<S: Scalar, D: Dimension>(
-        array: ArrayViewMut<'a, S, D>,
-    ) -> ArrayAsTensorMut<'a> {
-        ArrayAsTensorMut::new::<S, _>(array)
-    }
-}
-
-/// A wrapper around an ndarray view that can be used as a `TensorImplBase`.
-///
-/// The `TensorImplBase` struct does not own any of the data it points to along side the dimensions and strides. This
-/// struct allocate the sizes and strides on the heap and keep them alive as long as the TensorImpl is alive.
-/// The traits `AsRef` and `AsMut` are implemented for this struct to allow it to be used as a `TensorImplBase`.
-pub struct ArrayAsTensorBase<'a, D: Data> {
-    // The sizes field is not used directly, but it must be alive as the tensor impl has a reference to it
-    #[allow(dead_code)]
-    sizes: Vec<SizesType>,
-    // The dim_order field is not used directly, but it must be alive as the tensor impl has a reference to it
-    #[allow(dead_code)]
-    dim_order: Vec<DimOrderType>,
-    // The strides field is not used directly, but it must be alive as the tensor impl has a reference to it
-    #[allow(dead_code)]
-    strides: Vec<StridesType>,
-    tensor_impl: TensorImplBase<'a, D>,
-}
-/// A variant of `ArrayAsTensorBase` for an immutable tensor
-pub type ArrayAsTensor<'a> = ArrayAsTensorBase<'a, View>;
-/// A variant of `ArrayAsTensorBase` for a mutable tensor
-pub type ArrayAsTensorMut<'a> = ArrayAsTensorBase<'a, ViewMut>;
-impl<'a, D: Data> ArrayAsTensorBase<'a, D> {
-    unsafe fn from_array<S: Scalar, ArrS: ndarray::RawData, Dim: Dimension>(
-        array: ArrayBase<ArrS, Dim>,
-    ) -> ArrayAsTensorBase<'a, D> {
-        let sizes: Vec<SizesType> = array
-            .shape()
-            .iter()
-            .map(|&size| size.try_into().unwrap())
-            .collect();
-        let dim_order: Vec<DimOrderType> = (0..array.ndim() as DimOrderType).collect();
-        let strides: Vec<StridesType> = ndarray::ArrayBase::strides(&array)
-            .iter()
-            .map(|&s| s.try_into().unwrap())
-            .collect();
-        let tensor_impl = unsafe {
-            TensorImplBase::new::<S>(
-                array.ndim(),
-                // We take the pointer of sizes here, must be kept alive
-                sizes.as_ptr(),
-                array.as_ptr() as *mut S,
-                // We take the pointer of dim_order here, must be kept alive
-                dim_order.as_ptr(),
-                // We take the pointer of strides here, must be kept alive
-                strides.as_ptr(),
-            )
-        };
-        ArrayAsTensorBase {
-            sizes,
-            dim_order,
-            strides,
-            tensor_impl,
-        }
-    }
-}
-impl<'a> ArrayAsTensor<'a> {
-    /// Create a new ArrayAsTensor from an immutable array view.
-    pub fn new<S: Scalar, D: Dimension>(array: ArrayView<'a, S, D>) -> Self {
-        unsafe { Self::from_array::<S, _, _>(array) }
-    }
-}
-impl<'a> ArrayAsTensorMut<'a> {
-    /// Create a new ArrayAsTensorMut from a mutable array view.
-    pub fn new<S: Scalar, D: Dimension>(array: ArrayViewMut<'a, S, D>) -> Self {
-        unsafe { Self::from_array::<S, _, _>(array) }
-    }
-}
-impl<'a, D: Data> AsRef<TensorImplBase<'a, D>> for ArrayAsTensorBase<'a, D> {
-    fn as_ref(&self) -> &TensorImplBase<'a, D> {
-        &self.tensor_impl
-    }
-}
-impl<'a, D: DataMut> AsMut<TensorImplBase<'a, D>> for ArrayAsTensorBase<'a, D> {
-    fn as_mut(&mut self) -> &mut TensorImplBase<'a, D> {
-        &mut self.tensor_impl
     }
 }
 
@@ -800,6 +613,96 @@ impl ViewMut {
 }
 impl Data for ViewMut {}
 impl DataMut for ViewMut {}
+
+/// A wrapper around `ndarray::ArrayBase` that can be converted to `TensorImplBase`.
+///
+/// The `TensorImplBase` struct does not own any of the data it points to along side the dimensions and strides. This
+/// struct owns any additional data in addition to the underlying `ndarray::ArrayBase`, allowing to create a
+/// `TensorImplBase` that points to it.
+///
+/// Use `to_tensor_impl()` and `to_tensor_impl_mut` to obtain a `TensorImplBase` pointing to this array data.
+pub struct Array<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> {
+    array: ArrayBase<S, D>,
+    sizes: D::Arr<SizesType>,
+    dim_order: D::Arr<DimOrderType>,
+    strides: D::Arr<StridesType>,
+}
+impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> Array<A, S, D> {
+    /// Create a new `Array` from an ndarray.
+    pub fn new(array: ArrayBase<S, D>) -> Array<A, S, D> {
+        let ndim = array.ndim();
+        let mut sizes = D::Arr::zeros(ndim);
+        let mut dim_order = D::Arr::zeros(ndim);
+        let mut strides = D::Arr::zeros(ndim);
+        for (i, d) in array.shape().iter().enumerate() {
+            sizes.as_mut()[i] = *d as SizesType;
+        }
+        for (i, s) in ndarray::ArrayBase::strides(&array).iter().enumerate() {
+            strides.as_mut()[i] = *s as StridesType;
+        }
+        for (i, s) in (0..ndim).enumerate() {
+            dim_order.as_mut()[i] = s as DimOrderType;
+        }
+        Array {
+            array,
+            sizes,
+            dim_order,
+            strides,
+        }
+    }
+
+    /// Create a `TensorImpl` pointing to this struct's data.
+    ///
+    /// The `TensorImpl` does not own the data or the sizes, dim order and strides of the tensor. This struct
+    /// must outlive the `TensorImpl` created from it.
+    pub fn to_tensor_impl(&self) -> TensorImpl<'_> {
+        let impl_ = unsafe {
+            et_c::TensorImpl::new(
+                A::TYPE.into_c_scalar_type(),
+                self.sizes.as_ref().len() as isize,
+                self.sizes.as_ref().as_ptr() as *mut SizesType,
+                self.array.as_ptr() as *mut _,
+                self.dim_order.as_ref().as_ptr() as *mut DimOrderType,
+                self.strides.as_ref().as_ptr() as *mut StridesType,
+                et_c::TensorShapeDynamism::STATIC,
+            )
+        };
+        TensorImplBase(impl_, PhantomData)
+    }
+}
+impl<A: Scalar, S: ndarray::RawDataMut<Elem = A>, D: Dimension> Array<A, S, D> {
+    /// Create a `TensorImplMut` pointing to this struct's data.
+    ///
+    /// The `TensorImplMut` does not own the data or the sizes, dim order and strides of the tensor. This struct
+    /// must outlive the `TensorImplMut` created from it.
+    pub fn to_tensor_impl_mut<'a>(&'a mut self) -> TensorImplMut<'a> {
+        let tensor = self.to_tensor_impl();
+        // SAFETY: TensorImpl has the same memory layout as TensorImplBase
+        unsafe { std::mem::transmute::<TensorImpl<'a>, TensorImplMut<'a>>(tensor) }
+    }
+}
+impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> AsRef<ArrayBase<S, D>>
+    for Array<A, S, D>
+{
+    fn as_ref(&self) -> &ArrayBase<S, D> {
+        &self.array
+    }
+}
+
+/// An extension to `ndarray::Dimension` for dimensions used to convert to/from Tensors.
+pub trait Dimension: ndarray::Dimension {
+    /// The array type that holds the sizes, dim order and strides of the tensor.
+    ///
+    /// Can be either a fixed size array (supported without alloc) or a dynamic array (vector).
+    type Arr<T: Clone + Copy + Default>: DimArr<T>;
+}
+impl<D: FixedSizeDim> Dimension for D {
+    type Arr<T: Clone + Copy + Default> = D::Arr<T>;
+}
+#[cfg(feature = "alloc")]
+impl Dimension for ndarray::IxDyn {
+    type Arr<T: Clone + Copy + Default> = et_alloc::vec::Vec<T>;
+}
 
 /// Metadata about a specific tensor of an ExecuTorch Program.
 ///
@@ -847,7 +750,7 @@ impl Debug for TensorInfo<'_> {
 
 #[cfg(test)]
 mod tests {
-    use ndarray::{arr1, arr2, Array1, Array2, Array3, Ix3};
+    use ndarray::{arr1, arr2, Array3, Ix3};
 
     use super::*;
 
@@ -901,11 +804,11 @@ mod tests {
     }
 
     #[test]
-    fn test_tensor_from_array() {
+    fn test_array_as_tensor() {
         // Create a 1D array and convert it to a tensor
-        let array: Array1<i32> = arr1(&[1, 2, 3]);
-        let tensor_impl = TensorImpl::from_array(array.view());
-        let tensor = Tensor::new(tensor_impl.as_ref());
+        let array = Array::<i32, _, _>::new(arr1(&[1, 2, 3]));
+        let tensor_impl = array.to_tensor_impl();
+        let tensor = Tensor::new(&tensor_impl);
         assert_eq!(tensor.nbytes(), 12);
         assert_eq!(tensor.size(0), 3);
         assert_eq!(tensor.dim(), 1);
@@ -915,12 +818,12 @@ mod tests {
         assert_eq!(tensor.sizes(), &[3]);
         assert_eq!(tensor.dim_order(), &[0]);
         assert_eq!(tensor.strides(), &[1]);
-        assert_eq!(tensor.as_ptr(), array.as_ptr());
+        assert_eq!(tensor.as_ptr(), array.as_ref().as_ptr());
 
         // Create a 2D array and convert it to a tensor
-        let array: Array2<f64> = arr2(&[[1.0, 2.0, 7.0], [3.0, 4.0, 8.0]]);
-        let tensor_impl = TensorImpl::from_array(array.view());
-        let tensor = Tensor::new(tensor_impl.as_ref());
+        let array = Array::<f64, _, _>::new(arr2(&[[1.0, 2.0, 7.0], [3.0, 4.0, 8.0]]));
+        let tensor_impl = array.to_tensor_impl();
+        let tensor = Tensor::new(&tensor_impl);
         assert_eq!(tensor.nbytes(), 48);
         assert_eq!(tensor.size(0), 2);
         assert_eq!(tensor.size(1), 3);
@@ -931,15 +834,15 @@ mod tests {
         assert_eq!(tensor.sizes(), &[2, 3]);
         assert_eq!(tensor.dim_order(), &[0, 1]);
         assert_eq!(tensor.strides(), &[3, 1]);
-        assert_eq!(tensor.as_ptr(), array.as_ptr());
+        assert_eq!(tensor.as_ptr(), array.as_ref().as_ptr());
     }
 
     #[test]
-    fn test_tensor_mut_from_array() {
+    fn test_array_as_tensor_mut() {
         // Create a 1D array and convert it to a tensor
-        let mut array: Array1<i32> = arr1(&[1, 2, 3]);
-        let mut tensor_impl = TensorImplMut::from_array(array.view_mut());
-        let tensor = TensorMut::new(tensor_impl.as_mut());
+        let mut array = Array::<i32, _, _>::new(arr1(&[1, 2, 3]));
+        let mut tensor_impl = array.to_tensor_impl_mut();
+        let tensor = TensorMut::new(&mut tensor_impl);
         assert_eq!(tensor.nbytes(), 12);
         assert_eq!(tensor.size(0), 3);
         assert_eq!(tensor.dim(), 1);
@@ -949,12 +852,12 @@ mod tests {
         assert_eq!(tensor.sizes(), &[3]);
         assert_eq!(tensor.dim_order(), &[0]);
         assert_eq!(tensor.strides(), &[1]);
-        assert_eq!(tensor.as_ptr(), array.as_ptr());
+        assert_eq!(tensor.as_ptr(), array.as_ref().as_ptr());
 
         // Create a 2D array and convert it to a tensor
-        let mut array: Array2<f64> = arr2(&[[1.0, 2.0, 7.0], [3.0, 4.0, 8.0]]);
-        let mut tensor_impl = TensorImplMut::from_array(array.view_mut());
-        let tensor = TensorMut::new(tensor_impl.as_mut());
+        let mut array = Array::<f64, _, _>::new(arr2(&[[1.0, 2.0, 7.0], [3.0, 4.0, 8.0]]));
+        let mut tensor_impl = array.to_tensor_impl_mut();
+        let tensor = TensorMut::new(&mut tensor_impl);
         assert_eq!(tensor.nbytes(), 48);
         assert_eq!(tensor.size(0), 2);
         assert_eq!(tensor.size(1), 3);
@@ -965,49 +868,55 @@ mod tests {
         assert_eq!(tensor.sizes(), &[2, 3]);
         assert_eq!(tensor.dim_order(), &[0, 1]);
         assert_eq!(tensor.strides(), &[3, 1]);
-        assert_eq!(tensor.as_ptr(), array.as_ptr());
+        assert_eq!(tensor.as_ptr(), array.as_ref().as_ptr());
     }
 
     #[test]
     fn test_tensor_as_array() {
-        let arr1 = Array3::<f32>::zeros((3, 6, 4));
-        let tensor_impl = TensorImpl::from_array(arr1.view());
-        let tensor = Tensor::new(tensor_impl.as_ref());
+        let arr1 = Array::new(Array3::<f32>::zeros((3, 6, 4)));
+        let tensor_impl = arr1.to_tensor_impl();
+        let tensor = Tensor::new(&tensor_impl);
         let arr2 = tensor.as_array::<f32, Ix3>();
-        assert_eq!(arr1, arr2);
-        assert_eq!(arr1.strides(), arr2.strides());
+        assert_eq!(arr1.as_ref(), arr2);
+        assert_eq!(arr1.as_ref().strides(), arr2.strides());
 
-        let arr1 = arr1.into_dyn();
-        let tensor_impl = TensorImpl::from_array(arr1.view().into_shape((18, 4)).unwrap());
-        let tensor = Tensor::new(tensor_impl.as_ref());
-        let arr2 = tensor.as_array::<f32, IxDyn>();
-        assert_eq!(arr1.view().into_shape(vec![18, 4]).unwrap(), arr2);
-        assert_eq!(arr2.strides(), [4, 1]);
+        cfg_if::cfg_if! { if #[cfg(feature = "alloc")] {
+            let arr1 = Array::new(arr1.as_ref().view().into_dyn());
+            let tensor_impl = arr1.to_tensor_impl();
+            let tensor = Tensor::new(&tensor_impl);
+            let arr2 = tensor.as_array::<f32, ndarray::IxDyn>();
+            assert_eq!(arr1.as_ref().view().into_shape(vec![18, 4]).unwrap(), arr2);
+            assert_eq!(arr2.strides(), [4, 1]);
+        } }
     }
 
     #[test]
     fn test_tensor_as_array_mut() {
-        let mut arr1 = Array3::<f32>::zeros((3, 6, 4));
-        let arr1_clone = arr1.clone();
-        let mut tensor_impl = TensorImplMut::from_array(arr1.view_mut());
-        let mut tensor = TensorMut::new(tensor_impl.as_mut());
+        let mut arr1 = Array::new(Array3::<f32>::zeros((3, 6, 4)));
+        let arr1_clone = arr1.as_ref().clone();
+        let mut tensor_impl = arr1.to_tensor_impl_mut();
+        let mut tensor = TensorMut::new(&mut tensor_impl);
         let arr2 = tensor.as_array_mut::<f32, Ix3>();
         assert_eq!(arr1_clone, arr2);
         assert_eq!(arr1_clone.strides(), arr2.strides());
 
-        let mut arr1 = arr1.into_dyn();
-        let arr1_clone = arr1.clone();
-        let mut tensor_impl =
-            TensorImplMut::from_array(arr1.view_mut().into_shape((18, 4)).unwrap());
-        let mut tensor = TensorMut::new(tensor_impl.as_mut());
-        let arr2 = tensor.as_array_mut::<f32, IxDyn>();
-        assert_eq!(arr1_clone.view().into_shape(vec![18, 4]).unwrap(), arr2);
-        assert_eq!(arr2.strides(), [4, 1]);
+        cfg_if::cfg_if! { if #[cfg(feature = "alloc")] {
+            let mut arr1 = arr1.as_ref().clone().into_dyn();
+            let arr1_clone = arr1.clone();
+            let mut arr1 = Array::new(arr1.view_mut().into_shape((18, 4)).unwrap());
+            let mut tensor_impl = arr1.to_tensor_impl_mut();
+            let mut tensor = TensorMut::new(&mut tensor_impl);
+            let arr2 = tensor.as_array_mut::<f32, ndarray::IxDyn>();
+            assert_eq!(arr1_clone.view().into_shape(vec![18, 4]).unwrap(), arr2);
+            assert_eq!(arr2.strides(), [4, 1]);
+        } }
     }
 
     #[test]
     fn test_tensor_with_scalar_type() {
-        fn test_scalar_type<S: Scalar>(data_allocator: impl FnOnce(usize) -> Vec<S>) {
+        fn test_scalar_type<S: Scalar>(
+            data_allocator: impl FnOnce(usize) -> et_alloc::vec::Vec<S>,
+        ) {
             let sizes = [2, 4, 17];
             let data = data_allocator(2 * 4 * 17);
             let dim_order = [0, 1, 2];

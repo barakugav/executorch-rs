@@ -6,7 +6,7 @@
 //!
 //! This module is enabled by the `module` feature.
 //!
-//! See the `hello_world_add_module` example for how to load and execute a module.
+//! See the `hello_world_add` example for how to load and execute a module.
 
 use std::collections::HashSet;
 use std::path::Path;
@@ -20,7 +20,7 @@ use crate::{et_c, et_rs_c};
 
 /// A facade class for loading programs and executing methods within them.
 ///
-/// See the `hello_world_add_module` example for how to load and execute a module.
+/// See the `hello_world_add` example for how to load and execute a module.
 pub struct Module(et_c::Module);
 impl Module {
     /// Constructs an instance by loading a program from a file with specified
