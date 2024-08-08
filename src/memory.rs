@@ -66,7 +66,7 @@ impl<'a> MemoryAllocator<'a> {
     /// A mutable reference to the allocated memory, or `None` if allocation failed.
     ///
     /// Allocation may failed if the allocator is out of memory.
-    pub fn allocate<T: Default>(&self) -> Option<&'a mut T> {
+    pub fn allocate<T: Default>(&self) -> Option<&mut T> {
         let size = std::mem::size_of::<T>();
         let alignment = std::mem::align_of::<T>();
         let ptr = unsafe { self.allocate_raw(size, alignment) }? as *mut T;
@@ -85,7 +85,7 @@ impl<'a> MemoryAllocator<'a> {
     /// A mutable reference to the allocated array, or `None` if allocation failed.
     ///
     /// Allocation may failed if the allocator is out of memory.
-    pub fn allocate_arr<T: Default>(&self, len: usize) -> Option<&'a mut [T]> {
+    pub fn allocate_arr<T: Default>(&self, len: usize) -> Option<&mut [T]> {
         self.allocate_arr_fn(len, |_| Default::default())
     }
 
@@ -101,7 +101,7 @@ impl<'a> MemoryAllocator<'a> {
     /// A mutable reference to the allocated array, or `None` if allocation failed.
     ///
     /// Allocation may failed if the allocator is out of memory.
-    pub fn allocate_arr_fn<T>(&self, len: usize, f: impl Fn(usize) -> T) -> Option<&'a mut [T]> {
+    pub fn allocate_arr_fn<T>(&self, len: usize, f: impl Fn(usize) -> T) -> Option<&mut [T]> {
         let elm_size = std::mem::size_of::<T>();
         let alignment = std::mem::align_of::<T>();
         let actual_elm_size = (elm_size + alignment - 1) & !(alignment - 1);
@@ -123,16 +123,9 @@ impl<'a> MemoryAllocator<'a> {
         Some(slice)
     }
 }
-
-/// A trait for types that can be treated as a mutable MemoryAllocator.
-pub trait AsMemoryAllocator {
-    /// Returns a mutable reference to the MemoryAllocator.
-    fn as_memory_allocator(&mut self) -> &mut MemoryAllocator<'_>;
-}
-impl<'a> AsMemoryAllocator for MemoryAllocator<'a> {
-    fn as_memory_allocator<'b>(&'b mut self) -> &mut MemoryAllocator<'b> {
-        // SAFE: 'a is longer than 'b, so we just shorten the lifetime.
-        unsafe { std::mem::transmute::<&mut MemoryAllocator<'a>, &mut MemoryAllocator<'b>>(self) }
+impl<'a> AsRef<MemoryAllocator<'a>> for MemoryAllocator<'a> {
+    fn as_ref(&self) -> &MemoryAllocator<'a> {
+        self
     }
 }
 
@@ -155,12 +148,14 @@ impl MallocMemoryAllocator {
         }))
     }
 }
-impl AsMemoryAllocator for MallocMemoryAllocator {
-    fn as_memory_allocator(&mut self) -> &mut MemoryAllocator<'_> {
+impl AsRef<MemoryAllocator<'static>> for MallocMemoryAllocator {
+    fn as_ref(&self) -> &MemoryAllocator<'static> {
         // Safety: MallocMemoryAllocator contains a single field of (UnsafeCell of) et_c::MemoryAllocator which is a
         // sub class of et_c::MemoryAllocator, and MemoryAllocator contains a single field of (UnsafeCell of)
         // et_c::MemoryAllocator.
-        unsafe { std::mem::transmute::<&mut MallocMemoryAllocator, &mut MemoryAllocator>(self) }
+        // The returned allocator have a lifetime of 'static because it does not depend on any external buffer, malloc
+        // objects are alive until the program ends.
+        unsafe { std::mem::transmute::<&MallocMemoryAllocator, &MemoryAllocator>(self) }
     }
 }
 impl Drop for MallocMemoryAllocator {
@@ -223,7 +218,7 @@ impl<'a> MemoryManager<'a> {
     /// Must outlive the Method that uses it. May be `None` if the Method does not use kernels or delegates that
     /// allocate temporary data. This allocator will be reset after every kernel or delegate call during execution.
     pub fn new<'b: 'a>(
-        method_allocator: &'a mut impl AsMemoryAllocator,
+        method_allocator: &'a impl AsRef<MemoryAllocator<'b>>,
         planned_memory: Option<&'a mut HierarchicalAllocator>,
         temp_allocator: Option<&'a mut MemoryAllocator>,
     ) -> Self {
@@ -235,7 +230,7 @@ impl<'a> MemoryManager<'a> {
             .unwrap_or(ptr::null_mut());
         Self(
             UnsafeCell::new(et_c::MemoryManager {
-                method_allocator_: method_allocator.as_memory_allocator().0.get(),
+                method_allocator_: method_allocator.as_ref().0.get(),
                 planned_memory_: planned_memory,
                 temp_allocator_: temp_allocator,
             }),
