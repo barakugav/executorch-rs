@@ -21,7 +21,7 @@ fn build_c_extension() {
     builder.cpp(true).std("c++17");
     // TODO: cpp executorch doesnt support nostd yet
     // if !cfg!(feature = "std") {
-    builder.cpp_set_stdlib(None);
+    //     builder.cpp_set_stdlib(None);
     //     builder.flag("-nostdlib");
     // }
     builder
@@ -196,10 +196,13 @@ fn cpp_ext_dir() -> PathBuf {
 fn cpp_defines() -> Vec<&'static str> {
     let mut defines = vec![];
     if cfg!(feature = "data-loader") {
-        defines.push("EXECUTORCH_RS_EXTENSION_DATA_LOADER");
+        defines.push("EXECUTORCH_RS_DATA_LOADER");
     }
     if cfg!(feature = "module") {
-        defines.push("EXECUTORCH_RS_EXTENSION_MODULE");
+        defines.push("EXECUTORCH_RS_MODULE");
+    }
+    if cfg!(feature = "std") {
+        defines.push("EXECUTORCH_RS_STD");
     }
     defines
 }

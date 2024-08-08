@@ -3,9 +3,7 @@
 
 use executorch::data_loader::FileDataLoader;
 use executorch::evalue::{EValue, Tag};
-use executorch::memory::{
-    HierarchicalAllocator, MallocMemoryAllocator, MemoryAllocator, MemoryManager,
-};
+use executorch::memory::{HierarchicalAllocator, MemoryAllocator, MemoryManager};
 use executorch::program::{Program, ProgramVerification};
 use executorch::tensor::{Array, Tensor};
 use executorch::util::Span;
@@ -45,8 +43,7 @@ fn main() {
 
     let mut planned_memory = HierarchicalAllocator::new(Span::from_slice(planned_arenas));
 
-    let mut method_allocator = MallocMemoryAllocator::new();
-    let memory_manager = MemoryManager::new(&mut method_allocator, Some(&mut planned_memory), None);
+    let memory_manager = MemoryManager::new(&memory_allocator, Some(&mut planned_memory), None);
 
     let mut method = program
         .load_method(cstr::cstr!(b"forward"), &memory_manager)

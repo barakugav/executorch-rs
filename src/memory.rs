@@ -129,38 +129,45 @@ impl<'a> AsRef<MemoryAllocator<'a>> for MemoryAllocator<'a> {
     }
 }
 
-/// Dynamically allocates memory using malloc() and frees all pointers at
-/// destruction time.
-///
-/// For systems with malloc(), this can be easier than using a fixed-sized
-/// MemoryAllocator.
-pub struct MallocMemoryAllocator(UnsafeCell<et_c::util::MallocMemoryAllocator>);
-impl Default for MallocMemoryAllocator {
-    fn default() -> Self {
-        Self::new()
+#[cfg(feature = "std")]
+pub use malloc_allocator::MallocMemoryAllocator;
+#[cfg(feature = "std")]
+mod malloc_allocator {
+    use super::*;
+
+    /// Dynamically allocates memory using malloc() and frees all pointers at
+    /// destruction time.
+    ///
+    /// For systems with malloc(), this can be easier than using a fixed-sized
+    /// MemoryAllocator.
+    pub struct MallocMemoryAllocator(UnsafeCell<et_c::util::MallocMemoryAllocator>);
+    impl Default for MallocMemoryAllocator {
+        fn default() -> Self {
+            Self::new()
+        }
     }
-}
-impl MallocMemoryAllocator {
-    /// Construct a new Malloc memory allocator.
-    pub fn new() -> Self {
-        Self(UnsafeCell::new(unsafe {
-            et_rs_c::MallocMemoryAllocator_new()
-        }))
+    impl MallocMemoryAllocator {
+        /// Construct a new Malloc memory allocator.
+        pub fn new() -> Self {
+            Self(UnsafeCell::new(unsafe {
+                et_rs_c::MallocMemoryAllocator_new()
+            }))
+        }
     }
-}
-impl AsRef<MemoryAllocator<'static>> for MallocMemoryAllocator {
-    fn as_ref(&self) -> &MemoryAllocator<'static> {
-        // Safety: MallocMemoryAllocator contains a single field of (UnsafeCell of) et_c::MemoryAllocator which is a
-        // sub class of et_c::MemoryAllocator, and MemoryAllocator contains a single field of (UnsafeCell of)
-        // et_c::MemoryAllocator.
-        // The returned allocator have a lifetime of 'static because it does not depend on any external buffer, malloc
-        // objects are alive until the program ends.
-        unsafe { std::mem::transmute::<&MallocMemoryAllocator, &MemoryAllocator>(self) }
+    impl AsRef<MemoryAllocator<'static>> for MallocMemoryAllocator {
+        fn as_ref(&self) -> &MemoryAllocator<'static> {
+            // Safety: MallocMemoryAllocator contains a single field of (UnsafeCell of) et_c::MemoryAllocator which is a
+            // sub class of et_c::MemoryAllocator, and MemoryAllocator contains a single field of (UnsafeCell of)
+            // et_c::MemoryAllocator.
+            // The returned allocator have a lifetime of 'static because it does not depend on any external buffer, malloc
+            // objects are alive until the program ends.
+            unsafe { std::mem::transmute::<&MallocMemoryAllocator, &MemoryAllocator>(self) }
+        }
     }
-}
-impl Drop for MallocMemoryAllocator {
-    fn drop(&mut self) {
-        unsafe { et_rs_c::MallocMemoryAllocator_destructor(self.0.get()) };
+    impl Drop for MallocMemoryAllocator {
+        fn drop(&mut self) {
+            unsafe { et_rs_c::MallocMemoryAllocator_destructor(self.0.get()) };
+        }
     }
 }
 
