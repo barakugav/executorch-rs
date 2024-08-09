@@ -12,7 +12,7 @@
 //! ```bash
 //! # Clone the C++ library
 //! cd ${TEMP_DIR}
-//! git clone --depth 1 --branch v0.2.1 https://github.com/pytorch/executorch.git
+//! git clone --depth 1 --branch v0.3.0 https://github.com/pytorch/executorch.git
 //! cd executorch
 //! git submodule sync --recursive
 //! git submodule update --init --recursive
@@ -86,6 +86,9 @@ mod c_link {
     #![allow(dead_code)]
     #![allow(unused_imports)]
     #![allow(clippy::upper_case_acronyms)]
+    #![allow(clippy::missing_safety_doc)]
+    #![allow(rustdoc::invalid_html_tags)]
+    #![allow(rustdoc::broken_intra_doc_links)]
 
     include!(concat!(env!("OUT_DIR"), "/executorch_bindings.rs"));
 }

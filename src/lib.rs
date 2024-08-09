@@ -91,7 +91,7 @@
 //!
 //!
 //! The C++ API is still in Alpha, and this Rust lib will continue to change with it. Currently the supported
-//! executorch version is `0.2.1`.
+//! executorch version is `0.3.0`.
 //!
 //! To use the library you must compile the C++ executorch library yourself, as there are many configurations that
 //! determines which modules, backends, and operations are supported. See the `executorch-sys` crate for more info.
