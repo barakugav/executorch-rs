@@ -7,7 +7,7 @@ members = [
 
 [package]
 name = "executorch"
-version = "0.1.0"
+version = "0.2.0-rc.1"
 authors = ["Barak Ugav <barakugav@gmail.com>"]
 edition = "2021"
 description = "Rust bindings for ExecuTorch - On-device AI across mobile, embedded and edge for PyTorch"
@@ -34,7 +34,7 @@ include = ["Cargo.toml", "src/", "README.md", "LICENSE"]
 all-features = true
 
 [dependencies]
-executorch-sys = { path = "executorch-sys", version = "0.1.0", default-features = false }
+executorch-sys = { path = "executorch-sys", version = "0.2.0-rc.1", default-features = false }
 ndarray = "0.15.6"
 log = "0.4.22"
 half = { version = "2.4.1", optional = true }
