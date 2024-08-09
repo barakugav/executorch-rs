@@ -12,7 +12,7 @@
 //! ```bash
 //! # Clone the C++ library
 //! cd ${TEMP_DIR}
-//! git clone --depth 1 --branch v0.2.1 https://github.com/pytorch/executorch.git
+//! git clone --depth 1 --branch v0.3.0 https://github.com/pytorch/executorch.git
 //! cd executorch
 //! git submodule sync --recursive
 //! git submodule update --init --recursive

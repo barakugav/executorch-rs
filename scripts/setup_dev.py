@@ -21,12 +21,10 @@ def main():
             "install",
             "cmake",
             "pyyaml",
-            "setuptools",
+            "setuptools>=63",
             "tomli",
             "wheel",
             "zstd",
-            "torch==2.3.1",
-            "torchvision==0.18.1",
         ]
     )
 
@@ -34,21 +32,23 @@ def main():
 
 
 def clone_executorch():
-    if not DEV_EXECUTORCH_DIR.exists():
-        DEV_EXECUTORCH_DIR.parent.mkdir(parents=True, exist_ok=True)
-        # git clone --depth 1 --branch v0.2.1 https://github.com/pytorch/executorch.git
-        subprocess.check_call(
-            [
-                "git",
-                "clone",
-                "--depth",
-                "1",
-                "--branch",
-                "v0.2.1",  # TODO: parse from somewhere
-                "https://github.com/pytorch/executorch.git",
-            ],
-            cwd=DEV_EXECUTORCH_DIR.parent,
-        )
+    if DEV_EXECUTORCH_DIR.exists():
+        shutil.rmtree(DEV_EXECUTORCH_DIR)
+
+    DEV_EXECUTORCH_DIR.parent.mkdir(parents=True, exist_ok=True)
+    # git clone --depth 1 --branch v0.3.0 https://github.com/pytorch/executorch.git
+    subprocess.check_call(
+        [
+            "git",
+            "clone",
+            "--depth",
+            "1",
+            "--branch",
+            "v0.3.0",  # TODO: parse from somewhere
+            "https://github.com/pytorch/executorch.git",
+        ],
+        cwd=DEV_EXECUTORCH_DIR.parent,
+    )
 
     subprocess.check_call(
         ["git", "submodule", "sync", "--recursive"], cwd=DEV_EXECUTORCH_DIR
