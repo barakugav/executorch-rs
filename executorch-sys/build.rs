@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 const EXECUTORCH_VERSION: &str = "0.3.0";
@@ -143,19 +142,9 @@ fn link_executorch() {
         return;
     }
 
+    println!("cargo::rerun-if-env-changed=EXECUTORCH_RS_EXECUTORCH_LIB_DIR");
     let libs_dir = std::env::var("EXECUTORCH_RS_EXECUTORCH_LIB_DIR")
         .expect("EXECUTORCH_RS_EXECUTORCH_LIB_DIR is not set, can't locate executorch static libs");
-    let libs_dir = envsubst::substitute(
-        libs_dir,
-        &HashMap::from([(
-            String::from("EXECUTORCH_RS_SYS_TOP"),
-            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .to_str()
-                .unwrap()
-                .to_string(),
-        )]),
-    )
-    .unwrap();
 
     // TODO: cpp executorch doesnt support nostd yet
     // if cfg!(feature = "std") {

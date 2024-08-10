@@ -37,4 +37,3 @@ module = ["std"]
 [build-dependencies]
 bindgen = "0.69.4"
 cc = "1.1.6"
-envsubst = "0.2.1"
