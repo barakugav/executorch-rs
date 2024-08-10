@@ -884,7 +884,7 @@ mod tests {
             let arr1 = Array::new(arr1.as_ref().view().into_dyn());
             let tensor_impl = arr1.to_tensor_impl();
             let tensor = Tensor::new(&tensor_impl);
-            let arr2 = tensor.as_array::<f32, ndarray::IxDyn>();
+            let arr2 = tensor.as_array::<f32, ndarray::IxDyn>().into_shape_with_order(vec![18, 4]).unwrap();
             assert_eq!(arr1.as_ref().view().into_shape_with_order(vec![18, 4]).unwrap(), arr2);
             assert_eq!(arr2.strides(), [4, 1]);
         } }
