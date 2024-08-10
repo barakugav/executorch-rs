@@ -35,7 +35,14 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       ############ Install executorch deps ############
+      - name: Cache Cpp ExecuTorch compiled libraries
+        id: cache-executorch-cpp-libs
+        uses: actions/cache@v4
+        with:
+          path: executorch-sys/third-party/executorch/cmake-out
+          key: cache-executorch-cpp-libs-${{ runner.OS }}-${{ hashFiles('scripts/setup_dev.py') }}
       - name: Setup dev env, install executorch and its deps
+        if: steps.cache-executorch-cpp-libs.outputs.cache-hit != 'true'
         run: python scripts/setup_dev.py
 
       ############ Build executorch-rs ############
