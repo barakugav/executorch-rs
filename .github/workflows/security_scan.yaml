@@ -1,0 +1,44 @@
+name: Security Vulnerabilities Check
+
+on:
+  schedule:
+    # runs once a week
+    # * is a special character in YAML so you have to quote this string
+    - cron:  '0 0 * * 0'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      ############ Setup ############
+      - name: Repo checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: 1.77.0
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+
+      ############ Checks ############
+      - name: Check executorch
+        run: cargo audit -D warnings
+        working-directory: ./
+      - name: Check executorch-sys
+        run: cargo audit -D warnings
+        working-directory: executorch-sys
+      - name: Check examples/hello_world_add
+        run: cargo audit -D warnings
+        working-directory: examples/hello_world_add
+      - name: Check examples/hello_world_add_no_std
+        run: cargo audit -D warnings
+        working-directory: examples/hello_world_add_no_std
