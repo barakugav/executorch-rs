@@ -30,15 +30,7 @@ jobs:
         run: cargo install cargo-audit
 
       ############ Checks ############
-      - name: Check executorch
+      - name: Audit
         run: cargo audit -D warnings
+        # its enough to only check the top level Cargo.lock because we are in a workspace
         working-directory: ./
-      - name: Check executorch-sys
-        run: cargo audit -D warnings
-        working-directory: executorch-sys
-      - name: Check examples/hello_world_add
-        run: cargo audit -D warnings
-        working-directory: examples/hello_world_add
-      - name: Check examples/hello_world_add_no_std
-        run: cargo audit -D warnings
-        working-directory: examples/hello_world_add_no_std

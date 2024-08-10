@@ -1,3 +1,4 @@
+import argparse
 import multiprocessing
 import shutil
 import subprocess
@@ -12,6 +13,20 @@ DEV_EXECUTORCH_DIR = (
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--clean",
+        action="store_true",
+        help="Remove the existing executorch directory before cloning",
+    )
+    args = parser.parse_args()
+
+    if args.clean:
+        if DEV_EXECUTORCH_DIR.exists():
+            shutil.rmtree(DEV_EXECUTORCH_DIR)
+
+    # TODO setup a venv here
+
     clone_executorch()
 
     # subprocess.check_call(["./install_requirements.sh"], cwd=DEV_EXECUTORCH_DIR)
@@ -25,6 +40,7 @@ def main():
             "tomli",
             "wheel",
             "zstd",
+            "torch==2.4.0",
         ]
     )
 
@@ -32,23 +48,21 @@ def main():
 
 
 def clone_executorch():
-    if DEV_EXECUTORCH_DIR.exists():
-        shutil.rmtree(DEV_EXECUTORCH_DIR)
-
-    DEV_EXECUTORCH_DIR.parent.mkdir(parents=True, exist_ok=True)
-    # git clone --depth 1 --branch v0.3.0 https://github.com/pytorch/executorch.git
-    subprocess.check_call(
-        [
-            "git",
-            "clone",
-            "--depth",
-            "1",
-            "--branch",
-            "v0.3.0",  # TODO: parse from somewhere
-            "https://github.com/pytorch/executorch.git",
-        ],
-        cwd=DEV_EXECUTORCH_DIR.parent,
-    )
+    if not DEV_EXECUTORCH_DIR.exists():
+        DEV_EXECUTORCH_DIR.parent.mkdir(parents=True, exist_ok=True)
+        # git clone --depth 1 --branch v0.3.0 https://github.com/pytorch/executorch.git
+        subprocess.check_call(
+            [
+                "git",
+                "clone",
+                "--depth",
+                "1",
+                "--branch",
+                "v0.3.0",  # TODO: parse from somewhere
+                "https://github.com/pytorch/executorch.git",
+            ],
+            cwd=DEV_EXECUTORCH_DIR.parent,
+        )
 
     subprocess.check_call(
         ["git", "submodule", "sync", "--recursive"], cwd=DEV_EXECUTORCH_DIR
