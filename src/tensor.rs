@@ -885,7 +885,7 @@ mod tests {
             let tensor_impl = arr1.to_tensor_impl();
             let tensor = Tensor::new(&tensor_impl);
             let arr2 = tensor.as_array::<f32, ndarray::IxDyn>();
-            assert_eq!(arr1.as_ref().view().into_shape(vec![18, 4]).unwrap(), arr2);
+            assert_eq!(arr1.as_ref().view().into_shape_with_order(vec![18, 4]).unwrap(), arr2);
             assert_eq!(arr2.strides(), [4, 1]);
         } }
     }
@@ -903,11 +903,11 @@ mod tests {
         cfg_if::cfg_if! { if #[cfg(feature = "alloc")] {
             let mut arr1 = arr1.as_ref().clone().into_dyn();
             let arr1_clone = arr1.clone();
-            let mut arr1 = Array::new(arr1.view_mut().into_shape((18, 4)).unwrap());
+            let mut arr1 = Array::new(arr1.view_mut().into_shape_with_order((18, 4)).unwrap());
             let mut tensor_impl = arr1.to_tensor_impl_mut();
             let mut tensor = TensorMut::new(&mut tensor_impl);
             let arr2 = tensor.as_array_mut::<f32, ndarray::IxDyn>();
-            assert_eq!(arr1_clone.view().into_shape(vec![18, 4]).unwrap(), arr2);
+            assert_eq!(arr1_clone.view().into_shape_with_order(vec![18, 4]).unwrap(), arr2);
             assert_eq!(arr2.strides(), [4, 1]);
         } }
     }
