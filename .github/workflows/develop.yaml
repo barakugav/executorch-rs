@@ -35,12 +35,12 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       ############ Install executorch deps ############
-      # - name: Setup dev env, install executorch and its deps
-      #   run: python scripts/setup_dev.py
+      - name: Setup dev env, install executorch and its deps
+        run: python scripts/setup_dev.py
 
       ############ Build executorch-rs ############
-      # - name: Build
-      #   run: cargo build
+      - name: Build
+        run: cargo build
 
       ############ Linters ############
       - name: Rust Clippy linter
@@ -49,10 +49,13 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       ############ Tests ############
-      # - name: Run Rust tests
-      #   run: cargo test
+      - name: Run Rust tests
+        run: cargo test --workspace --all-features
 
       ############ Examples ############
       # - name: Run 'hello world add' example
       #   run: cargo run
       #   working-directory: examples/hello_world_add
+      # - name: Run 'hello world add no_std' example
+      #   run: cargo run
+      #   working-directory: examples/hello_world_add_no_std
