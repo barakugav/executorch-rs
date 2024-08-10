@@ -1,5 +1,6 @@
 
 #include <cstddef>
+#include <vector>
 
 #include "executorch_rs_ext/api_utils.hpp"
 
