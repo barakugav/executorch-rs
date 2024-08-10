@@ -35,7 +35,7 @@ all-features = true
 
 [dependencies]
 executorch-sys = { path = "executorch-sys", version = "0.2.0", default-features = false }
-ndarray = "0.15.6"
+ndarray = "0.16.0"
 log = "0.4.22"
 half = { version = "2.4.1", optional = true }
 num-complex = { version = "0.4.6", optional = true }
