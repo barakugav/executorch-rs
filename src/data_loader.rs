@@ -4,8 +4,9 @@
 //! To include the data loader functionality, enable the `data-loader` feature.
 
 use std::cell::UnsafeCell;
+use std::marker::PhantomData;
 
-use crate::et_c;
+use crate::{et_c, et_rs_c};
 
 /// Loads from a data source.
 ///
@@ -13,18 +14,43 @@ use crate::et_c;
 /// structs, such as `Program`, take a reference to `DataLoader` instead of the concrete data loader type.
 pub struct DataLoader(pub(crate) UnsafeCell<et_c::DataLoader>);
 
+/// A DataLoader that wraps a pre-allocated buffer. The FreeableBuffers
+/// that it returns do not actually free any data.
+///
+/// This can be used to wrap data that is directly embedded into the firmware
+/// image, or to wrap data that was allocated elsewhere.
+#[allow(dead_code)]
+pub struct BufferDataLoader<'a>(
+    UnsafeCell<et_c::util::BufferDataLoader>,
+    PhantomData<&'a ()>,
+);
+impl<'a> BufferDataLoader<'a> {
+    /// Creates a new BufferDataLoader that wraps the given data.
+    pub fn new(data: &'a [u8]) -> Self {
+        let loader =
+            unsafe { et_rs_c::BufferDataLoader_new(data.as_ptr() as *const _, data.len()) };
+        Self(UnsafeCell::new(loader), PhantomData)
+    }
+}
+impl AsRef<DataLoader> for BufferDataLoader<'_> {
+    fn as_ref(&self) -> &DataLoader {
+        // SAFETY: BufferDataLoader has a single field of (UnsafeCell of) et_c::util::BufferDataLoader, which is a
+        // subclass of et_c::DataLoader, and DataLoaders has a single field of (UnsafeCell of) et_c::DataLoader.
+        unsafe { std::mem::transmute::<&BufferDataLoader, &DataLoader>(self) }
+    }
+}
+
 #[cfg(feature = "data-loader")]
-pub use file_data_loader::{BufferDataLoader, FileDataLoader, MlockConfig, MmapDataLoader};
+pub use file_data_loader::{FileDataLoader, MlockConfig, MmapDataLoader};
 
 #[cfg(feature = "data-loader")]
 mod file_data_loader {
     use std::cell::UnsafeCell;
     use std::ffi::CStr;
-    use std::marker::PhantomData;
 
     use crate::error::Result;
+    use crate::et_c;
     use crate::util::IntoRust;
-    use crate::{et_c, et_rs_c};
 
     use super::DataLoader;
 
@@ -179,32 +205,6 @@ mod file_data_loader {
     impl Drop for MmapDataLoader {
         fn drop(&mut self) {
             unsafe { et_c::util::MmapDataLoader_MmapDataLoader_destructor(self.0.get_mut()) };
-        }
-    }
-
-    /// A DataLoader that wraps a pre-allocated buffer. The FreeableBuffers
-    /// that it returns do not actually free any data.
-    ///
-    /// This can be used to wrap data that is directly embedded into the firmware
-    /// image, or to wrap data that was allocated elsewhere.
-    #[allow(dead_code)]
-    pub struct BufferDataLoader<'a>(
-        UnsafeCell<et_c::util::BufferDataLoader>,
-        PhantomData<&'a ()>,
-    );
-    impl<'a> BufferDataLoader<'a> {
-        /// Creates a new BufferDataLoader that wraps the given data.
-        pub fn new(data: &'a [u8]) -> Self {
-            let loader =
-                unsafe { et_rs_c::BufferDataLoader_new(data.as_ptr() as *const _, data.len()) };
-            Self(UnsafeCell::new(loader), PhantomData)
-        }
-    }
-    impl AsRef<DataLoader> for BufferDataLoader<'_> {
-        fn as_ref(&self) -> &DataLoader {
-            // SAFETY: BufferDataLoader has a single field of (UnsafeCell of) et_c::util::BufferDataLoader, which is a
-            // subclass of et_c::DataLoader, and DataLoaders has a single field of (UnsafeCell of) et_c::DataLoader.
-            unsafe { std::mem::transmute::<&BufferDataLoader, &DataLoader>(self) }
         }
     }
 

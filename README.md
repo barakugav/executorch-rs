@@ -125,11 +125,11 @@ Note that the `portable_ops_lib` is linked with `+whole-archive` to ensure that 
 ## Cargo Features
 - `data-loader`
 
-    include the `FileDataLoader` struct. The `libextension_data_loader.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON`.
+    Includes the `FileDataLoader` and `MmapDataLoader` structs. Without this feature the only available data loader is `BufferDataLoader`. The `libextension_data_loader.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON`.
 
 - `module`
 
-    include the `Module` struct. The `libextension_module_static.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`.
+    Includes the `Module` struct. The `libextension_module_static.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`.
     Also includes the `std` feature.
 
 - `f16`

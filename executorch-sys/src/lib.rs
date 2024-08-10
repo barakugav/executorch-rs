@@ -6,7 +6,8 @@
 //!
 //!
 //! To build the library, you need to build the C++ library first.
-//! The C++ library allow for great flexibility with many flags, customizing which modules, kernels, and extensions are built.
+//! The C++ library allow for great flexibility with many flags, customizing which modules, kernels, and extensions are
+//! built.
 //! Multiple static libraries are built, and the Rust library links to them.
 //! In the following example we build the C++ library with the necessary flags to run example `hello_world_add`:
 //! ```bash
@@ -61,8 +62,10 @@
 //! - `libextension_data_loader.a`
 //! - `libextension_module_static.a`
 //!
-//! The static libraries of the kernels implementations are required only if your model uses them, and they should be **linked manually** by the binary that uses the `executorch` crate.
-//! For example, the `hello_world_add` example uses a model with a single addition operation, so it compile the C++ library with `DEXECUTORCH_SELECT_OPS_LIST=aten::add.out` and contain the following lines in its `build.rs`:
+//! The static libraries of the kernels implementations are required only if your model uses them, and they should be
+//! **linked manually** by the binary that uses the `executorch` crate.
+//! For example, the `hello_world_add` example uses a model with a single addition operation, so it compile the C++
+//! library with `DEXECUTORCH_SELECT_OPS_LIST=aten::add.out` and contain the following lines in its `build.rs`:
 //! ```rust
 //! println!("cargo::rustc-link-lib=static=portable_kernels");
 //! println!("cargo::rustc-link-lib=static:+whole-archive=portable_ops_lib");
@@ -70,12 +73,16 @@
 //! let libs_dir = std::env::var("EXECUTORCH_RS_EXECUTORCH_LIB_DIR").unwrap();
 //! println!("cargo::rustc-link-search={}/kernels/portable/", libs_dir);
 //! ```
-//! Note that the `portable_ops_lib` is linked with `+whole-archive` to ensure that all symbols are included in the binary.
+//! Note that the `portable_ops_lib` is linked with `+whole-archive` to ensure that all symbols are included in the
+//! binary.
 //!
 //! ## Cargo Features
 //! By default all features are disabled.
-//! - `data-loader`: include the `FileDataLoader` struct. The `libextension_data_loader.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON`.
-//! - `module`: include the `Module` struct. The `libextension_module_static.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`.
+//! - `data-loader`: Includes the `FileDataLoader` and `MmapDataLoader` structs. Without this feature the only available
+//! data loader is `BufferDataLoader`. The `libextension_data_loader.a` static library is required, compile C++
+//! `executorch` with `EXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON`.
+//! - `module`: Includes the `Module` struct. The `libextension_module_static.a` static library is required, compile C++
+//! `executorch` with `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
