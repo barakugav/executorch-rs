@@ -32,7 +32,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
           token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install Python requirements
+        run: pip install -r scripts/requirements.txt
 
       ############ Install executorch deps ############
       - name: Cache Cpp ExecuTorch compiled libraries
@@ -43,7 +46,7 @@ jobs:
           key: cache-executorch-cpp-libs-${{ runner.OS }}-${{ hashFiles('scripts/setup_dev.py') }}
       - name: Setup dev env, install executorch and its deps
         if: steps.cache-executorch-cpp-libs.outputs.cache-hit != 'true'
-        run: python scripts/setup_dev.py
+        run: python scripts/setup_dev.py --skip-executorch-python
 
       ############ Build executorch-rs ############
       - name: Build
