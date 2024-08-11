@@ -77,11 +77,13 @@ impl Module {
     ///
     /// A set of strings containing the names of the methods, or an error if the program or method failed to load.
     pub fn method_names(&mut self) -> Result<HashSet<String>> {
-        let names = unsafe { et_rs_c::Module_method_names(&mut self.0) }.rs()?;
+        let names = unsafe { et_rs_c::Module_method_names(&mut self.0) }
+            .rs()?
+            .rs();
         Ok(names
-            .rs()
-            .into_iter()
-            .map(|s| util::chars2string(s.rs()))
+            .as_slice()
+            .iter()
+            .map(|s| util::chars2string(s.to_vec()))
             .collect())
     }
 
@@ -168,10 +170,11 @@ impl Module {
         let inputs = ArrayRef::from_slice(inputs);
         let outputs =
             unsafe { et_rs_c::Module_execute(&mut self.0, method_name.0, inputs.0) }.rs()?;
-        let outputs = outputs.rs();
         // Safety: The transmute is safe because the memory layout of EValue and et_c::EValue is the same.
-        let outputs = unsafe { std::mem::transmute::<Vec<et_c::EValue>, Vec<EValue<'a>>>(outputs) };
-        Ok(outputs)
+        let outputs = unsafe {
+            std::mem::transmute::<et_rs_c::Vec<et_c::EValue>, et_rs_c::Vec<EValue<'a>>>(outputs)
+        };
+        Ok(outputs.rs().to_vec())
     }
 
     /// Executes the 'forward' method with the given input and retrieves the output.

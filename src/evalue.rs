@@ -469,6 +469,12 @@ impl Debug for EValue<'_> {
         st.finish()
     }
 }
+impl<'a> Clone for EValue<'a> {
+    fn clone(&self) -> Self {
+        let value = unsafe { et_rs_c::EValue_shallow_clone(&self.0 as *const _ as *mut _) };
+        unsafe { EValue::new(value) }
+    }
+}
 
 /// Helper class used to correlate EValues in the executor table, with the
 /// unwrapped list of the proper type. Because values in the runtime's values

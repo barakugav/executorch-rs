@@ -109,3 +109,14 @@ impl Drop for et_c::Tensor {
         unsafe { et_rs_c::Tensor_destructor(self) }
     }
 }
+
+#[cfg(feature = "std")]
+impl<T> et_rs_c::Vec<T> {
+    pub fn as_slice(&self) -> &[T] {
+        unsafe { std::slice::from_raw_parts(self.data, self.len) }
+    }
+
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+        unsafe { std::slice::from_raw_parts_mut(self.data, self.len) }
+    }
+}
