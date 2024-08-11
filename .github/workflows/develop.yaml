@@ -63,9 +63,11 @@ jobs:
         run: cargo test --workspace --all-features
 
       ############ Examples ############
+      - name: Run 'hello world add no_std' example
+        # python export_model.py
+        run: cargo run
+        working-directory: examples/hello_world_add_no_std
       # - name: Run 'hello world add' example
+      #   # python export_model.py
       #   run: cargo run
       #   working-directory: examples/hello_world_add
-      # - name: Run 'hello world add no_std' example
-      #   run: cargo run
-      #   working-directory: examples/hello_world_add_no_std
