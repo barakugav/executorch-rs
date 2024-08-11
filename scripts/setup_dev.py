@@ -19,6 +19,11 @@ def main():
         action="store_true",
         help="Remove the existing executorch directory before cloning",
     )
+    parser.add_argument(
+        "--skip-executorch-python",
+        action="store_true",
+        help="Remove the existing executorch directory before cloning",
+    )
     args = parser.parse_args()
 
     if args.clean:
@@ -28,23 +33,19 @@ def main():
     # TODO setup a venv here
 
     clone_executorch()
-
-    # subprocess.check_call(["./install_requirements.sh"], cwd=DEV_EXECUTORCH_DIR)
-    subprocess.check_call(
-        [
-            "pip",
-            "install",
+    if not args.skip_executorch_python:
+        subprocess.check_call(["./install_requirements.sh"], cwd=DEV_EXECUTORCH_DIR)
+    else:
+        deps = [
             "cmake",
             "pyyaml",
             "setuptools>=63",
             "tomli",
             "wheel",
             "zstd",
-            "torch==2.4.0",
         ]
-    )
-
-    build_executorch()
+        subprocess.check_call([get_pip(), "install", *deps])
+    build_executorch_with_dev_cfg()
 
 
 def clone_executorch():
@@ -70,23 +71,12 @@ def clone_executorch():
     subprocess.check_call(
         ["git", "submodule", "update", "--init"], cwd=DEV_EXECUTORCH_DIR
     )
-    # git submodule update --init backends/xnnpack/third-party/cpuinfo
-    # git submodule update --init backends/xnnpack/third-party/pthreadpool
-    # git submodule update --init third-party/prelude
-    # git submodule update --init third-party/gflags
-    # git submodule update --init third-party/googletest
-    # git submodule update --init third-party/flatbuffers
-    # git submodule update --init third-party/flatcc
-    # git submodule update --init backends/xnnpack/third-party/XNNPACK
-    # git submodule update --init backends/xnnpack/third-party/FXdiv
-    # git submodule update --init third-party/pytorch
 
 
-def build_executorch():
+def build_executorch_with_dev_cfg():
     cmake_out_dir = DEV_EXECUTORCH_DIR / "cmake-out"
-    if cmake_out_dir.exists():
-        shutil.rmtree(cmake_out_dir)
-    cmake_out_dir.mkdir()
+    if not cmake_out_dir.exists():
+        cmake_out_dir.mkdir()
     subprocess.check_call(
         [
             "cmake",
@@ -109,6 +99,21 @@ def build_executorch():
         cwd=DEV_EXECUTORCH_DIR,
     )
 
+
+def get_pip():
+    try:
+        subprocess.run(['pip3', '--version'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return 'pip3'
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass
+
+    try:
+        subprocess.run(['pip', '--version'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return 'pip'
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass
+
+    raise RuntimeError("Neither 'pip3' nor 'pip' is installed on this system.")
 
 if __name__ == "__main__":
     main()

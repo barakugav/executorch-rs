@@ -4,7 +4,8 @@
 //! Bindings for ExecuTorch - On-device AI across mobile, embedded and edge for PyTorch.
 //!
 //! Provides a high-level Rust API for executing PyTorch models on mobile, embedded and edge devices using the
-//! [ExecuTorch library](https://pytorch.org/executorch-overview), specifically the [C++ API](https://github.com/pytorch/executorch).
+//! [ExecuTorch library](https://pytorch.org/executorch-overview), specifically the
+//! [C++ API](https://github.com/pytorch/executorch).
 //! PyTorch models are created and exported in Python, and then loaded and executed on-device using the
 //! ExecuTorch library.
 //!
@@ -61,10 +62,11 @@
 //! The library have a few features that can be enabled or disabled:
 //! to the lower-level `Program` API, which is mort suitable for embedded systems.
 //! - `data-loader`:
-//!     include the [`data_loader`] module for loading data. The `libextension_data_loader.a` static library is
+//!     Includes additional structs in the [`data_loader`] module for loading data. Without this feature the only
+//!     available data loader is `BufferDataLoader. `The `libextension_data_loader.a` static library is
 //!     required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON`.
 //! - `module`:
-//!     include the [`module`] API, a high-level API for loading and executing PyTorch models. It is an alternative to
+//!     Includes the [`module`] API, a high-level API for loading and executing PyTorch models. It is an alternative to
 //!     the lower-level `Program` API, which is mort suitable for embedded systems. The `libextension_module_static.a`
 //!     static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`.
 //!     Also includes the `std` feature.

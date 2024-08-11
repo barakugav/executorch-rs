@@ -11,9 +11,7 @@
 #include "executorch/runtime/core/span.h"
 #include "executorch/runtime/core/exec_aten/exec_aten.h"
 
-#if defined(EXECUTORCH_RS_DATA_LOADER)
 #include "executorch/extension/data_loader/buffer_data_loader.h"
-#endif
 
 #if defined(EXECUTORCH_RS_MODULE)
 #include "executorch/extension/module/module.h"
@@ -90,9 +88,7 @@ namespace executorch_rs
     const exec_aten::ArrayRef<int64_t> BoxedEvalueList_i64_get(const torch::executor::BoxedEvalueList<int64_t> *list);
     const exec_aten::ArrayRef<exec_aten::Tensor> BoxedEvalueList_Tensor_get(const torch::executor::BoxedEvalueList<exec_aten::Tensor> *list);
 
-#if defined(EXECUTORCH_RS_DATA_LOADER)
     torch::executor::util::BufferDataLoader BufferDataLoader_new(const void *data, size_t size);
-#endif
 
 #if defined(EXECUTORCH_RS_MODULE)
     torch::executor::Module Module_new(torch::executor::ArrayRef<char> file_path, torch::executor::Module::MlockConfig mlock_config, torch::executor::EventTracer *event_tracer);

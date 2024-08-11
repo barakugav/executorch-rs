@@ -1,5 +1,5 @@
 fn main() {
-    println!("cargo::rustc-link-lib=static=portable_kernels");
+    println!("cargo::rustc-link-lib=static:+whole-archive=portable_kernels");
     println!("cargo::rustc-link-lib=static:+whole-archive=portable_ops_lib");
 
     println!("cargo::rerun-if-env-changed=EXECUTORCH_RS_EXECUTORCH_LIB_DIR");
