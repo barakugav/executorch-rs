@@ -107,7 +107,7 @@ namespace executorch_rs
     torch::executor::Result<Vec<Vec<char>>> Module_method_names(torch::executor::Module *module);
     torch::executor::Error Module_load_method(torch::executor::Module *module, torch::executor::ArrayRef<char> method_name);
     bool Module_is_method_loaded(const torch::executor::Module *module, torch::executor::ArrayRef<char> method_name);
-    Result_MethodMeta Module_method_meta(const torch::executor::Module *module, torch::executor::ArrayRef<char> method_name);
+    Result_MethodMeta Module_method_meta(torch::executor::Module *module, torch::executor::ArrayRef<char> method_name);
     torch::executor::Result<Vec<torch::executor::EValue>> Module_execute(torch::executor::Module *module, torch::executor::ArrayRef<char> method_name, torch::executor::ArrayRef<torch::executor::EValue> inputs);
 #endif
 

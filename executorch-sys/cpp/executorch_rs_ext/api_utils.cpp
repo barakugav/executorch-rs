@@ -180,13 +180,13 @@ namespace executorch_rs
         std::unique_ptr<torch::executor::EventTracer> event_tracer2(event_tracer);
         return torch::executor::Module(file_path_str, mlock_config, std::move(event_tracer2));
     }
-    void Module_destructor(torch::executor::Module *module)
+    void Module_destructor(torch::executor::Module *module_)
     {
-        module->~Module();
+        module_->~Module();
     }
-    torch::executor::Result<Vec<Vec<char>>> Module_method_names(torch::executor::Module *module)
+    torch::executor::Result<Vec<Vec<char>>> Module_method_names(torch::executor::Module *module_)
     {
-        std::unordered_set<std::string> method_names = ET_UNWRAP(module->method_names());
+        std::unordered_set<std::string> method_names = ET_UNWRAP(module_->method_names());
         std::vector<Vec<char>> method_names_vec;
         for (const std::string &method_name : method_names)
         {
@@ -195,26 +195,26 @@ namespace executorch_rs
         }
         return crate_Vec(std::move(method_names_vec));
     }
-    torch::executor::Error Module_load_method(torch::executor::Module *module, torch::executor::ArrayRef<char> method_name)
+    torch::executor::Error Module_load_method(torch::executor::Module *module_, torch::executor::ArrayRef<char> method_name)
     {
         std::string method_name_str(method_name.begin(), method_name.end());
-        return module->load_method(method_name_str);
+        return module_->load_method(method_name_str);
     }
-    bool Module_is_method_loaded(const torch::executor::Module *module, torch::executor::ArrayRef<char> method_name)
+    bool Module_is_method_loaded(const torch::executor::Module *module_, torch::executor::ArrayRef<char> method_name)
     {
         std::string method_name_str(method_name.begin(), method_name.end());
-        return module->is_method_loaded(method_name_str);
+        return module_->is_method_loaded(method_name_str);
     }
-    Result_MethodMeta Module_method_meta(torch::executor::Module *module, torch::executor::ArrayRef<char> method_name)
+    Result_MethodMeta Module_method_meta(torch::executor::Module *module_, torch::executor::ArrayRef<char> method_name)
     {
         std::string method_name_str(method_name.begin(), method_name.end());
-        return crate_Result_MethodMeta(module->method_meta(method_name_str));
+        return crate_Result_MethodMeta(module_->method_meta(method_name_str));
     }
-    torch::executor::Result<Vec<torch::executor::EValue>> Module_execute(torch::executor::Module *module, torch::executor::ArrayRef<char> method_name, torch::executor::ArrayRef<torch::executor::EValue> inputs)
+    torch::executor::Result<Vec<torch::executor::EValue>> Module_execute(torch::executor::Module *module_, torch::executor::ArrayRef<char> method_name, torch::executor::ArrayRef<torch::executor::EValue> inputs)
     {
         std::string method_name_str(method_name.begin(), method_name.end());
         std::vector<torch::executor::EValue> inputs_vec(inputs.begin(), inputs.end());
-        std::vector<torch::executor::EValue> outputs = ET_UNWRAP(module->execute(method_name_str, inputs_vec));
+        std::vector<torch::executor::EValue> outputs = ET_UNWRAP(module_->execute(method_name_str, inputs_vec));
         return crate_Vec(std::move(outputs));
     }
 #endif
