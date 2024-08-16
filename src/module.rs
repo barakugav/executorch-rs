@@ -140,7 +140,9 @@ impl Module {
     /// If the method name is not a valid UTF-8 string or contains a null character.
     pub fn method_meta<'a>(&'a self, method_name: &str) -> Result<MethodMeta<'a>> {
         let method_name = ArrayRef::from_slice(util::str2chars(method_name).unwrap());
-        let meta = unsafe { et_rs_c::Module_method_meta(&self.0, method_name.0) }.rs()?;
+        let meta =
+            unsafe { et_rs_c::Module_method_meta(&self.0 as *const _ as *mut _, method_name.0) }
+                .rs()?;
         Ok(unsafe { MethodMeta::new(meta) })
     }
 

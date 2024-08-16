@@ -17,10 +17,11 @@ fn main() {
 
     executorch::platform::pal_init();
 
-    let memory_allocator =
-        MemoryAllocator::new(unsafe { &mut *core::ptr::addr_of_mut!(MEMORY_ALLOCATOR_BUF) });
+    // Safety: We are the main function, no other function access the buffer
+    let buffer = unsafe { &mut *core::ptr::addr_of_mut!(MEMORY_ALLOCATOR_BUF) };
+    let memory_allocator = MemoryAllocator::new(buffer);
 
-    let file_data_loader = FileDataLoader::from_cstr(cstr::cstr!(b"model.pte"), None).unwrap();
+    let file_data_loader = FileDataLoader::from_path_cstr(cstr::cstr!(b"model.pte"), None).unwrap();
 
     let program = Program::load(
         &file_data_loader,

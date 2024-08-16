@@ -13,6 +13,12 @@ use crate::{et_c, et_rs_c};
 /// This struct is like a base class for data loaders. All other data loaders implement `AsRef<DataLoader>` and other
 /// structs, such as `Program`, take a reference to `DataLoader` instead of the concrete data loader type.
 pub struct DataLoader(pub(crate) UnsafeCell<et_c::DataLoader>);
+impl DataLoader {
+    pub(crate) fn from_inner_ref(loader: &et_c::DataLoader) -> &Self {
+        // Safety: Self has a single field of (UnsafeCell of) et_c::DataLoader
+        unsafe { std::mem::transmute(loader) }
+    }
+}
 
 /// A DataLoader that wraps a pre-allocated buffer. The FreeableBuffers
 /// that it returns do not actually free any data.
@@ -27,16 +33,18 @@ pub struct BufferDataLoader<'a>(
 impl<'a> BufferDataLoader<'a> {
     /// Creates a new BufferDataLoader that wraps the given data.
     pub fn new(data: &'a [u8]) -> Self {
-        let loader =
-            unsafe { et_rs_c::BufferDataLoader_new(data.as_ptr() as *const _, data.len()) };
+        // Safety: the returned Self has a lifetime guaranteeing it will not outlive the buffer
+        let loader = unsafe { et_rs_c::BufferDataLoader_new(data.as_ptr().cast(), data.len()) };
         Self(UnsafeCell::new(loader), PhantomData)
     }
 }
 impl AsRef<DataLoader> for BufferDataLoader<'_> {
     fn as_ref(&self) -> &DataLoader {
-        // SAFETY: BufferDataLoader has a single field of (UnsafeCell of) et_c::util::BufferDataLoader, which is a
-        // subclass of et_c::DataLoader, and DataLoaders has a single field of (UnsafeCell of) et_c::DataLoader.
-        unsafe { std::mem::transmute::<&BufferDataLoader, &DataLoader>(self) }
+        // Safely: et_c::util::BufferDataLoader is a subclass of et_c::DataLoader
+        let loader = unsafe {
+            std::mem::transmute::<&et_c::util::BufferDataLoader, &et_c::DataLoader>(&*self.0.get())
+        };
+        DataLoader::from_inner_ref(loader)
     }
 }
 
@@ -89,7 +97,7 @@ mod file_data_loader {
         ) -> Result<Self> {
             let file_name = file_name.as_ref().to_str().expect("Invalid file name");
             let file_name = std::ffi::CString::new(file_name).unwrap();
-            Self::from_cstr(&file_name, alignment)
+            Self::from_path_cstr(&file_name, alignment)
         }
 
         /// Creates a new FileDataLoader given a `CStr`.
@@ -115,7 +123,7 @@ mod file_data_loader {
         /// # Safety
         ///
         /// The `file_name` should be a valid UTF-8 string and not contains a null byte other than the one at the end.
-        pub fn from_cstr(file_name: &CStr, alignment: Option<usize>) -> Result<Self> {
+        pub fn from_path_cstr(file_name: &CStr, alignment: Option<usize>) -> Result<Self> {
             let alignment = alignment.unwrap_or(16);
             let loader =
                 unsafe { et_c::util::FileDataLoader::from(file_name.as_ptr(), alignment) }.rs()?;
