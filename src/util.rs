@@ -211,10 +211,76 @@ pub(crate) fn chars2string(chars: Vec<std::ffi::c_char>) -> String {
 }
 
 #[cfg(feature = "std")]
-impl<T> IntoRust for crate::et_rs_c::RawVec<T> {
-    type RsType = Vec<T>;
-    fn rs(self) -> Self::RsType {
-        unsafe { Vec::from_raw_parts(self.data, self.len, self.cap) }
+#[allow(dead_code)]
+mod cpp_vec {
+    use super::IntoRust;
+    use crate::{et_c, et_rs_c, evalue::EValue};
+
+    pub(crate) struct CppVec<T: CppVecElm>(et_rs_c::Vec<T>);
+    impl<T: CppVecElm> CppVec<T> {
+        pub fn as_slice(&self) -> &[T] {
+            self.0.as_slice()
+        }
+
+        pub fn to_vec(&self) -> Vec<T>
+        where
+            T: Clone,
+        {
+            self.as_slice().to_vec()
+        }
+    }
+    impl<T: CppVecElm> IntoRust for et_rs_c::Vec<T> {
+        type RsType = CppVec<T>;
+        fn rs(self) -> Self::RsType {
+            CppVec(self)
+        }
+    }
+    impl IntoRust for et_rs_c::Vec<et_rs_c::Vec<core::ffi::c_char>> {
+        type RsType = CppVec<CppVec<core::ffi::c_char>>;
+        fn rs(self) -> Self::RsType {
+            // Safety: et_rs_c::Vec<T> has the same memory layout as CppVec<T>.
+            unsafe {
+                std::mem::transmute::<
+                    et_rs_c::Vec<et_rs_c::Vec<core::ffi::c_char>>,
+                    CppVec<CppVec<core::ffi::c_char>>,
+                >(self)
+            }
+        }
+    }
+    impl<T: CppVecElm> Drop for CppVec<T> {
+        fn drop(&mut self) {
+            T::drop_vec(self);
+        }
+    }
+    pub(crate) trait CppVecElm: Sized {
+        fn drop_vec(vec: &mut CppVec<Self>);
+    }
+    impl CppVecElm for core::ffi::c_char {
+        fn drop_vec(vec: &mut CppVec<Self>) {
+            unsafe { et_rs_c::Vec_char_destructor(&mut vec.0) }
+        }
+    }
+    impl CppVecElm for CppVec<core::ffi::c_char> {
+        fn drop_vec(vec: &mut CppVec<Self>) {
+            // Safety: CppVec<T> has the same memory layout as et_rs_c::Vec<T>.
+            let vec = unsafe {
+                std::mem::transmute::<
+                    &mut CppVec<CppVec<core::ffi::c_char>>,
+                    &mut et_rs_c::Vec<et_rs_c::Vec<core::ffi::c_char>>,
+                >(vec)
+            };
+            unsafe { et_rs_c::Vec_Vec_char_destructor(vec) }
+        }
+    }
+    impl<'a> CppVecElm for EValue<'a> {
+        fn drop_vec(vec: &mut CppVec<Self>) {
+            let vec = unsafe {
+                std::mem::transmute::<&mut et_rs_c::Vec<EValue<'a>>, &mut et_rs_c::Vec<et_c::EValue>>(
+                    &mut vec.0,
+                )
+            };
+            unsafe { et_rs_c::Vec_EValue_destructor(vec) }
+        }
     }
 }
 

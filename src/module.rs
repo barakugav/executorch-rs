@@ -8,6 +8,7 @@
 //!
 //! See the `hello_world_add` example for how to load and execute a module.
 
+use core::ptr::NonNull;
 use std::collections::HashSet;
 use std::path::Path;
 use std::ptr;
@@ -21,7 +22,7 @@ use crate::{et_c, et_rs_c};
 /// A facade class for loading programs and executing methods within them.
 ///
 /// See the `hello_world_add` example for how to load and execute a module.
-pub struct Module(et_c::Module);
+pub struct Module(NonNull<et_c::Module>);
 impl Module {
     /// Constructs an instance by loading a program from a file with specified
     /// memory locking behavior.
@@ -43,7 +44,8 @@ impl Module {
         let file_path = ArrayRef::from_slice(util::str2chars(file_path).unwrap());
         let mlock_config = mlock_config.unwrap_or(MlockConfig::UseMlock);
         let event_tracer = ptr::null_mut(); // TODO: support event tracer
-        Self(unsafe { et_rs_c::Module_new(file_path.0, mlock_config, event_tracer) })
+        let module = unsafe { et_rs_c::Module_new(file_path.0, mlock_config, event_tracer) };
+        Self(unsafe { NonNull::new_unchecked(module) })
     }
 
     /// Loads the program using the specified data loader and memory allocator.
@@ -58,7 +60,7 @@ impl Module {
     /// An Error to indicate success or failure of the loading process.
     pub fn load(&mut self, verification: Option<ProgramVerification>) -> Result<()> {
         let verification = verification.unwrap_or(ProgramVerification::Minimal);
-        unsafe { et_c::Module_load(&mut self.0, verification) }.rs()
+        unsafe { et_c::Module_load(self.0.as_mut(), verification) }.rs()
     }
 
     /// Checks if the program is loaded.
@@ -67,7 +69,7 @@ impl Module {
     ///
     /// true if the program is loaded, false otherwise.
     pub fn is_loaded(&self) -> bool {
-        unsafe { et_c::Module_is_loaded(&self.0) }
+        unsafe { et_c::Module_is_loaded(self.0.as_ref()) }
     }
 
     /// Get a list of method names available in the loaded program.
@@ -77,11 +79,13 @@ impl Module {
     ///
     /// A set of strings containing the names of the methods, or an error if the program or method failed to load.
     pub fn method_names(&mut self) -> Result<HashSet<String>> {
-        let names = unsafe { et_rs_c::Module_method_names(&mut self.0) }.rs()?;
+        let names = unsafe { et_rs_c::Module_method_names(self.0.as_mut()) }
+            .rs()?
+            .rs();
         Ok(names
-            .rs()
-            .into_iter()
-            .map(|s| util::chars2string(s.rs()))
+            .as_slice()
+            .iter()
+            .map(|s| util::chars2string(s.to_vec()))
             .collect())
     }
 
@@ -101,7 +105,7 @@ impl Module {
     /// If the method name is not a valid UTF-8 string or contains a null character.
     pub fn load_method(&mut self, method_name: &str) -> Result<()> {
         let method_name = ArrayRef::from_slice(util::str2chars(method_name).unwrap());
-        unsafe { et_rs_c::Module_load_method(&mut self.0, method_name.0) }.rs()
+        unsafe { et_rs_c::Module_load_method(self.0.as_mut(), method_name.0) }.rs()
     }
 
     /// Checks if a specific method is loaded.
@@ -119,7 +123,7 @@ impl Module {
     /// If the method name is not a valid UTF-8 string or contains a null character.
     pub fn is_method_loaded(&self, method_name: &str) -> bool {
         let method_name = ArrayRef::from_slice(util::str2chars(method_name).unwrap());
-        unsafe { et_rs_c::Module_is_method_loaded(&self.0, method_name.0) }
+        unsafe { et_rs_c::Module_is_method_loaded(self.0.as_ref(), method_name.0) }
     }
 
     /// Get a method metadata struct by method name.
@@ -138,7 +142,7 @@ impl Module {
     /// If the method name is not a valid UTF-8 string or contains a null character.
     pub fn method_meta<'a>(&'a self, method_name: &str) -> Result<MethodMeta<'a>> {
         let method_name = ArrayRef::from_slice(util::str2chars(method_name).unwrap());
-        let meta = unsafe { et_rs_c::Module_method_meta(&self.0, method_name.0) }.rs()?;
+        let meta = unsafe { et_rs_c::Module_method_meta(self.0.as_ptr(), method_name.0) }.rs()?;
         Ok(unsafe { MethodMeta::new(meta) })
     }
 
@@ -167,11 +171,12 @@ impl Module {
         let inputs = unsafe { std::mem::transmute::<&[EValue], &[et_c::EValue]>(inputs) };
         let inputs = ArrayRef::from_slice(inputs);
         let outputs =
-            unsafe { et_rs_c::Module_execute(&mut self.0, method_name.0, inputs.0) }.rs()?;
-        let outputs = outputs.rs();
+            unsafe { et_rs_c::Module_execute(self.0.as_mut(), method_name.0, inputs.0) }.rs()?;
         // Safety: The transmute is safe because the memory layout of EValue and et_c::EValue is the same.
-        let outputs = unsafe { std::mem::transmute::<Vec<et_c::EValue>, Vec<EValue<'a>>>(outputs) };
-        Ok(outputs)
+        let outputs = unsafe {
+            std::mem::transmute::<et_rs_c::Vec<et_c::EValue>, et_rs_c::Vec<EValue<'a>>>(outputs)
+        };
+        Ok(outputs.rs().to_vec())
     }
 
     /// Executes the 'forward' method with the given input and retrieves the output.
@@ -190,7 +195,7 @@ impl Module {
 }
 impl Drop for Module {
     fn drop(&mut self) {
-        unsafe { et_rs_c::Module_destructor(&mut self.0) };
+        unsafe { et_rs_c::Module_destructor(self.0.as_mut()) };
     }
 }
 

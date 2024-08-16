@@ -6,57 +6,57 @@
 
 namespace executorch_rs
 {
-    namespace
+#if defined(EXECUTORCH_RS_STD)
+    template <typename T>
+    Vec<T> crate_Vec(std::vector<T> &&vec)
     {
-        template <typename T>
-        struct ManuallyDrop
-        {
-            union
-            {
-                T value;
-            };
-            ManuallyDrop(T &&value) : value(std::move(value)) {}
-            ~ManuallyDrop() {}
+        size_t len = vec.size();
+        T *arr = new T[len];
+        std::move(vec.begin(), vec.end(), arr);
+        return Vec<T>{
+            .data = arr,
+            .len = len,
+            .cap = len,
         };
+    }
 
-        template <typename T>
-        RawVec<T> crate_RawVec(std::vector<T> &&vec)
-        {
-            auto vec2 = ManuallyDrop<std::vector<T>>(std::move(vec));
-            return RawVec<T>{
-                .data = vec2.value.data(),
-                .len = vec2.value.size(),
-                .cap = vec2.value.capacity(),
-            };
-        }
+#define VEC_DESTRUCTOR_IMPL(T, name)          \
+    void Vec_##name##_destructor(Vec<T> *vec) \
+    {                                         \
+        delete[] vec->data;                   \
+    }
 
-        static_assert(sizeof(Result_i64) == sizeof(torch::executor::Result<int64_t>), "Result_i64 size mismatch");
-        // static_assert(offsetof(Result_i64, value_) == offsetof(torch::executor::Result<int64_t>, value_), "Result_i64 value_ offset mismatch");
-        // static_assert(offsetof(Result_i64, error_) == offsetof(torch::executor::Result<int64_t>, error_), "Result_i64 error_ offset mismatch");
-        // static_assert(offsetof(Result_i64, hasValue_) == offsetof(torch::executor::Result<int64_t>, hasValue_), "Result_i64 hasValue_ offset mismatch");
-        Result_i64 crate_Result_i64(const torch::executor::Result<int64_t> &result)
-        {
-            Result_i64 result2{
-                .error_ = torch::executor::Error::Ok,
-                .hasValue_ = false,
-            };
-            memcpy(&result2, &result, sizeof(Result_i64));
-            return result2;
-        }
+    VEC_DESTRUCTOR_IMPL(char, char)
+    VEC_DESTRUCTOR_IMPL(Vec<char>, Vec_char)
+    VEC_DESTRUCTOR_IMPL(torch::executor::EValue, EValue)
+#endif
 
-        static_assert(sizeof(Result_MethodMeta) == sizeof(torch::executor::Result<torch::executor::MethodMeta>), "Result_MethodMeta size mismatch");
-        // static_assert(offsetof(Result_MethodMeta, value_) == offsetof(torch::executor::Result<torch::executor::MethodMeta>, value_), "Result_MethodMeta value_ offset mismatch");
-        // static_assert(offsetof(Result_MethodMeta, error_) == offsetof(torch::executor::Result<torch::executor::MethodMeta>, error_), "Result_MethodMeta error_ offset mismatch");
-        // static_assert(offsetof(Result_MethodMeta, hasValue_) == offsetof(torch::executor::Result<torch::executor::MethodMeta>, hasValue_), "Result_MethodMeta hasValue_ offset mismatch");
-        Result_MethodMeta crate_Result_MethodMeta(const torch::executor::Result<torch::executor::MethodMeta> &result)
-        {
-            Result_MethodMeta result2{
-                .error_ = torch::executor::Error::Ok,
-                .hasValue_ = false,
-            };
-            memcpy(&result2, &result, sizeof(Result_MethodMeta));
-            return result2;
-        }
+    static_assert(sizeof(Result_i64) == sizeof(torch::executor::Result<int64_t>), "Result_i64 size mismatch");
+    // static_assert(offsetof(Result_i64, value_) == offsetof(torch::executor::Result<int64_t>, value_), "Result_i64 value_ offset mismatch");
+    // static_assert(offsetof(Result_i64, error_) == offsetof(torch::executor::Result<int64_t>, error_), "Result_i64 error_ offset mismatch");
+    // static_assert(offsetof(Result_i64, hasValue_) == offsetof(torch::executor::Result<int64_t>, hasValue_), "Result_i64 hasValue_ offset mismatch");
+    Result_i64 crate_Result_i64(const torch::executor::Result<int64_t> &result)
+    {
+        Result_i64 result2{
+            .error_ = torch::executor::Error::Ok,
+            .hasValue_ = false,
+        };
+        memcpy(&result2, &result, sizeof(Result_i64));
+        return result2;
+    }
+
+    static_assert(sizeof(Result_MethodMeta) == sizeof(torch::executor::Result<torch::executor::MethodMeta>), "Result_MethodMeta size mismatch");
+    // static_assert(offsetof(Result_MethodMeta, value_) == offsetof(torch::executor::Result<torch::executor::MethodMeta>, value_), "Result_MethodMeta value_ offset mismatch");
+    // static_assert(offsetof(Result_MethodMeta, error_) == offsetof(torch::executor::Result<torch::executor::MethodMeta>, error_), "Result_MethodMeta error_ offset mismatch");
+    // static_assert(offsetof(Result_MethodMeta, hasValue_) == offsetof(torch::executor::Result<torch::executor::MethodMeta>, hasValue_), "Result_MethodMeta hasValue_ offset mismatch");
+    Result_MethodMeta crate_Result_MethodMeta(const torch::executor::Result<torch::executor::MethodMeta> &result)
+    {
+        Result_MethodMeta result2{
+            .error_ = torch::executor::Error::Ok,
+            .hasValue_ = false,
+        };
+        memcpy(&result2, &result, sizeof(Result_MethodMeta));
+        return result2;
     }
 
     Result_MethodMeta Program_method_meta(const torch::executor::Program *program, const char *method_name)
@@ -151,6 +151,10 @@ namespace executorch_rs
         tensor->~Tensor();
     }
 
+    torch::executor::EValue EValue_shallow_clone(torch::executor::EValue *evalue)
+    {
+        return *evalue;
+    }
     void EValue_destructor(torch::executor::EValue *evalue)
     {
         evalue->~EValue();
@@ -170,48 +174,48 @@ namespace executorch_rs
     }
 
 #if defined(EXECUTORCH_RS_MODULE)
-    torch::executor::Module Module_new(torch::executor::ArrayRef<char> file_path, torch::executor::Module::MlockConfig mlock_config, torch::executor::EventTracer *event_tracer)
+    torch::executor::Module *Module_new(torch::executor::ArrayRef<char> file_path, torch::executor::Module::MlockConfig mlock_config, torch::executor::EventTracer *event_tracer)
     {
         std::string file_path_str(file_path.begin(), file_path.end());
         std::unique_ptr<torch::executor::EventTracer> event_tracer2(event_tracer);
-        return torch::executor::Module(file_path_str, mlock_config, std::move(event_tracer2));
+        return new torch::executor::Module(file_path_str, mlock_config, std::move(event_tracer2));
     }
-    void Module_destructor(torch::executor::Module *module)
+    void Module_destructor(torch::executor::Module *module_)
     {
-        module->~Module();
+        module_->~Module();
     }
-    torch::executor::Result<RawVec<RawVec<char>>> Module_method_names(torch::executor::Module *module)
+    torch::executor::Result<Vec<Vec<char>>> Module_method_names(torch::executor::Module *module_)
     {
-        std::unordered_set<std::string> method_names = ET_UNWRAP(module->method_names());
-        std::vector<RawVec<char>> method_names_vec;
+        std::unordered_set<std::string> method_names = ET_UNWRAP(module_->method_names());
+        std::vector<Vec<char>> method_names_vec;
         for (const std::string &method_name : method_names)
         {
             std::vector<char> method_name_vec(method_name.begin(), method_name.end());
-            method_names_vec.push_back(crate_RawVec(std::move(method_name_vec)));
+            method_names_vec.push_back(crate_Vec(std::move(method_name_vec)));
         }
-        return crate_RawVec(std::move(method_names_vec));
+        return crate_Vec(std::move(method_names_vec));
     }
-    torch::executor::Error Module_load_method(torch::executor::Module *module, torch::executor::ArrayRef<char> method_name)
+    torch::executor::Error Module_load_method(torch::executor::Module *module_, torch::executor::ArrayRef<char> method_name)
     {
         std::string method_name_str(method_name.begin(), method_name.end());
-        return module->load_method(method_name_str);
+        return module_->load_method(method_name_str);
     }
-    bool Module_is_method_loaded(const torch::executor::Module *module, torch::executor::ArrayRef<char> method_name)
+    bool Module_is_method_loaded(const torch::executor::Module *module_, torch::executor::ArrayRef<char> method_name)
     {
         std::string method_name_str(method_name.begin(), method_name.end());
-        return module->is_method_loaded(method_name_str);
+        return module_->is_method_loaded(method_name_str);
     }
-    Result_MethodMeta Module_method_meta(torch::executor::Module *module, torch::executor::ArrayRef<char> method_name)
+    Result_MethodMeta Module_method_meta(torch::executor::Module *module_, torch::executor::ArrayRef<char> method_name)
     {
         std::string method_name_str(method_name.begin(), method_name.end());
-        return crate_Result_MethodMeta(module->method_meta(method_name_str));
+        return crate_Result_MethodMeta(module_->method_meta(method_name_str));
     }
-    torch::executor::Result<RawVec<torch::executor::EValue>> Module_execute(torch::executor::Module *module, torch::executor::ArrayRef<char> method_name, torch::executor::ArrayRef<torch::executor::EValue> inputs)
+    torch::executor::Result<Vec<torch::executor::EValue>> Module_execute(torch::executor::Module *module_, torch::executor::ArrayRef<char> method_name, torch::executor::ArrayRef<torch::executor::EValue> inputs)
     {
         std::string method_name_str(method_name.begin(), method_name.end());
         std::vector<torch::executor::EValue> inputs_vec(inputs.begin(), inputs.end());
-        std::vector<torch::executor::EValue> outputs = ET_UNWRAP(module->execute(method_name_str, inputs_vec));
-        return crate_RawVec(std::move(outputs));
+        std::vector<torch::executor::EValue> outputs = ET_UNWRAP(module_->execute(method_name_str, inputs_vec));
+        return crate_Vec(std::move(outputs));
     }
 #endif
 }

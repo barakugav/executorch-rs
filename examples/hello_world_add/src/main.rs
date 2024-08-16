@@ -1,5 +1,7 @@
 #![deny(warnings)]
 
+use std::path::PathBuf;
+
 use executorch::evalue::{EValue, Tag};
 use executorch::module::Module;
 use executorch::tensor::{Array, Tensor};
@@ -12,8 +14,10 @@ fn main() {
 
     executorch::platform::pal_init();
 
-    let mut module = Module::new("model.pte", None);
-
+    let mut module = Module::new(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("model.pte"),
+        None,
+    );
     let input_array1 = Array::new(array![1.0_f32]);
     let input_tensor1 = input_array1.to_tensor_impl();
     let input_evalue1 = EValue::from_tensor(Tensor::new(&input_tensor1));
