@@ -102,7 +102,7 @@ namespace executorch_rs
     torch::executor::util::BufferDataLoader BufferDataLoader_new(const void *data, size_t size);
 
 #if defined(EXECUTORCH_RS_MODULE)
-    torch::executor::Module Module_new(torch::executor::ArrayRef<char> file_path, torch::executor::Module::MlockConfig mlock_config, torch::executor::EventTracer *event_tracer);
+    torch::executor::Module *Module_new(torch::executor::ArrayRef<char> file_path, torch::executor::Module::MlockConfig mlock_config, torch::executor::EventTracer *event_tracer);
     void Module_destructor(torch::executor::Module *module);
     torch::executor::Result<Vec<Vec<char>>> Module_method_names(torch::executor::Module *module);
     torch::executor::Error Module_load_method(torch::executor::Module *module, torch::executor::ArrayRef<char> method_name);

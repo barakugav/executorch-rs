@@ -174,11 +174,11 @@ namespace executorch_rs
     }
 
 #if defined(EXECUTORCH_RS_MODULE)
-    torch::executor::Module Module_new(torch::executor::ArrayRef<char> file_path, torch::executor::Module::MlockConfig mlock_config, torch::executor::EventTracer *event_tracer)
+    torch::executor::Module *Module_new(torch::executor::ArrayRef<char> file_path, torch::executor::Module::MlockConfig mlock_config, torch::executor::EventTracer *event_tracer)
     {
         std::string file_path_str(file_path.begin(), file_path.end());
         std::unique_ptr<torch::executor::EventTracer> event_tracer2(event_tracer);
-        return torch::executor::Module(file_path_str, mlock_config, std::move(event_tracer2));
+        return new torch::executor::Module(file_path_str, mlock_config, std::move(event_tracer2));
     }
     void Module_destructor(torch::executor::Module *module_)
     {
