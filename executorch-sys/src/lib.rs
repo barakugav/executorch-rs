@@ -100,23 +100,3 @@ mod c_link {
     include!(concat!(env!("OUT_DIR"), "/executorch_bindings.rs"));
 }
 pub use c_link::root::*;
-
-use crate::executorch_rs as et_rs_c;
-use crate::torch::executor as et_c;
-
-impl Drop for et_c::Tensor {
-    fn drop(&mut self) {
-        unsafe { et_rs_c::Tensor_destructor(self) }
-    }
-}
-
-#[cfg(feature = "std")]
-impl<T> et_rs_c::Vec<T> {
-    pub fn as_slice(&self) -> &[T] {
-        unsafe { std::slice::from_raw_parts(self.data, self.len) }
-    }
-
-    pub fn as_mut_slice(&mut self) -> &mut [T] {
-        unsafe { std::slice::from_raw_parts_mut(self.data, self.len) }
-    }
-}

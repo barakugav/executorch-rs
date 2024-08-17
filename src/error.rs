@@ -51,7 +51,7 @@ pub enum Error {
     DelegateInvalidHandle = et_c::Error::DelegateInvalidHandle as u8,
 }
 impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let msg = match self {
             Error::Internal => "An internal error occurred",
             Error::InvalidState => "Executor is in an invalid state for a target",

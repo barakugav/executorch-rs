@@ -12,7 +12,7 @@
 //! The following example create a simple model in Python, exports it, and then executes it in Rust:
 //!
 //! Create a model in `Python` and export it:
-//! ```ignore
+//! ```ignore,{.language-python}
 //! import torch
 //! from executorch.exir import to_edge
 //! from torch.export import export
@@ -33,7 +33,7 @@
 //! ```
 //!
 //! Execute the model in Rust:
-//! ```no_run
+//! ```rust,ignore
 //! use executorch::evalue::{EValue, Tag};
 //! use executorch::module::Module;
 //! use executorch::tensor::{Array, Tensor};
@@ -43,11 +43,11 @@
 //!
 //! let input_array1 = Array::new(array![1.0_f32]);
 //! let input_tensor1 = input_array1.to_tensor_impl();
-//! let input_evalue1 = EValue::from_tensor(Tensor::new(&input_tensor1));
+//! let input_evalue1 = EValue::new(Tensor::new(&input_tensor1));
 //!
 //! let input_array2 = Array::new(array![1.0_f32]);
 //! let input_tensor2 = input_array2.to_tensor_impl();
-//! let input_evalue2 = EValue::from_tensor(Tensor::new(&input_tensor2));
+//! let input_evalue2 = EValue::new(Tensor::new(&input_tensor2));
 //!
 //! let outputs = module.forward(&[input_evalue1, input_evalue2]).unwrap();
 //! assert_eq!(outputs.len(), 1);
@@ -104,10 +104,16 @@
 extern crate core as std;
 
 cfg_if::cfg_if! { if #[cfg(feature = "std")] {
-    use std as et_alloc;
+    mod et_alloc {
+        pub use std::vec::Vec;
+        pub use std::boxed::Box;
+    }
 } else if #[cfg(feature = "alloc")] {
-    extern crate alloc;
-    use alloc as et_alloc;
+    mod et_alloc {
+        extern crate alloc;
+        pub use alloc::vec::Vec;
+        pub use alloc::boxed::Box;
+    }
 } }
 
 use executorch_sys::executorch_rs as et_rs_c;

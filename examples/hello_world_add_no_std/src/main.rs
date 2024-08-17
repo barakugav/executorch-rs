@@ -51,12 +51,18 @@ fn main() {
         .unwrap();
 
     let input_array1 = Array::new(ndarray::arr1(&[1.0_f32]));
-    let input_tensor1 = input_array1.to_tensor_impl();
-    let input_evalue1 = EValue::from_tensor(Tensor::new(&input_tensor1));
+    let input_tensor_impl1 = input_array1.to_tensor_impl();
+    let storage = executorch::storage!(Tensor);
+    let input_tensor1 = storage.new(&input_tensor_impl1);
+    let storage = executorch::storage!(EValue);
+    let input_evalue1 = storage.new(input_tensor1);
 
     let input_array2 = Array::new(ndarray::arr1(&[1.0_f32]));
-    let input_tensor2 = input_array2.to_tensor_impl();
-    let input_evalue2 = EValue::from_tensor(Tensor::new(&input_tensor2));
+    let input_tensor_impl2 = input_array2.to_tensor_impl();
+    let storage = executorch::storage!(Tensor);
+    let input_tensor2 = storage.new(&input_tensor_impl2);
+    let storage = executorch::storage!(EValue);
+    let input_evalue2 = storage.new(input_tensor2);
 
     let mut method_exe = method.start_execution();
 
@@ -64,7 +70,7 @@ fn main() {
     method_exe.set_input(&input_evalue2, 1).unwrap();
 
     let outputs = method_exe.execute().unwrap();
-    let output = &outputs[0];
+    let output = outputs.get(0);
     assert_eq!(output.tag(), Some(Tag::Tensor));
     let output = output.as_tensor();
 
