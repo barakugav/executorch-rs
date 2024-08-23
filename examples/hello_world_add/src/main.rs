@@ -18,6 +18,7 @@ fn main() {
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("model.pte"),
         None,
     );
+
     let input_array1 = Array::new(array![1.0_f32]);
     let input_tensor1 = input_array1.to_tensor_impl();
     let input_evalue1 = EValue::new(Tensor::new(&input_tensor1));

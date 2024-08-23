@@ -1,10 +1,3 @@
-[workspace]
-members = [
-    "executorch-sys",
-    'examples/hello_world_add',
-    'examples/hello_world_add_no_std',
-]
-
 [package]
 name = "executorch"
 version = "0.2.0"
