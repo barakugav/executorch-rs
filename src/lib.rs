@@ -84,6 +84,7 @@
 //!     in a `no_std` environment.
 //!     See the `hello_world_add_no_std` example.
 //!     Also includes the `alloc` feature.
+//!     NOTE: no_std is still WIP, see <https://github.com/pytorch/executorch/issues/4561>
 //! - `alloc`:
 //!     Enable allocations.
 //!     When this feature is disabled, all methods that require allocations will not be compiled.

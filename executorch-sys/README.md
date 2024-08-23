@@ -83,5 +83,6 @@ Note that the ops and kernels libs are linked with `+whole-archive` to ensure th
 - `std`
 
     Enable the standard library. This feature is enabled by default, but can be disabled to build `executorch` in a `no_std` environment.
+    NOTE: no_std is still WIP, see https://github.com/pytorch/executorch/issues/4561
 
 By default the `std` feature is enabled.
