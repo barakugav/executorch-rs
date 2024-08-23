@@ -56,6 +56,10 @@ namespace executorch_rs
 
         /// True if the Result contains a value.
         const bool hasValue_;
+
+        Result_i64() : error_(torch::executor::Error::Ok), hasValue_(false) {}
+        Result_i64(const Result_i64 &) = default;
+        ~Result_i64() = default;
     };
     struct Result_MethodMeta
     {
@@ -68,6 +72,10 @@ namespace executorch_rs
 
         /// True if the Result contains a value.
         const bool hasValue_;
+
+        Result_MethodMeta() : error_(torch::executor::Error::Ok), hasValue_(false) {}
+        Result_MethodMeta(const Result_MethodMeta &) = default;
+        ~Result_MethodMeta() = default;
     };
 
     Result_MethodMeta Program_method_meta(const torch::executor::Program *self, const char *method_name);
