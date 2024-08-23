@@ -122,6 +122,8 @@ println!("cargo::rustc-link-search={}/kernels/portable/", libs_dir);
 ```
 Note that the ops and kernels libs are linked with `+whole-archive` to ensure that all symbols are included in the binary.
 
+The build (and library) is tested on Ubuntu and MacOS, not on Windows.
+
 ## Cargo Features
 - `data-loader`
 
