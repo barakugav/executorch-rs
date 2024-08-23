@@ -39,10 +39,7 @@ namespace executorch_rs
     // static_assert(offsetof(Result_i64, hasValue_) == offsetof(torch::executor::Result<int64_t>, hasValue_), "Result_i64 hasValue_ offset mismatch");
     Result_i64 crate_Result_i64(const torch::executor::Result<int64_t> &result)
     {
-        Result_i64 result2{
-            .error_ = torch::executor::Error::Ok,
-            .hasValue_ = false,
-        };
+        Result_i64 result2;
         memcpy(&result2, &result, sizeof(Result_i64));
         return result2;
     }
@@ -53,10 +50,7 @@ namespace executorch_rs
     // static_assert(offsetof(Result_MethodMeta, hasValue_) == offsetof(torch::executor::Result<torch::executor::MethodMeta>, hasValue_), "Result_MethodMeta hasValue_ offset mismatch");
     Result_MethodMeta crate_Result_MethodMeta(const torch::executor::Result<torch::executor::MethodMeta> &result)
     {
-        Result_MethodMeta result2{
-            .error_ = torch::executor::Error::Ok,
-            .hasValue_ = false,
-        };
+        Result_MethodMeta result2;
         memcpy(&result2, &result, sizeof(Result_MethodMeta));
         return result2;
     }

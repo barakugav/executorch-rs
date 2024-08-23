@@ -10,10 +10,13 @@ on:
 
 jobs:
   ci:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     defaults:
       run:
         shell: bash
+    strategy:
+      matrix:
+        runner: [ubuntu-latest, macos-latest]
     permissions:
       contents: read
       checks: write
@@ -28,6 +31,11 @@ jobs:
         with:
           toolchain: 1.77.0
           components: clippy
+          cache-workspaces:
+            ./
+            executorch-sys
+            examples/hello_world_add
+            examples/hello_world_add_no_std
       - name: Install Python
         uses: actions/setup-python@v5
         with:
