@@ -1,5 +1,6 @@
 #![deny(warnings)]
-#![no_std]
+// #![no_std]
+// #![no_main]
 
 use executorch::data_loader::FileDataLoader;
 use executorch::evalue::{EValue, Tag};
@@ -8,13 +9,11 @@ use executorch::program::{Program, ProgramVerification};
 use executorch::tensor::{Array, Tensor};
 use executorch::util::Span;
 
+use libc_print::libc_println;
+
 static mut MEMORY_ALLOCATOR_BUF: [u8; 4096] = [0; 4096];
 
-fn main() {
-    env_logger::Builder::new()
-        .filter_level(log::LevelFilter::Debug)
-        .init();
-
+fn real_main() {
     executorch::platform::pal_init();
 
     // Safety: We are the main function, no other function access the buffer
@@ -74,6 +73,23 @@ fn main() {
     assert_eq!(output.tag(), Some(Tag::Tensor));
     let output = output.as_tensor();
 
-    log::info!("Output tensor computed: {:?}", output);
+    libc_println!("Output tensor computed: {:?}", output);
     assert_eq!(ndarray::arr1(&[2.0_f32]), output.as_array());
+}
+
+// FIXME: Unfortunatelly, no_std is WIP
+
+// #[no_mangle]
+// pub fn main(_argc: i32, _argv: *const *const u8) -> u32 {
+//     real_main();
+//     0
+// }
+
+// #[panic_handler]
+// fn panic(_info: &core::panic::PanicInfo) -> ! {
+//     loop {}
+// }
+
+fn main() {
+    real_main();
 }

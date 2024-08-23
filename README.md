@@ -145,6 +145,7 @@ Note that the ops and kernels libs are linked with `+whole-archive` to ensure th
     Enable the standard library. This feature is enabled by default, but can be disabled to build `executorch` in a `no_std` environment.
     See the `hello_world_add_no_std` example.
     Also includes the `alloc` feature.
+    NOTE: no_std is still WIP, see https://github.com/pytorch/executorch/issues/4561
 
 - `alloc`
 
