@@ -78,11 +78,16 @@
 //!
 //! ## Cargo Features
 //! By default all features are disabled.
-//! - `data-loader`: Includes the `FileDataLoader` and `MmapDataLoader` structs. Without this feature the only available
-//! data loader is `BufferDataLoader`. The `libextension_data_loader.a` static library is required, compile C++
+//! - `data-loader`: Includes the [`FileDataLoader`] and [`MmapDataLoader`] structs. Without this feature the only available
+//! data loader is [`BufferDataLoader`]. The `libextension_data_loader.a` static library is required, compile C++
 //! `executorch` with `EXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON`.
-//! - `module`: Includes the `Module` struct. The `libextension_module_static.a` static library is required, compile C++
+//! - `module`: Includes the [`Module`] struct. The `libextension_module_static.a` static library is required, compile C++
 //! `executorch` with `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`.
+//!
+//! [`FileDataLoader`]: crate::torch::executor::util::FileDataLoader
+//! [`MmapDataLoader`]: crate::torch::executor::util::MmapDataLoader
+//! [`BufferDataLoader`]: crate::torch::executor::util::BufferDataLoader
+//! [`Module`]: crate::torch::executor::Module
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -100,23 +105,3 @@ mod c_link {
     include!(concat!(env!("OUT_DIR"), "/executorch_bindings.rs"));
 }
 pub use c_link::root::*;
-
-use crate::executorch_rs as et_rs_c;
-use crate::torch::executor as et_c;
-
-impl Drop for et_c::Tensor {
-    fn drop(&mut self) {
-        unsafe { et_rs_c::Tensor_destructor(self) }
-    }
-}
-
-#[cfg(feature = "std")]
-impl<T> et_rs_c::Vec<T> {
-    pub fn as_slice(&self) -> &[T] {
-        unsafe { std::slice::from_raw_parts(self.data, self.len) }
-    }
-
-    pub fn as_mut_slice(&mut self) -> &mut [T] {
-        unsafe { std::slice::from_raw_parts_mut(self.data, self.len) }
-    }
-}

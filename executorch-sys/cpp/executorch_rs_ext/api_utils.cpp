@@ -20,6 +20,8 @@ namespace executorch_rs
         };
     }
 
+// Its safe to call the destructor of elements in `vec->data[len..cap]` because we created them with `new T[len]`
+// aka default constructor
 #define VEC_DESTRUCTOR_IMPL(T, name)          \
     void Vec_##name##_destructor(Vec<T> *vec) \
     {                                         \
@@ -59,114 +61,149 @@ namespace executorch_rs
         return result2;
     }
 
-    Result_MethodMeta Program_method_meta(const torch::executor::Program *program, const char *method_name)
+    Result_MethodMeta Program_method_meta(const torch::executor::Program *self, const char *method_name)
     {
-        return crate_Result_MethodMeta(program->method_meta(method_name));
+        return crate_Result_MethodMeta(self->method_meta(method_name));
     }
-    void Program_destructor(torch::executor::Program *program)
+    void Program_destructor(torch::executor::Program *self)
     {
-        program->~Program();
+        self->~Program();
     }
 
-    Result_i64 MethodMeta_memory_planned_buffer_size(const torch::executor::MethodMeta *method_meta, size_t index)
+    Result_i64 MethodMeta_memory_planned_buffer_size(const torch::executor::MethodMeta *self, size_t index)
     {
-        return crate_Result_i64(method_meta->memory_planned_buffer_size(index));
+        return crate_Result_i64(self->memory_planned_buffer_size(index));
     }
 
     torch::executor::MemoryAllocator MemoryAllocator_new(uint32_t size, uint8_t *base_address)
     {
         return torch::executor::MemoryAllocator(size, base_address);
     }
-    void *MemoryAllocator_allocate(torch::executor::MemoryAllocator *allocator, size_t size, size_t alignment)
+    void *MemoryAllocator_allocate(torch::executor::MemoryAllocator *self, size_t size, size_t alignment)
     {
-        return allocator->allocate(size, alignment);
+        return self->allocate(size, alignment);
     }
 #if defined(EXECUTORCH_RS_STD)
     torch::executor::util::MallocMemoryAllocator MallocMemoryAllocator_new()
     {
         return torch::executor::util::MallocMemoryAllocator();
     }
-    void MallocMemoryAllocator_destructor(torch::executor::util::MallocMemoryAllocator *allocator)
+    void MallocMemoryAllocator_destructor(torch::executor::util::MallocMemoryAllocator *self)
     {
-        allocator->~MallocMemoryAllocator();
+        self->~MallocMemoryAllocator();
     }
 #endif
     torch::executor::HierarchicalAllocator HierarchicalAllocator_new(torch::executor::Span<torch::executor::Span<uint8_t>> buffers)
     {
         return torch::executor::HierarchicalAllocator(buffers);
     }
-    void HierarchicalAllocator_destructor(torch::executor::HierarchicalAllocator *allocator)
+    void HierarchicalAllocator_destructor(torch::executor::HierarchicalAllocator *self)
     {
-        allocator->~HierarchicalAllocator();
+        self->~HierarchicalAllocator();
     }
 
     // Tensor
+    void Tensor_new(exec_aten::Tensor *self, exec_aten::TensorImpl *tensor_impl)
+    {
+        new (self) exec_aten::Tensor(tensor_impl);
+    }
+    size_t Tensor_nbytes(const exec_aten::Tensor *self)
+    {
+        return self->nbytes();
+    }
+    ssize_t Tensor_size(const exec_aten::Tensor *self, ssize_t dim)
+    {
+        return self->size(dim);
+    }
+    ssize_t Tensor_dim(const exec_aten::Tensor *self)
+    {
+        return self->dim();
+    }
+    ssize_t Tensor_numel(const exec_aten::Tensor *self)
+    {
+        return self->numel();
+    }
+    exec_aten::ScalarType Tensor_scalar_type(const exec_aten::Tensor *self)
+    {
+        return self->scalar_type();
+    }
+    ssize_t Tensor_element_size(const exec_aten::Tensor *self)
+    {
+        return self->element_size();
+    }
+    exec_aten::ArrayRef<exec_aten::SizesType> Tensor_sizes(const exec_aten::Tensor *self)
+    {
+        return self->sizes();
+    }
+    exec_aten::ArrayRef<exec_aten::DimOrderType> Tensor_dim_order(const exec_aten::Tensor *self)
+    {
+        return self->dim_order();
+    }
+    exec_aten::ArrayRef<exec_aten::StridesType> Tensor_strides(const exec_aten::Tensor *self)
+    {
+        return self->strides();
+    }
+    const void *Tensor_const_data_ptr(const exec_aten::Tensor *self)
+    {
+        return self->const_data_ptr();
+    }
+    void *Tensor_mutable_data_ptr(const exec_aten::Tensor *self)
+    {
+        return self->mutable_data_ptr();
+    }
+    void Tensor_destructor(exec_aten::Tensor *self)
+    {
+        self->~Tensor();
+    }
 
-    size_t Tensor_nbytes(const exec_aten::Tensor *tensor)
+    void EValue_new_from_i64(torch::executor::EValue *self, int64_t value)
     {
-        return tensor->nbytes();
+        new (self) torch::executor::EValue(value);
     }
-    ssize_t Tensor_size(const exec_aten::Tensor *tensor, ssize_t dim)
+    void EValue_new_from_f64(torch::executor::EValue *self, double value)
     {
-        return tensor->size(dim);
+        new (self) torch::executor::EValue(value);
     }
-    ssize_t Tensor_dim(const exec_aten::Tensor *tensor)
+    void EValue_new_from_f64_arr(torch::executor::EValue *self, exec_aten::ArrayRef<double> value)
     {
-        return tensor->dim();
+        new (self) torch::executor::EValue(value);
     }
-    ssize_t Tensor_numel(const exec_aten::Tensor *tensor)
+    void EValue_new_from_bool(torch::executor::EValue *self, bool value)
     {
-        return tensor->numel();
+        new (self) torch::executor::EValue(value);
     }
-    exec_aten::ScalarType Tensor_scalar_type(const exec_aten::Tensor *tensor)
+    void EValue_new_from_bool_arr(torch::executor::EValue *self, exec_aten::ArrayRef<bool> value)
     {
-        return tensor->scalar_type();
+        new (self) torch::executor::EValue(value);
     }
-    ssize_t Tensor_element_size(const exec_aten::Tensor *tensor)
+    void EValue_new_from_chars(torch::executor::EValue *self, exec_aten::ArrayRef<char> value)
     {
-        return tensor->element_size();
+        new (self) torch::executor::EValue(value.begin(), value.end() - value.begin());
     }
-    const exec_aten::ArrayRef<exec_aten::SizesType> Tensor_sizes(const exec_aten::Tensor *tensor)
+    void EValue_new_from_tensor(torch::executor::EValue *self, const exec_aten::Tensor *value)
     {
-        return tensor->sizes();
+        new (self) torch::executor::EValue(*value);
     }
-    const exec_aten::ArrayRef<exec_aten::DimOrderType> Tensor_dim_order(const exec_aten::Tensor *tensor)
+    void EValue_copy(const torch::executor::EValue *src, torch::executor::EValue *dst)
     {
-        return tensor->dim_order();
+        new (dst) torch::executor::EValue(*src);
     }
-    const exec_aten::ArrayRef<exec_aten::StridesType> Tensor_strides(const exec_aten::Tensor *tensor)
+    void EValue_destructor(torch::executor::EValue *self)
     {
-        return tensor->strides();
+        self->~EValue();
     }
-    const void *Tensor_const_data_ptr(const exec_aten::Tensor *tensor)
+    void EValue_move(torch::executor::EValue *src, torch::executor::EValue *dst)
     {
-        return tensor->const_data_ptr();
+        new (dst) torch::executor::EValue(std::move(*src));
     }
-    void *Tensor_mutable_data_ptr(const exec_aten::Tensor *tensor)
-    {
-        return tensor->mutable_data_ptr();
-    }
-    void Tensor_destructor(exec_aten::Tensor *tensor)
-    {
-        tensor->~Tensor();
-    }
-
-    torch::executor::EValue EValue_shallow_clone(torch::executor::EValue *evalue)
-    {
-        return *evalue;
-    }
-    void EValue_destructor(torch::executor::EValue *evalue)
-    {
-        evalue->~EValue();
-    }
-    const exec_aten::ArrayRef<int64_t> BoxedEvalueList_i64_get(const torch::executor::BoxedEvalueList<int64_t> *list)
-    {
-        return list->get();
-    }
-    const exec_aten::ArrayRef<exec_aten::Tensor> BoxedEvalueList_Tensor_get(const torch::executor::BoxedEvalueList<exec_aten::Tensor> *list)
-    {
-        return list->get();
-    }
+    // exec_aten::ArrayRef<int64_t> BoxedEvalueList_i64_get(const torch::executor::BoxedEvalueList<int64_t> *self)
+    // {
+    //     return self->get();
+    // }
+    // exec_aten::ArrayRef<exec_aten::Tensor> BoxedEvalueList_Tensor_get(const torch::executor::BoxedEvalueList<exec_aten::Tensor> *self)
+    // {
+    //     return self->get();
+    // }
 
     torch::executor::util::BufferDataLoader BufferDataLoader_new(const void *data, size_t size)
     {
@@ -174,19 +211,19 @@ namespace executorch_rs
     }
 
 #if defined(EXECUTORCH_RS_MODULE)
-    torch::executor::Module *Module_new(torch::executor::ArrayRef<char> file_path, torch::executor::Module::MlockConfig mlock_config, torch::executor::EventTracer *event_tracer)
+    void Module_new(torch::executor::Module *self, torch::executor::ArrayRef<char> file_path, torch::executor::Module::MlockConfig mlock_config, torch::executor::EventTracer *event_tracer)
     {
         std::string file_path_str(file_path.begin(), file_path.end());
         std::unique_ptr<torch::executor::EventTracer> event_tracer2(event_tracer);
-        return new torch::executor::Module(file_path_str, mlock_config, std::move(event_tracer2));
+        new (self) torch::executor::Module(file_path_str, mlock_config, std::move(event_tracer2));
     }
-    void Module_destructor(torch::executor::Module *module_)
+    void Module_destructor(torch::executor::Module *self)
     {
-        module_->~Module();
+        self->~Module();
     }
-    torch::executor::Result<Vec<Vec<char>>> Module_method_names(torch::executor::Module *module_)
+    torch::executor::Result<Vec<Vec<char>>> Module_method_names(torch::executor::Module *self)
     {
-        std::unordered_set<std::string> method_names = ET_UNWRAP(module_->method_names());
+        std::unordered_set<std::string> method_names = ET_UNWRAP(self->method_names());
         std::vector<Vec<char>> method_names_vec;
         for (const std::string &method_name : method_names)
         {
@@ -195,26 +232,26 @@ namespace executorch_rs
         }
         return crate_Vec(std::move(method_names_vec));
     }
-    torch::executor::Error Module_load_method(torch::executor::Module *module_, torch::executor::ArrayRef<char> method_name)
+    torch::executor::Error Module_load_method(torch::executor::Module *self, torch::executor::ArrayRef<char> method_name)
     {
         std::string method_name_str(method_name.begin(), method_name.end());
-        return module_->load_method(method_name_str);
+        return self->load_method(method_name_str);
     }
-    bool Module_is_method_loaded(const torch::executor::Module *module_, torch::executor::ArrayRef<char> method_name)
+    bool Module_is_method_loaded(const torch::executor::Module *self, torch::executor::ArrayRef<char> method_name)
     {
         std::string method_name_str(method_name.begin(), method_name.end());
-        return module_->is_method_loaded(method_name_str);
+        return self->is_method_loaded(method_name_str);
     }
-    Result_MethodMeta Module_method_meta(torch::executor::Module *module_, torch::executor::ArrayRef<char> method_name)
+    Result_MethodMeta Module_method_meta(torch::executor::Module *self, torch::executor::ArrayRef<char> method_name)
     {
         std::string method_name_str(method_name.begin(), method_name.end());
-        return crate_Result_MethodMeta(module_->method_meta(method_name_str));
+        return crate_Result_MethodMeta(self->method_meta(method_name_str));
     }
-    torch::executor::Result<Vec<torch::executor::EValue>> Module_execute(torch::executor::Module *module_, torch::executor::ArrayRef<char> method_name, torch::executor::ArrayRef<torch::executor::EValue> inputs)
+    torch::executor::Result<Vec<torch::executor::EValue>> Module_execute(torch::executor::Module *self, torch::executor::ArrayRef<char> method_name, torch::executor::ArrayRef<torch::executor::EValue> inputs)
     {
         std::string method_name_str(method_name.begin(), method_name.end());
         std::vector<torch::executor::EValue> inputs_vec(inputs.begin(), inputs.end());
-        std::vector<torch::executor::EValue> outputs = ET_UNWRAP(module_->execute(method_name_str, inputs_vec));
+        std::vector<torch::executor::EValue> outputs = ET_UNWRAP(self->execute(method_name_str, inputs_vec));
         return crate_Vec(std::move(outputs));
     }
 #endif

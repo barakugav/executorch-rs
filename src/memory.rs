@@ -63,7 +63,7 @@ impl<'a> MemoryAllocator<'a> {
     ///
     /// # Returns
     ///
-    /// A mutable reference to the allocated memory, or `None` if allocation failed.
+    /// A mutable reference to the allocated memory, or [`None`] if allocation failed.
     ///
     /// Allocation may failed if the allocator is out of memory.
     pub fn allocate<T: Default>(&self) -> Option<&mut T> {
@@ -82,7 +82,7 @@ impl<'a> MemoryAllocator<'a> {
     ///
     /// # Returns
     ///
-    /// A mutable reference to the allocated array, or `None` if allocation failed.
+    /// A mutable reference to the allocated array, or [`None`] if allocation failed.
     ///
     /// Allocation may failed if the allocator is out of memory.
     pub fn allocate_arr<T: Default>(&self, len: usize) -> Option<&mut [T]> {
@@ -98,7 +98,7 @@ impl<'a> MemoryAllocator<'a> {
     ///
     /// # Returns
     ///
-    /// A mutable reference to the allocated array, or `None` if allocation failed.
+    /// A mutable reference to the allocated array, or [`None`] if allocation failed.
     ///
     /// Allocation may failed if the allocator is out of memory.
     pub fn allocate_arr_fn<T>(&self, len: usize, f: impl Fn(usize) -> T) -> Option<&mut [T]> {
@@ -217,12 +217,12 @@ impl<'a> MemoryManager<'a> {
     /// * `method_allocator` - The allocator to use when loading a Method and allocating its internal structures.
     /// Must outlive the Method that uses it.
     /// * `planned_memory` - The memory-planned buffers to use for mutable tensor data when executing a Method.
-    /// Must outlive the Method that uses it. May be `None` if the Method does not use any memory-planned tensor data.
+    /// Must outlive the Method that uses it. May be [`None`] if the Method does not use any memory-planned tensor data.
     /// The sizes of the buffers in this HierarchicalAllocator must agree with the corresponding
     /// `MethodMeta::num_memory_planned_buffers()` and `MethodMeta::memory_planned_buffer_size(N)` values,
     /// which are embedded in the Program.
     /// * `temp_allocator` - The allocator to use when allocating temporary data during kernel or delegate execution.
-    /// Must outlive the Method that uses it. May be `None` if the Method does not use kernels or delegates that
+    /// Must outlive the Method that uses it. May be [`None`] if the Method does not use kernels or delegates that
     /// allocate temporary data. This allocator will be reset after every kernel or delegate call during execution.
     pub fn new<'b: 'a>(
         method_allocator: &'a impl AsRef<MemoryAllocator<'b>>,

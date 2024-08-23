@@ -42,7 +42,7 @@ fn generate_bindings() {
         .join("cpp")
         .join("bindings.hpp");
     let bindings_defines_h = c_ext_dir.parent().unwrap().join("executorch_rs_defines.h");
-    let mut bindings_defines = String::new();
+    let mut bindings_defines = String::from("#pragma once\n");
     for define in cpp_defines() {
         bindings_defines.push_str(&format!("#define {}\n", define));
     }

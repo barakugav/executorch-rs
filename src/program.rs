@@ -7,7 +7,6 @@
 
 use std::ffi::CStr;
 use std::marker::PhantomData;
-use std::ops::Index;
 use std::ptr;
 
 use crate::data_loader::DataLoader;
@@ -62,7 +61,7 @@ impl<'a> Program<'a> {
     /// # Returns
     ///
     /// The name of the requested method. The pointer is owned by the Program, and has the same lifetime as the Program.
-    pub fn get_method_name(&self, method_index: usize) -> Result<&'a str> {
+    pub fn get_method_name(&self, method_index: usize) -> Result<&str> {
         let method_name = unsafe { et_c::Program_get_method_name(&self.0, method_index) }.rs()?;
         Ok(unsafe { CStr::from_ptr(method_name).to_str().unwrap() })
     }
@@ -77,11 +76,11 @@ impl<'a> Program<'a> {
     /// # Returns
     ///
     /// The loaded method on success, or an error on failure.
-    pub fn load_method(
-        &self,
+    pub fn load_method<'b>(
+        &'b self,
         method_name: &CStr,
-        memory_manager: &'a MemoryManager,
-    ) -> Result<Method<'a>> {
+        memory_manager: &'b MemoryManager,
+    ) -> Result<Method<'b>> {
         let memory_manager = memory_manager.0.get();
         let event_tracer = ptr::null_mut(); // TODO: support event tracer
         let method = unsafe {
@@ -96,7 +95,7 @@ impl<'a> Program<'a> {
     /// # Arguments
     ///
     /// * `method_name` - The name of the method to get metadata for.
-    pub fn method_meta(&self, method_name: &CStr) -> Result<MethodMeta<'a>> {
+    pub fn method_meta(&self, method_name: &CStr) -> Result<MethodMeta> {
         let meta = unsafe { et_rs_c::Program_method_meta(&self.0, method_name.as_ptr()) }.rs()?;
         Ok(unsafe { MethodMeta::new(meta) })
     }
@@ -137,7 +136,7 @@ impl<'a> MethodMeta<'a> {
     }
 
     /// Get the name of this method.
-    pub fn name(&self) -> &'a str {
+    pub fn name(&self) -> &str {
         unsafe { CStr::from_ptr(self.0.name()).to_str().unwrap() }
     }
 
@@ -171,7 +170,7 @@ impl<'a> MethodMeta<'a> {
     /// # Returns
     ///
     /// The metadata on success, or an error on failure. Only valid for `Tag::Tensor`
-    pub fn input_tensor_meta(&self, idx: usize) -> Result<TensorInfo<'a>> {
+    pub fn input_tensor_meta(&self, idx: usize) -> Result<TensorInfo> {
         let info = unsafe { et_c::MethodMeta_input_tensor_meta(&self.0, idx) }.rs()?;
         Ok(unsafe { TensorInfo::new(info) })
     }
@@ -206,7 +205,7 @@ impl<'a> MethodMeta<'a> {
     /// # Returns
     ///
     /// The metadata on success, or an error on failure. Only valid for `Tag::Tensor`
-    pub fn output_tensor_meta(&self, idx: usize) -> Result<TensorInfo<'a>> {
+    pub fn output_tensor_meta(&self, idx: usize) -> Result<TensorInfo> {
         let info = unsafe { et_c::MethodMeta_output_tensor_meta(&self.0, idx) }.rs()?;
         Ok(unsafe { TensorInfo::new(info) })
     }
@@ -237,7 +236,7 @@ impl<'a> MethodMeta<'a> {
 pub struct Method<'a>(et_c::Method, PhantomData<&'a ()>);
 impl<'a> Method<'a> {
     /// Starts the execution of the method.
-    pub fn start_execution(&mut self) -> Execution<'_> {
+    pub fn start_execution(&mut self) -> Execution {
         Execution::new(&mut self.0)
     }
 
@@ -280,7 +279,7 @@ impl<'a> Execution<'a> {
     /// provided as inputs here rather then deepcopy the input into the memory planned arena.
     /// * `input_idx` - Zero-based index of the input to set. Must be less than the value returned by inputs_size().
     pub fn set_input<'b: 'a>(&mut self, input: &'b EValue, input_idx: usize) -> Result<()> {
-        unsafe { self.method.set_input(&input.0, input_idx) }.rs()?;
+        unsafe { self.method.set_input(input.as_evalue(), input_idx) }.rs()?;
         self.set_inputs |= 1 << input_idx;
         Ok(())
     }
@@ -317,13 +316,14 @@ impl<'a> Outputs<'a> {
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
-}
-impl<'a> Index<usize> for Outputs<'a> {
-    type Output = EValue<'a>;
 
-    fn index(&self, index: usize) -> &Self::Output {
-        let val = unsafe { &*self.method.get_output(index) };
-        // SAFETY: et_c::EValue as EValue has the same memory layout
-        unsafe { std::mem::transmute::<&et_c::EValue, &EValue<'a>>(val) }
+    /// Get the output at the specified index.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the index is out of bounds.
+    pub fn get(&self, index: usize) -> EValue {
+        let value = unsafe { &*self.method.get_output(index) };
+        EValue::from_inner_ref(value)
     }
 }
