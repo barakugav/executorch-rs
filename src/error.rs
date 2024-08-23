@@ -1,4 +1,4 @@
-//! Error types used in the `executortorch` crate.
+//! Error types used in the [`executortorch`](crate) crate.
 
 use std::mem::ManuallyDrop;
 

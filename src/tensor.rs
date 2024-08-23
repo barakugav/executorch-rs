@@ -21,7 +21,7 @@ pub type StridesType = executorch_sys::exec_aten::StridesType;
 /// Data types (dtypes) that can be used as element types in Tensors.
 ///
 /// The enum contain all the scalar types supported by the Cpp ExecuTorch library.
-/// Not all of these types are supported by the Rust library, see `Scalar`.
+/// Not all of these types are supported by the Rust library, see [`Scalar`].
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum ScalarType {
@@ -134,7 +134,7 @@ impl ScalarType {
 
 /// A trait for types that can be used as scalar types in Tensors.
 pub trait Scalar {
-    /// The `ScalarType` enum variant of the implementing type.
+    /// The [`ScalarType`] enum variant of the implementing type.
     const TYPE: ScalarType;
     private_decl! {}
 }
@@ -167,7 +167,7 @@ impl_scalar!(half::bf16, BFloat16);
 
 /// A minimal Tensor type whose API is a source compatible subset of at::Tensor.
 ///
-/// This class is a base class for `Tensor` and `TensorMut` and is not meant to be
+/// This class is a base class for [`Tensor`] and [`TensorMut`] and is not meant to be
 /// used directly. It is used to provide a common API for both of them.
 ///
 /// NOTE: Instances of this class do not own the TensorImpl given to it,
@@ -298,7 +298,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// # Panics
     ///
     /// If the scalar type of the tensor does not match the type `S`.
-    /// If the number of dimensions of the tensor does not match the number of dimensions of the  type `Dim`.
+    /// If the number of dimensions of the tensor does not match the number of dimensions of the type `Dim`.
     pub fn as_array<S: Scalar, Dim: Dimension>(&self) -> ArrayView<S, Dim> {
         let ndim = self.dim() as usize;
         let mut dim = Dim::zeros(ndim);
@@ -339,7 +339,7 @@ impl<'a, D: Data> Storable for TensorBase<'a, D> {
 /// An immutable tensor that does not own the underlying data.
 pub type Tensor<'a> = TensorBase<'a, View>;
 impl<'a> Tensor<'a> {
-    /// Create a new `Tensor` from a `TensorImpl`.
+    /// Create a new [`Tensor`] from a [`TensorImpl`].
     ///
     /// The underlying Cpp object is allocated on the heap, which is preferred on systems in which allocations are
     /// available.
@@ -359,7 +359,7 @@ impl<'a> Tensor<'a> {
     }
 }
 impl Storage<Tensor<'_>> {
-    /// Create a new `Tensor` from a `TensorImpl` in the given storage.
+    /// Create a new [`Tensor`] from a [`TensorImpl`] in the given storage.
     ///
     /// This function is identical to `Tensor::new`, but it allows to create the tensor on the stack.
     /// See `executorch::util::Storage` for more information.
@@ -372,7 +372,7 @@ impl Storage<Tensor<'_>> {
 /// A mutable tensor that does not own the underlying data.
 pub type TensorMut<'a> = TensorBase<'a, ViewMut>;
 impl<'a> TensorMut<'a> {
-    /// Create a new `TensorMut` from a `TensorImplMut`.
+    /// Create a new [`TensorMut`] from a [`TensorImplMut`].
     ///
     /// The underlying Cpp object is allocated on the heap, which is preferred on systems in which allocations are
     /// available.
@@ -412,7 +412,7 @@ impl<'a> TensorMut<'a> {
     /// # Panics
     ///
     /// If the scalar type of the tensor does not match the type `S`.
-    /// If the number of dimensions of the tensor does not match the number of dimensions of the  type `D`.
+    /// If the number of dimensions of the tensor does not match the number of dimensions of the type `D`.
     pub fn as_array_mut<S: Scalar, Dim: Dimension>(&mut self) -> ArrayViewMut<'a, S, Dim> {
         let ndim = self.dim() as usize;
         let mut dim = Dim::zeros(ndim);
@@ -442,7 +442,7 @@ impl<'a> TensorMut<'a> {
     }
 }
 impl Storage<TensorMut<'_>> {
-    /// Create a new `TensorMut` from a `TensorImplMut` in the given storage.
+    /// Create a new [`TensorMut`] from a [`TensorImplMut`] in the given storage.
     ///
     /// This function is identical to `TensorMut::new`, but it allows to create the tensor on the stack.
     /// See `executorch::util::Storage` for more information.
@@ -454,7 +454,7 @@ impl Storage<TensorMut<'_>> {
 
 /// A tensor implementation that does not own the underlying data.
 ///
-/// This is a base class for `TensorImpl` and `TensorImplMut` and is not meant to be
+/// This is a base class for [`TensorImpl`] and [`TensorImplMut`] and is not meant to be
 /// used directly. It is used to provide a common API for both of them.
 pub struct TensorImplBase<'a, D: Data>(et_c::TensorImpl, PhantomData<(&'a (), D)>);
 impl<'a, D: Data> TensorImplBase<'a, D> {
@@ -650,9 +650,9 @@ impl<'a> TensorImplMut<'a> {
     }
 }
 
-/// A marker trait that provide information about the data type of a `TensorBase` and `TensorImplBase`
+/// A marker trait that provide information about the data type of a [`TensorBase`] and [`TensorImplBase`]
 pub trait Data {}
-/// A marker trait extending `Data` that indicate that the data is mutable.
+/// A marker trait extending [`Data`] that indicate that the data is mutable.
 #[allow(dead_code)]
 pub trait DataMut: Data {}
 
@@ -678,13 +678,13 @@ impl ViewMut {
 impl Data for ViewMut {}
 impl DataMut for ViewMut {}
 
-/// A wrapper around `ndarray::ArrayBase` that can be converted to `TensorImplBase`.
+/// A wrapper around `ndarray::ArrayBase` that can be converted to [`TensorImplBase`].
 ///
-/// The `TensorImplBase` struct does not own any of the data it points to along side the dimensions and strides. This
+/// The [`TensorImplBase`] struct does not own any of the data it points to along side the dimensions and strides. This
 /// struct owns any additional data in addition to the underlying `ndarray::ArrayBase`, allowing to create a
-/// `TensorImplBase` that points to it.
+/// [`TensorImplBase`] that points to it.
 ///
-/// Use `to_tensor_impl()` and `to_tensor_impl_mut` to obtain a `TensorImplBase` pointing to this array data.
+/// Use `to_tensor_impl()` and `to_tensor_impl_mut` to obtain a [`TensorImplBase`] pointing to this array data.
 pub struct Array<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> {
     array: ArrayBase<S, D>,
     sizes: D::Arr<SizesType>,
@@ -692,7 +692,7 @@ pub struct Array<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> {
     strides: D::Arr<StridesType>,
 }
 impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> Array<A, S, D> {
-    /// Create a new `Array` from an ndarray.
+    /// Create a new [`Array`] from an ndarray.
     pub fn new(array: ArrayBase<S, D>) -> Array<A, S, D> {
         let ndim = array.ndim();
         let mut sizes = D::Arr::zeros(ndim);
@@ -715,10 +715,10 @@ impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> Array<A, S, D> {
         }
     }
 
-    /// Create a `TensorImpl` pointing to this struct's data.
+    /// Create a [`TensorImpl`] pointing to this struct's data.
     ///
-    /// The `TensorImpl` does not own the data or the sizes, dim order and strides of the tensor. This struct
-    /// must outlive the `TensorImpl` created from it.
+    /// The [`TensorImpl`] does not own the data or the sizes, dim order and strides of the tensor. This struct
+    /// must outlive the [`TensorImpl`] created from it.
     pub fn to_tensor_impl(&self) -> TensorImpl {
         let impl_ = unsafe {
             et_c::TensorImpl::new(
@@ -735,10 +735,10 @@ impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> Array<A, S, D> {
     }
 }
 impl<A: Scalar, S: ndarray::RawDataMut<Elem = A>, D: Dimension> Array<A, S, D> {
-    /// Create a `TensorImplMut` pointing to this struct's data.
+    /// Create a [`TensorImplMut`] pointing to this struct's data.
     ///
-    /// The `TensorImplMut` does not own the data or the sizes, dim order and strides of the tensor. This struct
-    /// must outlive the `TensorImplMut` created from it.
+    /// The [`TensorImplMut`] does not own the data or the sizes, dim order and strides of the tensor. This struct
+    /// must outlive the [`TensorImplMut`] created from it.
     pub fn to_tensor_impl_mut<'a>(&'a mut self) -> TensorImplMut<'a> {
         let tensor = self.to_tensor_impl();
         // Safety: TensorImpl has the same memory layout as TensorImplBase

@@ -1,8 +1,8 @@
 //! A higher-level for simple execution of programs.
 //!
 //! This module provides a higher-level interface for loading programs and executing methods within them.
-//! Compared to the lower-level [`program`](crate::program) interface, the `module` interface is more user-friendly,
-//! uses the default memory allocator, and provides automatic memory management.
+//! Compared to the lower-level [`program`](crate::program) interface, the [`module`](crate::module) interface is more
+//! user-friendly, uses the default memory allocator, and provides automatic memory management.
 //!
 //! This module is enabled by the `module` feature.
 //!

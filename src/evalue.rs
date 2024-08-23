@@ -1,6 +1,6 @@
-//! Module for `EValue` and related types.
+//! Module for [`EValue`] and related types.
 //!
-//! `EValue` is a type-erased value that can hold different types like scalars, lists or tensors. It is used to pass
+//! [`EValue`] is a type-erased value that can hold different types like scalars, lists or tensors. It is used to pass
 //! arguments to and return values from the runtime.
 
 use std::fmt::Debug;
@@ -11,11 +11,11 @@ use crate::tensor::{self, Tensor, TensorBase};
 use crate::util::{ArrayRef, Destroy, IntoRust, NonTriviallyMovable, Storable, Storage};
 use crate::{et_c, et_rs_c};
 
-/// A tag indicating the type of the value stored in an `EValue`.
+/// A tag indicating the type of the value stored in an [`EValue`].
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Tag {
-    /// Tag for value `Tensor`.
+    /// Tag for value [`Tensor`].
     Tensor = et_c::Tag::Tensor as u8,
     /// Tag for value `&[c_char]`.
     String = et_c::Tag::String as u8,
@@ -63,7 +63,7 @@ impl IntoRust for &et_c::Tag {
 /// suit embedded systems (ie no intrusive ptr)
 pub struct EValue<'a>(NonTriviallyMovable<'a, et_c::EValue>);
 impl<'a> EValue<'a> {
-    /// Create a new `EValue` on the heap.
+    /// Create a new [`EValue`] on the heap.
     ///
     /// # Arguments
     ///
@@ -78,7 +78,7 @@ impl<'a> EValue<'a> {
         Self(NonTriviallyMovable::new_boxed(init))
     }
 
-    /// Create a new `EValue` from a value that can be converted into an `EValue`.
+    /// Create a new [`EValue`] from a value that can be converted into an [`EValue`].
     ///
     /// The underlying Cpp object is allocated on the heap, which is preferred on systems in which allocations are
     /// available.
@@ -97,7 +97,7 @@ impl<'a> EValue<'a> {
         Self(NonTriviallyMovable::from_ref(value))
     }
 
-    /// Create a new `EValue` by moving from an existing `EValue`.
+    /// Create a new [`EValue`] by moving from an existing [`EValue`].
     ///
     /// # Safety
     ///
@@ -118,7 +118,7 @@ impl<'a> EValue<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if the value is not an `i64`. To check the type of the value, use the `tag` method.
+    /// Panics if the value is not an `i64`. To check the type of the value, use the [`tag`][Self::tag] method.
     #[track_caller]
     pub fn as_i64(&self) -> i64 {
         self.try_into().expect("Invalid type")
@@ -128,7 +128,7 @@ impl<'a> EValue<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if the value is not an `f64`. To check the type of the value, use the `tag` method.
+    /// Panics if the value is not an `f64`. To check the type of the value, use the [`tag`][Self::tag] method.
     #[track_caller]
     pub fn as_f64(&self) -> f64 {
         self.try_into().expect("Invalid type")
@@ -138,17 +138,17 @@ impl<'a> EValue<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if the value is not a `bool`. To check the type of the value, use the `tag` method.
+    /// Panics if the value is not a `bool`. To check the type of the value, use the [`tag`][Self::tag] method.
     #[track_caller]
     pub fn as_bool(&self) -> bool {
         self.try_into().expect("Invalid type")
     }
 
-    /// Get a reference to the value as a `Tensor`.
+    /// Get a reference to the value as a [`Tensor`].
     ///
     /// # Panics
     ///
-    /// Panics if the value is not a `Tensor`. To check the type of the value, use the `tag` method.
+    /// Panics if the value is not a [`Tensor`]. To check the type of the value, use the [`tag`][Self::tag] method.
     #[track_caller]
     pub fn as_tensor(&self) -> Tensor {
         self.try_into().expect("Invalid type")
@@ -158,7 +158,7 @@ impl<'a> EValue<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if the value is not a `&[c_char]`. To check the type of the value, use the `tag` method.
+    /// Panics if the value is not a `&[c_char]`. To check the type of the value, use the [`tag`][Self::tag] method.
     #[track_caller]
     pub fn as_chars(&self) -> &[std::ffi::c_char] {
         self.try_into().expect("Invalid type")
@@ -168,7 +168,7 @@ impl<'a> EValue<'a> {
     // ///
     // /// # Panics
     // ///
-    // /// Panics if the value is not a `&[i64]`. To check the type of the value, use the `tag` method.
+    // /// Panics if the value is not a `&[i64]`. To check the type of the value, use the [`tag`][Self::tag] method.
     // #[track_caller]
     // pub fn as_i64_arr(&self) -> &[i64] {
     //     self.try_into().expect("Invalid type")
@@ -178,7 +178,7 @@ impl<'a> EValue<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if the value is not a `&[f64]`. To check the type of the value, use the `tag` method.
+    /// Panics if the value is not a `&[f64]`. To check the type of the value, use the [`tag`][Self::tag] method.
     #[track_caller]
     pub fn as_f64_arr(&self) -> &[f64] {
         self.try_into().expect("Invalid type")
@@ -188,7 +188,7 @@ impl<'a> EValue<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if the value is not a `&[bool]`. To check the type of the value, use the `tag` method.
+    /// Panics if the value is not a `&[bool]`. To check the type of the value, use the [`tag`][Self::tag] method.
     #[track_caller]
     pub fn as_bool_arr(&self) -> &[bool] {
         self.try_into().expect("Invalid type")
@@ -198,7 +198,7 @@ impl<'a> EValue<'a> {
     // ///
     // /// # Panics
     // ///
-    // /// Panics if the value is not a `&[Tensor]`. To check the type of the value, use the `tag` method.
+    // /// Panics if the value is not a `&[Tensor]`. To check the type of the value, use the [`tag`][Self::tag] method.
     // #[track_caller]
     // pub fn as_tensor_arr(&self) -> &[Tensor<'a>] {
     //     self.try_into().expect("Invalid type")
@@ -219,7 +219,7 @@ impl Storable for EValue<'_> {
     type Storage = et_c::EValue;
 }
 impl Storage<EValue<'_>> {
-    /// Create a new `EValue` from a value that can be converted into an `EValue` in the given storage.
+    /// Create a new [`EValue`] from a value that can be converted into an [`EValue`] in the given storage.
     ///
     /// This function is identical to `EValue::new`, but it allows to create the evalue on the stack.
     /// See `executorch::util::Storage` for more information.
@@ -229,16 +229,16 @@ impl Storage<EValue<'_>> {
     }
 }
 
-/// A type that can be converted into an `EValue`.
+/// A type that can be converted into an [`EValue`].
 pub trait IntoEValue<'a> {
-    /// Convert the value into an `EValue`, with an allocation on the heap.
+    /// Convert the value into an [`EValue`], with an allocation on the heap.
     ///
-    /// This is the preferred method to create an `EValue` when allocations are available.
+    /// This is the preferred method to create an [`EValue`] when allocations are available.
     /// Use `into_evalue_in_storage` for an identical version that allow to allocate the object on the stack.
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a>;
 
-    /// Convert the value into an `EValue`, using the given storage.
+    /// Convert the value into an [`EValue`], using the given storage.
     ///
     /// This function is identical to `into_evalue`, but it allows to create the evalue on the stack.
     /// See `executorch::util::Storage` for more information.
@@ -376,14 +376,14 @@ impl<'a, D: tensor::Data> IntoEValue<'a> for &'a TensorBase<'_, D> {
         })
     }
 }
-// /// Create a new `EValue` from a list of `i64`.
+// /// Create a new [`EValue`] from a list of `i64`.
 // ///
-// /// The functions accept two lists, one of `EValue` wrapping the `i64` values and one of `i64` values. See
-// /// `BoxedEvalueList` for more information.
+// /// The functions accept two lists, one of [`EValue`] wrapping the `i64` values and one of `i64` values. See
+// /// [`BoxedEvalueList`] for more information.
 // ///
 // /// # Arguments
 // ///
-// /// * `wrapped_vals` - A list of `EValue` wrapping the `i64` values. This is the actual values list.
+// /// * `wrapped_vals` - A list of [`EValue`] wrapping the `i64` values. This is the actual values list.
 // /// * `unwrapped_vals` - A mutable buffer to store the unwrapped `i64` values, used to avoid double copying. The
 // /// given array can be uninitialized.
 // pub fn from_i64_arr(wrapped_vals: &'a [&EValue], unwrapped_vals: &'a mut [i64]) -> Self {
@@ -393,15 +393,15 @@ impl<'a, D: tensor::Data> IntoEValue<'a> for &'a TensorBase<'_, D> {
 //     unsafe { EValue::new_trivially_copyable(value, et_c::Tag::ListInt) }
 // }
 
-// /// Create a new `EValue` from a list of `Tensor`.
+// /// Create a new [`EValue`] from a list of [`Tensor`].
 // ///
-// /// The functions accept two lists, one of `EValue` wrapping the `Tensor` values and one of `Tensor` values. See
-// /// `BoxedEvalueList` for more information.
+// /// The functions accept two lists, one of [`EValue`] wrapping the [`Tensor`] values and one of [`Tensor`] values. See
+// /// [`BoxedEvalueList`] for more information.
 // ///
 // /// # Arguments
 // ///
-// /// * `wrapped_vals` - A list of `EValue` wrapping the `Tensor` values. This is the actual values list.
-// /// * `unwrapped_vals` - A mutable buffer to store the unwrapped `Tensor` values, used to avoid double copying. The
+// /// * `wrapped_vals` - A list of [`EValue`] wrapping the [`Tensor`] values. This is the actual values list.
+// /// * `unwrapped_vals` - A mutable buffer to store the unwrapped [`Tensor`] values, used to avoid double copying. The
 // /// given array can be uninitialized.
 // pub fn from_tensor_arr(
 //     wrapped_vals: &'a [&EValue],
@@ -667,9 +667,9 @@ impl Debug for EValue<'_> {
 //     }
 // }
 
-// /// A trait for types that can be used within a `BoxedEvalueList`.
+// /// A trait for types that can be used within a [`BoxedEvalueList`].
 // pub trait BoxedEvalue {
-//     /// The `Tag` variant corresponding to boxed type.
+//     /// The [`Tag`] variant corresponding to boxed type.
 //     const TAG: Tag;
 //     private_decl! {}
 // }

@@ -12,7 +12,7 @@
 //! The following example create a simple model in Python, exports it, and then executes it in Rust:
 //!
 //! Create a model in `Python` and export it:
-//! ```ignore,{.language-python}
+//! ```ignore
 //! import torch
 //! from executorch.exir import to_edge
 //! from torch.export import export
@@ -59,6 +59,7 @@
 //! assert_eq!(array![2.0_f32], output.as_array());
 //! ```
 //!
+//! ## Cargo Features
 //! The library have a few features that can be enabled or disabled:
 //! to the lower-level `Program` API, which is mort suitable for embedded systems.
 //! - `data-loader`:
@@ -67,18 +68,19 @@
 //!     required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON`.
 //! - `module`:
 //!     Includes the [`module`] API, a high-level API for loading and executing PyTorch models. It is an alternative to
-//!     the lower-level `Program` API, which is mort suitable for embedded systems. The `libextension_module_static.a`
-//!     static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`.
-//!     Also includes the `std` feature.
+//!     the lower-level [`Program`](crate::program::Program) API, which is mort suitable for embedded systems.
+//!     The `libextension_module_static.a` static library is required, compile C++ `executorch` with
+//!     `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`. Also includes the `std` feature.
 //! - `f16`:
-//!     Support for half precision floating point numbers using the `half` crate. Models that require input or output
-//!     tensors with `f16` data type can be operated on with this features.
+//!     Support for half precision floating point numbers using the [`half`](https://docs.rs/half/latest/half/) crate.
+//!     Models that require input or output tensors with `f16` data type can be operated on with this features.
 //! - `complex`:
-//!     Support for complex numbers using the `num-complex` crate. Models that require input or output tensors with
-//! complex `32` or `64` bit floating point numbers can be operated on with this feature. If in addition the `f16`
-//! feature is enabled, complex numbers with half precision can be used.
+//!     Support for complex numbers using the [`num-complex`](https://docs.rs/num/latest/num/complex/struct.Complex.html)
+//!     crate. Models that require input or output tensors with complex `32` or `64` bit floating point numbers can be
+//!     operated on with this feature. If in addition the `f16` feature is enabled, complex numbers with half
+//!     precision can be used.
 //! - `std`:
-//!     Enable the standard library. This feature is enabled by default, but can be disabled to build `executorch`
+//!     Enable the standard library. This feature is enabled by default, but can be disabled to build [`executorch`](crate)
 //!     in a `no_std` environment.
 //!     See the `hello_world_add_no_std` example.
 //!     Also includes the `alloc` feature.
@@ -87,16 +89,25 @@
 //!     When this feature is disabled, all methods that require allocations will not be compiled.
 //!     This feature is enabled by the `std` feature, which is enabled by default.
 //!     Its possible to enable this feature without the `std` feature, and the allocations will be done using the
-//!     `alloc` crate, that requires a global allocator to be set.
+//!     [`alloc`](https://doc.rust-lang.org/alloc/) crate, that requires a global allocator to be set.
 //!
 //! By default the `std` feature is enabled.
 //!
-//!
-//! The C++ API is still in Alpha, and this Rust lib will continue to change with it. Currently the supported
-//! executorch version is `0.3.0`.
-//!
+//! ## Build
 //! To use the library you must compile the C++ executorch library yourself, as there are many configurations that
 //! determines which modules, backends, and operations are supported. See the `executorch-sys` crate for more info.
+//!
+//! ## Embedded Systems
+//! The library is designed to be used both in `std` and `no_std` environments. The `no_std` environment is useful for
+//! embedded systems, where the standard library is not available. The `alloc` feature can be used to provide an
+//! alternative to the standard library's allocator, but it is possible to use the library without allocations at all.
+//! Due to some difference between Cpp and Rust, it is not trivial to provide such API, and the interface may feel
+//! more verbose. See the `util::Storage` struct for stack allocations of Cpp objects, and the `hello_world_add_no_std`
+//! example for a full reference at the [crate Github](https://github.com/barakugav/executorch-rs/).
+//!
+//! ## API Stability
+//! The C++ API is still in Alpha, and this Rust lib will continue to change with it. Currently the supported
+//! executorch version is `0.3.0`.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
