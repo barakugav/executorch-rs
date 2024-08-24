@@ -34,7 +34,7 @@
 //!
 //! Execute the model in Rust:
 //! ```rust,ignore
-//! use executorch::evalue::{EValue, Tag};
+//! use executorch::evalue::EValue;
 //! use executorch::module::Module;
 //! use executorch::tensor::{Array, Tensor};
 //! use ndarray::array;
@@ -52,11 +52,10 @@
 //! let outputs = module.forward(&[input_evalue1, input_evalue2]).unwrap();
 //! assert_eq!(outputs.len(), 1);
 //! let output = outputs.into_iter().next().unwrap();
-//! assert_eq!(output.tag(), Some(Tag::Tensor));
-//! let output = output.as_tensor();
+//! let output = output.as_tensor().into_typed::<f32>();
 //!
 //! println!("Output tensor computed: {:?}", output);
-//! assert_eq!(array![2.0_f32], output.as_array());
+//! assert_eq!(array![2.0], output.as_array());
 //! ```
 //!
 //! ## Cargo Features

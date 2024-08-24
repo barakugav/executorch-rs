@@ -1,11 +1,13 @@
-//! Tensor struct is a type erased input or output tensor to a executorch program.
+//! Tensor struct is an input or output tensor to a executorch program.
 
+use core::ptr::NonNull;
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::pin::Pin;
 
 use ndarray::{ArrayBase, ArrayView, ArrayViewMut, ShapeBuilder};
 
+use crate::error::{Error, Result};
 #[cfg(feature = "alloc")]
 use crate::et_alloc;
 use crate::util::{Destroy, DimArr, FixedSizeDim, NonTriviallyMovable, Storable, Storage};
@@ -167,15 +169,8 @@ impl_scalar!(half::bf16, BFloat16);
 
 /// A minimal Tensor type whose API is a source compatible subset of at::Tensor.
 ///
-/// This class is a base class for [`Tensor`] and [`TensorMut`] and is not meant to be
-/// used directly. It is used to provide a common API for both of them.
-///
-/// NOTE: Instances of this class do not own the TensorImpl given to it,
-/// which means that the caller must guarantee that the TensorImpl lives longer
-/// than any Tensor instances that point to it.
-///
-/// See the documentation on TensorImpl for details about the return/parameter
-/// types used here and how they relate to at::Tensor.
+/// This class is a base class for all immutable/mutable/typed/type-erased tensors and is not meant to be
+/// used directly. It is used to provide a common API for all of them.
 pub struct TensorBase<'a, D: Data>(
     NonTriviallyMovable<'a, et_c::Tensor>,
     PhantomData<(
@@ -207,6 +202,28 @@ impl<'a, D: Data> TensorBase<'a, D> {
         Self(tensor, PhantomData)
     }
 
+    /// Create a new tensor with the same internal data as the given tensor, but with different data generic.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the new data generic is compatible with the data of the given tensor.
+    pub(crate) unsafe fn convert_from<D2: Data>(tensor: TensorBase<'a, D2>) -> Self {
+        Self(tensor.0, PhantomData)
+    }
+
+    /// Create a new tensor referencing the same internal data as the given tensor, but with different data generic.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the new data generic is compatible with the data of the given tensor.
+    pub(crate) unsafe fn convert_from_ref<D2: Data>(tensor: &'a TensorBase<D2>) -> Self {
+        Self(
+            NonTriviallyMovable::from_ref(tensor.as_cpp_tensor()),
+            PhantomData,
+        )
+    }
+
+    /// Get the underlying Cpp tensor.
     pub(crate) fn as_cpp_tensor(&self) -> &et_c::Tensor {
         self.0.as_ref()
     }
@@ -254,6 +271,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     pub fn sizes(&self) -> &[SizesType] {
         unsafe {
             let arr = et_rs_c::Tensor_sizes(self.as_cpp_tensor());
+            debug_assert!(!arr.Data.is_null());
             std::slice::from_raw_parts(arr.Data, arr.Length)
         }
     }
@@ -262,6 +280,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     pub fn dim_order(&self) -> &[DimOrderType] {
         unsafe {
             let arr = et_rs_c::Tensor_dim_order(self.as_cpp_tensor());
+            debug_assert!(!arr.Data.is_null());
             std::slice::from_raw_parts(arr.Data, arr.Length)
         }
     }
@@ -270,18 +289,9 @@ impl<'a, D: Data> TensorBase<'a, D> {
     pub fn strides(&self) -> &[StridesType] {
         unsafe {
             let arr = et_rs_c::Tensor_strides(self.as_cpp_tensor());
+            debug_assert!(!arr.Data.is_null());
             std::slice::from_raw_parts(arr.Data, arr.Length)
         }
-    }
-
-    /// Returns a pointer of type S to the constant underlying data blob.
-    ///
-    /// # Panics
-    ///
-    /// If the scalar type of the tensor does not match the type `S`.
-    pub fn as_ptr<S: Scalar>(&self) -> *const S {
-        assert_eq!(self.scalar_type(), Some(S::TYPE), "Invalid type");
-        (unsafe { self.as_ptr_bytes() }) as *const S
     }
 
     /// Returns a pointer to the constant underlying data blob.
@@ -289,17 +299,179 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// # Safety
     ///
     /// The caller must access the values in the returned pointer according to the type of the tensor.
-    pub unsafe fn as_ptr_bytes(&self) -> *const u8 {
-        (unsafe { et_rs_c::Tensor_const_data_ptr(self.as_cpp_tensor()) }) as *const u8
+    pub unsafe fn as_ptr_raw(&self) -> *const () {
+        let ptr = unsafe { et_rs_c::Tensor_const_data_ptr(self.as_cpp_tensor()) };
+        debug_assert!(!ptr.is_null());
+        ptr as *const ()
+    }
+
+    /// Converts this tensor into a type-erased tensor.
+    pub fn into_type_erased(self) -> TensorBase<'a, D::TypeErased> {
+        // Safety: D::TypeErased is compatible with D
+        unsafe { TensorBase::<'a, D::TypeErased>::convert_from(self) }
+    }
+
+    /// Get a type erased tensor referencing the same internal data as the given tensor.
+    pub fn as_type_erased(&self) -> TensorBase<D::TypeErased> {
+        // Safety: D::TypeErased is compatible with D
+        unsafe { TensorBase::<D::TypeErased>::convert_from_ref(self) }
+    }
+
+    /// Try to convert this tensor into a typed tensor with scalar type `S`.
+    pub fn try_into_typed<S: Scalar>(self) -> Result<TensorBase<'a, D::Typed<S>>> {
+        if self.scalar_type() != Some(S::TYPE) {
+            return Err(Error::InvalidType);
+        }
+        // Safety: the scalar type is checked, D::Typed is compatible with D
+        Ok(unsafe { TensorBase::<'a, D::Typed<S>>::convert_from(self) })
+    }
+
+    /// Convert this tensor into a typed tensor with scalar type `S`.
+    ///
+    /// # Panics
+    ///
+    /// If the scalar type of the tensor does not match the type `S`.
+    #[track_caller]
+    pub fn into_typed<S: Scalar>(self) -> TensorBase<'a, D::Typed<S>> {
+        self.try_into_typed().expect("Invalid type")
+    }
+
+    /// Try to get a typed tensor with scalar type `S` referencing the same internal data as the given tensor.
+    pub fn try_as_typed<S: Scalar>(&self) -> Result<TensorBase<D::Typed<S>>> {
+        if self.scalar_type() != Some(S::TYPE) {
+            return Err(Error::InvalidType);
+        }
+        // Safety: the scalar type is checked, D::Typed is compatible with D
+        Ok(unsafe { TensorBase::<D::Typed<S>>::convert_from_ref(self) })
+    }
+
+    /// Get a typed tensor with scalar type `S` referencing the same internal data as the given tensor.
+    ///
+    /// # Panics
+    ///
+    /// If the scalar type of the tensor does not match the type `S`.
+    #[track_caller]
+    pub fn as_typed<S: Scalar>(&self) -> TensorBase<D::Typed<S>> {
+        self.try_as_typed().expect("Invalid type")
+    }
+}
+impl Destroy for et_c::Tensor {
+    unsafe fn destroy(&mut self) {
+        et_rs_c::Tensor_destructor(self)
+    }
+}
+impl<'a, D: Data> Storable for TensorBase<'a, D> {
+    type Storage = et_c::Tensor;
+}
+
+impl<D: Data> Debug for TensorBase<'_, D> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let mut st = f.debug_struct("Tensor");
+        match self.scalar_type() {
+            Some(s) => st.field("scalar_type", &s),
+            None => st.field("scalar_type", &"None"),
+        };
+
+        fn add_data_field<S: Scalar + Debug, D: DataTyped<Scalar = S>>(
+            this: TensorBase<D>,
+            st: &mut std::fmt::DebugStruct,
+        ) {
+            match this.dim() {
+                0 => st.field("data", &this.as_array::<ndarray::Ix0>()),
+                1 => st.field("data", &this.as_array::<ndarray::Ix1>()),
+                2 => st.field("data", &this.as_array::<ndarray::Ix2>()),
+                3 => st.field("data", &this.as_array::<ndarray::Ix3>()),
+                4 => st.field("data", &this.as_array::<ndarray::Ix4>()),
+                5 => st.field("data", &this.as_array::<ndarray::Ix5>()),
+                6 => st.field("data", &this.as_array::<ndarray::Ix6>()),
+                _ => {
+                    cfg_if::cfg_if! { if #[cfg(feature = "alloc")] {
+                        st.field("data", &this.as_array_dyn())
+                    } else {
+                        st.field("data", &"unsupported (too many dimensions)")
+                    } }
+                }
+            };
+        }
+        fn add_data_field_unsupported(st: &mut std::fmt::DebugStruct) {
+            st.field("data", &"unsupported");
+        }
+
+        match self.scalar_type() {
+            Some(ScalarType::Byte) => add_data_field(self.as_typed::<u8>(), &mut st),
+            Some(ScalarType::Char) => add_data_field(self.as_typed::<i8>(), &mut st),
+            Some(ScalarType::Short) => add_data_field(self.as_typed::<i16>(), &mut st),
+            Some(ScalarType::Int) => add_data_field(self.as_typed::<i32>(), &mut st),
+            Some(ScalarType::Long) => add_data_field(self.as_typed::<i64>(), &mut st),
+            Some(ScalarType::Half) => {
+                cfg_if::cfg_if! { if #[cfg(feature = "f16")] {
+                    add_data_field(self.as_typed::<half::f16>(), &mut st);
+                } else {
+                    add_data_field_unsupported(&mut st);
+                } }
+            }
+            Some(ScalarType::Float) => add_data_field(self.as_typed::<f32>(), &mut st),
+            Some(ScalarType::Double) => add_data_field(self.as_typed::<f64>(), &mut st),
+            Some(ScalarType::ComplexHalf) => {
+                cfg_if::cfg_if! { if #[cfg(all(feature = "complex", feature = "f16"))] {
+                    add_data_field(self.as_typed::<num_complex::Complex<half::f16>>(), &mut st);
+                } else {
+                    add_data_field_unsupported(&mut st);
+                } }
+            }
+            Some(ScalarType::ComplexFloat) => {
+                cfg_if::cfg_if! { if #[cfg(feature = "complex")] {
+                    add_data_field(self.as_typed::<num_complex::Complex32>(), &mut st);
+                } else {
+                    add_data_field_unsupported(&mut st);
+                } }
+            }
+            Some(ScalarType::ComplexDouble) => {
+                cfg_if::cfg_if! { if #[cfg(feature = "complex")] {
+                    add_data_field(self.as_typed::<num_complex::Complex64>(), &mut st);
+                } else {
+                    add_data_field_unsupported(&mut st);
+                } }
+            }
+            Some(ScalarType::Bool) => add_data_field(self.as_typed::<bool>(), &mut st),
+            Some(ScalarType::QInt8) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::QUInt8) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::QInt32) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::BFloat16) => {
+                cfg_if::cfg_if! { if #[cfg(feature = "f16")] {
+                    add_data_field(self.as_typed::<half::bf16>(), &mut st);
+                } else {
+                    add_data_field_unsupported(&mut st);
+                } }
+            }
+            Some(ScalarType::QUInt4x2) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::QUInt2x4) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::Bits1x8) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::Bits2x4) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::Bits4x2) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::Bits8) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::Bits16) => add_data_field_unsupported(&mut st),
+            None => {
+                st.field("data", &"None");
+            }
+        };
+        st.finish()
+    }
+}
+
+impl<'a, D: DataTyped> TensorBase<'a, D> {
+    /// Returns a pointer of type S to the constant underlying data blob.
+    pub fn as_ptr(&self) -> *const D::Scalar {
+        debug_assert_eq!(self.scalar_type(), Some(D::Scalar::TYPE), "Invalid type");
+        (unsafe { self.as_ptr_raw() }) as *const D::Scalar
     }
 
     /// Get an array view of the tensor.
     ///
     /// # Panics
     ///
-    /// If the scalar type of the tensor does not match the type `S`.
-    /// If the number of dimensions of the tensor does not match the number of dimensions of the type `Dim`.
-    pub fn as_array<S: Scalar, Dim: Dimension>(&self) -> ArrayView<S, Dim> {
+    /// If the number of dimensions of the tensor does not match the number of dimensions of the type `Dim
+    pub fn as_array<Dim: Dimension>(&self) -> ArrayView<D::Scalar, Dim> {
         let ndim = self.dim() as usize;
         let mut dim = Dim::zeros(ndim);
         let mut strides = Dim::zeros(ndim);
@@ -313,107 +485,42 @@ impl<'a, D: Data> TensorBase<'a, D> {
         for (i, s) in self.dim_order().iter().enumerate() {
             dim_order[i] = *s as usize;
         }
-        let ptr = self.as_ptr::<S>();
+        let ptr = self.as_ptr();
         unsafe { ArrayView::from_shape_ptr(dim.strides(strides), ptr) }.permuted_axes(dim_order)
     }
 
     /// Get an array view of the tensor with dynamic number of dimensions.
-    ///
-    /// # Panics
-    ///
-    /// If the scalar type of the tensor does not match the type `S`.
     #[cfg(feature = "alloc")]
-    pub fn as_array_dyn<S: Scalar>(&self) -> ArrayView<S, ndarray::IxDyn> {
+    pub fn as_array_dyn(&self) -> ArrayView<D::Scalar, ndarray::IxDyn> {
         self.as_array()
     }
 }
-impl Destroy for et_c::Tensor {
-    unsafe fn destroy(&mut self) {
-        et_rs_c::Tensor_destructor(self)
-    }
-}
-impl<'a, D: Data> Storable for TensorBase<'a, D> {
-    type Storage = et_c::Tensor;
-}
 
-/// An immutable tensor that does not own the underlying data.
-pub type Tensor<'a> = TensorBase<'a, View>;
-impl<'a> Tensor<'a> {
-    /// Create a new [`Tensor`] from a [`TensorImpl`].
+impl<'a, D: DataMut> TensorBase<'a, D> {
+    /// Returns a mutable pointer to the underlying data blob.
     ///
-    /// The underlying Cpp object is allocated on the heap, which is preferred on systems in which allocations are
-    /// available.
-    /// For an identical version that allocates the object on the stack use:
-    /// ```rust,ignore
-    /// let storage = executorch::storage!(Tensor);
-    /// let tensor: Tensor = storage.new(tensor_impl);
-    /// ```
-    /// See `executorch::util::Storage` for more information.
-    #[cfg(feature = "alloc")]
-    pub fn new(tensor_impl: &'a TensorImpl) -> Self {
-        Self::new_boxed(tensor_impl)
-    }
-
-    pub(crate) fn from_inner_ref(tensor: &'a et_c::Tensor) -> Self {
-        Self(NonTriviallyMovable::from_ref(tensor), PhantomData)
+    /// # Safety
+    ///
+    /// The caller must access the values in the returned pointer according to the type of the tensor.
+    pub unsafe fn as_mut_ptr_raw(&self) -> NonNull<()> {
+        let ptr = unsafe { et_rs_c::Tensor_mutable_data_ptr(self.as_cpp_tensor()) };
+        debug_assert!(!ptr.is_null());
+        NonNull::new_unchecked(ptr as *mut ())
     }
 }
-impl Storage<Tensor<'_>> {
-    /// Create a new [`Tensor`] from a [`TensorImpl`] in the given storage.
-    ///
-    /// This function is identical to `Tensor::new`, but it allows to create the tensor on the stack.
-    /// See `executorch::util::Storage` for more information.
-    #[allow(clippy::new_ret_no_self)]
-    pub fn new<'a>(self: Pin<&'a mut Self>, tensor_impl: &'a TensorImpl) -> Tensor<'a> {
-        Tensor::new_in_storage(tensor_impl, self)
-    }
-}
-
-/// A mutable tensor that does not own the underlying data.
-pub type TensorMut<'a> = TensorBase<'a, ViewMut>;
-impl<'a> TensorMut<'a> {
-    /// Create a new [`TensorMut`] from a [`TensorImplMut`].
-    ///
-    /// The underlying Cpp object is allocated on the heap, which is preferred on systems in which allocations are
-    /// available.
-    /// For an identical version that allocates the object on the stack use:
-    /// ```rust,ignore
-    /// let storage = executorch::storage!(TensorMut);
-    /// let tensor: TensorMut = storage.new(tensor_impl);
-    /// ```
-    /// See `executorch::util::Storage` for more information.
-    #[cfg(feature = "alloc")]
-    pub fn new(tensor_impl: &'a mut TensorImplMut) -> Self {
-        Self::new_boxed(tensor_impl)
-    }
-
+impl<'a, D: DataTyped + DataMut> TensorBase<'a, D> {
     /// Returns a mutable pointer of type S to the underlying data blob.
-    ///
-    /// # Panics
-    ///
-    /// If the scalar type of the tensor does not match the type `S`.
-    pub fn as_mut_ptr<S: Scalar>(&self) -> *mut S {
-        assert_eq!(self.scalar_type(), Some(S::TYPE), "Invalid type");
-        (unsafe { et_rs_c::Tensor_mutable_data_ptr(self.as_cpp_tensor()) }) as *mut S
+    pub fn as_mut_ptr(&self) -> NonNull<D::Scalar> {
+        debug_assert_eq!(self.scalar_type(), Some(D::Scalar::TYPE), "Invalid type");
+        unsafe { self.as_mut_ptr_raw() }.cast()
     }
-
-    // /// Returns an immutable tensor pointing to the same data of this tensor.
-    // pub fn as_tensor(&self) -> Tensor {
-    //     Tensor::from_inner_ref(self.tensor_ref())
-    // }
-
-    // /// Converts this tensor into an immutable tensor.
-    // pub fn into_tensor(self) -> Tensor<'a> {
-    //     Tensor(self.0, self.1)
-    // }
 
     /// Get a mutable array view of the tensor.
     ///
     /// # Panics
     ///
-    /// If the scalar type of the tensor does not match the type `S`.
-    /// If the number of dimensions of the tensor does not match the number of dimensions of the type `D`.
-    pub fn as_array_mut<S: Scalar, Dim: Dimension>(&mut self) -> ArrayViewMut<'a, S, Dim> {
+    /// If the number of dimensions of the tensor does not match the number of dimensions of the type `Dim`.
+    pub fn as_array_mut<Dim: Dimension>(&mut self) -> ArrayViewMut<'a, D::Scalar, Dim> {
         let ndim = self.dim() as usize;
         let mut dim = Dim::zeros(ndim);
         let mut strides = Dim::zeros(ndim);
@@ -427,28 +534,80 @@ impl<'a> TensorMut<'a> {
         for (i, s) in self.dim_order().iter().enumerate() {
             dim_order[i] = *s as usize;
         }
-        let ptr = self.as_mut_ptr::<S>();
+        let ptr = self.as_mut_ptr().as_ptr();
         unsafe { ArrayViewMut::from_shape_ptr(dim.strides(strides), ptr) }.permuted_axes(dim_order)
     }
 
     /// Get a mutable array view of the tensor with dynamic number of dimensions.
-    ///
-    /// # Panics
-    ///
-    /// If the scalar type of the tensor does not match the type `S`.
     #[cfg(feature = "alloc")]
-    pub fn as_array_mut_dyn<S: Scalar>(&mut self) -> ArrayViewMut<'a, S, ndarray::IxDyn> {
+    pub fn as_array_mut_dyn(&mut self) -> ArrayViewMut<'a, D::Scalar, ndarray::IxDyn> {
         self.as_array_mut()
     }
 }
-impl Storage<TensorMut<'_>> {
+
+/// A typed immutable tensor that does not own the underlying data.
+pub type Tensor<'a, S> = TensorBase<'a, View<S>>;
+impl<'a, S: Scalar> Tensor<'a, S> {
+    /// Create a new [`Tensor`] from a [`TensorImpl`].
+    ///
+    /// The underlying Cpp object is allocated on the heap, which is preferred on systems in which allocations are
+    /// available.
+    /// For an identical version that allocates the object on the stack use:
+    /// ```rust,ignore
+    /// let storage = executorch::storage!(Tensor<f32>);
+    /// let tensor: Tensor<f32> = storage.new(tensor_impl);
+    /// ```
+    /// See `executorch::util::Storage` for more information.
+    #[cfg(feature = "alloc")]
+    pub fn new(tensor_impl: &'a TensorImpl<S>) -> Self {
+        Self::new_boxed(tensor_impl)
+    }
+}
+impl<S: Scalar> Storage<Tensor<'_, S>> {
+    /// Create a new [`Tensor`] from a [`TensorImpl`] in the given storage.
+    ///
+    /// This function is identical to `Tensor::new`, but it allows to create the tensor on the stack.
+    /// See `executorch::util::Storage` for more information.
+    #[allow(clippy::new_ret_no_self)]
+    pub fn new<'a>(self: Pin<&'a mut Self>, tensor_impl: &'a TensorImpl<S>) -> Tensor<'a, S> {
+        Tensor::new_in_storage(tensor_impl, self)
+    }
+}
+
+/// A typed mutable tensor that does not own the underlying data.
+pub type TensorMut<'a, S> = TensorBase<'a, ViewMut<S>>;
+impl<'a, S: Scalar> TensorMut<'a, S> {
+    /// Create a new [`TensorMut`] from a [`TensorImplMut`].
+    ///
+    /// The underlying Cpp object is allocated on the heap, which is preferred on systems in which allocations are
+    /// available.
+    /// For an identical version that allocates the object on the stack use:
+    /// ```rust,ignore
+    /// let storage = executorch::storage!(TensorMut<f32>);
+    /// let tensor: TensorMut<f32> = storage.new(tensor_impl);
+    /// ```
+    /// See `executorch::util::Storage` for more information.
+    #[cfg(feature = "alloc")]
+    pub fn new(tensor_impl: &'a mut TensorImplMut<S>) -> Self {
+        Self::new_boxed(tensor_impl)
+    }
+}
+impl<S: Scalar> Storage<TensorMut<'_, S>> {
     /// Create a new [`TensorMut`] from a [`TensorImplMut`] in the given storage.
     ///
     /// This function is identical to `TensorMut::new`, but it allows to create the tensor on the stack.
     /// See `executorch::util::Storage` for more information.
     #[allow(clippy::new_ret_no_self)]
-    pub fn new<'a>(self: Pin<&'a mut Self>, tensor_impl: &'a TensorImplMut) -> TensorMut<'a> {
+    pub fn new<'a>(self: Pin<&'a mut Self>, tensor_impl: &'a TensorImplMut<S>) -> TensorMut<'a, S> {
         TensorMut::new_in_storage(tensor_impl, self)
+    }
+}
+
+/// A type-erased immutable tensor that does not own the underlying data.
+pub type TensorAny<'a> = TensorBase<'a, ViewAny>;
+impl<'a> TensorAny<'a> {
+    pub(crate) fn from_inner_ref(tensor: &'a et_c::Tensor) -> Self {
+        Self(NonTriviallyMovable::from_ref(tensor), PhantomData)
     }
 }
 
@@ -502,100 +661,9 @@ impl<'a, D: Data> TensorImplBase<'a, D> {
     }
 }
 
-impl<D: Data> Debug for TensorBase<'_, D> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let mut st = f.debug_struct("Tensor");
-        st.field("scalar_type", &self.scalar_type());
-
-        fn add_data_field<D: Data, S: Scalar + Debug>(
-            this: &TensorBase<D>,
-            st: &mut std::fmt::DebugStruct,
-        ) {
-            match this.dim() {
-                0 => st.field("data", &this.as_array::<S, ndarray::Ix0>()),
-                1 => st.field("data", &this.as_array::<S, ndarray::Ix1>()),
-                2 => st.field("data", &this.as_array::<S, ndarray::Ix2>()),
-                3 => st.field("data", &this.as_array::<S, ndarray::Ix3>()),
-                4 => st.field("data", &this.as_array::<S, ndarray::Ix4>()),
-                5 => st.field("data", &this.as_array::<S, ndarray::Ix5>()),
-                6 => st.field("data", &this.as_array::<S, ndarray::Ix6>()),
-                _ => {
-                    cfg_if::cfg_if! { if #[cfg(feature = "alloc")] {
-                        st.field("data", &this.as_array_dyn::<S>())
-                    } else {
-                        st.field("data", &"unsupported (too many dimensions)")
-                    } }
-                }
-            };
-        }
-        fn add_data_field_unsupported(st: &mut std::fmt::DebugStruct) {
-            st.field("data", &"unsupported");
-        }
-        match self.scalar_type() {
-            Some(ScalarType::Byte) => add_data_field::<_, u8>(self, &mut st),
-            Some(ScalarType::Char) => add_data_field::<_, i8>(self, &mut st),
-            Some(ScalarType::Short) => add_data_field::<_, i16>(self, &mut st),
-            Some(ScalarType::Int) => add_data_field::<_, i32>(self, &mut st),
-            Some(ScalarType::Long) => add_data_field::<_, i64>(self, &mut st),
-            Some(ScalarType::Half) => {
-                cfg_if::cfg_if! { if #[cfg(feature = "f16")] {
-                    add_data_field::<_, half::f16>(self, &mut st);
-                } else {
-                    add_data_field_unsupported(&mut st);
-                } }
-            }
-            Some(ScalarType::Float) => add_data_field::<_, f32>(self, &mut st),
-            Some(ScalarType::Double) => add_data_field::<_, f64>(self, &mut st),
-            Some(ScalarType::ComplexHalf) => {
-                cfg_if::cfg_if! { if #[cfg(all(feature = "complex", feature = "f16"))] {
-                    add_data_field::<_, num_complex::Complex<half::f16>>(self, &mut st);
-                } else {
-                    add_data_field_unsupported(&mut st);
-                } }
-            }
-            Some(ScalarType::ComplexFloat) => {
-                cfg_if::cfg_if! { if #[cfg(feature = "complex")] {
-                    add_data_field::<_, num_complex::Complex32>(self, &mut st);
-                } else {
-                    add_data_field_unsupported(&mut st);
-                } }
-            }
-            Some(ScalarType::ComplexDouble) => {
-                cfg_if::cfg_if! { if #[cfg(feature = "complex")] {
-                    add_data_field::<_, num_complex::Complex64>(self, &mut st);
-                } else {
-                    add_data_field_unsupported(&mut st);
-                } }
-            }
-            Some(ScalarType::Bool) => add_data_field::<_, bool>(self, &mut st),
-            Some(ScalarType::QInt8) => add_data_field_unsupported(&mut st),
-            Some(ScalarType::QUInt8) => add_data_field_unsupported(&mut st),
-            Some(ScalarType::QInt32) => add_data_field_unsupported(&mut st),
-            Some(ScalarType::BFloat16) => {
-                cfg_if::cfg_if! { if #[cfg(feature = "f16")] {
-                    add_data_field::<_, half::bf16>(self, &mut st);
-                } else {
-                    add_data_field_unsupported(&mut st);
-                } }
-            }
-            Some(ScalarType::QUInt4x2) => add_data_field_unsupported(&mut st),
-            Some(ScalarType::QUInt2x4) => add_data_field_unsupported(&mut st),
-            Some(ScalarType::Bits1x8) => add_data_field_unsupported(&mut st),
-            Some(ScalarType::Bits2x4) => add_data_field_unsupported(&mut st),
-            Some(ScalarType::Bits4x2) => add_data_field_unsupported(&mut st),
-            Some(ScalarType::Bits8) => add_data_field_unsupported(&mut st),
-            Some(ScalarType::Bits16) => add_data_field_unsupported(&mut st),
-            None => {
-                st.field("data", &"None");
-            }
-        };
-        st.finish()
-    }
-}
-
 /// An immutable tensor implementation that does not own the underlying data.
-pub type TensorImpl<'a> = TensorImplBase<'a, View>;
-impl<'a> TensorImpl<'a> {
+pub type TensorImpl<'a, S> = TensorImplBase<'a, View<S>>;
+impl<'a, S: Scalar> TensorImpl<'a, S> {
     /// Create a new TensorImpl from a pointer to the data.
     ///
     /// # Arguments
@@ -612,7 +680,7 @@ impl<'a> TensorImpl<'a> {
     /// The caller must ensure elements in the data can be safely accessed according to the scalar type, sizes,
     /// dim_order and strides of the tensor.
     /// The caller must ensure that the data is valid for the lifetime of the TensorImpl.
-    pub unsafe fn from_ptr<S: Scalar>(
+    pub unsafe fn from_ptr(
         sizes: &'a [SizesType],
         data: *const S,
         dim_order: &'a [DimOrderType],
@@ -623,8 +691,8 @@ impl<'a> TensorImpl<'a> {
 }
 
 /// A mutable tensor implementation that does not own the underlying data.
-pub type TensorImplMut<'a> = TensorImplBase<'a, ViewMut>;
-impl<'a> TensorImplMut<'a> {
+pub type TensorImplMut<'a, S> = TensorImplBase<'a, ViewMut<S>>;
+impl<'a, S: Scalar> TensorImplMut<'a, S> {
     /// Create a new TensorImplMut from a pointer to the data.
     ///
     /// # Arguments
@@ -640,7 +708,7 @@ impl<'a> TensorImplMut<'a> {
     ///
     /// The caller must ensure elements in the data can be safely accessed and mutated according to the scalar type,
     /// sizes, dim_order and strides of the tensor.
-    pub unsafe fn from_ptr<S: Scalar>(
+    pub unsafe fn from_ptr(
         sizes: &'a [SizesType],
         data: *mut S,
         dim_order: &'a [DimOrderType],
@@ -651,32 +719,66 @@ impl<'a> TensorImplMut<'a> {
 }
 
 /// A marker trait that provide information about the data type of a [`TensorBase`] and [`TensorImplBase`]
-pub trait Data {}
+pub trait Data {
+    /// A type-erased version of the data type.
+    ///
+    /// For example, if the data type is `View<f32>`, the type-erased version is `ViewAny`.
+    /// If the data is already type-erased, the type-erased version is the same as the data type.
+    type TypeErased: Data;
+    /// A typed version of the data type.
+    ///
+    /// For example, if the data type is `ViewAny`, the typed version is `View<S>`.
+    /// If the data is already typed, the typed version is the same as the data type.
+    type Typed<S: Scalar>: DataTyped<Scalar = S>;
+    private_decl! {}
+}
 /// A marker trait extending [`Data`] that indicate that the data is mutable.
 #[allow(dead_code)]
 pub trait DataMut: Data {}
-
-/// A marker type of viewed data of a tensor.
-pub struct View {}
-#[allow(dead_code)]
-impl View {
-    fn new() -> Self {
-        Self {}
-    }
+/// A marker trait extending [`Data`] that provide information about the scalar type of the data.
+pub trait DataTyped: Data {
+    /// The scalar type of the data.
+    type Scalar: Scalar;
 }
-impl Data for View {}
 
-/// A marker type of mutable viewed data of a tensor.
-pub struct ViewMut {}
-
-#[allow(dead_code)]
-impl ViewMut {
-    fn new() -> Self {
-        Self {}
-    }
+/// A marker type of typed immutable data of a tensor.
+pub struct View<S: Scalar>(PhantomData<S>);
+impl<S: Scalar> Data for View<S> {
+    type TypeErased = ViewAny;
+    type Typed<S2: Scalar> = View<S2>;
+    private_impl! {}
 }
-impl Data for ViewMut {}
-impl DataMut for ViewMut {}
+impl<S: Scalar> DataTyped for View<S> {
+    type Scalar = S;
+}
+/// A marker type of typed mutable data of a tensor.
+pub struct ViewMut<S: Scalar>(PhantomData<S>);
+impl<S: Scalar> Data for ViewMut<S> {
+    type TypeErased = ViewMutAny;
+    type Typed<S2: Scalar> = ViewMut<S2>;
+    private_impl! {}
+}
+impl<S: Scalar> DataMut for ViewMut<S> {}
+impl<S: Scalar> DataTyped for ViewMut<S> {
+    type Scalar = S;
+}
+
+/// A marker type of type-erased immutable viewed data of a tensor.
+pub struct ViewAny;
+impl Data for ViewAny {
+    type TypeErased = ViewAny;
+    type Typed<S: Scalar> = View<S>;
+    private_impl! {}
+}
+
+/// A marker type of type-erased mutable viewed data of a tensor.
+pub struct ViewMutAny;
+impl Data for ViewMutAny {
+    type TypeErased = ViewMutAny;
+    type Typed<S: Scalar> = ViewMut<S>;
+    private_impl! {}
+}
+impl DataMut for ViewMutAny {}
 
 /// A wrapper around `ndarray::ArrayBase` that can be converted to [`TensorImplBase`].
 ///
@@ -719,7 +821,7 @@ impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> Array<A, S, D> {
     ///
     /// The [`TensorImpl`] does not own the data or the sizes, dim order and strides of the tensor. This struct
     /// must outlive the [`TensorImpl`] created from it.
-    pub fn as_tensor_impl(&self) -> TensorImpl {
+    pub fn as_tensor_impl(&self) -> TensorImpl<A> {
         let impl_ = unsafe {
             et_c::TensorImpl::new(
                 A::TYPE.into_c_scalar_type(),
@@ -739,10 +841,10 @@ impl<A: Scalar, S: ndarray::RawDataMut<Elem = A>, D: Dimension> Array<A, S, D> {
     ///
     /// The [`TensorImplMut`] does not own the data or the sizes, dim order and strides of the tensor. This struct
     /// must outlive the [`TensorImplMut`] created from it.
-    pub fn as_tensor_impl_mut<'a>(&'a mut self) -> TensorImplMut<'a> {
+    pub fn as_tensor_impl_mut<'a>(&'a mut self) -> TensorImplMut<'a, A> {
         let tensor = self.as_tensor_impl();
         // Safety: TensorImpl has the same memory layout as TensorImplBase
-        unsafe { std::mem::transmute::<TensorImpl<'a>, TensorImplMut<'a>>(tensor) }
+        unsafe { std::mem::transmute::<TensorImpl<'a, A>, TensorImplMut<'a, A>>(tensor) }
     }
 }
 impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> AsRef<ArrayBase<S, D>>
@@ -782,7 +884,7 @@ mod tests {
         let dim_order = [0, 1];
         let strides = [3, 1];
         let tensor_impl =
-            unsafe { TensorImpl::from_ptr::<i32>(&sizes, data.as_ptr(), &dim_order, &strides) };
+            unsafe { TensorImpl::from_ptr(&sizes, data.as_ptr(), &dim_order, &strides) };
         let tensor = Tensor::new(&tensor_impl);
 
         assert_eq!(tensor.nbytes(), 24);
@@ -805,9 +907,8 @@ mod tests {
         let mut data = [1, 2, 3, 4, 5, 6];
         let dim_order = [0, 1];
         let strides = [3, 1];
-        let mut tensor_impl = unsafe {
-            TensorImplMut::from_ptr::<i32>(&sizes, data.as_mut_ptr(), &dim_order, &strides)
-        };
+        let mut tensor_impl =
+            unsafe { TensorImplMut::from_ptr(&sizes, data.as_mut_ptr(), &dim_order, &strides) };
         let tensor = TensorMut::new(&mut tensor_impl);
 
         assert_eq!(tensor.nbytes(), 24);
@@ -898,7 +999,7 @@ mod tests {
         let arr1 = Array::new(Array3::<f32>::zeros((3, 6, 4)));
         let tensor_impl = arr1.as_tensor_impl();
         let tensor = Tensor::new(&tensor_impl);
-        let arr2 = tensor.as_array::<f32, Ix3>();
+        let arr2 = tensor.as_array::<Ix3>();
         assert_eq!(arr1.as_ref(), arr2);
         assert_eq!(arr1.as_ref().strides(), arr2.strides());
 
@@ -906,7 +1007,7 @@ mod tests {
             let arr1 = Array::new(arr1.as_ref().view().into_dyn());
             let tensor_impl = arr1.as_tensor_impl();
             let tensor = Tensor::new(&tensor_impl);
-            let arr2 = tensor.as_array::<f32, ndarray::IxDyn>().into_shape_with_order(vec![18, 4]).unwrap();
+            let arr2 = tensor.as_array::<ndarray::IxDyn>().into_shape_with_order(vec![18, 4]).unwrap();
             assert_eq!(arr1.as_ref().view().into_shape_with_order(vec![18, 4]).unwrap(), arr2);
             assert_eq!(arr2.strides(), [4, 1]);
         } }
@@ -918,7 +1019,7 @@ mod tests {
         let arr1_clone = arr1.as_ref().clone();
         let mut tensor_impl = arr1.as_tensor_impl_mut();
         let mut tensor = TensorMut::new(&mut tensor_impl);
-        let arr2 = tensor.as_array_mut::<f32, Ix3>();
+        let arr2 = tensor.as_array_mut::<Ix3>();
         assert_eq!(arr1_clone, arr2);
         assert_eq!(arr1_clone.strides(), arr2.strides());
 
@@ -928,7 +1029,7 @@ mod tests {
             let mut arr1 = Array::new(arr1.view_mut().into_shape_with_order((18, 4)).unwrap());
             let mut tensor_impl = arr1.as_tensor_impl_mut();
             let mut tensor = TensorMut::new(&mut tensor_impl);
-            let arr2 = tensor.as_array_mut::<f32, ndarray::IxDyn>();
+            let arr2 = tensor.as_array_mut::<ndarray::IxDyn>();
             assert_eq!(arr1_clone.view().into_shape_with_order(vec![18, 4]).unwrap(), arr2);
             assert_eq!(arr2.strides(), [4, 1]);
         } }
@@ -942,7 +1043,7 @@ mod tests {
             let dim_order = [0, 1, 2];
             let strides = [4 * 17, 17, 1];
             let tensor_impl =
-                unsafe { TensorImpl::from_ptr::<S>(&sizes, data.as_ptr(), &dim_order, &strides) };
+                unsafe { TensorImpl::from_ptr(&sizes, data.as_ptr(), &dim_order, &strides) };
             let tensor = Tensor::new(&tensor_impl);
             assert_eq!(tensor.scalar_type(), Some(S::TYPE));
         }

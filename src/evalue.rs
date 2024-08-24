@@ -7,7 +7,7 @@ use std::fmt::Debug;
 use std::pin::Pin;
 
 use crate::error::{Error, Result};
-use crate::tensor::{self, Tensor, TensorBase};
+use crate::tensor::{self, TensorAny, TensorBase};
 use crate::util::{ArrayRef, Destroy, IntoRust, NonTriviallyMovable, Storable, Storage};
 use crate::{et_c, et_rs_c};
 
@@ -15,7 +15,7 @@ use crate::{et_c, et_rs_c};
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Tag {
-    /// Tag for value [`Tensor`].
+    /// Tag for value [`TensorAny`].
     Tensor = et_c::Tag::Tensor as u8,
     /// Tag for value `&[c_char]`.
     String = et_c::Tag::String as u8,
@@ -31,9 +31,9 @@ pub enum Tag {
     ListDouble = et_c::Tag::ListDouble as u8,
     /// Tag for value `&[i64]`.
     ListInt = et_c::Tag::ListInt as u8,
-    /// Tag for value `&[Tensor]`.
+    /// Tag for value `&[TensorAny]`.
     ListTensor = et_c::Tag::ListTensor as u8,
-    /// Tag for value `Optional<Tensor>`.
+    /// Tag for value `Optional<TensorAny>`.
     ///
     /// Not supported at the moment.
     ListOptionalTensor = et_c::Tag::ListOptionalTensor as u8,
@@ -144,13 +144,13 @@ impl<'a> EValue<'a> {
         self.try_into().expect("Invalid type")
     }
 
-    /// Get a reference to the value as a [`Tensor`].
+    /// Get a reference to the value as a [`TensorAny`].
     ///
     /// # Panics
     ///
-    /// Panics if the value is not a [`Tensor`]. To check the type of the value, use the [`tag`][Self::tag] method.
+    /// Panics if the value is not a [`TensorAny`]. To check the type of the value, use the [`tag`][Self::tag] method.
     #[track_caller]
-    pub fn as_tensor(&self) -> Tensor {
+    pub fn as_tensor(&self) -> TensorAny {
         self.try_into().expect("Invalid type")
     }
 
@@ -194,13 +194,13 @@ impl<'a> EValue<'a> {
         self.try_into().expect("Invalid type")
     }
 
-    // /// Get a reference to the value as a `&[Tensor]`.
+    // /// Get a reference to the value as a `&[TensorAny]`.
     // ///
     // /// # Panics
     // ///
-    // /// Panics if the value is not a `&[Tensor]`. To check the type of the value, use the [`tag`][Self::tag] method.
+    // /// Panics if the value is not a `&[TensorAny]`. To check the type of the value, use the [`tag`][Self::tag] method.
     // #[track_caller]
-    // pub fn as_tensor_arr(&self) -> &[Tensor<'a>] {
+    // pub fn as_tensor_arr(&self) -> &[TensorAny<'a>] {
     //     self.try_into().expect("Invalid type")
     // }
 
@@ -457,13 +457,13 @@ impl TryFrom<&EValue<'_>> for bool {
         }
     }
 }
-impl<'a> TryFrom<&'a EValue<'_>> for Tensor<'a> {
+impl<'a> TryFrom<&'a EValue<'_>> for TensorAny<'a> {
     type Error = Error;
-    fn try_from(value: &'a EValue) -> Result<Tensor<'a>> {
+    fn try_from(value: &'a EValue) -> Result<TensorAny<'a>> {
         match value.tag() {
             Some(Tag::Tensor) => Ok(unsafe {
                 let inner = &*value.as_evalue().payload.as_tensor;
-                Tensor::from_inner_ref(inner)
+                TensorAny::from_inner_ref(inner)
             }),
             _ => Err(Error::InvalidType),
         }

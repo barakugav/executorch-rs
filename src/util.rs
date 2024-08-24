@@ -255,7 +255,7 @@ impl<T: Destroy> Drop for NonTriviallyMovableVec<T> {
 /// let evalue = EValue::new(tensor); // allocate on the heap
 ///
 /// // Create a Tensor and an EValue on the stack
-/// let storage1: Pin<&mut Storage<Tensor>> = executorch::storage!(Tensor);
+/// let storage1: Pin<&mut Storage<Tensor<f32>>> = executorch::storage!(Tensor<f32>);
 /// let storage2: Pin<&mut Storage<EValue>> = executorch::storage!(EValue);
 /// let tensor: Tensor = storage1.new(&tensor_impl);
 /// let evalue: EValue = storage2.new(tensor);
