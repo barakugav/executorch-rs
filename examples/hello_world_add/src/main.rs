@@ -20,11 +20,11 @@ fn main() {
     );
 
     let input_array1 = Array::new(array![1.0_f32]);
-    let input_tensor1 = input_array1.to_tensor_impl();
+    let input_tensor1 = input_array1.as_tensor_impl();
     let input_evalue1 = EValue::new(Tensor::new(&input_tensor1));
 
     let input_array2 = Array::new(array![1.0_f32]);
-    let input_tensor2 = input_array2.to_tensor_impl();
+    let input_tensor2 = input_array2.as_tensor_impl();
     let input_evalue2 = EValue::new(Tensor::new(&input_tensor2));
 
     let outputs = module.forward(&[input_evalue1, input_evalue2]).unwrap();

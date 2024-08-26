@@ -684,7 +684,7 @@ impl DataMut for ViewMut {}
 /// struct owns any additional data in addition to the underlying `ndarray::ArrayBase`, allowing to create a
 /// [`TensorImplBase`] that points to it.
 ///
-/// Use `to_tensor_impl()` and `to_tensor_impl_mut` to obtain a [`TensorImplBase`] pointing to this array data.
+/// Use `as_tensor_impl()` and `as_tensor_impl_mut` to obtain a [`TensorImplBase`] pointing to this array data.
 pub struct Array<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> {
     array: ArrayBase<S, D>,
     sizes: D::Arr<SizesType>,
@@ -719,7 +719,7 @@ impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> Array<A, S, D> {
     ///
     /// The [`TensorImpl`] does not own the data or the sizes, dim order and strides of the tensor. This struct
     /// must outlive the [`TensorImpl`] created from it.
-    pub fn to_tensor_impl(&self) -> TensorImpl {
+    pub fn as_tensor_impl(&self) -> TensorImpl {
         let impl_ = unsafe {
             et_c::TensorImpl::new(
                 A::TYPE.into_c_scalar_type(),
@@ -739,8 +739,8 @@ impl<A: Scalar, S: ndarray::RawDataMut<Elem = A>, D: Dimension> Array<A, S, D> {
     ///
     /// The [`TensorImplMut`] does not own the data or the sizes, dim order and strides of the tensor. This struct
     /// must outlive the [`TensorImplMut`] created from it.
-    pub fn to_tensor_impl_mut<'a>(&'a mut self) -> TensorImplMut<'a> {
-        let tensor = self.to_tensor_impl();
+    pub fn as_tensor_impl_mut<'a>(&'a mut self) -> TensorImplMut<'a> {
+        let tensor = self.as_tensor_impl();
         // Safety: TensorImpl has the same memory layout as TensorImplBase
         unsafe { std::mem::transmute::<TensorImpl<'a>, TensorImplMut<'a>>(tensor) }
     }
@@ -871,7 +871,7 @@ mod tests {
     fn test_array_as_tensor() {
         // Create a 1D array and convert it to a tensor
         let array = Array::<i32, _, _>::new(arr1(&[1, 2, 3]));
-        let tensor_impl = array.to_tensor_impl();
+        let tensor_impl = array.as_tensor_impl();
         let tensor = Tensor::new(&tensor_impl);
         assert_eq!(tensor.nbytes(), 12);
         assert_eq!(tensor.size(0), 3);
@@ -886,7 +886,7 @@ mod tests {
 
         // Create a 2D array and convert it to a tensor
         let array = Array::<f64, _, _>::new(arr2(&[[1.0, 2.0, 7.0], [3.0, 4.0, 8.0]]));
-        let tensor_impl = array.to_tensor_impl();
+        let tensor_impl = array.as_tensor_impl();
         let tensor = Tensor::new(&tensor_impl);
         assert_eq!(tensor.nbytes(), 48);
         assert_eq!(tensor.size(0), 2);
@@ -906,7 +906,7 @@ mod tests {
         // Create a 1D array and convert it to a tensor
         let mut array = Array::<i32, _, _>::new(arr1(&[1, 2, 3]));
         let arr_ptr = array.as_ref().as_ptr();
-        let mut tensor_impl = array.to_tensor_impl_mut();
+        let mut tensor_impl = array.as_tensor_impl_mut();
         let tensor = TensorMut::new(&mut tensor_impl);
         assert_eq!(tensor.nbytes(), 12);
         assert_eq!(tensor.size(0), 3);
@@ -922,7 +922,7 @@ mod tests {
         // Create a 2D array and convert it to a tensor
         let mut array = Array::<f64, _, _>::new(arr2(&[[1.0, 2.0, 7.0], [3.0, 4.0, 8.0]]));
         let arr_ptr = array.as_ref().as_ptr();
-        let mut tensor_impl = array.to_tensor_impl_mut();
+        let mut tensor_impl = array.as_tensor_impl_mut();
         let tensor = TensorMut::new(&mut tensor_impl);
         assert_eq!(tensor.nbytes(), 48);
         assert_eq!(tensor.size(0), 2);
@@ -940,7 +940,7 @@ mod tests {
     #[test]
     fn test_tensor_as_array() {
         let arr1 = Array::new(Array3::<f32>::zeros((3, 6, 4)));
-        let tensor_impl = arr1.to_tensor_impl();
+        let tensor_impl = arr1.as_tensor_impl();
         let tensor = Tensor::new(&tensor_impl);
         let arr2 = tensor.as_array::<f32, Ix3>();
         assert_eq!(arr1.as_ref(), arr2);
@@ -948,7 +948,7 @@ mod tests {
 
         cfg_if::cfg_if! { if #[cfg(feature = "alloc")] {
             let arr1 = Array::new(arr1.as_ref().view().into_dyn());
-            let tensor_impl = arr1.to_tensor_impl();
+            let tensor_impl = arr1.as_tensor_impl();
             let tensor = Tensor::new(&tensor_impl);
             let arr2 = tensor.as_array::<f32, ndarray::IxDyn>().into_shape_with_order(vec![18, 4]).unwrap();
             assert_eq!(arr1.as_ref().view().into_shape_with_order(vec![18, 4]).unwrap(), arr2);
@@ -960,7 +960,7 @@ mod tests {
     fn test_tensor_as_array_mut() {
         let mut arr1 = Array::new(Array3::<f32>::zeros((3, 6, 4)));
         let arr1_clone = arr1.as_ref().clone();
-        let mut tensor_impl = arr1.to_tensor_impl_mut();
+        let mut tensor_impl = arr1.as_tensor_impl_mut();
         let mut tensor = TensorMut::new(&mut tensor_impl);
         let arr2 = tensor.as_array_mut::<f32, Ix3>();
         assert_eq!(arr1_clone, arr2);
@@ -970,7 +970,7 @@ mod tests {
             let mut arr1 = arr1_clone.into_dyn();
             let arr1_clone = arr1.clone();
             let mut arr1 = Array::new(arr1.view_mut().into_shape_with_order((18, 4)).unwrap());
-            let mut tensor_impl = arr1.to_tensor_impl_mut();
+            let mut tensor_impl = arr1.as_tensor_impl_mut();
             let mut tensor = TensorMut::new(&mut tensor_impl);
             let arr2 = tensor.as_array_mut::<f32, ndarray::IxDyn>();
             assert_eq!(arr1_clone.view().into_shape_with_order(vec![18, 4]).unwrap(), arr2);
