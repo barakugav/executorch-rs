@@ -11,11 +11,10 @@ use std::ptr;
 
 use crate::data_loader::DataLoader;
 use crate::error::Result;
-use crate::evalue::EValue;
-use crate::evalue::Tag;
+use crate::evalue::{EValue, Tag};
 use crate::memory::MemoryManager;
-use crate::tensor::TensorInfo;
-use crate::util::IntoRust;
+use crate::tensor::ScalarType;
+use crate::util::{IntoRust, Span};
 use crate::{et_c, et_rs_c};
 
 /// A deserialized ExecuTorch program binary.
@@ -228,6 +227,50 @@ impl<'a> MethodMeta<'a> {
         unsafe { et_rs_c::MethodMeta_memory_planned_buffer_size(&self.0, idx) }
             .rs()
             .map(|v| v as usize)
+    }
+}
+
+/// Metadata about a specific tensor of an ExecuTorch Program.
+///
+/// The program used to create the MethodMeta object that created this
+/// TensorInfo must outlive this TensorInfo.
+pub struct TensorInfo<'a>(et_c::TensorInfo, PhantomData<&'a ()>);
+impl<'a> TensorInfo<'a> {
+    pub(crate) unsafe fn new(info: et_c::TensorInfo) -> Self {
+        Self(info, PhantomData)
+    }
+
+    /// Returns the sizes of the tensor.
+    pub fn sizes(&self) -> &'a [i32] {
+        let span = unsafe { et_c::TensorInfo_sizes(&self.0) };
+        unsafe { Span::new(span) }.as_slice()
+    }
+
+    /// Returns the dim order of the tensor.
+    pub fn dim_order(&self) -> &'a [u8] {
+        let span = unsafe { et_c::TensorInfo_dim_order(&self.0) };
+        unsafe { Span::new(span) }.as_slice()
+    }
+
+    /// Returns the scalar type of the input/output.
+    pub fn scalar_type(&self) -> Option<ScalarType> {
+        let scalar_type = unsafe { et_c::TensorInfo_scalar_type(&self.0) };
+        ScalarType::from_c_scalar_type(scalar_type)
+    }
+
+    /// Returns the size of the tensor in bytes.
+    pub fn nbytes(&self) -> usize {
+        unsafe { et_c::TensorInfo_nbytes(&self.0) }
+    }
+}
+impl std::fmt::Debug for TensorInfo<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.debug_struct("TensorInfo")
+            .field("sizes", &self.sizes())
+            .field("dim_order", &self.dim_order())
+            .field("scalar_type", &self.scalar_type())
+            .field("nbytes", &self.nbytes())
+            .finish()
     }
 }
 

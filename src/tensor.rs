@@ -8,7 +8,7 @@ use ndarray::{ArrayBase, ArrayView, ArrayViewMut, ShapeBuilder};
 
 #[cfg(feature = "alloc")]
 use crate::et_alloc;
-use crate::util::{Destroy, DimArr, FixedSizeDim, NonTriviallyMovable, Span, Storable, Storage};
+use crate::util::{Destroy, DimArr, FixedSizeDim, NonTriviallyMovable, Storable, Storage};
 use crate::{et_c, et_rs_c};
 
 /// A type that represents the sizes (dimensions) of a tensor.
@@ -73,7 +73,7 @@ pub enum ScalarType {
     Bits16 = et_c::ScalarType::Bits16 as u8,
 }
 impl ScalarType {
-    fn from_c_scalar_type(scalar_type: et_c::ScalarType) -> Option<Self> {
+    pub(crate) fn from_c_scalar_type(scalar_type: et_c::ScalarType) -> Option<Self> {
         Some(match scalar_type {
             et_c::ScalarType::Byte => ScalarType::Byte,
             et_c::ScalarType::Char => ScalarType::Char,
@@ -103,7 +103,7 @@ impl ScalarType {
         })
     }
 
-    fn into_c_scalar_type(self) -> et_c::ScalarType {
+    pub(crate) fn into_c_scalar_type(self) -> et_c::ScalarType {
         match self {
             ScalarType::Byte => et_c::ScalarType::Byte,
             ScalarType::Char => et_c::ScalarType::Char,
@@ -766,50 +766,6 @@ impl<D: FixedSizeDim> Dimension for D {
 #[cfg(feature = "alloc")]
 impl Dimension for ndarray::IxDyn {
     type Arr<T: Clone + Copy + Default> = et_alloc::Vec<T>;
-}
-
-/// Metadata about a specific tensor of an ExecuTorch Program.
-///
-/// The program used to create the MethodMeta object that created this
-/// TensorInfo must outlive this TensorInfo.
-pub struct TensorInfo<'a>(et_c::TensorInfo, PhantomData<&'a ()>);
-impl<'a> TensorInfo<'a> {
-    pub(crate) unsafe fn new(info: et_c::TensorInfo) -> Self {
-        Self(info, PhantomData)
-    }
-
-    /// Returns the sizes of the tensor.
-    pub fn sizes(&self) -> &'a [i32] {
-        let span = unsafe { et_c::TensorInfo_sizes(&self.0) };
-        unsafe { Span::new(span) }.as_slice()
-    }
-
-    /// Returns the dim order of the tensor.
-    pub fn dim_order(&self) -> &'a [u8] {
-        let span = unsafe { et_c::TensorInfo_dim_order(&self.0) };
-        unsafe { Span::new(span) }.as_slice()
-    }
-
-    /// Returns the scalar type of the input/output.
-    pub fn scalar_type(&self) -> Option<ScalarType> {
-        let scalar_type = unsafe { et_c::TensorInfo_scalar_type(&self.0) };
-        ScalarType::from_c_scalar_type(scalar_type)
-    }
-
-    /// Returns the size of the tensor in bytes.
-    pub fn nbytes(&self) -> usize {
-        unsafe { et_c::TensorInfo_nbytes(&self.0) }
-    }
-}
-impl Debug for TensorInfo<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.debug_struct("TensorInfo")
-            .field("sizes", &self.sizes())
-            .field("dim_order", &self.dim_order())
-            .field("scalar_type", &self.scalar_type())
-            .field("nbytes", &self.nbytes())
-            .finish()
-    }
 }
 
 #[cfg(test)]
