@@ -207,7 +207,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
         Self(tensor, PhantomData)
     }
 
-    pub(crate) fn tensor_ref(&self) -> &et_c::Tensor {
+    pub(crate) fn as_cpp_tensor(&self) -> &et_c::Tensor {
         self.0.as_ref()
     }
 
@@ -216,7 +216,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// NOTE: Only the alive space is returned not the total capacity of the
     /// underlying data blob.
     pub fn nbytes(&self) -> usize {
-        unsafe { et_rs_c::Tensor_nbytes(self.tensor_ref()) }
+        unsafe { et_rs_c::Tensor_nbytes(self.as_cpp_tensor()) }
     }
 
     /// Returns the size of the tensor at the given dimension.
@@ -226,34 +226,34 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// this method more compatible with at::Tensor, and more consistent with the
     /// rest of the methods on this class and in ETensor.
     pub fn size(&self, dim: isize) -> isize {
-        unsafe { et_rs_c::Tensor_size(self.tensor_ref(), dim) }
+        unsafe { et_rs_c::Tensor_size(self.as_cpp_tensor(), dim) }
     }
 
     /// Returns the tensor's number of dimensions.
     pub fn dim(&self) -> isize {
-        unsafe { et_rs_c::Tensor_dim(self.tensor_ref()) }
+        unsafe { et_rs_c::Tensor_dim(self.as_cpp_tensor()) }
     }
 
     /// Returns the number of elements in the tensor.
     pub fn numel(&self) -> isize {
-        unsafe { et_rs_c::Tensor_numel(self.tensor_ref()) }
+        unsafe { et_rs_c::Tensor_numel(self.as_cpp_tensor()) }
     }
 
     /// Returns the type of the elements in the tensor (int32, float, bool, etc).
     pub fn scalar_type(&self) -> Option<ScalarType> {
-        let scalar_type = unsafe { et_rs_c::Tensor_scalar_type(self.tensor_ref()) };
+        let scalar_type = unsafe { et_rs_c::Tensor_scalar_type(self.as_cpp_tensor()) };
         ScalarType::from_c_scalar_type(scalar_type)
     }
 
     /// Returns the size in bytes of one element of the tensor.
     pub fn element_size(&self) -> isize {
-        unsafe { et_rs_c::Tensor_element_size(self.tensor_ref()) }
+        unsafe { et_rs_c::Tensor_element_size(self.as_cpp_tensor()) }
     }
 
     /// Returns the sizes of the tensor at each dimension.
     pub fn sizes(&self) -> &[SizesType] {
         unsafe {
-            let arr = et_rs_c::Tensor_sizes(self.tensor_ref());
+            let arr = et_rs_c::Tensor_sizes(self.as_cpp_tensor());
             std::slice::from_raw_parts(arr.Data, arr.Length)
         }
     }
@@ -261,7 +261,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// Returns the order the dimensions are laid out in memory.
     pub fn dim_order(&self) -> &[DimOrderType] {
         unsafe {
-            let arr = et_rs_c::Tensor_dim_order(self.tensor_ref());
+            let arr = et_rs_c::Tensor_dim_order(self.as_cpp_tensor());
             std::slice::from_raw_parts(arr.Data, arr.Length)
         }
     }
@@ -269,7 +269,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// Returns the strides of the tensor at each dimension.
     pub fn strides(&self) -> &[StridesType] {
         unsafe {
-            let arr = et_rs_c::Tensor_strides(self.tensor_ref());
+            let arr = et_rs_c::Tensor_strides(self.as_cpp_tensor());
             std::slice::from_raw_parts(arr.Data, arr.Length)
         }
     }
@@ -290,7 +290,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     ///
     /// The caller must access the values in the returned pointer according to the type of the tensor.
     pub unsafe fn as_ptr_bytes(&self) -> *const u8 {
-        (unsafe { et_rs_c::Tensor_const_data_ptr(self.tensor_ref()) }) as *const u8
+        (unsafe { et_rs_c::Tensor_const_data_ptr(self.as_cpp_tensor()) }) as *const u8
     }
 
     /// Get an array view of the tensor.
@@ -394,7 +394,7 @@ impl<'a> TensorMut<'a> {
     /// If the scalar type of the tensor does not match the type `S`.
     pub fn as_mut_ptr<S: Scalar>(&self) -> *mut S {
         assert_eq!(self.scalar_type(), Some(S::TYPE), "Invalid type");
-        (unsafe { et_rs_c::Tensor_mutable_data_ptr(self.tensor_ref()) }) as *mut S
+        (unsafe { et_rs_c::Tensor_mutable_data_ptr(self.as_cpp_tensor()) }) as *mut S
     }
 
     // /// Returns an immutable tensor pointing to the same data of this tensor.
