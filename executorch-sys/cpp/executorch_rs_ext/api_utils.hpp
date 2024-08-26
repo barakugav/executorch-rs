@@ -103,6 +103,7 @@ namespace executorch_rs
     exec_aten::ArrayRef<exec_aten::StridesType> Tensor_strides(const exec_aten::Tensor &self);
     const void *Tensor_const_data_ptr(const exec_aten::Tensor &self);
     void *Tensor_mutable_data_ptr(const exec_aten::Tensor &self);
+    size_t Tensor_coordinate_to_index(const exec_aten::Tensor &self, const size_t *coordinate);
     void Tensor_destructor(exec_aten::Tensor &self);
 
     // torch::executor::EValue EValue_shallow_clone(torch::executor::EValue *evalue);

@@ -1,5 +1,6 @@
 //! Tensor struct is an input or output tensor to a executorch program.
 
+use core::ops::{Index, IndexMut};
 use core::ptr::NonNull;
 use std::fmt::Debug;
 use std::marker::PhantomData;
@@ -545,6 +546,36 @@ impl<'a, D: DataTyped + DataMut> TensorBase<'a, D> {
     }
 }
 
+impl<'a, D: DataTyped> Index<&[usize]> for TensorBase<'a, D> {
+    type Output = D::Scalar;
+
+    fn index(&self, index: &[usize]) -> &Self::Output {
+        assert_eq!(
+            index.len(),
+            self.dim() as usize,
+            "Invalid number of dimensions"
+        );
+        let index =
+            unsafe { et_rs_c::Tensor_coordinate_to_index(self.as_cpp_tensor(), index.as_ptr()) };
+        let base_ptr = self.as_ptr();
+        debug_assert!(!base_ptr.is_null());
+        unsafe { &*base_ptr.add(index) }
+    }
+}
+impl<'a, D: DataTyped + DataMut> IndexMut<&[usize]> for TensorBase<'a, D> {
+    fn index_mut(&mut self, index: &[usize]) -> &mut Self::Output {
+        assert_eq!(
+            index.len(),
+            self.dim() as usize,
+            "Invalid number of dimensions"
+        );
+        let index =
+            unsafe { et_rs_c::Tensor_coordinate_to_index(self.as_cpp_tensor(), index.as_ptr()) };
+        let base_ptr = self.as_mut_ptr().as_ptr();
+        unsafe { &mut *base_ptr.add(index) }
+    }
+}
+
 /// A typed immutable tensor that does not own the underlying data.
 pub type Tensor<'a, S> = TensorBase<'a, View<S>>;
 impl<'a, S: Scalar> Tensor<'a, S> {
@@ -835,6 +866,11 @@ impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> Array<A, S, D> {
         };
         TensorImplBase(impl_, PhantomData)
     }
+
+    /// Get a reference to the underlying ndarray.
+    pub fn as_ndarray(&self) -> &ArrayBase<S, D> {
+        &self.array
+    }
 }
 impl<A: Scalar, S: ndarray::RawDataMut<Elem = A>, D: Dimension> Array<A, S, D> {
     /// Create a [`TensorImplMut`] pointing to this struct's data.
@@ -1056,5 +1092,62 @@ mod tests {
         test_scalar_type::<f32>(|size| vec![0.0; size]);
         test_scalar_type::<f64>(|size| vec![0.0; size]);
         test_scalar_type::<bool>(|size| vec![false; size]);
+    }
+
+    #[test]
+    fn test_tensor_index() {
+        let arr = Array::new(Array3::<i32>::from_shape_fn((4, 5, 3), |(x, y, z)| {
+            x as i32 * 1337 - y as i32 * 87 + z as i32 * 13
+        }));
+        let tensor_impl = arr.as_tensor_impl();
+        let tensor = Tensor::new(&tensor_impl);
+
+        let arr = arr.as_ndarray();
+        for (ix, &expected) in arr.indexed_iter() {
+            let ix: [usize; 3] = ix.into();
+            let actual = tensor[&ix];
+            assert_eq!(actual, expected);
+        }
+    }
+
+    #[test]
+    fn test_tensor_index_mut() {
+        let mut arr = Array::new(Array3::<i32>::zeros((4, 5, 3)));
+        let mut tensor_impl = arr.as_tensor_impl_mut();
+        let mut tensor = TensorMut::new(&mut tensor_impl);
+
+        for ix in indexed_iter(&tensor) {
+            assert_eq!(tensor[&ix], 0);
+        }
+        for ix in indexed_iter(&tensor) {
+            let (x, y, z) = (ix[0], ix[1], ix[2]);
+            tensor[&ix] = x as i32 * 1337 - y as i32 * 87 + z as i32 * 13;
+        }
+    }
+
+    fn indexed_iter<D: Data>(tensor: &TensorBase<D>) -> impl Iterator<Item = Vec<usize>> {
+        let dim = tensor.dim() as usize;
+        let sizes = tensor
+            .sizes()
+            .iter()
+            .map(|&s| s as usize)
+            .collect::<Vec<_>>();
+        let mut coordinate = vec![0_usize; dim];
+        let mut remaining_elms = tensor.numel();
+        std::iter::from_fn(move || {
+            if remaining_elms <= 0 {
+                return None;
+            }
+            for j in (0..dim).rev() {
+                if coordinate[j] + 1 < sizes[j] {
+                    coordinate[j] += 1;
+                    break;
+                } else {
+                    coordinate[j] = 0;
+                }
+            }
+            remaining_elms -= 1;
+            Some(coordinate.clone())
+        })
     }
 }

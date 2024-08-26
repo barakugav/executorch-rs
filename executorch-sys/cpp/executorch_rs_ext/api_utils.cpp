@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "executorch_rs_ext/api_utils.hpp"
+#include "executorch/runtime/core/exec_aten/util/tensor_util.h"
 
 namespace executorch_rs
 {
@@ -144,6 +145,10 @@ namespace executorch_rs
     void *Tensor_mutable_data_ptr(const exec_aten::Tensor &self)
     {
         return self.mutable_data_ptr();
+    }
+    size_t Tensor_coordinate_to_index(const exec_aten::Tensor &self, const size_t *coordinate)
+    {
+        return torch::executor::coordinateToIndex(self, coordinate);
     }
     void Tensor_destructor(exec_aten::Tensor &self)
     {
