@@ -3,7 +3,7 @@
 // #![no_main]
 
 use executorch::data_loader::FileDataLoader;
-use executorch::evalue::{EValue, Tag};
+use executorch::evalue::EValue;
 use executorch::memory::{HierarchicalAllocator, MemoryAllocator, MemoryManager};
 use executorch::program::{Program, ProgramVerification};
 use executorch::tensor::{Array, Tensor};
@@ -50,15 +50,15 @@ fn real_main() {
         .unwrap();
 
     let input_array1 = Array::new(ndarray::arr1(&[1.0_f32]));
-    let input_tensor_impl1 = input_array1.to_tensor_impl();
-    let storage = executorch::storage!(Tensor);
+    let input_tensor_impl1 = input_array1.as_tensor_impl();
+    let storage = executorch::storage!(Tensor<f32>);
     let input_tensor1 = storage.new(&input_tensor_impl1);
     let storage = executorch::storage!(EValue);
     let input_evalue1 = storage.new(input_tensor1);
 
     let input_array2 = Array::new(ndarray::arr1(&[1.0_f32]));
-    let input_tensor_impl2 = input_array2.to_tensor_impl();
-    let storage = executorch::storage!(Tensor);
+    let input_tensor_impl2 = input_array2.as_tensor_impl();
+    let storage = executorch::storage!(Tensor<f32>);
     let input_tensor2 = storage.new(&input_tensor_impl2);
     let storage = executorch::storage!(EValue);
     let input_evalue2 = storage.new(input_tensor2);
@@ -70,11 +70,10 @@ fn real_main() {
 
     let outputs = method_exe.execute().unwrap();
     let output = outputs.get(0);
-    assert_eq!(output.tag(), Some(Tag::Tensor));
-    let output = output.as_tensor();
+    let output = output.as_tensor().into_typed::<f32>();
 
     libc_println!("Output tensor computed: {:?}", output);
-    assert_eq!(ndarray::arr1(&[2.0_f32]), output.as_array());
+    assert_eq!(ndarray::arr1(&[2.0]), output.as_array());
 }
 
 // FIXME: Unfortunatelly, no_std is WIP

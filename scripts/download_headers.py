@@ -45,7 +45,6 @@ def main():
         excludes = [
             "**/test/**",
             "**/testing_util/**",
-            "runtime/core/exec_aten/util/**",
         ]
 
         files = set()
