@@ -25,18 +25,27 @@ pub(crate) trait Destroy {
 pub(crate) enum NonTriviallyMovable<'a, T: Destroy> {
     // We own the value. We allocated its memory, called its constructor and we are responsible for calling its
     // destructor and deallocating its memory.
+    // We can mutate T freely.
     // Created via `new_boxed`.
     #[cfg(feature = "alloc")]
     Boxed(Pin<et_alloc::Box<(T, PhantomPinned)>>),
     // We own the reference. We called its constructor and we are responsible for calling its destructor.
     // We did not allocate its memory and we are not responsible for deallocating it.
+    // We can mutate T freely.
     // Created via `new_in_storage`.
     OwnedRef(Pin<&'a mut (T, PhantomPinned)>),
     // We don't own the reference. We did not called its constructor and we are not responsible for calling its
     // destructor.
     // We did not allocate its memory and we are not responsible for deallocating it.
+    // We can not mutate T.
     // Created via `from_ref`.
-    SharedRef(Pin<&'a (T, PhantomPinned)>),
+    Ref(Pin<&'a (T, PhantomPinned)>),
+    // We don't own the reference. We did not called its constructor and we are not responsible for calling its
+    // destructor, but we are allowed to mutate it.
+    // We did not allocate its memory and we are not responsible for deallocating it.
+    // We can mutate T freely.
+    // Created via `from_mut_ref`.
+    RefMut(Pin<&'a mut (T, PhantomPinned)>),
 }
 impl<'a, T: Destroy> NonTriviallyMovable<'a, T> {
     /// Create a new [`NonTriviallyMovable`] object with an inner value in a box.
@@ -91,13 +100,30 @@ impl<'a, T: Destroy> NonTriviallyMovable<'a, T> {
         // Safety: p is a reference to a valid memory location and it is not moved for at least 'a.
         let p = unsafe { Pin::new_unchecked(p) };
 
-        Self::SharedRef(p)
+        Self::Ref(p)
+    }
+
+    pub(crate) fn from_mut_ref(p: &'a mut T) -> Self {
+        // Safety: T and (T, PhantomPinned) have the same memory layout.
+        let p = unsafe { std::mem::transmute::<&'a mut T, &'a mut (T, PhantomPinned)>(p) };
+        // Safety: p is a reference to a valid memory location and it is not moved for at least 'a.
+        let p = unsafe { Pin::new_unchecked(p) };
+
+        Self::RefMut(p)
     }
 }
 impl<'a, T: Destroy> Drop for NonTriviallyMovable<'a, T> {
     fn drop(&mut self) {
-        // Safety: we dont move (or swap) the inner value.
-        if let Some(p) = unsafe { self.as_mut() } {
+        let shoud_destroy = match self {
+            #[cfg(feature = "alloc")]
+            NonTriviallyMovable::Boxed(_) => true,
+            NonTriviallyMovable::OwnedRef(_) => true,
+            NonTriviallyMovable::Ref(_) | NonTriviallyMovable::RefMut(_) => false,
+        };
+
+        if shoud_destroy {
+            // Safety: we dont move (or swap) the inner value.
+            let p = unsafe { self.as_mut() }.unwrap();
             // Safety: we call the destroy function only once and the object is not used after it is destroyed.
             unsafe { p.destroy() };
         }
@@ -109,7 +135,8 @@ impl<'a, T: Destroy> AsRef<T> for NonTriviallyMovable<'a, T> {
             #[cfg(feature = "alloc")]
             NonTriviallyMovable::Boxed(p) => &p.0,
             NonTriviallyMovable::OwnedRef(p) => &p.0,
-            NonTriviallyMovable::SharedRef(p) => &p.0,
+            NonTriviallyMovable::Ref(p) => &p.0,
+            NonTriviallyMovable::RefMut(p) => &p.0,
         }
     }
 }
@@ -124,7 +151,8 @@ impl<'a, T: Destroy> NonTriviallyMovable<'a, T> {
             #[cfg(feature = "alloc")]
             NonTriviallyMovable::Boxed(p) => Some(&mut unsafe { p.as_mut().get_unchecked_mut() }.0),
             NonTriviallyMovable::OwnedRef(p) => Some(&mut p.as_mut().get_unchecked_mut().0),
-            NonTriviallyMovable::SharedRef(_) => None,
+            NonTriviallyMovable::Ref(_) => None,
+            NonTriviallyMovable::RefMut(p) => Some(&mut p.as_mut().get_unchecked_mut().0),
         }
     }
 }

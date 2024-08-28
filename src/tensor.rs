@@ -229,15 +229,41 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// The caller must ensure that the new data generic is compatible with the data of the given tensor.
     /// If `D2` must be immutable as we take immutable reference to the given tensor.
     pub(crate) unsafe fn convert_from_ref<D2: Data>(tensor: &'a TensorBase<D2>) -> Self {
-        Self(
-            NonTriviallyMovable::from_ref(tensor.as_cpp_tensor()),
-            PhantomData,
-        )
+        let inner = tensor.as_cpp_tensor();
+        Self(NonTriviallyMovable::from_ref(inner), PhantomData)
+    }
+
+    /// Create a new mutable tensor referencing the same internal data as the given tensor, but with different data
+    /// generic.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the new data generic is compatible with the data of the given tensor.
+    pub(crate) unsafe fn convert_from_mut_ref<D2>(tensor: &'a mut TensorBase<D2>) -> Self
+    where
+        D2: DataMut,
+    {
+        // Safety: we are not moving out of the mut reference of the inner tensor
+        let inner = unsafe { tensor.as_mut_cpp_tensor() };
+        Self(NonTriviallyMovable::from_mut_ref(inner), PhantomData)
     }
 
     /// Get the underlying Cpp tensor.
     pub(crate) fn as_cpp_tensor(&self) -> &et_c::Tensor {
         self.0.as_ref()
+    }
+
+    /// Get a mutable reference to the underlying Cpp tensor.
+    ///
+    /// # Safety
+    ///
+    /// The caller can not move out of the returned mut reference.
+    pub(crate) unsafe fn as_mut_cpp_tensor(&mut self) -> &mut et_c::Tensor
+    where
+        D: DataMut,
+    {
+        // Safety: the caller does not move out of the returned mut reference.
+        unsafe { self.0.as_mut() }.unwrap()
     }
 
     /// Returns the size of the tensor in bytes.
@@ -323,13 +349,24 @@ impl<'a, D: Data> TensorBase<'a, D> {
         unsafe { TensorBase::<'a, D::TypeErased>::convert_from(self) }
     }
 
-    /// Get a type erased tensor referencing the same internal data as the given tensor.
+    /// Get a type erased tensor referencing the same internal data as this tensor.
     pub fn as_type_erased(&self) -> TensorBase<<D::Immutable as Data>::TypeErased> {
         // Safety: <D::Immutable as Data>::TypeErased is compatible with D and its immutable (we took &self)
         unsafe { TensorBase::<<D::Immutable as Data>::TypeErased>::convert_from_ref(self) }
     }
 
+    /// Get a type erased mutable tensor referencing the same internal data as this tensor.
+    pub fn as_type_erased_mut(&mut self) -> TensorBase<D::TypeErased>
+    where
+        D: DataMut,
+    {
+        // Safety: D::TypeErased is compatible with D
+        unsafe { TensorBase::<D::TypeErased>::convert_from_mut_ref(self) }
+    }
+
     /// Try to convert this tensor into a typed tensor with scalar type `S`.
+    ///
+    /// Fails if the scalar type of the tensor does not match the type `S`.
     pub fn try_into_typed<S: Scalar>(self) -> Result<TensorBase<'a, D::Typed<S>>> {
         if self.scalar_type() != Some(S::TYPE) {
             return Err(Error::InvalidType);
@@ -348,7 +385,9 @@ impl<'a, D: Data> TensorBase<'a, D> {
         self.try_into_typed().expect("Invalid type")
     }
 
-    /// Try to get a typed tensor with scalar type `S` referencing the same internal data as the given tensor.
+    /// Try to get a typed tensor with scalar type `S` referencing the same internal data as this tensor.
+    ///
+    /// Fails if the scalar type of the tensor does not match the type `S`.
     pub fn try_as_typed<S: Scalar>(&self) -> Result<TensorBase<<D::Immutable as Data>::Typed<S>>> {
         if self.scalar_type() != Some(S::TYPE) {
             return Err(Error::InvalidType);
@@ -358,7 +397,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
         Ok(unsafe { TensorBase::<<D::Immutable as Data>::Typed<S>>::convert_from_ref(self) })
     }
 
-    /// Get a typed tensor with scalar type `S` referencing the same internal data as the given tensor.
+    /// Get a typed tensor with scalar type `S` referencing the same internal data as this tensor.
     ///
     /// # Panics
     ///
@@ -366,6 +405,33 @@ impl<'a, D: Data> TensorBase<'a, D> {
     #[track_caller]
     pub fn as_typed<S: Scalar>(&self) -> TensorBase<<D::Immutable as Data>::Typed<S>> {
         self.try_as_typed().expect("Invalid type")
+    }
+
+    /// Try to get a mutable typed tensor with scalar type `S` referencing the same internal data as this tensor.
+    ///
+    /// Fails if the scalar type of the tensor does not match the type `S`.
+    pub fn try_as_typed_mut<S: Scalar>(&mut self) -> Result<TensorBase<D::Typed<S>>>
+    where
+        D: DataMut,
+    {
+        if self.scalar_type() != Some(S::TYPE) {
+            return Err(Error::InvalidType);
+        }
+        // Safety: the scalar type is checked, D::Typed<S> is compatible with D
+        Ok(unsafe { TensorBase::<D::Typed<S>>::convert_from_mut_ref(self) })
+    }
+
+    /// Get a mutable typed tensor with scalar type `S` referencing the same internal data as this tensor.
+    ///
+    /// # Panics
+    ///
+    /// If the scalar type of the tensor does not match the type `S`.
+    #[track_caller]
+    pub fn as_typed_mut<S: Scalar>(&mut self) -> TensorBase<D::Typed<S>>
+    where
+        D: DataMut,
+    {
+        self.try_as_typed_mut().expect("Invalid type")
     }
 }
 impl Destroy for et_c::Tensor {
