@@ -37,17 +37,16 @@ fn build_c_extension() {
 
 fn generate_bindings() {
     let c_ext_dir = cpp_ext_dir();
+    let cpp_dir = Path::new(&env!("CARGO_MANIFEST_DIR")).join("cpp");
+    println!("cargo::rerun-if-changed={}", cpp_dir.to_str().unwrap());
 
-    let bindings_h = Path::new(&env!("CARGO_MANIFEST_DIR"))
-        .join("cpp")
-        .join("bindings.hpp");
+    let bindings_h = cpp_dir.join("bindings.hpp");
     let bindings_defines_h = c_ext_dir.parent().unwrap().join("executorch_rs_defines.h");
     let mut bindings_defines = String::from("#pragma once\n");
     for define in cpp_defines() {
         bindings_defines.push_str(&format!("#define {}\n", define));
     }
 
-    println!("cargo::rerun-if-changed={}", bindings_h.to_str().unwrap());
     let bindings = bindgen::Builder::default()
         .clang_arg(format!(
             "-I{}",
@@ -114,12 +113,9 @@ fn generate_bindings() {
         .opaque_type("torch::executor::util::BufferDataLoader")
         // feature module
         .opaque_type("torch::executor::Module")
-        .rustified_enum("torch::executor::Error")
-        .rustified_enum("torch::executor::ScalarType")
-        .rustified_enum("torch::executor::Tag")
-        .rustified_enum("torch::executor::Program_Verification")
-        .rustified_enum("torch::executor::Program_HeaderStatus")
-        .rustified_enum("torch::executor::TensorShapeDynamism")
+        .default_enum_style(bindgen::EnumVariation::Rust {
+            non_exhaustive: false,
+        })
         // feature data-loader
         .rustified_enum("torch::executor::util::MmapDataLoader_MlockConfig")
         // feature module
