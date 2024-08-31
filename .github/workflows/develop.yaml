@@ -56,19 +56,33 @@ jobs:
         if: steps.cache-executorch-cpp-libs.outputs.cache-hit != 'true'
         run: python scripts/setup_dev.py --skip-executorch-python
 
-      ############ Build executorch-rs ############
-      - name: Build
+      ############ Build ############
+      - name: Build executorch-sys
         run: cargo build
+        working-directory: executorch-sys
+      - name: Build executorch
+        run: cargo build
+        working-directory: .
 
       ############ Linters ############
-      - name: Rust Clippy linter
+      - name: Clippy executorch-sys
         uses: auguwu/clippy-action@1.4.0
         with:
+          working-directory: executorch-sys
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Clippy executorch
+        uses: auguwu/clippy-action@1.4.0
+        with:
+          working-directory: .
           token: ${{ secrets.GITHUB_TOKEN }}
 
       ############ Tests ############
-      - name: Run Rust tests
-        run: cargo test --workspace --all-features
+      - name: Test executorch-sys
+        run: cargo test --all-features
+        working-directory: executorch-sys
+      - name: Test executorch
+        run: cargo test --all-features
+        working-directory: .
 
       ############ Examples ############
       - name: Run 'hello world add' example
