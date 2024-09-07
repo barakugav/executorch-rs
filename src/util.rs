@@ -273,21 +273,31 @@ impl<T: Destroy> Drop for NonTriviallyMovableVec<T> {
 /// Non-trivially movable objects such as [`Tensor`](crate::tensor::Tensor) and [`EValue`](crate::evalue::EValue) expose
 /// a straight forward `new` function that allocate the object on the heap which should be used in most cases.
 /// The `new` function is available when the `alloc` feature is enabled. When allocations are not available, the
-/// [`Storage`] struct should be created and pinned, which expose an identical `new` function that allocates the object
-/// in place:
-/// ```rust,ignore
-/// let tensor_impl: TensorImpl = ...;
+/// [`Storage`] struct should be used in one of two ways:
+/// - Create on the stack and pin a [`Storage`] object, and initialize the object in place through a variant of the `new` function such
+///     as `new_in_storage`:
+///     ```rust,ignore
+///     let tensor_impl: TensorImpl = ...;
 ///
-/// // Create a Tensor and an EValue on the heap
-/// let tensor = Tensor::new(&tensor_impl);
-/// let evalue = EValue::new(tensor); // allocate on the heap
+///     // Create a Tensor on the heap
+///     let tensor = Tensor::new(&tensor_impl);
 ///
-/// // Create a Tensor and an EValue on the stack
-/// let storage1: Pin<&mut Storage<Tensor<f32>>> = executorch::storage!(Tensor<f32>);
-/// let storage2: Pin<&mut Storage<EValue>> = executorch::storage!(EValue);
-/// let tensor: Tensor = storage1.new(&tensor_impl);
-/// let evalue: EValue = storage2.new(tensor);
-/// ```
+///     // Create a Tensor on the stack
+///     let storage = pin::pin!(Storage::<Tensor<f32>>::default());
+///     let tensor = Tensor::new_in_storage(&tensor_impl, storage);
+///     ```
+/// - Use a [`MemoryAllocator`](crate::memory::MemoryAllocator) to allocate a [`Storage`] object, and use it to allocate the
+///    object in place:
+///     ```rust,ignore
+///     let tensor: Tensor = ...;
+///
+///     // Create am EValue on the heap
+///     let evalue = EValue::new(tensor);
+///
+///     // Create an EValue in a memory allocated by the allocator
+///     let allocator: impl AsMut<MemoryAllocator> = ...; // usually global
+///     let evalue = EValue::new_in_storage(tensor, allocator.allocate_pinned().unwrap());
+///     ```
 #[repr(transparent)]
 pub struct Storage<T: Storable>(MaybeUninit<T::Storage>, PhantomPinned);
 impl<T: Storable> Default for Storage<T> {
@@ -307,16 +317,6 @@ impl<T: Storable> Storage<T> {
 pub trait Storable {
     /// The underlying Cpp object type, defining the memory layout of a [`Storage`] object.
     type Storage;
-}
-
-/// Create and pin a [`Storage`] object.
-///
-/// See the [`Storage`] struct for more information.
-#[macro_export]
-macro_rules! storage {
-    ($type:path) => {
-        core::pin::pin!(executorch::util::Storage::<$type>::default())
-    };
 }
 
 pub(crate) trait IntoRust {
@@ -647,7 +647,15 @@ pub trait DimArr<T>: AsRef<[T]> + AsMut<[T]> {
 }
 
 macro_rules! impl_dim_arr {
-    ($size:expr) => {
+    (0) => {
+        impl<T: Clone + Copy + Default> DimArr<T> for [T; 0] {
+            fn zeros(ndim: usize) -> Self {
+                assert_eq!(ndim, 0, "Invalid dimension size");
+                []
+            }
+        }
+    };
+    ($size:literal) => {
         impl<T: Clone + Copy + Default> DimArr<T> for [T; $size] {
             fn zeros(ndim: usize) -> Self {
                 assert_eq!(ndim, $size, "Invalid dimension size");

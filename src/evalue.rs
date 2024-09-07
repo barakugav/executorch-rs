@@ -68,7 +68,7 @@ impl<'a> EValue<'a> {
     /// # Arguments
     ///
     /// * `init` - A closure that initializes the value. This is intended to be a call to a Cpp function that constructs
-    /// the value.
+    ///     the value.
     ///
     /// # Safety
     ///
@@ -82,15 +82,56 @@ impl<'a> EValue<'a> {
     ///
     /// The underlying Cpp object is allocated on the heap, which is preferred on systems in which allocations are
     /// available.
-    /// For an identical version that allocates the object on the stack use:
-    /// ```rust,ignore
-    /// let storage = executorch::storage!(EValue);
-    /// let evalue: EValue = storage.new(value);
-    /// ```
-    /// See `executorch::util::Storage` for more information.
+    /// For an identical version that allocates the object in a given storage (possible on the stack), see the
+    /// [`new_in_storage`][EValue::new_in_storage] method.
+    /// Note that the inner data is not copied, and the allocation required for the evalue is very small.
     #[cfg(feature = "alloc")]
     pub fn new(value: impl IntoEValue<'a>) -> Self {
         value.into_evalue()
+    }
+
+    /// Create a new [`EValue`] in the given storage.
+    ///
+    /// # Arguments
+    ///
+    /// * `init` - A closure that initializes the value. This is intended to be a call to a Cpp function that constructs
+    ///     the value.
+    /// * `storage` - The storage in which the value will be allocated.
+    ///
+    /// # Safety
+    ///
+    /// The closure must initialize the value correctly, otherwise the value will be in an invalid state.
+    unsafe fn new_in_storage_impl(
+        init: impl FnOnce(*mut et_c::EValue),
+        storage: Pin<&'a mut Storage<EValue>>,
+    ) -> Self {
+        Self(NonTriviallyMovable::new_in_storage(init, storage))
+    }
+
+    /// Create a new [`EValue`] from a value that can be converted into an [`EValue`] in the given storage.
+    ///
+    /// This function is identical to [`EValue::new`][EValue::new], but it allows to create the evalue without the
+    /// use of a heap.
+    /// Few examples of ways to create an [`EValue`]:
+    /// ```rust,ignore
+    /// // The value is allocated on the heap
+    /// let evalue = EValue::new(value, storage);
+    ///
+    /// // The value is allocated on the stack
+    /// let storage = pin::pin!(executorch::util::Storage::<EValue>::default());
+    /// let evalue = EValue::new_in_storage(value, storage);
+    ///
+    /// // The value is allocated using a memory allocator
+    /// let allocator: impl AsRef<MemoryAllocator> = ...; // usually global
+    /// let evalue = EValue::new_in_storage(value, allocator.allocate_pinned().unwrap());
+    /// ```
+    /// Note that the inner data is not copied, and the allocation required for the evalue is very small.
+    /// See [`Storage`] for more information.
+    pub fn new_in_storage(
+        value: impl IntoEValue<'a>,
+        storage: Pin<&'a mut Storage<EValue>>,
+    ) -> Self {
+        value.into_evalue_in_storage(storage)
     }
 
     pub(crate) fn from_inner_ref(value: &'a et_c::EValue) -> Self {
@@ -218,30 +259,22 @@ impl Destroy for et_c::EValue {
 impl Storable for EValue<'_> {
     type Storage = et_c::EValue;
 }
-impl Storage<EValue<'_>> {
-    /// Create a new [`EValue`] from a value that can be converted into an [`EValue`] in the given storage.
-    ///
-    /// This function is identical to `EValue::new`, but it allows to create the evalue on the stack.
-    /// See `executorch::util::Storage` for more information.
-    #[allow(clippy::new_ret_no_self)]
-    pub fn new<'a>(self: Pin<&'a mut Self>, value: impl IntoEValue<'a>) -> EValue<'a> {
-        value.into_evalue_in_storage(self)
-    }
-}
 
 /// A type that can be converted into an [`EValue`].
 pub trait IntoEValue<'a> {
     /// Convert the value into an [`EValue`], with an allocation on the heap.
     ///
     /// This is the preferred method to create an [`EValue`] when allocations are available.
-    /// Use `into_evalue_in_storage` for an identical version that allow to allocate the object on the stack.
+    /// Use `into_evalue_in_storage` for an identical version that allow to allocate the object without the
+    /// use of a heap.
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a>;
 
     /// Convert the value into an [`EValue`], using the given storage.
     ///
-    /// This function is identical to `into_evalue`, but it allows to create the evalue on the stack.
-    /// See `executorch::util::Storage` for more information.
+    /// This function is identical to `into_evalue`, but it allows to create the evalue without the
+    /// use of a heap.
+    /// See [`Storage`] for more information.
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a>;
 }
 impl<'a> IntoEValue<'a> for i64 {
@@ -253,9 +286,7 @@ impl<'a> IntoEValue<'a> for i64 {
 
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
         // Safety: the closure init the pointer
-        EValue(unsafe {
-            NonTriviallyMovable::new_in_storage(|p| et_rs_c::EValue_new_from_i64(p, self), storage)
-        })
+        unsafe { EValue::new_in_storage_impl(|p| et_rs_c::EValue_new_from_i64(p, self), storage) }
     }
 }
 impl<'a> IntoEValue<'a> for f64 {
@@ -267,9 +298,7 @@ impl<'a> IntoEValue<'a> for f64 {
 
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
         // Safety: the closure init the pointer
-        EValue(unsafe {
-            NonTriviallyMovable::new_in_storage(|p| et_rs_c::EValue_new_from_f64(p, self), storage)
-        })
+        unsafe { EValue::new_in_storage_impl(|p| et_rs_c::EValue_new_from_f64(p, self), storage) }
     }
 }
 impl<'a> IntoEValue<'a> for bool {
@@ -281,9 +310,7 @@ impl<'a> IntoEValue<'a> for bool {
 
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
         // Safety: the closure init the pointer
-        EValue(unsafe {
-            NonTriviallyMovable::new_in_storage(|p| et_rs_c::EValue_new_from_bool(p, self), storage)
-        })
+        unsafe { EValue::new_in_storage_impl(|p| et_rs_c::EValue_new_from_bool(p, self), storage) }
     }
 }
 impl<'a> IntoEValue<'a> for &'a [f64] {
@@ -297,12 +324,9 @@ impl<'a> IntoEValue<'a> for &'a [f64] {
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
         let arr = ArrayRef::from_slice(self);
         // Safety: the closure init the pointer
-        EValue(unsafe {
-            NonTriviallyMovable::new_in_storage(
-                |p| et_rs_c::EValue_new_from_f64_arr(p, arr.0),
-                storage,
-            )
-        })
+        unsafe {
+            EValue::new_in_storage_impl(|p| et_rs_c::EValue_new_from_f64_arr(p, arr.0), storage)
+        }
     }
 }
 impl<'a> IntoEValue<'a> for &'a [bool] {
@@ -316,12 +340,9 @@ impl<'a> IntoEValue<'a> for &'a [bool] {
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
         let arr = ArrayRef::from_slice(self);
         // Safety: the closure init the pointer
-        EValue(unsafe {
-            NonTriviallyMovable::new_in_storage(
-                |p| et_rs_c::EValue_new_from_bool_arr(p, arr.0),
-                storage,
-            )
-        })
+        unsafe {
+            EValue::new_in_storage_impl(|p| et_rs_c::EValue_new_from_bool_arr(p, arr.0), storage)
+        }
     }
 }
 impl<'a> IntoEValue<'a> for &'a [std::ffi::c_char] {
@@ -335,12 +356,9 @@ impl<'a> IntoEValue<'a> for &'a [std::ffi::c_char] {
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
         let arr = ArrayRef::from_slice(self);
         // Safety: the closure init the pointer
-        EValue(unsafe {
-            NonTriviallyMovable::new_in_storage(
-                |p| et_rs_c::EValue_new_from_chars(p, arr.0),
-                storage,
-            )
-        })
+        unsafe {
+            EValue::new_in_storage_impl(|p| et_rs_c::EValue_new_from_chars(p, arr.0), storage)
+        }
     }
 }
 impl<'a, D: tensor::Data> IntoEValue<'a> for TensorBase<'a, D> {
@@ -352,12 +370,12 @@ impl<'a, D: tensor::Data> IntoEValue<'a> for TensorBase<'a, D> {
 
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
         // Safety: the closure init the pointer
-        EValue(unsafe {
-            NonTriviallyMovable::new_in_storage(
+        unsafe {
+            EValue::new_in_storage_impl(
                 |p| et_rs_c::EValue_new_from_tensor(p, self.as_cpp_tensor()),
                 storage,
             )
-        })
+        }
     }
 }
 impl<'a, D: tensor::Data> IntoEValue<'a> for &'a TensorBase<'_, D> {
@@ -368,12 +386,12 @@ impl<'a, D: tensor::Data> IntoEValue<'a> for &'a TensorBase<'_, D> {
 
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
         // Safety: the closure init the pointer
-        EValue(unsafe {
-            NonTriviallyMovable::new_in_storage(
+        unsafe {
+            EValue::new_in_storage_impl(
                 |p| et_rs_c::EValue_new_from_tensor(p, self.as_cpp_tensor()),
                 storage,
             )
-        })
+        }
     }
 }
 // /// Create a new [`EValue`] from a list of `i64`.

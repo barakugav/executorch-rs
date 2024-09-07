@@ -200,7 +200,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// # Safety
     ///
     /// The caller must ensure that the new tensor is compatible with the given storage.
-    unsafe fn new_in_storage(
+    unsafe fn new_in_storage_impl(
         tensor_impl: &'a TensorImplBase<D>,
         storage: Pin<&'a mut Storage<TensorBase<D>>>,
     ) -> Self {
@@ -661,27 +661,41 @@ impl<'a, S: Scalar> Tensor<'a, S> {
     ///
     /// The underlying Cpp object is allocated on the heap, which is preferred on systems in which allocations are
     /// available.
-    /// For an identical version that allocates the object on the stack use:
-    /// ```rust,ignore
-    /// let storage = executorch::storage!(Tensor<f32>);
-    /// let tensor: Tensor<f32> = storage.new(tensor_impl);
-    /// ```
-    /// See `executorch::util::Storage` for more information.
+    /// For an identical version that allocates the object in a given storage (possible on the stack), see the
+    /// [`new_in_storage`][Tensor::new_in_storage] method.
+    /// Note that the tensor data is not copied, and the allocation required for the tensor is very small.
+    /// See [`Storage`] for more information.
     #[cfg(feature = "alloc")]
     pub fn new(tensor_impl: &'a TensorImpl<S>) -> Self {
         // Safety: both Self and TensorImpl are immutable
         unsafe { Self::new_boxed(tensor_impl) }
     }
-}
-impl<S: Scalar> Storage<Tensor<'_, S>> {
+
     /// Create a new [`Tensor`] from a [`TensorImpl`] in the given storage.
     ///
-    /// This function is identical to `Tensor::new`, but it allows to create the tensor on the stack.
-    /// See `executorch::util::Storage` for more information.
-    #[allow(clippy::new_ret_no_self)]
-    pub fn new<'a>(self: Pin<&'a mut Self>, tensor_impl: &'a TensorImpl<S>) -> Tensor<'a, S> {
+    /// This function is identical to  [`Tensor::new`][Tensor::new], but it allows to create the tensor without the
+    /// use of a heap.
+    /// Few examples of ways to create an [`EValue`](crate::evalue::EValue):
+    /// ```rust,ignore
+    /// // The tensor is allocated on the heap
+    /// let tensor = Tensor::new(&tensor_impl, storage);
+    ///
+    /// // The tensor is allocated on the stack
+    /// let storage = pin::pin!(executorch::util::Storage::<Tensor<f32>>::default());
+    /// let tensor = Tensor::new_in_storage(&tensor_impl, storage);
+    ///
+    /// // The tensor is allocated using a memory allocator
+    /// let allocator: impl AsRef<MemoryAllocator> = ...; // usually global
+    /// let tensor = Tensor::new_in_storage(&tensor_impl, allocator.allocate_pinned().unwrap());
+    /// ```
+    /// Note that the tensor data is not copied, and the allocation required for the tensor is very small.
+    /// See [`Storage`] for more information.
+    pub fn new_in_storage(
+        tensor_impl: &'a TensorImpl<S>,
+        storage: Pin<&'a mut Storage<Tensor<S>>>,
+    ) -> Self {
         // Safety: both Self and TensorImpl are immutable
-        unsafe { Tensor::new_in_storage(tensor_impl, self) }
+        unsafe { Self::new_in_storage_impl(tensor_impl, storage) }
     }
 }
 
@@ -692,30 +706,41 @@ impl<'a, S: Scalar> TensorMut<'a, S> {
     ///
     /// The underlying Cpp object is allocated on the heap, which is preferred on systems in which allocations are
     /// available.
-    /// For an identical version that allocates the object on the stack use:
-    /// ```rust,ignore
-    /// let storage = executorch::storage!(TensorMut<f32>);
-    /// let tensor: TensorMut<f32> = storage.new(tensor_impl);
-    /// ```
-    /// See `executorch::util::Storage` for more information.
+    /// For an identical version that allocates the object in a given storage (possible on the stack), see the
+    /// [`new_in_storage`][TensorMut::new_in_storage] method.
+    /// Note that the tensor data is not copied, and the allocation required for the tensor is very small.
+    /// See [`Storage`] for more information.
     #[cfg(feature = "alloc")]
     pub fn new(tensor_impl: &'a mut TensorImplMut<S>) -> Self {
         // Safety: Self has a mutable data, and we indeed took a mutable reference to tensor_impl
         unsafe { Self::new_boxed(tensor_impl) }
     }
-}
-impl<S: Scalar> Storage<TensorMut<'_, S>> {
+
     /// Create a new [`TensorMut`] from a [`TensorImplMut`] in the given storage.
     ///
-    /// This function is identical to `TensorMut::new`, but it allows to create the tensor on the stack.
-    /// See `executorch::util::Storage` for more information.
-    #[allow(clippy::new_ret_no_self)]
-    pub fn new<'a>(
-        self: Pin<&'a mut Self>,
+    /// This function is identical to  [`TensorMut::new`][TensorMut::new], but it allows to create the tensor without the
+    /// use of a heap.
+    /// Few examples of ways to create an [`EValue`](crate::evalue::EValue):
+    /// ```rust,ignore
+    /// // The tensor is allocated on the heap
+    /// let tensor = TensorMut::new(&tensor_impl, storage);
+    ///
+    /// // The tensor is allocated on the stack
+    /// let storage = pin::pin!(executorch::util::Storage::<TensorMut<f32>>::default());
+    /// let tensor = TensorMut::new_in_storage(&tensor_impl, storage);
+    ///
+    /// // The tensor is allocated using a memory allocator
+    /// let allocator: impl AsRef<MemoryAllocator> = ...; // usually global
+    /// let tensor = TensorMut::new_in_storage(&tensor_impl, allocator.allocate_pinned().unwrap());
+    /// ```
+    /// Note that the tensor data is not copied, and the allocation required for the tensor is very small.
+    /// See the [`Storage`] struct for more information.
+    pub fn new_in_storage(
         tensor_impl: &'a mut TensorImplMut<S>,
-    ) -> TensorMut<'a, S> {
+        storage: Pin<&'a mut Storage<TensorMut<S>>>,
+    ) -> Self {
         // Safety: Self has a mutable data, and we indeed took a mutable reference to tensor_impl
-        unsafe { TensorMut::new_in_storage(tensor_impl, self) }
+        unsafe { Self::new_in_storage_impl(tensor_impl, storage) }
     }
 }
 
@@ -785,9 +810,9 @@ impl<'a, S: Scalar> TensorImpl<'a, S> {
     /// # Arguments
     ///
     /// * `sizes` - The sizes (dimensions) of the tensor. The length of this slice is the number of dimensions of
-    /// the tensor. The slice must be valid for the lifetime of the TensorImpl.
+    ///     the tensor. The slice must be valid for the lifetime of the TensorImpl.
     /// * `data` - A pointer to the data of the tensor. The caller must ensure that the data is valid for the
-    /// lifetime of the TensorImpl.
+    ///     lifetime of the TensorImpl.
     /// * `dim_order` - The order of the dimensions of the tensor, must have the same length as `sizes`.
     /// * `strides` - The strides of the tensor, must have the same length as `sizes`.
     ///
@@ -814,9 +839,9 @@ impl<'a, S: Scalar> TensorImplMut<'a, S> {
     /// # Arguments
     ///
     /// * `sizes` - The sizes (dimensions) of the tensor. The length of this slice is the number of dimensions of
-    /// the tensor. The slice must be valid for the lifetime of the TensorImplMut.
+    ///     the tensor. The slice must be valid for the lifetime of the TensorImplMut.
     /// * `data` - A pointer to the data of the tensor. The caller must ensure that the data is valid for the
-    /// lifetime of the TensorImplMut.
+    ///     lifetime of the TensorImplMut.
     /// * `dim_order` - The order of the dimensions of the tensor, must have the same length as `sizes`.
     /// * `strides` - The strides of the tensor, must have the same length as `sizes`.
     ///

@@ -1,5 +1,6 @@
 import argparse
 import multiprocessing
+import sys
 import shutil
 import subprocess
 from pathlib import Path
@@ -33,6 +34,8 @@ def main():
     # TODO setup a venv here
 
     clone_executorch()
+
+    subprocess.check_call([sys.executable, "-m", "ensurepip"])
     if not args.skip_executorch_python:
         subprocess.check_call(["./install_requirements.sh"], cwd=DEV_EXECUTORCH_DIR)
     else:
@@ -44,7 +47,7 @@ def main():
             "wheel",
             "zstd",
         ]
-        subprocess.check_call([get_pip(), "install", *deps])
+        subprocess.check_call([sys.executable, "-m", "pip", "install", *deps])
     build_executorch_with_dev_cfg()
 
 
@@ -98,22 +101,6 @@ def build_executorch_with_dev_cfg():
         ["cmake", "--build", "cmake-out", "-j" + str(multiprocessing.cpu_count() + 1)],
         cwd=DEV_EXECUTORCH_DIR,
     )
-
-
-def get_pip():
-    try:
-        subprocess.run(['pip3', '--version'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        return 'pip3'
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        pass
-
-    try:
-        subprocess.run(['pip', '--version'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        return 'pip'
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        pass
-
-    raise RuntimeError("Neither 'pip3' nor 'pip' is installed on this system.")
 
 if __name__ == "__main__":
     main()
