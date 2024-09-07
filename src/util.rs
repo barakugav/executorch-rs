@@ -647,7 +647,15 @@ pub trait DimArr<T>: AsRef<[T]> + AsMut<[T]> {
 }
 
 macro_rules! impl_dim_arr {
-    ($size:expr) => {
+    (0) => {
+        impl<T: Clone + Copy + Default> DimArr<T> for [T; 0] {
+            fn zeros(ndim: usize) -> Self {
+                assert_eq!(ndim, 0, "Invalid dimension size");
+                []
+            }
+        }
+    };
+    ($size:literal) => {
         impl<T: Clone + Copy + Default> DimArr<T> for [T; $size] {
             fn zeros(ndim: usize) -> Self {
                 assert_eq!(ndim, $size, "Invalid dimension size");
