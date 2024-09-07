@@ -18,7 +18,7 @@ fn real_main() {
 
     // Safety: We are the main function, no other function access the buffer
     let buffer = unsafe { &mut *core::ptr::addr_of_mut!(MEMORY_ALLOCATOR_BUF) };
-    let memory_allocator = MemoryAllocator::new(buffer);
+    let allocator = MemoryAllocator::new(buffer);
 
     let file_data_loader = FileDataLoader::from_path_cstr(cstr::cstr!(b"model.pte"), None).unwrap();
 
@@ -31,10 +31,10 @@ fn real_main() {
     let method_meta = program.method_meta(cstr::cstr!(b"forward")).unwrap();
 
     let num_memory_planned_buffers = method_meta.num_memory_planned_buffers();
-    let planned_arenas = memory_allocator
+    let planned_arenas = allocator
         .allocate_arr_fn(num_memory_planned_buffers, |idx| {
             let buf_size = method_meta.memory_planned_buffer_size(idx).unwrap();
-            let buf = memory_allocator
+            let buf = allocator
                 .allocate_arr::<u8>(buf_size)
                 .expect("Failed to allocate buffer");
             Span::from_slice(buf)
@@ -43,7 +43,7 @@ fn real_main() {
 
     let mut planned_memory = HierarchicalAllocator::new(Span::from_slice(planned_arenas));
 
-    let memory_manager = MemoryManager::new(&memory_allocator, Some(&mut planned_memory), None);
+    let memory_manager = MemoryManager::new(&allocator, Some(&mut planned_memory), None);
 
     let mut method = program
         .load_method(cstr::cstr!(b"forward"), &memory_manager)
@@ -51,17 +51,13 @@ fn real_main() {
 
     let input_array1 = Array::new(ndarray::arr1(&[1.0_f32]));
     let input_tensor_impl1 = input_array1.as_tensor_impl();
-    let storage = executorch::storage!(Tensor<f32>);
-    let input_tensor1 = storage.new(&input_tensor_impl1);
-    let storage = executorch::storage!(EValue);
-    let input_evalue1 = storage.new(input_tensor1);
+    let input_tensor1 = Tensor::new_in_storage(&input_tensor_impl1, allocator.allocate_pinned().unwrap());
+    let input_evalue1 = EValue::new_in_storage(input_tensor1, allocator.allocate_pinned().unwrap());
 
     let input_array2 = Array::new(ndarray::arr1(&[1.0_f32]));
     let input_tensor_impl2 = input_array2.as_tensor_impl();
-    let storage = executorch::storage!(Tensor<f32>);
-    let input_tensor2 = storage.new(&input_tensor_impl2);
-    let storage = executorch::storage!(EValue);
-    let input_evalue2 = storage.new(input_tensor2);
+    let input_tensor2 = Tensor::new_in_storage(&input_tensor_impl2, allocator.allocate_pinned().unwrap());
+    let input_evalue2 = EValue::new_in_storage(input_tensor2, allocator.allocate_pinned().unwrap());
 
     let mut method_exe = method.start_execution();
 

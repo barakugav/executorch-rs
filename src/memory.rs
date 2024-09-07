@@ -4,6 +4,7 @@
 //! This enable using the library in embedded systems where dynamic memory allocation is not allowed, or when allocation
 //! is a performance bottleneck.
 
+use core::pin::Pin;
 use std::cell::UnsafeCell;
 use std::marker::PhantomData;
 use std::ptr;
@@ -72,6 +73,21 @@ impl<'a> MemoryAllocator<'a> {
         let ptr = unsafe { self.allocate_raw(size, alignment) }? as *mut T;
         unsafe { ptr.write(Default::default()) };
         Some(unsafe { &mut *ptr })
+    }
+
+    /// Allocates a pinned memory for a type `T` and initializes it with `Default::default()`.
+    ///
+    /// # Returns
+    ///
+    /// A pinned mutable reference to the allocated memory, or [`None`] if allocation failed.
+    ///
+    /// Allocation may failed if the allocator is out of memory.
+    pub fn allocate_pinned<T: Default>(&self) -> Option<Pin<&mut T>> {
+        let size = std::mem::size_of::<T>();
+        let alignment = std::mem::align_of::<T>();
+        let ptr = unsafe { self.allocate_raw(size, alignment) }? as *mut T;
+        unsafe { ptr.write(Default::default()) };
+        Some(unsafe { Pin::new_unchecked(&mut *ptr) })
     }
 
     /// Allocates memory for an array of type `T` and initializes each element with `Default::default()`.
