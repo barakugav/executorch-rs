@@ -785,9 +785,9 @@ impl<'a, S: Scalar> TensorImpl<'a, S> {
     /// # Arguments
     ///
     /// * `sizes` - The sizes (dimensions) of the tensor. The length of this slice is the number of dimensions of
-    /// the tensor. The slice must be valid for the lifetime of the TensorImpl.
+    ///     the tensor. The slice must be valid for the lifetime of the TensorImpl.
     /// * `data` - A pointer to the data of the tensor. The caller must ensure that the data is valid for the
-    /// lifetime of the TensorImpl.
+    ///     lifetime of the TensorImpl.
     /// * `dim_order` - The order of the dimensions of the tensor, must have the same length as `sizes`.
     /// * `strides` - The strides of the tensor, must have the same length as `sizes`.
     ///
@@ -814,9 +814,9 @@ impl<'a, S: Scalar> TensorImplMut<'a, S> {
     /// # Arguments
     ///
     /// * `sizes` - The sizes (dimensions) of the tensor. The length of this slice is the number of dimensions of
-    /// the tensor. The slice must be valid for the lifetime of the TensorImplMut.
+    ///     the tensor. The slice must be valid for the lifetime of the TensorImplMut.
     /// * `data` - A pointer to the data of the tensor. The caller must ensure that the data is valid for the
-    /// lifetime of the TensorImplMut.
+    ///     lifetime of the TensorImplMut.
     /// * `dim_order` - The order of the dimensions of the tensor, must have the same length as `sizes`.
     /// * `strides` - The strides of the tensor, must have the same length as `sizes`.
     ///

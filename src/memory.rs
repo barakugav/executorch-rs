@@ -179,8 +179,8 @@ impl HierarchicalAllocator {
     /// # Arguments
     ///
     /// * `buffers` - The buffers to use for memory allocation.
-    /// `buffers.size()` must be >= `MethodMeta::num_non_const_buffers()`.
-    /// `buffers[N].size()` must be >= `MethodMeta::non_const_buffer_size(N)`.
+    ///     `buffers.size()` must be >= `MethodMeta::num_non_const_buffers()`.
+    ///     `buffers[N].size()` must be >= `MethodMeta::non_const_buffer_size(N)`.
     pub fn new(buffers: Span<Span<u8>>) -> Self {
         // Safety: The transmute is safe because the memory layout of Span<Span<u8>> and et_c::Span<et_c::Span<u8>>
         // is the same.
@@ -215,15 +215,15 @@ impl<'a> MemoryManager<'a> {
     /// # Arguments
     ///
     /// * `method_allocator` - The allocator to use when loading a Method and allocating its internal structures.
-    /// Must outlive the Method that uses it.
+    ///     Must outlive the Method that uses it.
     /// * `planned_memory` - The memory-planned buffers to use for mutable tensor data when executing a Method.
-    /// Must outlive the Method that uses it. May be [`None`] if the Method does not use any memory-planned tensor data.
-    /// The sizes of the buffers in this HierarchicalAllocator must agree with the corresponding
-    /// `MethodMeta::num_memory_planned_buffers()` and `MethodMeta::memory_planned_buffer_size(N)` values,
-    /// which are embedded in the Program.
+    ///     Must outlive the Method that uses it. May be [`None`] if the Method does not use any memory-planned tensor data.
+    ///     The sizes of the buffers in this HierarchicalAllocator must agree with the corresponding
+    ///     `MethodMeta::num_memory_planned_buffers()` and `MethodMeta::memory_planned_buffer_size(N)` values,
+    ///     which are embedded in the Program.
     /// * `temp_allocator` - The allocator to use when allocating temporary data during kernel or delegate execution.
-    /// Must outlive the Method that uses it. May be [`None`] if the Method does not use kernels or delegates that
-    /// allocate temporary data. This allocator will be reset after every kernel or delegate call during execution.
+    ///     Must outlive the Method that uses it. May be [`None`] if the Method does not use kernels or delegates that
+    ///     allocate temporary data. This allocator will be reset after every kernel or delegate call during execution.
     pub fn new<'b: 'a>(
         method_allocator: &'a impl AsRef<MemoryAllocator<'b>>,
         planned_memory: Option<&'a mut HierarchicalAllocator>,
