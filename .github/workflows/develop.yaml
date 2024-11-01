@@ -6,6 +6,12 @@ on:
       - main
   pull_request: {}
 
+concurrency:
+  # on main, group = workflow-run_id
+  # on PR, group = workflow-PR_number
+  group: ${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.run_id || github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   ci:
     runs-on: ${{ matrix.runner }}
