@@ -79,10 +79,10 @@
 //! ## Cargo Features
 //! By default all features are disabled.
 //! - `data-loader`: Includes the [`FileDataLoader`] and [`MmapDataLoader`] structs. Without this feature the only available
-//! data loader is [`BufferDataLoader`]. The `libextension_data_loader.a` static library is required, compile C++
-//! `executorch` with `EXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON`.
+//!     data loader is [`BufferDataLoader`]. The `libextension_data_loader.a` static library is required, compile C++
+//!     `executorch` with `EXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON`.
 //! - `module`: Includes the [`Module`] struct. The `libextension_module_static.a` static library is required, compile C++
-//! `executorch` with `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`.
+//!     `executorch` with `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`.
 //!
 //! [`FileDataLoader`]: crate::torch::executor::util::FileDataLoader
 //! [`MmapDataLoader`]: crate::torch::executor::util::MmapDataLoader
