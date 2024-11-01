@@ -35,5 +35,5 @@ module = ["std"]
 [dependencies]
 
 [build-dependencies]
-bindgen = "0.69.4"
-cc = "1.1.6"
+bindgen = "0.70"
+cc = "1.1"
