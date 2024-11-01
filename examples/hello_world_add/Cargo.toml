@@ -7,5 +7,4 @@ edition = "2021"
 [dependencies]
 executorch = { path = "../../", features = ["data-loader", "module"] }
 log = "0.4.22"
-env_logger = "0.11.3"
 ndarray = "0.16.0"

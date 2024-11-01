@@ -111,7 +111,6 @@ version = "0.3.0"
 dependencies = [
  "cfg-if",
  "executorch-sys",
- "log",
  "ndarray",
 ]
 
