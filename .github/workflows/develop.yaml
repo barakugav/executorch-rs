@@ -4,9 +4,13 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
+  pull_request: {}
+
+concurrency:
+  # on main, group = workflow-run_id
+  # on PR, group = workflow-PR_number
+  group: ${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.run_id || github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
   ci:
@@ -93,3 +97,53 @@ jobs:
         # python export_model.py
         run: cargo run
         working-directory: examples/hello_world_add_no_std
+
+  rust-version-check-clippy:
+    # check that we can build using different rust versions:
+    # - the minimal rust version that is specified by this crate
+    # - the latest stable version
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust-version: ["msrv", "stable"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Determine Rust version
+        id: rust-version
+        run: |
+          if [ "${{ matrix.rust-version }}" = "stable" ]; then
+            rust_version="stable"
+          else
+            cargo install toml-cli
+            rust_version=$(toml get Cargo.toml package.rust-version --raw)
+          fi
+          echo "Rust version: '$rust_version'"
+          echo "rust_version=$rust_version" >> "$GITHUB_OUTPUT"
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ steps.rust-version.outputs.rust_version }}
+          components: clippy
+          cache-workspaces:
+            ./
+            executorch-sys
+            examples/hello_world_add
+            examples/hello_world_add_no_std
+
+      - name: cargo check executorch
+        run: cargo check
+        working-directory: .
+      - name: cargo clippy executorch
+        uses: auguwu/clippy-action@1.4.0
+        with:
+          working-directory: .
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: cargo check executorch-sys
+        run: cargo check
+        working-directory: executorch-sys
+      - name: cargo clippy executorch-sys
+        uses: auguwu/clippy-action@1.4.0
+        with:
+          working-directory: executorch-sys
+          token: ${{ secrets.GITHUB_TOKEN }}

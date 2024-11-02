@@ -3,6 +3,7 @@ name = "executorch"
 version = "0.3.0"
 authors = ["Barak Ugav <barakugav@gmail.com>"]
 edition = "2021"
+rust-version = "1.77.0" # executorch-sys/bindgen_0.70
 description = "Rust bindings for ExecuTorch - On-device AI across mobile, embedded and edge for PyTorch"
 readme = "README.md"
 repository = "https://github.com/barakugav/executorch-rs"
@@ -28,15 +29,10 @@ all-features = true
 
 [dependencies]
 executorch-sys = { path = "executorch-sys", version = "0.3.0", default-features = false }
-ndarray = { version = "0.16.0", default-features = false }
-log = "0.4.22"
-half = { version = "2.4.1", optional = true }
-num-complex = { version = "0.4.6", optional = true }
-cfg-if = "1.0.0"
-
-[build-dependencies]
-bindgen = "0.69.4"
-cc = "1.1.6"
+ndarray = { version = "0.16", default-features = false }
+half = { version = "2.4", optional = true }
+num-complex = { version = "0.4", optional = true }
+cfg-if = "1.0"
 
 [features]
 default = ["std"]

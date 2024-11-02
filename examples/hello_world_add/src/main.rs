@@ -8,10 +8,6 @@ use executorch::tensor::{Array, Tensor};
 use ndarray::array;
 
 fn main() {
-    env_logger::Builder::new()
-        .filter_level(log::LevelFilter::Debug)
-        .init();
-
     executorch::platform::pal_init();
 
     let mut module = Module::new(

@@ -112,8 +112,8 @@ impl<T> IntoRust for et_c::Result<T> {
         } else {
             let err: et_c::Error =
                 unsafe { ManuallyDrop::into_inner(self.__bindgen_anon_1.error_) };
-            Err(err.rs().err().unwrap_or_else(|| {
-                log::debug!("Error_Ok should not happen");
+            Err(err.rs().err().unwrap_or({
+                // Error_Ok should not happen
                 Error::Internal
             }))
         }
@@ -128,8 +128,8 @@ impl IntoRust for et_rs_c::Result_i64 {
         } else {
             let err: et_c::Error =
                 unsafe { ManuallyDrop::into_inner(self.__bindgen_anon_1.error_) };
-            Err(err.rs().err().unwrap_or_else(|| {
-                log::debug!("Error_Ok should not happen");
+            Err(err.rs().err().unwrap_or({
+                // Error_Ok should not happen
                 Error::Internal
             }))
         }
@@ -144,8 +144,8 @@ impl IntoRust for et_rs_c::Result_MethodMeta {
         } else {
             let err: et_c::Error =
                 unsafe { ManuallyDrop::into_inner(self.__bindgen_anon_1.error_) };
-            Err(err.rs().err().unwrap_or_else(|| {
-                log::debug!("Error_Ok should not happen");
+            Err(err.rs().err().unwrap_or({
+                // Error_Ok should not happen
                 Error::Internal
             }))
         }
