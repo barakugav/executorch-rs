@@ -1,8 +1,8 @@
 //! Error types used in the [`executortorch`](crate) crate.
 
-use std::mem::ManuallyDrop;
+use core::mem::MaybeUninit;
 
-use crate::{et_c, et_rs_c, util::IntoRust};
+use crate::{et_c, util::IntoRust};
 
 /// ExecuTorch Error type.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -103,53 +103,10 @@ impl IntoRust for et_c::Error {
 
 pub(crate) type Result<T> = std::result::Result<T, Error>;
 
-impl<T> IntoRust for et_c::Result<T> {
-    type RsType = Result<T>;
-    fn rs(self) -> Self::RsType {
-        if self.hasValue_ {
-            let value = unsafe { ManuallyDrop::into_inner(self.__bindgen_anon_1.value_) };
-            Ok(value)
-        } else {
-            let err: et_c::Error =
-                unsafe { ManuallyDrop::into_inner(self.__bindgen_anon_1.error_) };
-            Err(err.rs().err().unwrap_or({
-                // Error_Ok should not happen
-                Error::Internal
-            }))
-        }
-    }
-}
-impl IntoRust for et_rs_c::Result_i64 {
-    type RsType = Result<i64>;
-    fn rs(self) -> Self::RsType {
-        if self.hasValue_ {
-            let value = unsafe { ManuallyDrop::into_inner(self.__bindgen_anon_1.value_) };
-            Ok(value)
-        } else {
-            let err: et_c::Error =
-                unsafe { ManuallyDrop::into_inner(self.__bindgen_anon_1.error_) };
-            Err(err.rs().err().unwrap_or({
-                // Error_Ok should not happen
-                Error::Internal
-            }))
-        }
-    }
-}
-impl IntoRust for et_rs_c::Result_MethodMeta {
-    type RsType = Result<et_c::MethodMeta>;
-    fn rs(self) -> Self::RsType {
-        if self.hasValue_ {
-            let value = unsafe { ManuallyDrop::into_inner(self.__bindgen_anon_1.value_) };
-            Ok(value)
-        } else {
-            let err: et_c::Error =
-                unsafe { ManuallyDrop::into_inner(self.__bindgen_anon_1.error_) };
-            Err(err.rs().err().unwrap_or({
-                // Error_Ok should not happen
-                Error::Internal
-            }))
-        }
-    }
+pub(crate) fn fallible<T>(f: impl FnOnce(*mut T) -> et_c::Error) -> Result<T> {
+    let mut value = MaybeUninit::uninit();
+    let err = f(value.as_mut_ptr());
+    err.rs().map(|_| unsafe { value.assume_init() })
 }
 
 #[cfg(test)]

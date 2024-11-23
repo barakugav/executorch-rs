@@ -41,7 +41,7 @@ fn real_main() {
         })
         .unwrap();
 
-    let mut planned_memory = HierarchicalAllocator::new(Span::from_slice(planned_arenas));
+    let mut planned_memory = HierarchicalAllocator::new(planned_arenas);
 
     let memory_manager = MemoryManager::new(&allocator, Some(&mut planned_memory), None);
 
@@ -51,12 +51,14 @@ fn real_main() {
 
     let input_array1 = Array::new(ndarray::arr1(&[1.0_f32]));
     let input_tensor_impl1 = input_array1.as_tensor_impl();
-    let input_tensor1 = Tensor::new_in_storage(&input_tensor_impl1, allocator.allocate_pinned().unwrap());
+    let input_tensor1 =
+        Tensor::new_in_storage(&input_tensor_impl1, allocator.allocate_pinned().unwrap());
     let input_evalue1 = EValue::new_in_storage(input_tensor1, allocator.allocate_pinned().unwrap());
 
     let input_array2 = Array::new(ndarray::arr1(&[1.0_f32]));
     let input_tensor_impl2 = input_array2.as_tensor_impl();
-    let input_tensor2 = Tensor::new_in_storage(&input_tensor_impl2, allocator.allocate_pinned().unwrap());
+    let input_tensor2 =
+        Tensor::new_in_storage(&input_tensor_impl2, allocator.allocate_pinned().unwrap());
     let input_evalue2 = EValue::new_in_storage(input_tensor2, allocator.allocate_pinned().unwrap());
 
     let mut method_exe = method.start_execution();

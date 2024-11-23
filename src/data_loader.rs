@@ -57,9 +57,8 @@ mod file_data_loader {
     use std::cell::UnsafeCell;
     use std::ffi::CStr;
 
-    use crate::error::Result;
-    use crate::et_c;
-    use crate::util::IntoRust;
+    use crate::error::{fallible, Result};
+    use crate::{et_c, et_rs_c};
 
     use super::DataLoader;
 
@@ -126,8 +125,9 @@ mod file_data_loader {
         /// The `file_name` should be a valid UTF-8 string and not contains a null byte other than the one at the end.
         pub fn from_path_cstr(file_name: &CStr, alignment: Option<usize>) -> Result<Self> {
             let alignment = alignment.unwrap_or(16);
-            let loader =
-                unsafe { et_c::util::FileDataLoader::from(file_name.as_ptr(), alignment) }.rs()?;
+            let loader = fallible(|loader| unsafe {
+                et_rs_c::FileDataLoader_new(file_name.as_ptr(), alignment, loader)
+            })?;
             Ok(Self(UnsafeCell::new(loader)))
         }
     }
@@ -198,9 +198,9 @@ mod file_data_loader {
         /// The `file_name` should be a valid UTF-8 string and not contains a null byte other than the one at the end.
         pub fn from_path_cstr(file_name: &CStr, mlock_config: Option<MlockConfig>) -> Result<Self> {
             let mlock_config = mlock_config.unwrap_or(MlockConfig::UseMlock);
-            let loader =
-                unsafe { et_c::util::MmapDataLoader::from(file_name.as_ptr(), mlock_config) }
-                    .rs()?;
+            let loader = fallible(|loader| unsafe {
+                et_rs_c::MmapDataLoader_new(file_name.as_ptr(), mlock_config, loader)
+            })?;
             Ok(Self(UnsafeCell::new(loader)))
         }
     }

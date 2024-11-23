@@ -8,7 +8,9 @@ use std::pin::Pin;
 
 use crate::error::{Error, Result};
 use crate::tensor::{self, TensorAny, TensorBase};
-use crate::util::{ArrayRef, Destroy, IntoRust, NonTriviallyMovable, Storable, Storage};
+use crate::util::{
+    ArrayRef, ArrayRefImpl, Destroy, IntoRust, NonTriviallyMovable, Storable, Storage,
+};
 use crate::{et_c, et_rs_c};
 
 /// A tag indicating the type of the value stored in an [`EValue`].
@@ -450,7 +452,7 @@ impl TryFrom<&EValue<'_>> for i64 {
     type Error = Error;
     fn try_from(value: &EValue) -> Result<i64> {
         match value.tag() {
-            Some(Tag::Int) => Ok(unsafe { *value.as_evalue().payload.copyable_union.as_int }),
+            Some(Tag::Int) => Ok(unsafe { et_rs_c::EValue_as_i64(value.as_evalue()) }),
             _ => Err(Error::InvalidType),
         }
     }
@@ -459,7 +461,7 @@ impl TryFrom<&EValue<'_>> for f64 {
     type Error = Error;
     fn try_from(value: &EValue) -> Result<f64> {
         match value.tag() {
-            Some(Tag::Double) => Ok(unsafe { *value.as_evalue().payload.copyable_union.as_double }),
+            Some(Tag::Double) => Ok(unsafe { et_rs_c::EValue_as_f64(value.as_evalue()) }),
             _ => Err(Error::InvalidType),
         }
     }
@@ -468,7 +470,7 @@ impl TryFrom<&EValue<'_>> for bool {
     type Error = Error;
     fn try_from(value: &EValue) -> Result<bool> {
         match value.tag() {
-            Some(Tag::Bool) => Ok(unsafe { *value.as_evalue().payload.copyable_union.as_bool }),
+            Some(Tag::Bool) => Ok(unsafe { et_rs_c::EValue_as_bool(value.as_evalue()) }),
             _ => Err(Error::InvalidType),
         }
     }
@@ -502,10 +504,9 @@ impl<'a> TryFrom<&'a EValue<'_>> for &'a [std::ffi::c_char] {
     type Error = Error;
     fn try_from(value: &'a EValue) -> Result<&'a [std::ffi::c_char]> {
         match value.tag() {
-            Some(Tag::String) => Ok(unsafe {
-                let arr = &*value.as_evalue().payload.copyable_union.as_string;
-                std::slice::from_raw_parts(arr.Data, arr.Length)
-            }),
+            Some(Tag::String) => {
+                Ok(unsafe { et_rs_c::EValue_as_string(value.as_evalue()).as_slice() })
+            }
             _ => Err(Error::InvalidType),
         }
     }
@@ -526,10 +527,9 @@ impl<'a> TryFrom<&'a EValue<'_>> for &'a [f64] {
     type Error = Error;
     fn try_from(value: &'a EValue) -> Result<&'a [f64]> {
         match value.tag() {
-            Some(Tag::ListDouble) => Ok(unsafe {
-                let arr = &*value.as_evalue().payload.copyable_union.as_double_list;
-                std::slice::from_raw_parts(arr.Data, arr.Length)
-            }),
+            Some(Tag::ListDouble) => {
+                Ok(unsafe { et_rs_c::EValue_as_f64_list(value.as_evalue()).as_slice() })
+            }
             _ => Err(Error::InvalidType),
         }
     }
@@ -538,10 +538,9 @@ impl<'a> TryFrom<&'a EValue<'_>> for &'a [bool] {
     type Error = Error;
     fn try_from(value: &'a EValue) -> Result<&'a [bool]> {
         match value.tag() {
-            Some(Tag::ListBool) => Ok(unsafe {
-                let arr = &*value.as_evalue().payload.copyable_union.as_bool_list;
-                std::slice::from_raw_parts(arr.Data, arr.Length)
-            }),
+            Some(Tag::ListBool) => {
+                Ok(unsafe { et_rs_c::EValue_as_bool_list(value.as_evalue()).as_slice() })
+            }
             _ => Err(Error::InvalidType),
         }
     }

@@ -309,8 +309,8 @@ impl<'a, D: Data> TensorBase<'a, D> {
     pub fn sizes(&self) -> &[SizesType] {
         unsafe {
             let arr = et_rs_c::Tensor_sizes(self.as_cpp_tensor());
-            debug_assert!(!arr.Data.is_null());
-            std::slice::from_raw_parts(arr.Data, arr.Length)
+            debug_assert!(!arr.data.is_null());
+            std::slice::from_raw_parts(arr.data, arr.len)
         }
     }
 
@@ -318,8 +318,8 @@ impl<'a, D: Data> TensorBase<'a, D> {
     pub fn dim_order(&self) -> &[DimOrderType] {
         unsafe {
             let arr = et_rs_c::Tensor_dim_order(self.as_cpp_tensor());
-            debug_assert!(!arr.Data.is_null());
-            std::slice::from_raw_parts(arr.Data, arr.Length)
+            debug_assert!(!arr.data.is_null());
+            std::slice::from_raw_parts(arr.data, arr.len)
         }
     }
 
@@ -327,8 +327,8 @@ impl<'a, D: Data> TensorBase<'a, D> {
     pub fn strides(&self) -> &[StridesType] {
         unsafe {
             let arr = et_rs_c::Tensor_strides(self.as_cpp_tensor());
-            debug_assert!(!arr.Data.is_null());
-            std::slice::from_raw_parts(arr.Data, arr.Length)
+            debug_assert!(!arr.data.is_null());
+            std::slice::from_raw_parts(arr.data, arr.len)
         }
     }
 

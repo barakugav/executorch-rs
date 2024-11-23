@@ -188,8 +188,8 @@ mod malloc_allocator {
 }
 
 /// A group of buffers that can be used to represent a device's memory hierarchy.
-pub struct HierarchicalAllocator(et_c::HierarchicalAllocator);
-impl HierarchicalAllocator {
+pub struct HierarchicalAllocator<'a>(et_c::HierarchicalAllocator, PhantomData<&'a ()>);
+impl<'a> HierarchicalAllocator<'a> {
     /// Constructs a new HierarchicalAllocator.
     ///
     /// # Arguments
@@ -197,14 +197,20 @@ impl HierarchicalAllocator {
     /// * `buffers` - The buffers to use for memory allocation.
     ///     `buffers.size()` must be >= `MethodMeta::num_non_const_buffers()`.
     ///     `buffers[N].size()` must be >= `MethodMeta::non_const_buffer_size(N)`.
-    pub fn new(buffers: Span<Span<u8>>) -> Self {
-        // Safety: The transmute is safe because the memory layout of Span<Span<u8>> and et_c::Span<et_c::Span<u8>>
-        // is the same.
-        let buffers: et_c::Span<et_c::Span<u8>> = unsafe { std::mem::transmute(buffers) };
-        Self(unsafe { et_rs_c::HierarchicalAllocator_new(buffers) })
+    pub fn new(buffers: &'a mut [Span<'a, u8>]) -> Self {
+        // Safety: safe because the memory layout of [Span<u8>] and [et_rs_c::SpanU8] is the same.
+        let buffers: &'a mut [et_rs_c::SpanU8] = unsafe { std::mem::transmute(buffers) };
+        let buffers = et_rs_c::SpanSpanU8 {
+            data: buffers.as_mut_ptr(),
+            len: buffers.len(),
+        };
+        Self(
+            unsafe { et_rs_c::HierarchicalAllocator_new(buffers) },
+            PhantomData,
+        )
     }
 }
-impl Drop for HierarchicalAllocator {
+impl<'a> Drop for HierarchicalAllocator<'a> {
     fn drop(&mut self) {
         unsafe { et_rs_c::HierarchicalAllocator_destructor(&mut self.0) };
     }

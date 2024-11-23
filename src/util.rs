@@ -11,7 +11,7 @@ use std::pin::Pin;
 
 #[cfg(feature = "alloc")]
 use crate::et_alloc;
-use crate::et_c;
+use crate::{et_c, et_rs_c};
 
 pub(crate) trait Destroy {
     /// Destroy the object without deallocating its memory.
@@ -345,43 +345,89 @@ pub(crate) trait IntoRust {
 /// This is intended to be trivially copyable, so it should be passed by
 /// value.
 #[allow(dead_code)]
-pub struct ArrayRef<'a, T>(pub(crate) et_c::ArrayRef<T>, PhantomData<&'a ()>);
-impl<'a, T> ArrayRef<'a, T> {
-    // pub(crate) unsafe fn from_inner(arr: &et_c::ArrayRef<T>) -> Self {
-    //     Self(
-    //         et_c::ArrayRef::<T> {
-    //             Data: arr.Data,
-    //             Length: arr.Length,
-    //             _phantom_0: PhantomData,
-    //         },
-    //         PhantomData,
-    //     )
-    // }
+pub struct ArrayRef<'a, T: ArrayRefElm>(pub(crate) T::ArrayRefImpl, PhantomData<&'a ()>);
+impl<'a, T: ArrayRefElm> ArrayRef<'a, T> {
+    pub(crate) unsafe fn from_inner(arr: T::ArrayRefImpl) -> Self {
+        Self(arr, PhantomData)
+    }
 
     /// Create an ArrayRef from a slice.
     ///
     /// The given slice must outlive the ArrayRef.
     pub fn from_slice(s: &'a [T]) -> Self {
-        Self(
-            et_c::ArrayRef {
-                Data: s.as_ptr(),
-                Length: s.len(),
-                _phantom_0: PhantomData,
-            },
-            PhantomData,
-        )
+        Self(unsafe { T::ArrayRefImpl::from_slice(s) }, PhantomData)
     }
 
     /// Get the underlying slice.
-    pub fn as_slice(&self) -> &'a [T] {
-        unsafe { std::slice::from_raw_parts(self.0.Data, self.0.Length) }
+    pub fn as_slice(&self) -> &'a [T]
+    where
+        T: 'static,
+    {
+        unsafe { self.0.as_slice() }
     }
 }
-impl<T: Debug> Debug for ArrayRef<'_, T> {
+impl<T: ArrayRefElm + Debug + 'static> Debug for ArrayRef<'_, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         self.as_slice().fmt(f)
     }
 }
+
+/// An element type that can be used in an ArrayRef.
+pub trait ArrayRefElm {
+    /// The Cpp type that represents an ArrayRef of this element type.
+    type ArrayRefImpl: ArrayRefImpl<Elm = Self>;
+    private_decl! {}
+}
+
+/// A Cpp type that represents an ArrayRef of elements of type Elm.
+pub trait ArrayRefImpl {
+    /// The element type of the ArrayRef.
+    type Elm: ArrayRefElm<ArrayRefImpl = Self>;
+
+    /// Create an ArrayRef from a slice.
+    ///
+    /// # Safety
+    ///
+    /// The given slice must outlive the ArrayRef.
+    unsafe fn from_slice(slice: &[Self::Elm]) -> Self;
+
+    /// Get the underlying slice.
+    ///
+    /// # Safety
+    ///
+    /// The returned slice must not outlive the input slice, but may outlive the ArrayRef.
+    unsafe fn as_slice(&self) -> &'static [Self::Elm];
+
+    private_decl! {}
+}
+
+macro_rules! impl_array_ref {
+    ($element:path, $span:path) => {
+        impl ArrayRefElm for $element {
+            type ArrayRefImpl = $span;
+            private_impl! {}
+        }
+        impl ArrayRefImpl for $span {
+            type Elm = $element;
+            unsafe fn from_slice(slice: &[$element]) -> Self {
+                Self {
+                    data: slice.as_ptr(),
+                    len: slice.len(),
+                }
+            }
+            unsafe fn as_slice(&self) -> &'static [$element] {
+                unsafe { std::slice::from_raw_parts(self.data, self.len) }
+            }
+            private_impl! {}
+        }
+    };
+}
+impl_array_ref!(std::ffi::c_char, et_rs_c::ArrayRefChar);
+impl_array_ref!(u8, et_rs_c::ArrayRefU8);
+impl_array_ref!(i32, et_rs_c::ArrayRefI32);
+impl_array_ref!(f64, et_rs_c::ArrayRefF64);
+impl_array_ref!(bool, et_rs_c::ArrayRefBool);
+impl_array_ref!(et_c::EValue, et_rs_c::ArrayRefEValue);
 
 /// Represent a reference to an array (0 or more elements
 /// consecutively in memory), i.e. a start pointer and a length.  It allows
@@ -399,36 +445,84 @@ impl<T: Debug> Debug for ArrayRef<'_, T> {
 /// This is intended to be trivially copyable, so it should be passed by
 /// value.
 #[allow(dead_code)]
-pub struct Span<'a, T>(pub(crate) et_c::Span<T>, PhantomData<&'a T>);
-impl<'a, T> Span<'a, T> {
-    pub(crate) unsafe fn new(span: et_c::Span<T>) -> Self {
-        Self(span, PhantomData)
-    }
+pub struct Span<'a, T: SpanElm>(pub(crate) T::SpanImpl, PhantomData<&'a T>);
+impl<'a, T: SpanElm> Span<'a, T> {
+    // pub(crate) unsafe fn new(span: T::SpanImpl) -> Self {
+    //     Self(span, PhantomData)
+    // }
 
     /// Create a Span from a mutable slice.
     ///
     /// The given slice must outlive the Span.
     pub fn from_slice(s: &'a mut [T]) -> Self {
-        Self(
-            et_c::Span {
-                data_: s.as_mut_ptr(),
-                length_: s.len(),
-                _phantom_0: PhantomData,
-            },
-            PhantomData,
-        )
+        Self(unsafe { T::SpanImpl::from_slice(s) }, PhantomData)
     }
 
     /// Get the underlying slice.
-    pub fn as_slice(&self) -> &'a mut [T] {
-        unsafe { std::slice::from_raw_parts_mut(self.0.data_, self.0.length_) }
+    pub fn as_slice(&self) -> &'a mut [T]
+    where
+        T: 'static,
+    {
+        unsafe { self.0.as_slice() }
     }
 }
-impl<T: Debug> Debug for Span<'_, T> {
+impl<T: SpanElm + Debug + 'static> Debug for Span<'_, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         self.as_slice().fmt(f)
     }
 }
+
+/// An element type that can be used in a Span.
+pub trait SpanElm {
+    /// The Cpp type that represents a Span of this element type.
+    type SpanImpl: SpanImpl<Elm = Self>;
+    private_decl! {}
+}
+
+/// A Cpp type that represents a Span of elements of type Elm.
+pub trait SpanImpl {
+    /// The element type of the Span.
+    type Elm: SpanElm<SpanImpl = Self>;
+
+    /// Create a Span from a mutable slice.
+    ///
+    /// # Safety
+    ///
+    /// The given slice must outlive the Span.
+    unsafe fn from_slice(slice: &mut [Self::Elm]) -> Self;
+
+    /// Get the underlying slice.
+    ///
+    /// # Safety
+    ///
+    /// The return slice must not outlive the input slice, but may outlive the Span.
+    unsafe fn as_slice(&self) -> &'static mut [Self::Elm];
+
+    private_decl! {}
+}
+
+macro_rules! impl_span {
+    ($element:path, $span:path) => {
+        impl SpanElm for $element {
+            type SpanImpl = $span;
+            private_impl! {}
+        }
+        impl SpanImpl for $span {
+            type Elm = $element;
+            unsafe fn from_slice(slice: &mut [$element]) -> Self {
+                Self {
+                    data: slice.as_mut_ptr(),
+                    len: slice.len(),
+                }
+            }
+            unsafe fn as_slice(&self) -> &'static mut [$element] {
+                unsafe { std::slice::from_raw_parts_mut(self.data, self.len) }
+            }
+            private_impl! {}
+        }
+    };
+}
+impl_span!(u8, et_rs_c::SpanU8);
 
 // /// Leaner optional class, subset of c10, std, and boost optional APIs.
 // pub struct Optional<T>(et_c::optional<T>);
@@ -524,20 +618,28 @@ pub(crate) fn chars2string(chars: Vec<std::ffi::c_char>) -> String {
 #[allow(dead_code)]
 pub(crate) mod cpp_vec {
     use super::IntoRust;
-    use crate::et_rs_c;
+    use crate::{et_c, et_rs_c};
 
-    pub(crate) fn vec_as_slice<T>(vec: &et_rs_c::Vec<T>) -> &[T] {
-        unsafe { std::slice::from_raw_parts(vec.data, vec.len) }
-    }
+    // pub(crate) fn vec_as_slice<T: CppVecElm>(vec: &T::VecImpl) -> &[T] {
+    //     unsafe { std::slice::from_raw_parts(vec.data, vec.len) }
+    // }
 
-    pub(crate) fn vec_as_mut_slice<T>(vec: &mut et_rs_c::Vec<T>) -> &mut [T] {
-        unsafe { std::slice::from_raw_parts_mut(vec.data, vec.len) }
-    }
+    // pub(crate) fn vec_as_mut_slice<T: CppVecElm>(vec: &mut T::VecImpl) -> &mut [T] {
+    //     unsafe { std::slice::from_raw_parts_mut(vec.data, vec.len) }
+    // }
 
-    pub(crate) struct CppVec<T: CppVecElm>(et_rs_c::Vec<T>);
+    pub(crate) struct CppVec<T: CppVecElm>(T::VecImpl);
     impl<T: CppVecElm> CppVec<T> {
+        pub fn new(vec: T::VecImpl) -> Self {
+            Self(vec)
+        }
+
         pub fn as_slice(&self) -> &[T] {
-            vec_as_slice(&self.0)
+            self.0.as_slice()
+        }
+
+        pub fn as_mut_slice(&mut self) -> &mut [T] {
+            self.0.as_mut_slice()
         }
 
         pub fn to_vec(&self) -> Vec<T>
@@ -547,22 +649,11 @@ pub(crate) mod cpp_vec {
             self.as_slice().to_vec()
         }
     }
-    impl<T: CppVecElm> IntoRust for et_rs_c::Vec<T> {
-        type RsType = CppVec<T>;
+
+    impl<V: CppVecImpl> IntoRust for V {
+        type RsType = CppVec<V::Elm>;
         fn rs(self) -> Self::RsType {
             CppVec(self)
-        }
-    }
-    impl IntoRust for et_rs_c::Vec<et_rs_c::Vec<std::ffi::c_char>> {
-        type RsType = CppVec<CppVec<std::ffi::c_char>>;
-        fn rs(self) -> Self::RsType {
-            // Safety: et_rs_c::Vec<T> has the same memory layout as CppVec<T>.
-            unsafe {
-                std::mem::transmute::<
-                    et_rs_c::Vec<et_rs_c::Vec<std::ffi::c_char>>,
-                    CppVec<CppVec<std::ffi::c_char>>,
-                >(self)
-            }
         }
     }
     impl<T: CppVecElm> Drop for CppVec<T> {
@@ -571,35 +662,59 @@ pub(crate) mod cpp_vec {
         }
     }
     pub(crate) trait CppVecElm: Sized {
+        type VecImpl: CppVecImpl<Elm = Self>;
         fn drop_vec(vec: &mut CppVec<Self>);
     }
+    pub(crate) trait CppVecImpl {
+        type Elm: CppVecElm<VecImpl = Self>;
+        fn as_slice(&self) -> &[Self::Elm];
+        fn as_mut_slice(&mut self) -> &mut [Self::Elm];
+    }
     impl CppVecElm for std::ffi::c_char {
+        type VecImpl = et_rs_c::VecChar;
         fn drop_vec(vec: &mut CppVec<Self>) {
-            unsafe { et_rs_c::Vec_char_destructor(&mut vec.0) }
+            unsafe { et_rs_c::VecChar_destructor(&mut vec.0) }
         }
     }
-    impl CppVecElm for CppVec<std::ffi::c_char> {
-        fn drop_vec(vec: &mut CppVec<Self>) {
-            // Safety: CppVec<T> has the same memory layout as et_rs_c::Vec<T>.
-            let vec = unsafe {
-                std::mem::transmute::<
-                    &mut CppVec<CppVec<std::ffi::c_char>>,
-                    &mut et_rs_c::Vec<et_rs_c::Vec<std::ffi::c_char>>,
-                >(vec)
-            };
-            unsafe { et_rs_c::Vec_Vec_char_destructor(vec) }
+    impl CppVecImpl for et_rs_c::VecChar {
+        type Elm = std::ffi::c_char;
+        fn as_slice(&self) -> &[std::ffi::c_char] {
+            unsafe { std::slice::from_raw_parts(self.data, self.len) }
+        }
+        fn as_mut_slice(&mut self) -> &mut [std::ffi::c_char] {
+            unsafe { std::slice::from_raw_parts_mut(self.data, self.len) }
         }
     }
-    // impl<'a> CppVecElm for EValue<'a> {
-    //     fn drop_vec(vec: &mut CppVec<Self>) {
-    //         let vec = unsafe {
-    //             std::mem::transmute::<&mut et_rs_c::Vec<EValue<'a>>, &mut et_rs_c::Vec<et_c::EValue>>(
-    //                 &mut vec.0,
-    //             )
-    //         };
-    //         unsafe { et_rs_c::Vec_EValue_destructor(vec) }
-    //     }
-    // }
+    impl CppVecElm for et_c::EValue {
+        type VecImpl = et_rs_c::VecEValue;
+        fn drop_vec(vec: &mut CppVec<Self>) {
+            unsafe { et_rs_c::VecEValue_destructor(&mut vec.0) }
+        }
+    }
+    impl CppVecImpl for et_rs_c::VecEValue {
+        type Elm = et_c::EValue;
+        fn as_slice(&self) -> &[et_c::EValue] {
+            unsafe { std::slice::from_raw_parts(self.data, self.len) }
+        }
+        fn as_mut_slice(&mut self) -> &mut [et_c::EValue] {
+            unsafe { std::slice::from_raw_parts_mut(self.data, self.len) }
+        }
+    }
+    impl CppVecElm for et_rs_c::VecChar {
+        type VecImpl = et_rs_c::VecVecChar;
+        fn drop_vec(vec: &mut CppVec<Self>) {
+            unsafe { et_rs_c::VecVecChar_destructor(&mut vec.0) }
+        }
+    }
+    impl CppVecImpl for et_rs_c::VecVecChar {
+        type Elm = et_rs_c::VecChar;
+        fn as_slice(&self) -> &[et_rs_c::VecChar] {
+            unsafe { std::slice::from_raw_parts(self.data, self.len) }
+        }
+        fn as_mut_slice(&mut self) -> &mut [et_rs_c::VecChar] {
+            unsafe { std::slice::from_raw_parts_mut(self.data, self.len) }
+        }
+    }
 }
 
 // Debug func
