@@ -203,7 +203,7 @@ impl Module {
 }
 impl Destroy for et_c::Module {
     unsafe fn destroy(&mut self) {
-        et_rs_c::Module_destructor(self)
+        unsafe { et_rs_c::Module_destructor(self) }
     }
 }
 

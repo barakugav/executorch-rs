@@ -75,7 +75,7 @@ impl<'a> EValue<'a> {
     /// The closure must initialize the value correctly, otherwise the value will be in an invalid state.
     #[cfg(feature = "alloc")]
     unsafe fn new_impl(init: impl FnOnce(*mut et_c::EValue)) -> Self {
-        Self(NonTriviallyMovable::new_boxed(init))
+        Self(unsafe { NonTriviallyMovable::new_boxed(init) })
     }
 
     /// Create a new [`EValue`] from a value that can be converted into an [`EValue`].
@@ -105,7 +105,7 @@ impl<'a> EValue<'a> {
         init: impl FnOnce(*mut et_c::EValue),
         storage: Pin<&'a mut Storage<EValue>>,
     ) -> Self {
-        Self(NonTriviallyMovable::new_in_storage(init, storage))
+        Self(unsafe { NonTriviallyMovable::new_in_storage(init, storage) })
     }
 
     /// Create a new [`EValue`] from a value that can be converted into an [`EValue`] in the given storage.
@@ -146,9 +146,7 @@ impl<'a> EValue<'a> {
     #[cfg(feature = "alloc")]
     #[allow(dead_code)]
     pub(crate) unsafe fn move_from(value: &mut et_c::EValue) -> Self {
-        Self(NonTriviallyMovable::new_boxed(|p| {
-            et_rs_c::EValue_move(value, p)
-        }))
+        Self(unsafe { NonTriviallyMovable::new_boxed(|p| et_rs_c::EValue_move(value, p)) })
     }
 
     pub(crate) fn as_evalue(&self) -> &et_c::EValue {
@@ -252,7 +250,7 @@ impl<'a> EValue<'a> {
 }
 impl Destroy for et_c::EValue {
     unsafe fn destroy(&mut self) {
-        et_rs_c::EValue_destructor(self)
+        unsafe { et_rs_c::EValue_destructor(self) }
     }
 }
 

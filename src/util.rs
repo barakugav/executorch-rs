@@ -150,9 +150,13 @@ impl<'a, T: Destroy> NonTriviallyMovable<'a, T> {
         match self {
             #[cfg(feature = "alloc")]
             NonTriviallyMovable::Boxed(p) => Some(&mut unsafe { p.as_mut().get_unchecked_mut() }.0),
-            NonTriviallyMovable::OwnedRef(p) => Some(&mut p.as_mut().get_unchecked_mut().0),
+            NonTriviallyMovable::OwnedRef(p) => {
+                Some(unsafe { &mut p.as_mut().get_unchecked_mut().0 })
+            }
             NonTriviallyMovable::Ref(_) => None,
-            NonTriviallyMovable::RefMut(p) => Some(&mut p.as_mut().get_unchecked_mut().0),
+            NonTriviallyMovable::RefMut(p) => {
+                Some(unsafe { &mut p.as_mut().get_unchecked_mut().0 })
+            }
         }
     }
 }
@@ -168,9 +172,9 @@ impl<T: Destroy> NonTriviallyMovableVec<T> {
             .map(|_| MaybeUninit::<T>::uninit())
             .collect::<et_alloc::Vec<_>>()
             .into_boxed_slice();
-        let mut vec = Pin::new_unchecked(vec);
+        let mut vec = unsafe { Pin::new_unchecked(vec) };
         // Safety: we dont move out of the vec
-        for (i, elem) in vec.as_mut().get_unchecked_mut().iter_mut().enumerate() {
+        for (i, elem) in unsafe { vec.as_mut().get_unchecked_mut().iter_mut().enumerate() } {
             init(i, elem);
         }
         // Safety: [MaybeUninit<T>] and (PhantomPinned, [T]) have the same memory layout.
