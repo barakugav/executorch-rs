@@ -10,11 +10,11 @@ use std::marker::PhantomData;
 use std::ptr;
 
 use crate::data_loader::DataLoader;
-use crate::error::Result;
+use crate::error::{fallible, Result};
 use crate::evalue::{EValue, Tag};
 use crate::memory::MemoryManager;
 use crate::tensor::ScalarType;
-use crate::util::{IntoRust, Span};
+use crate::util::{ArrayRef, IntoRust};
 use crate::{et_c, et_rs_c};
 
 /// A deserialized ExecuTorch program binary.
@@ -42,7 +42,9 @@ impl<'a> Program<'a> {
     ) -> Result<Self> {
         let data_loader = data_loader.as_ref().0.get();
         let verification = verification.unwrap_or(ProgramVerification::Minimal);
-        let program = unsafe { et_c::Program::load(data_loader, verification) }.rs()?;
+        let program = fallible(|program| unsafe {
+            et_rs_c::Program_load(data_loader, verification, program)
+        })?;
         Ok(Self(program, PhantomData))
     }
 
@@ -61,7 +63,9 @@ impl<'a> Program<'a> {
     ///
     /// The name of the requested method. The pointer is owned by the Program, and has the same lifetime as the Program.
     pub fn get_method_name(&self, method_index: usize) -> Result<&str> {
-        let method_name = unsafe { et_c::Program_get_method_name(&self.0, method_index) }.rs()?;
+        let method_name = fallible(|method_name| unsafe {
+            et_rs_c::Program_get_method_name(&self.0, method_index, method_name)
+        })?;
         Ok(unsafe { CStr::from_ptr(method_name).to_str().unwrap() })
     }
 
@@ -82,11 +86,16 @@ impl<'a> Program<'a> {
     ) -> Result<Method<'b>> {
         let memory_manager = memory_manager.0.get();
         let event_tracer = ptr::null_mut(); // TODO: support event tracer
-        let method = unsafe {
-            self.0
-                .load_method(method_name.as_ptr(), memory_manager, event_tracer)
-        };
-        Ok(Method(method.rs()?, PhantomData))
+        let method = fallible(|method| unsafe {
+            et_rs_c::Program_load_method(
+                &self.0,
+                method_name.as_ptr(),
+                memory_manager,
+                event_tracer,
+                method,
+            )
+        })?;
+        Ok(Method(method, PhantomData))
     }
 
     /// Gathers metadata for the named method.
@@ -95,7 +104,9 @@ impl<'a> Program<'a> {
     ///
     /// * `method_name` - The name of the method to get metadata for.
     pub fn method_meta(&self, method_name: &CStr) -> Result<MethodMeta> {
-        let meta = unsafe { et_rs_c::Program_method_meta(&self.0, method_name.as_ptr()) }.rs()?;
+        let meta = fallible(|meta| unsafe {
+            et_rs_c::Program_method_meta(&self.0, method_name.as_ptr(), meta)
+        })?;
         Ok(unsafe { MethodMeta::new(meta) })
     }
 
@@ -129,7 +140,7 @@ pub type HeaderStatus = et_c::Program_HeaderStatus;
 /// It is separate from Method so that this information can be accessed without
 /// paying the initialization cost of loading the full Method.
 pub struct MethodMeta<'a>(et_c::MethodMeta, PhantomData<&'a ()>);
-impl<'a> MethodMeta<'a> {
+impl MethodMeta<'_> {
     pub(crate) unsafe fn new(meta: et_c::MethodMeta) -> Self {
         Self(meta, PhantomData)
     }
@@ -154,8 +165,8 @@ impl<'a> MethodMeta<'a> {
     ///
     /// The tag of input, can only be [Tensor, Int, Bool, Double, String].
     pub fn input_tag(&self, idx: usize) -> Result<Tag> {
-        Ok(unsafe { self.0.input_tag(idx) }
-            .rs()?
+        let tag = fallible(|tag| unsafe { et_rs_c::MethodMeta_input_tag(&self.0, idx, tag) })?;
+        Ok(tag
             .rs()
             .expect("input tag is none, expected Tensor, Int, Bool, Double or String"))
     }
@@ -170,7 +181,8 @@ impl<'a> MethodMeta<'a> {
     ///
     /// The metadata on success, or an error on failure. Only valid for `Tag::Tensor`
     pub fn input_tensor_meta(&self, idx: usize) -> Result<TensorInfo> {
-        let info = unsafe { et_c::MethodMeta_input_tensor_meta(&self.0, idx) }.rs()?;
+        let info =
+            fallible(|info| unsafe { et_rs_c::MethodMeta_input_tensor_meta(&self.0, idx, info) })?;
         Ok(unsafe { TensorInfo::new(info) })
     }
 
@@ -189,8 +201,8 @@ impl<'a> MethodMeta<'a> {
     ///
     /// The tag of output, can only be [Tensor, Int, Bool, Double, String].
     pub fn output_tag(&self, idx: usize) -> Result<Tag> {
-        Ok(unsafe { self.0.output_tag(idx) }
-            .rs()?
+        let tag = fallible(|tag| unsafe { et_rs_c::MethodMeta_output_tag(&self.0, idx, tag) })?;
+        Ok(tag
             .rs()
             .expect("output tag is none, expected Tensor, Int, Bool, Double or String"))
     }
@@ -205,7 +217,8 @@ impl<'a> MethodMeta<'a> {
     ///
     /// The metadata on success, or an error on failure. Only valid for `Tag::Tensor`
     pub fn output_tensor_meta(&self, idx: usize) -> Result<TensorInfo> {
-        let info = unsafe { et_c::MethodMeta_output_tensor_meta(&self.0, idx) }.rs()?;
+        let info =
+            fallible(|info| unsafe { et_rs_c::MethodMeta_output_tensor_meta(&self.0, idx, info) })?;
         Ok(unsafe { TensorInfo::new(info) })
     }
 
@@ -224,9 +237,10 @@ impl<'a> MethodMeta<'a> {
     ///
     /// The size in bytes on success, or an error on failure.
     pub fn memory_planned_buffer_size(&self, idx: usize) -> Result<usize> {
-        unsafe { et_rs_c::MethodMeta_memory_planned_buffer_size(&self.0, idx) }
-            .rs()
-            .map(|v| v as usize)
+        let size = fallible(|size| unsafe {
+            et_rs_c::MethodMeta_memory_planned_buffer_size(&self.0, idx, size)
+        })?;
+        Ok(size as usize)
     }
 }
 
@@ -242,14 +256,14 @@ impl<'a> TensorInfo<'a> {
 
     /// Returns the sizes of the tensor.
     pub fn sizes(&self) -> &'a [i32] {
-        let span = unsafe { et_c::TensorInfo_sizes(&self.0) };
-        unsafe { Span::new(span) }.as_slice()
+        let span = unsafe { et_rs_c::TensorInfo_sizes(&self.0) };
+        unsafe { ArrayRef::from_inner(span) }.as_slice()
     }
 
     /// Returns the dim order of the tensor.
     pub fn dim_order(&self) -> &'a [u8] {
-        let span = unsafe { et_c::TensorInfo_dim_order(&self.0) };
-        unsafe { Span::new(span) }.as_slice()
+        let span = unsafe { et_rs_c::TensorInfo_dim_order(&self.0) };
+        unsafe { ArrayRef::from_inner(span) }.as_slice()
     }
 
     /// Returns the scalar type of the input/output.
@@ -277,7 +291,7 @@ impl std::fmt::Debug for TensorInfo<'_> {
 /// An executable method of an ExecuTorch program. Maps to a python method like
 /// `forward()` on the original `nn.Module`.
 pub struct Method<'a>(et_c::Method, PhantomData<&'a ()>);
-impl<'a> Method<'a> {
+impl Method<'_> {
     /// Starts the execution of the method.
     pub fn start_execution(&mut self) -> Execution {
         Execution::new(&mut self.0)

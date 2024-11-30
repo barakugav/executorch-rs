@@ -309,8 +309,8 @@ impl<'a, D: Data> TensorBase<'a, D> {
     pub fn sizes(&self) -> &[SizesType] {
         unsafe {
             let arr = et_rs_c::Tensor_sizes(self.as_cpp_tensor());
-            debug_assert!(!arr.Data.is_null());
-            std::slice::from_raw_parts(arr.Data, arr.Length)
+            debug_assert!(!arr.data.is_null());
+            std::slice::from_raw_parts(arr.data, arr.len)
         }
     }
 
@@ -318,8 +318,8 @@ impl<'a, D: Data> TensorBase<'a, D> {
     pub fn dim_order(&self) -> &[DimOrderType] {
         unsafe {
             let arr = et_rs_c::Tensor_dim_order(self.as_cpp_tensor());
-            debug_assert!(!arr.Data.is_null());
-            std::slice::from_raw_parts(arr.Data, arr.Length)
+            debug_assert!(!arr.data.is_null());
+            std::slice::from_raw_parts(arr.data, arr.len)
         }
     }
 
@@ -327,8 +327,8 @@ impl<'a, D: Data> TensorBase<'a, D> {
     pub fn strides(&self) -> &[StridesType] {
         unsafe {
             let arr = et_rs_c::Tensor_strides(self.as_cpp_tensor());
-            debug_assert!(!arr.Data.is_null());
-            std::slice::from_raw_parts(arr.Data, arr.Length)
+            debug_assert!(!arr.data.is_null());
+            std::slice::from_raw_parts(arr.data, arr.len)
         }
     }
 
@@ -436,10 +436,10 @@ impl<'a, D: Data> TensorBase<'a, D> {
 }
 impl Destroy for et_c::Tensor {
     unsafe fn destroy(&mut self) {
-        et_rs_c::Tensor_destructor(self)
+        unsafe { et_rs_c::Tensor_destructor(self) }
     }
 }
-impl<'a, D: Data> Storable for TensorBase<'a, D> {
+impl<D: Data> Storable for TensorBase<'_, D> {
     type Storage = et_c::Tensor;
 }
 
@@ -538,7 +538,7 @@ impl<D: Data> Debug for TensorBase<'_, D> {
     }
 }
 
-impl<'a, D: DataTyped> TensorBase<'a, D> {
+impl<D: DataTyped> TensorBase<'_, D> {
     /// Returns a pointer of type S to the constant underlying data blob.
     pub fn as_ptr(&self) -> *const D::Scalar {
         debug_assert_eq!(self.scalar_type(), Some(D::Scalar::TYPE), "Invalid type");
@@ -575,7 +575,7 @@ impl<'a, D: DataTyped> TensorBase<'a, D> {
     }
 }
 
-impl<'a, D: DataMut> TensorBase<'a, D> {
+impl<D: DataMut> TensorBase<'_, D> {
     /// Returns a mutable pointer to the underlying data blob.
     ///
     /// # Safety
@@ -584,7 +584,7 @@ impl<'a, D: DataMut> TensorBase<'a, D> {
     pub unsafe fn as_mut_ptr_raw(&self) -> NonNull<()> {
         let ptr = unsafe { et_rs_c::Tensor_mutable_data_ptr(self.as_cpp_tensor()) };
         debug_assert!(!ptr.is_null());
-        NonNull::new_unchecked(ptr as *mut ())
+        unsafe { NonNull::new_unchecked(ptr as *mut ()) }
     }
 }
 impl<'a, D: DataTyped + DataMut> TensorBase<'a, D> {
@@ -624,7 +624,7 @@ impl<'a, D: DataTyped + DataMut> TensorBase<'a, D> {
     }
 }
 
-impl<'a, D: DataTyped> Index<&[usize]> for TensorBase<'a, D> {
+impl<D: DataTyped> Index<&[usize]> for TensorBase<'_, D> {
     type Output = D::Scalar;
 
     fn index(&self, index: &[usize]) -> &Self::Output {
@@ -640,7 +640,7 @@ impl<'a, D: DataTyped> Index<&[usize]> for TensorBase<'a, D> {
         unsafe { &*base_ptr.add(index) }
     }
 }
-impl<'a, D: DataTyped + DataMut> IndexMut<&[usize]> for TensorBase<'a, D> {
+impl<D: DataTyped + DataMut> IndexMut<&[usize]> for TensorBase<'_, D> {
     fn index_mut(&mut self, index: &[usize]) -> &mut Self::Output {
         assert_eq!(
             index.len(),
@@ -792,13 +792,15 @@ impl<'a, D: Data> TensorImplBase<'a, D> {
         let dim = sizes.len();
         assert_eq!(dim, dim_order.len());
         assert_eq!(dim, strides.len());
-        Self::new(
-            dim,
-            sizes.as_ptr(),
-            data,
-            dim_order.as_ptr(),
-            strides.as_ptr(),
-        )
+        unsafe {
+            Self::new(
+                dim,
+                sizes.as_ptr(),
+                data,
+                dim_order.as_ptr(),
+                strides.as_ptr(),
+            )
+        }
     }
 }
 

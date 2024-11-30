@@ -12,9 +12,12 @@ use std::collections::HashSet;
 use std::path::Path;
 use std::ptr;
 
-use crate::error::Result;
+use executorch_sys::executorch_rs::VecChar;
+
+use crate::error::{fallible, Result};
 use crate::evalue::EValue;
 use crate::program::{MethodMeta, ProgramVerification};
+use crate::util::cpp_vec::CppVecImpl;
 use crate::util::{self, ArrayRef, Destroy, IntoRust, NonTriviallyMovable, NonTriviallyMovableVec};
 use crate::{et_c, et_rs_c};
 
@@ -81,13 +84,14 @@ impl Module {
     ///
     /// A set of strings containing the names of the methods, or an error if the program or method failed to load.
     pub fn method_names(&mut self) -> Result<HashSet<String>> {
-        let names = unsafe { et_rs_c::Module_method_names(self.0.as_mut().unwrap()) }
-            .rs()?
-            .rs();
+        let names = fallible(|names| unsafe {
+            et_rs_c::Module_method_names(self.0.as_mut().unwrap(), names)
+        })?
+        .rs();
         Ok(names
             .as_slice()
             .iter()
-            .map(|s| util::chars2string(s.to_vec()))
+            .map(|s: &VecChar| util::chars2string(s.as_slice().to_vec()))
             .collect())
     }
 
@@ -144,10 +148,9 @@ impl Module {
     /// If the method name is not a valid UTF-8 string or contains a null character.
     pub fn method_meta(&self, method_name: impl AsRef<str>) -> Result<MethodMeta> {
         let method_name = ArrayRef::from_slice(util::str2chars(method_name.as_ref()).unwrap());
-        let meta = unsafe {
-            et_rs_c::Module_method_meta(self.0.as_ref() as *const _ as *mut _, method_name.0)
-        }
-        .rs()?;
+        let meta = fallible(|meta| unsafe {
+            et_rs_c::Module_method_meta(self.0.as_ref() as *const _ as *mut _, method_name.0, meta)
+        })?;
         Ok(unsafe { MethodMeta::new(meta) })
     }
 
@@ -178,10 +181,12 @@ impl Module {
             })
         };
         let inputs = ArrayRef::from_slice(inputs.as_slice());
-        let mut outputs =
-            unsafe { et_rs_c::Module_execute(self.0.as_mut().unwrap(), method_name.0, inputs.0) }
-                .rs()?;
-        Ok(util::cpp_vec::vec_as_mut_slice(&mut outputs)
+        let mut outputs = fallible(|outputs| unsafe {
+            et_rs_c::Module_execute(self.0.as_mut().unwrap(), method_name.0, inputs.0, outputs)
+        })?
+        .rs();
+        Ok(outputs
+            .as_mut_slice()
             .iter_mut()
             .map(|val| unsafe { EValue::move_from(val) })
             .collect())
@@ -203,7 +208,7 @@ impl Module {
 }
 impl Destroy for et_c::Module {
     unsafe fn destroy(&mut self) {
-        et_rs_c::Module_destructor(self)
+        unsafe { et_rs_c::Module_destructor(self) }
     }
 }
 
