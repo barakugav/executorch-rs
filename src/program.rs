@@ -140,7 +140,7 @@ pub type HeaderStatus = et_c::Program_HeaderStatus;
 /// It is separate from Method so that this information can be accessed without
 /// paying the initialization cost of loading the full Method.
 pub struct MethodMeta<'a>(et_c::MethodMeta, PhantomData<&'a ()>);
-impl<'a> MethodMeta<'a> {
+impl MethodMeta<'_> {
     pub(crate) unsafe fn new(meta: et_c::MethodMeta) -> Self {
         Self(meta, PhantomData)
     }
@@ -291,7 +291,7 @@ impl std::fmt::Debug for TensorInfo<'_> {
 /// An executable method of an ExecuTorch program. Maps to a python method like
 /// `forward()` on the original `nn.Module`.
 pub struct Method<'a>(et_c::Method, PhantomData<&'a ()>);
-impl<'a> Method<'a> {
+impl Method<'_> {
     /// Starts the execution of the method.
     pub fn start_execution(&mut self) -> Execution {
         Execution::new(&mut self.0)

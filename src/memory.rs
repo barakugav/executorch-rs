@@ -210,7 +210,7 @@ impl<'a> HierarchicalAllocator<'a> {
         )
     }
 }
-impl<'a> Drop for HierarchicalAllocator<'a> {
+impl Drop for HierarchicalAllocator<'_> {
     fn drop(&mut self) {
         unsafe { et_rs_c::HierarchicalAllocator_destructor(&mut self.0) };
     }

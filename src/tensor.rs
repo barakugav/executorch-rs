@@ -439,7 +439,7 @@ impl Destroy for et_c::Tensor {
         unsafe { et_rs_c::Tensor_destructor(self) }
     }
 }
-impl<'a, D: Data> Storable for TensorBase<'a, D> {
+impl<D: Data> Storable for TensorBase<'_, D> {
     type Storage = et_c::Tensor;
 }
 
@@ -538,7 +538,7 @@ impl<D: Data> Debug for TensorBase<'_, D> {
     }
 }
 
-impl<'a, D: DataTyped> TensorBase<'a, D> {
+impl<D: DataTyped> TensorBase<'_, D> {
     /// Returns a pointer of type S to the constant underlying data blob.
     pub fn as_ptr(&self) -> *const D::Scalar {
         debug_assert_eq!(self.scalar_type(), Some(D::Scalar::TYPE), "Invalid type");
@@ -575,7 +575,7 @@ impl<'a, D: DataTyped> TensorBase<'a, D> {
     }
 }
 
-impl<'a, D: DataMut> TensorBase<'a, D> {
+impl<D: DataMut> TensorBase<'_, D> {
     /// Returns a mutable pointer to the underlying data blob.
     ///
     /// # Safety
@@ -624,7 +624,7 @@ impl<'a, D: DataTyped + DataMut> TensorBase<'a, D> {
     }
 }
 
-impl<'a, D: DataTyped> Index<&[usize]> for TensorBase<'a, D> {
+impl<D: DataTyped> Index<&[usize]> for TensorBase<'_, D> {
     type Output = D::Scalar;
 
     fn index(&self, index: &[usize]) -> &Self::Output {
@@ -640,7 +640,7 @@ impl<'a, D: DataTyped> Index<&[usize]> for TensorBase<'a, D> {
         unsafe { &*base_ptr.add(index) }
     }
 }
-impl<'a, D: DataTyped + DataMut> IndexMut<&[usize]> for TensorBase<'a, D> {
+impl<D: DataTyped + DataMut> IndexMut<&[usize]> for TensorBase<'_, D> {
     fn index_mut(&mut self, index: &[usize]) -> &mut Self::Output {
         assert_eq!(
             index.len(),

@@ -112,7 +112,7 @@ impl<'a, T: Destroy> NonTriviallyMovable<'a, T> {
         Self::RefMut(p)
     }
 }
-impl<'a, T: Destroy> Drop for NonTriviallyMovable<'a, T> {
+impl<T: Destroy> Drop for NonTriviallyMovable<'_, T> {
     fn drop(&mut self) {
         let shoud_destroy = match self {
             #[cfg(feature = "alloc")]
@@ -129,7 +129,7 @@ impl<'a, T: Destroy> Drop for NonTriviallyMovable<'a, T> {
         }
     }
 }
-impl<'a, T: Destroy> AsRef<T> for NonTriviallyMovable<'a, T> {
+impl<T: Destroy> AsRef<T> for NonTriviallyMovable<'_, T> {
     fn as_ref(&self) -> &T {
         match self {
             #[cfg(feature = "alloc")]
@@ -140,7 +140,7 @@ impl<'a, T: Destroy> AsRef<T> for NonTriviallyMovable<'a, T> {
         }
     }
 }
-impl<'a, T: Destroy> NonTriviallyMovable<'a, T> {
+impl<T: Destroy> NonTriviallyMovable<'_, T> {
     /// Get a mutable reference to the inner value if we own it (we constructed it).
     ///
     /// # Safety
