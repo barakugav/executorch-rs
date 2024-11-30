@@ -35,7 +35,7 @@ jobs:
         with:
           toolchain: 1.77.0
           components: clippy
-          cache-workspaces:
+          cache-workspaces: |
             ./
             executorch-sys
             examples/hello_world_add
@@ -124,7 +124,7 @@ jobs:
         with:
           toolchain: ${{ steps.rust-version.outputs.rust_version }}
           components: clippy
-          cache-workspaces:
+          cache-workspaces: |
             ./
             executorch-sys
             examples/hello_world_add

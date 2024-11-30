@@ -15,11 +15,11 @@ use crate::util::{Destroy, DimArr, FixedSizeDim, NonTriviallyMovable, Storable, 
 use crate::{et_c, et_rs_c};
 
 /// A type that represents the sizes (dimensions) of a tensor.
-pub type SizesType = executorch_sys::exec_aten::SizesType;
+pub type SizesType = executorch_sys::executorch::aten::SizesType;
 /// A type that represents the order of the dimensions of a tensor.
-pub type DimOrderType = executorch_sys::exec_aten::DimOrderType;
+pub type DimOrderType = executorch_sys::executorch::aten::DimOrderType;
 /// A type that represents the strides of a tensor.
-pub type StridesType = executorch_sys::exec_aten::StridesType;
+pub type StridesType = executorch_sys::executorch::aten::StridesType;
 
 /// Data types (dtypes) that can be used as element types in Tensors.
 ///
@@ -29,108 +29,110 @@ pub type StridesType = executorch_sys::exec_aten::StridesType;
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum ScalarType {
     /// 8-bit unsigned integer, `u8`
-    Byte = et_c::ScalarType::Byte as u8,
+    Byte = et_c::runtime::etensor::ScalarType::Byte as u8,
     /// 8-bit signed, integer, `i8`
-    Char = et_c::ScalarType::Char as u8,
+    Char = et_c::runtime::etensor::ScalarType::Char as u8,
     /// 16-bit signed integer, `i16`
-    Short = et_c::ScalarType::Short as u8,
+    Short = et_c::runtime::etensor::ScalarType::Short as u8,
     /// 32-bit signed integer, `i32`
-    Int = et_c::ScalarType::Int as u8,
+    Int = et_c::runtime::etensor::ScalarType::Int as u8,
     /// 64-bit signed integer, `i64`
-    Long = et_c::ScalarType::Long as u8,
+    Long = et_c::runtime::etensor::ScalarType::Long as u8,
     /// 16-bit floating point, `half::f16`, enabled by the `f16` feature
-    Half = et_c::ScalarType::Half as u8,
+    Half = et_c::runtime::etensor::ScalarType::Half as u8,
     /// 32-bit floating point, `f32`
-    Float = et_c::ScalarType::Float as u8,
+    Float = et_c::runtime::etensor::ScalarType::Float as u8,
     /// 64-bit floating point, `f64`
-    Double = et_c::ScalarType::Double as u8,
+    Double = et_c::runtime::etensor::ScalarType::Double as u8,
     /// 16-bit complex floating point, `num_complex::Complex<half::f16>`, enabled by the `complex` and `f16` features
-    ComplexHalf = et_c::ScalarType::ComplexHalf as u8,
+    ComplexHalf = et_c::runtime::etensor::ScalarType::ComplexHalf as u8,
     /// 32-bit complex floating point, `num_complex::Complex32`, enabled by the `complex` feature
-    ComplexFloat = et_c::ScalarType::ComplexFloat as u8,
+    ComplexFloat = et_c::runtime::etensor::ScalarType::ComplexFloat as u8,
     /// 64-bit complex floating point, `num_complex::Complex64`, enabled by the `complex` feature
-    ComplexDouble = et_c::ScalarType::ComplexDouble as u8,
+    ComplexDouble = et_c::runtime::etensor::ScalarType::ComplexDouble as u8,
     /// Boolean, `bool`
-    Bool = et_c::ScalarType::Bool as u8,
+    Bool = et_c::runtime::etensor::ScalarType::Bool as u8,
     /// **\[Unsupported\]** 8-bit quantized integer
-    QInt8 = et_c::ScalarType::QInt8 as u8,
+    QInt8 = et_c::runtime::etensor::ScalarType::QInt8 as u8,
     /// **\[Unsupported\]** 8-bit quantized unsigned integer
-    QUInt8 = et_c::ScalarType::QUInt8 as u8,
+    QUInt8 = et_c::runtime::etensor::ScalarType::QUInt8 as u8,
     /// **\[Unsupported\]** 32-bit quantized integer
-    QInt32 = et_c::ScalarType::QInt32 as u8,
+    QInt32 = et_c::runtime::etensor::ScalarType::QInt32 as u8,
     /// 16-bit floating point using the bfloat16 format, `half::bf16`, enabled by the `f16` feature
-    BFloat16 = et_c::ScalarType::BFloat16 as u8,
+    BFloat16 = et_c::runtime::etensor::ScalarType::BFloat16 as u8,
     /// **\[Unsupported\]**
-    QUInt4x2 = et_c::ScalarType::QUInt4x2 as u8,
+    QUInt4x2 = et_c::runtime::etensor::ScalarType::QUInt4x2 as u8,
     /// **\[Unsupported\]**
-    QUInt2x4 = et_c::ScalarType::QUInt2x4 as u8,
+    QUInt2x4 = et_c::runtime::etensor::ScalarType::QUInt2x4 as u8,
     /// **\[Unsupported\]**
-    Bits1x8 = et_c::ScalarType::Bits1x8 as u8,
+    Bits1x8 = et_c::runtime::etensor::ScalarType::Bits1x8 as u8,
     /// **\[Unsupported\]**
-    Bits2x4 = et_c::ScalarType::Bits2x4 as u8,
+    Bits2x4 = et_c::runtime::etensor::ScalarType::Bits2x4 as u8,
     /// **\[Unsupported\]**
-    Bits4x2 = et_c::ScalarType::Bits4x2 as u8,
+    Bits4x2 = et_c::runtime::etensor::ScalarType::Bits4x2 as u8,
     /// **\[Unsupported\]**
-    Bits8 = et_c::ScalarType::Bits8 as u8,
+    Bits8 = et_c::runtime::etensor::ScalarType::Bits8 as u8,
     /// **\[Unsupported\]**
-    Bits16 = et_c::ScalarType::Bits16 as u8,
+    Bits16 = et_c::runtime::etensor::ScalarType::Bits16 as u8,
 }
 impl ScalarType {
-    pub(crate) fn from_c_scalar_type(scalar_type: et_c::ScalarType) -> Option<Self> {
+    pub(crate) fn from_c_scalar_type(
+        scalar_type: et_c::runtime::etensor::ScalarType,
+    ) -> Option<Self> {
         Some(match scalar_type {
-            et_c::ScalarType::Byte => ScalarType::Byte,
-            et_c::ScalarType::Char => ScalarType::Char,
-            et_c::ScalarType::Short => ScalarType::Short,
-            et_c::ScalarType::Int => ScalarType::Int,
-            et_c::ScalarType::Long => ScalarType::Long,
-            et_c::ScalarType::Half => ScalarType::Half,
-            et_c::ScalarType::Float => ScalarType::Float,
-            et_c::ScalarType::Double => ScalarType::Double,
-            et_c::ScalarType::ComplexHalf => ScalarType::ComplexHalf,
-            et_c::ScalarType::ComplexFloat => ScalarType::ComplexFloat,
-            et_c::ScalarType::ComplexDouble => ScalarType::ComplexDouble,
-            et_c::ScalarType::Bool => ScalarType::Bool,
-            et_c::ScalarType::QInt8 => ScalarType::QInt8,
-            et_c::ScalarType::QUInt8 => ScalarType::QUInt8,
-            et_c::ScalarType::QInt32 => ScalarType::QInt32,
-            et_c::ScalarType::BFloat16 => ScalarType::BFloat16,
-            et_c::ScalarType::QUInt4x2 => ScalarType::QUInt4x2,
-            et_c::ScalarType::QUInt2x4 => ScalarType::QUInt2x4,
-            et_c::ScalarType::Bits1x8 => ScalarType::Bits1x8,
-            et_c::ScalarType::Bits2x4 => ScalarType::Bits2x4,
-            et_c::ScalarType::Bits4x2 => ScalarType::Bits4x2,
-            et_c::ScalarType::Bits8 => ScalarType::Bits8,
-            et_c::ScalarType::Bits16 => ScalarType::Bits16,
-            et_c::ScalarType::Undefined => return None,
-            et_c::ScalarType::NumOptions => panic!("Invalid scalar type"),
+            et_c::runtime::etensor::ScalarType::Byte => ScalarType::Byte,
+            et_c::runtime::etensor::ScalarType::Char => ScalarType::Char,
+            et_c::runtime::etensor::ScalarType::Short => ScalarType::Short,
+            et_c::runtime::etensor::ScalarType::Int => ScalarType::Int,
+            et_c::runtime::etensor::ScalarType::Long => ScalarType::Long,
+            et_c::runtime::etensor::ScalarType::Half => ScalarType::Half,
+            et_c::runtime::etensor::ScalarType::Float => ScalarType::Float,
+            et_c::runtime::etensor::ScalarType::Double => ScalarType::Double,
+            et_c::runtime::etensor::ScalarType::ComplexHalf => ScalarType::ComplexHalf,
+            et_c::runtime::etensor::ScalarType::ComplexFloat => ScalarType::ComplexFloat,
+            et_c::runtime::etensor::ScalarType::ComplexDouble => ScalarType::ComplexDouble,
+            et_c::runtime::etensor::ScalarType::Bool => ScalarType::Bool,
+            et_c::runtime::etensor::ScalarType::QInt8 => ScalarType::QInt8,
+            et_c::runtime::etensor::ScalarType::QUInt8 => ScalarType::QUInt8,
+            et_c::runtime::etensor::ScalarType::QInt32 => ScalarType::QInt32,
+            et_c::runtime::etensor::ScalarType::BFloat16 => ScalarType::BFloat16,
+            et_c::runtime::etensor::ScalarType::QUInt4x2 => ScalarType::QUInt4x2,
+            et_c::runtime::etensor::ScalarType::QUInt2x4 => ScalarType::QUInt2x4,
+            et_c::runtime::etensor::ScalarType::Bits1x8 => ScalarType::Bits1x8,
+            et_c::runtime::etensor::ScalarType::Bits2x4 => ScalarType::Bits2x4,
+            et_c::runtime::etensor::ScalarType::Bits4x2 => ScalarType::Bits4x2,
+            et_c::runtime::etensor::ScalarType::Bits8 => ScalarType::Bits8,
+            et_c::runtime::etensor::ScalarType::Bits16 => ScalarType::Bits16,
+            et_c::runtime::etensor::ScalarType::Undefined => return None,
+            et_c::runtime::etensor::ScalarType::NumOptions => panic!("Invalid scalar type"),
         })
     }
 
-    pub(crate) fn into_c_scalar_type(self) -> et_c::ScalarType {
+    pub(crate) fn into_c_scalar_type(self) -> et_c::runtime::etensor::ScalarType {
         match self {
-            ScalarType::Byte => et_c::ScalarType::Byte,
-            ScalarType::Char => et_c::ScalarType::Char,
-            ScalarType::Short => et_c::ScalarType::Short,
-            ScalarType::Int => et_c::ScalarType::Int,
-            ScalarType::Long => et_c::ScalarType::Long,
-            ScalarType::Half => et_c::ScalarType::Half,
-            ScalarType::Float => et_c::ScalarType::Float,
-            ScalarType::Double => et_c::ScalarType::Double,
-            ScalarType::ComplexHalf => et_c::ScalarType::ComplexHalf,
-            ScalarType::ComplexFloat => et_c::ScalarType::ComplexFloat,
-            ScalarType::ComplexDouble => et_c::ScalarType::ComplexDouble,
-            ScalarType::Bool => et_c::ScalarType::Bool,
-            ScalarType::QInt8 => et_c::ScalarType::QInt8,
-            ScalarType::QUInt8 => et_c::ScalarType::QUInt8,
-            ScalarType::QInt32 => et_c::ScalarType::QInt32,
-            ScalarType::BFloat16 => et_c::ScalarType::BFloat16,
-            ScalarType::QUInt4x2 => et_c::ScalarType::QUInt4x2,
-            ScalarType::QUInt2x4 => et_c::ScalarType::QUInt2x4,
-            ScalarType::Bits1x8 => et_c::ScalarType::Bits1x8,
-            ScalarType::Bits2x4 => et_c::ScalarType::Bits2x4,
-            ScalarType::Bits4x2 => et_c::ScalarType::Bits4x2,
-            ScalarType::Bits8 => et_c::ScalarType::Bits8,
-            ScalarType::Bits16 => et_c::ScalarType::Bits16,
+            ScalarType::Byte => et_c::runtime::etensor::ScalarType::Byte,
+            ScalarType::Char => et_c::runtime::etensor::ScalarType::Char,
+            ScalarType::Short => et_c::runtime::etensor::ScalarType::Short,
+            ScalarType::Int => et_c::runtime::etensor::ScalarType::Int,
+            ScalarType::Long => et_c::runtime::etensor::ScalarType::Long,
+            ScalarType::Half => et_c::runtime::etensor::ScalarType::Half,
+            ScalarType::Float => et_c::runtime::etensor::ScalarType::Float,
+            ScalarType::Double => et_c::runtime::etensor::ScalarType::Double,
+            ScalarType::ComplexHalf => et_c::runtime::etensor::ScalarType::ComplexHalf,
+            ScalarType::ComplexFloat => et_c::runtime::etensor::ScalarType::ComplexFloat,
+            ScalarType::ComplexDouble => et_c::runtime::etensor::ScalarType::ComplexDouble,
+            ScalarType::Bool => et_c::runtime::etensor::ScalarType::Bool,
+            ScalarType::QInt8 => et_c::runtime::etensor::ScalarType::QInt8,
+            ScalarType::QUInt8 => et_c::runtime::etensor::ScalarType::QUInt8,
+            ScalarType::QInt32 => et_c::runtime::etensor::ScalarType::QInt32,
+            ScalarType::BFloat16 => et_c::runtime::etensor::ScalarType::BFloat16,
+            ScalarType::QUInt4x2 => et_c::runtime::etensor::ScalarType::QUInt4x2,
+            ScalarType::QUInt2x4 => et_c::runtime::etensor::ScalarType::QUInt2x4,
+            ScalarType::Bits1x8 => et_c::runtime::etensor::ScalarType::Bits1x8,
+            ScalarType::Bits2x4 => et_c::runtime::etensor::ScalarType::Bits2x4,
+            ScalarType::Bits4x2 => et_c::runtime::etensor::ScalarType::Bits4x2,
+            ScalarType::Bits8 => et_c::runtime::etensor::ScalarType::Bits8,
+            ScalarType::Bits16 => et_c::runtime::etensor::ScalarType::Bits16,
         }
     }
 }
@@ -173,7 +175,7 @@ impl_scalar!(half::bf16, BFloat16);
 /// This class is a base class for all immutable/mutable/typed/type-erased tensors and is not meant to be
 /// used directly. It is used to provide a common API for all of them.
 pub struct TensorBase<'a, D: Data>(
-    NonTriviallyMovable<'a, et_c::Tensor>,
+    NonTriviallyMovable<'a, et_c::runtime::etensor::Tensor>,
     PhantomData<(
         // phantom for the lifetime of the TensorImpl we depends on
         &'a (),
@@ -188,7 +190,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// The caller must obtain a mutable reference to `tensor_impl` if the tensor is mutable.
     #[cfg(feature = "alloc")]
     unsafe fn new_boxed(tensor_impl: &'a TensorImplBase<D>) -> Self {
-        let impl_ = &tensor_impl.0 as *const et_c::TensorImpl;
+        let impl_ = &tensor_impl.0 as *const et_c::runtime::etensor::TensorImpl;
         let impl_ = impl_.cast_mut();
         // Safety: the closure init the pointer
         let tensor = unsafe { NonTriviallyMovable::new_boxed(|p| et_rs_c::Tensor_new(p, impl_)) };
@@ -204,7 +206,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
         tensor_impl: &'a TensorImplBase<D>,
         storage: Pin<&'a mut Storage<TensorBase<D>>>,
     ) -> Self {
-        let impl_ = &tensor_impl.0 as *const et_c::TensorImpl;
+        let impl_ = &tensor_impl.0 as *const et_c::runtime::etensor::TensorImpl;
         let impl_ = impl_.cast_mut();
         // Safety: the closure init the pointer
         let tensor = unsafe {
@@ -249,7 +251,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     }
 
     /// Get the underlying Cpp tensor.
-    pub(crate) fn as_cpp_tensor(&self) -> &et_c::Tensor {
+    pub(crate) fn as_cpp_tensor(&self) -> &et_c::runtime::etensor::Tensor {
         self.0.as_ref()
     }
 
@@ -258,7 +260,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// # Safety
     ///
     /// The caller can not move out of the returned mut reference.
-    pub(crate) unsafe fn as_mut_cpp_tensor(&mut self) -> &mut et_c::Tensor
+    pub(crate) unsafe fn as_mut_cpp_tensor(&mut self) -> &mut et_c::runtime::etensor::Tensor
     where
         D: DataMut,
     {
@@ -434,13 +436,13 @@ impl<'a, D: Data> TensorBase<'a, D> {
         self.try_as_typed_mut().expect("Invalid type")
     }
 }
-impl Destroy for et_c::Tensor {
+impl Destroy for et_c::runtime::etensor::Tensor {
     unsafe fn destroy(&mut self) {
         unsafe { et_rs_c::Tensor_destructor(self) }
     }
 }
 impl<D: Data> Storable for TensorBase<'_, D> {
-    type Storage = et_c::Tensor;
+    type Storage = et_c::runtime::etensor::Tensor;
 }
 
 impl<D: Data> Debug for TensorBase<'_, D> {
@@ -747,7 +749,7 @@ impl<'a, S: Scalar> TensorMut<'a, S> {
 /// A type-erased immutable tensor that does not own the underlying data.
 pub type TensorAny<'a> = TensorBase<'a, ViewAny>;
 impl<'a> TensorAny<'a> {
-    pub(crate) fn from_inner_ref(tensor: &'a et_c::Tensor) -> Self {
+    pub(crate) fn from_inner_ref(tensor: &'a et_c::runtime::etensor::Tensor) -> Self {
         Self(NonTriviallyMovable::from_ref(tensor), PhantomData)
     }
 }
@@ -756,7 +758,10 @@ impl<'a> TensorAny<'a> {
 ///
 /// This is a base class for [`TensorImpl`] and [`TensorImplMut`] and is not meant to be
 /// used directly. It is used to provide a common API for both of them.
-pub struct TensorImplBase<'a, D: Data>(et_c::TensorImpl, PhantomData<(&'a (), D)>);
+pub struct TensorImplBase<'a, D: Data>(
+    et_c::runtime::etensor::TensorImpl,
+    PhantomData<(&'a (), D)>,
+);
 impl<'a, D: Data> TensorImplBase<'a, D> {
     unsafe fn new<S: Scalar>(
         dim: usize,
@@ -770,14 +775,14 @@ impl<'a, D: Data> TensorImplBase<'a, D> {
         debug_assert!(!dim_order.is_null());
         debug_assert!(!strides.is_null());
         let impl_ = unsafe {
-            et_c::TensorImpl::new(
+            et_c::runtime::etensor::TensorImpl::new(
                 S::TYPE.into_c_scalar_type(),
                 dim as isize,
                 sizes as *mut SizesType,
                 data as *mut _,
                 dim_order as *mut DimOrderType,
                 strides as *mut StridesType,
-                et_c::TensorShapeDynamism::STATIC,
+                et_c::runtime::TensorShapeDynamism::STATIC,
             )
         };
         Self(impl_, PhantomData)
@@ -988,14 +993,14 @@ impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> Array<A, S, D> {
     /// must outlive the [`TensorImpl`] created from it.
     pub fn as_tensor_impl(&self) -> TensorImpl<A> {
         let impl_ = unsafe {
-            et_c::TensorImpl::new(
+            et_c::runtime::etensor::TensorImpl::new(
                 A::TYPE.into_c_scalar_type(),
                 self.sizes.as_ref().len() as isize,
                 self.sizes.as_ref().as_ptr() as *mut SizesType,
                 self.array.as_ptr() as *mut _,
                 self.dim_order.as_ref().as_ptr() as *mut DimOrderType,
                 self.strides.as_ref().as_ptr() as *mut StridesType,
-                et_c::TensorShapeDynamism::STATIC,
+                et_c::runtime::TensorShapeDynamism::STATIC,
             )
         };
         TensorImplBase(impl_, PhantomData)

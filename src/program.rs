@@ -20,7 +20,7 @@ use crate::{et_c, et_rs_c};
 /// A deserialized ExecuTorch program binary.
 ///
 /// See the `hello_world_add` example for how to load and execute a program.
-pub struct Program<'a>(et_c::Program, PhantomData<&'a ()>);
+pub struct Program<'a>(et_c::runtime::Program, PhantomData<&'a ()>);
 impl<'a> Program<'a> {
     /// Loads a Program from the provided loader. The Program will hold a pointer
     /// to the loader, which must outlive the returned Program instance.
@@ -120,7 +120,7 @@ impl<'a> Program<'a> {
     ///
     /// A value describing the presence of a header in the data.
     pub fn check_header(data: &[u8]) -> HeaderStatus {
-        unsafe { et_c::Program::check_header(data.as_ptr() as *const _, data.len()) }
+        unsafe { et_c::runtime::Program::check_header(data.as_ptr() as *const _, data.len()) }
     }
 }
 impl Drop for Program<'_> {
@@ -130,18 +130,18 @@ impl Drop for Program<'_> {
 }
 
 /// Types of validation that the Program can do before parsing the data.
-pub type ProgramVerification = et_c::Program_Verification;
+pub type ProgramVerification = et_c::runtime::Program_Verification;
 /// Describes the presence of an ExecuTorch program header.
-pub type HeaderStatus = et_c::Program_HeaderStatus;
+pub type HeaderStatus = et_c::runtime::Program_HeaderStatus;
 
 /// Describes a a method in an ExecuTorch program.
 ///
 /// The program used to create a MethodMeta object must outlive the MethodMeta.
 /// It is separate from Method so that this information can be accessed without
 /// paying the initialization cost of loading the full Method.
-pub struct MethodMeta<'a>(et_c::MethodMeta, PhantomData<&'a ()>);
+pub struct MethodMeta<'a>(et_c::runtime::MethodMeta, PhantomData<&'a ()>);
 impl MethodMeta<'_> {
-    pub(crate) unsafe fn new(meta: et_c::MethodMeta) -> Self {
+    pub(crate) unsafe fn new(meta: et_c::runtime::MethodMeta) -> Self {
         Self(meta, PhantomData)
     }
 
@@ -248,9 +248,9 @@ impl MethodMeta<'_> {
 ///
 /// The program used to create the MethodMeta object that created this
 /// TensorInfo must outlive this TensorInfo.
-pub struct TensorInfo<'a>(et_c::TensorInfo, PhantomData<&'a ()>);
+pub struct TensorInfo<'a>(et_c::runtime::TensorInfo, PhantomData<&'a ()>);
 impl<'a> TensorInfo<'a> {
-    pub(crate) unsafe fn new(info: et_c::TensorInfo) -> Self {
+    pub(crate) unsafe fn new(info: et_c::runtime::TensorInfo) -> Self {
         Self(info, PhantomData)
     }
 
@@ -268,13 +268,13 @@ impl<'a> TensorInfo<'a> {
 
     /// Returns the scalar type of the input/output.
     pub fn scalar_type(&self) -> Option<ScalarType> {
-        let scalar_type = unsafe { et_c::TensorInfo_scalar_type(&self.0) };
+        let scalar_type = unsafe { et_c::runtime::TensorInfo_scalar_type(&self.0) };
         ScalarType::from_c_scalar_type(scalar_type)
     }
 
     /// Returns the size of the tensor in bytes.
     pub fn nbytes(&self) -> usize {
-        unsafe { et_c::TensorInfo_nbytes(&self.0) }
+        unsafe { et_c::runtime::TensorInfo_nbytes(&self.0) }
     }
 }
 impl std::fmt::Debug for TensorInfo<'_> {
@@ -290,7 +290,7 @@ impl std::fmt::Debug for TensorInfo<'_> {
 
 /// An executable method of an ExecuTorch program. Maps to a python method like
 /// `forward()` on the original `nn.Module`.
-pub struct Method<'a>(et_c::Method, PhantomData<&'a ()>);
+pub struct Method<'a>(et_c::runtime::Method, PhantomData<&'a ()>);
 impl Method<'_> {
     /// Starts the execution of the method.
     pub fn start_execution(&mut self) -> Execution {
@@ -304,17 +304,17 @@ impl Method<'_> {
 }
 impl Drop for Method<'_> {
     fn drop(&mut self) {
-        unsafe { et_c::Method_Method_destructor(&mut self.0) };
+        unsafe { et_c::runtime::Method_Method_destructor(&mut self.0) };
     }
 }
 
 /// An method execution builder used to set inputs and execute the method.
 pub struct Execution<'a> {
-    method: &'a mut et_c::Method,
+    method: &'a mut et_c::runtime::Method,
     set_inputs: u64,
 }
 impl<'a> Execution<'a> {
-    fn new(method: &'a mut et_c::Method) -> Self {
+    fn new(method: &'a mut et_c::runtime::Method) -> Self {
         assert!(
             unsafe { method.inputs_size() } <= u64::BITS as usize,
             "more that 64 inputs for method, unsupported"
@@ -357,10 +357,10 @@ impl<'a> Execution<'a> {
 ///
 /// Access the outputs of a method execution by indexing into the Outputs object.
 pub struct Outputs<'a> {
-    method: &'a mut et_c::Method,
+    method: &'a mut et_c::runtime::Method,
 }
 impl<'a> Outputs<'a> {
-    fn new(method: &'a mut et_c::Method) -> Self {
+    fn new(method: &'a mut et_c::runtime::Method) -> Self {
         Self { method }
     }
 

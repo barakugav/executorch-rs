@@ -13,7 +13,7 @@
 //! ```bash
 //! # Clone the C++ library
 //! cd ${TEMP_DIR}
-//! git clone --depth 1 --branch v0.3.0 https://github.com/pytorch/executorch.git
+//! git clone --depth 1 --branch v0.4.0 https://github.com/pytorch/executorch.git
 //! cd executorch
 //! git submodule sync --recursive
 //! git submodule update --init --recursive
@@ -84,10 +84,10 @@
 //! - `module`: Includes the [`Module`] struct. The `libextension_module_static.a` static library is required, compile C++
 //!     `executorch` with `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`.
 //!
-//! [`FileDataLoader`]: crate::torch::executor::util::FileDataLoader
-//! [`MmapDataLoader`]: crate::torch::executor::util::MmapDataLoader
-//! [`BufferDataLoader`]: crate::torch::executor::util::BufferDataLoader
-//! [`Module`]: crate::torch::executor::Module
+//! [`FileDataLoader`]: crate::executorch::extension::FileDataLoader
+//! [`MmapDataLoader`]: crate::executorch::extension::MmapDataLoader
+//! [`BufferDataLoader`]: crate::executorch::extension::BufferDataLoader
+//! [`Module`]: crate::executorch::extension::Module
 
 #![cfg_attr(not(feature = "std"), no_std)]
 

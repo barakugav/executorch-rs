@@ -43,6 +43,7 @@ def main():
             "version.txt",
         ]
         excludes = [
+            "runtime/executor/platform_memory_allocator.h",
             "**/test/**",
             "**/testing_util/**",
         ]

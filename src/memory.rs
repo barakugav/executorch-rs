@@ -17,7 +17,7 @@ use crate::{et_c, et_rs_c};
 /// allocation is simply checking space and growing the cur_ pointer with each
 /// allocation request.
 pub struct MemoryAllocator<'a>(
-    pub(crate) UnsafeCell<et_c::MemoryAllocator>,
+    pub(crate) UnsafeCell<et_c::runtime::MemoryAllocator>,
     PhantomData<&'a ()>,
 );
 impl<'a> MemoryAllocator<'a> {
@@ -156,7 +156,7 @@ mod malloc_allocator {
     ///
     /// For systems with malloc(), this can be easier than using a fixed-sized
     /// MemoryAllocator.
-    pub struct MallocMemoryAllocator(UnsafeCell<et_c::util::MallocMemoryAllocator>);
+    pub struct MallocMemoryAllocator(UnsafeCell<et_c::extension::MallocMemoryAllocator>);
     impl Default for MallocMemoryAllocator {
         fn default() -> Self {
             Self::new()
@@ -188,7 +188,7 @@ mod malloc_allocator {
 }
 
 /// A group of buffers that can be used to represent a device's memory hierarchy.
-pub struct HierarchicalAllocator<'a>(et_c::HierarchicalAllocator, PhantomData<&'a ()>);
+pub struct HierarchicalAllocator<'a>(et_c::runtime::HierarchicalAllocator, PhantomData<&'a ()>);
 impl<'a> HierarchicalAllocator<'a> {
     /// Constructs a new HierarchicalAllocator.
     ///
@@ -228,7 +228,7 @@ impl Drop for HierarchicalAllocator<'_> {
 /// memory (e.g., for things like scratch space). But we do suggest that backends
 /// and kernels use these provided allocators whenever possible.
 pub struct MemoryManager<'a>(
-    pub(crate) UnsafeCell<et_c::MemoryManager>,
+    pub(crate) UnsafeCell<et_c::runtime::MemoryManager>,
     PhantomData<&'a ()>,
 );
 impl<'a> MemoryManager<'a> {
@@ -258,7 +258,7 @@ impl<'a> MemoryManager<'a> {
             .map(|x| x.0.get() as *mut _)
             .unwrap_or(ptr::null_mut());
         Self(
-            UnsafeCell::new(et_c::MemoryManager {
+            UnsafeCell::new(et_c::runtime::MemoryManager {
                 method_allocator_: method_allocator.as_ref().0.get(),
                 planned_memory_: planned_memory,
                 temp_allocator_: temp_allocator,
