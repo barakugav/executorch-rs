@@ -1,6 +1,6 @@
 #pragma once
 
-#include "executorch_rs_defines.h"
+#include "executorch_rs/defines.h"
 
 #if defined(EXECUTORCH_RS_MODULE) && !defined(EXECUTORCH_RS_STD)
 #error "EXECUTORCH_RS_MODULE requires EXECUTORCH_RS_STD"

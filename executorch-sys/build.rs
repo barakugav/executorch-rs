@@ -41,7 +41,7 @@ fn generate_bindings() {
     println!("cargo::rerun-if-changed={}", cpp_dir.to_str().unwrap());
 
     let bindings_h = cpp_dir.join("bindings.hpp");
-    let bindings_defines_h = bridge_dir.parent().unwrap().join("executorch_rs_defines.h");
+    let bindings_defines_h = bridge_dir.join("defines.h");
     let mut bindings_defines = String::from("#pragma once\n");
     for define in cpp_defines() {
         bindings_defines.push_str(&format!("#define {}\n", define));
