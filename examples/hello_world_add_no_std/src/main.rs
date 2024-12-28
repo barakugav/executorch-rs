@@ -74,7 +74,7 @@ fn real_main() {
     assert_eq!(ndarray::arr1(&[2.0]), output.as_array());
 }
 
-// FIXME: Unfortunatelly, no_std is WIP
+// FIXME: Unfortunately, no_std is WIP
 
 // #[no_mangle]
 // pub fn main(_argc: i32, _argv: *const *const u8) -> u32 {

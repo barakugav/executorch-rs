@@ -4,9 +4,9 @@
 //! This enable using the library in embedded systems where dynamic memory allocation is not allowed, or when allocation
 //! is a performance bottleneck.
 
-use core::pin::Pin;
 use std::cell::UnsafeCell;
 use std::marker::PhantomData;
+use std::pin::Pin;
 use std::ptr;
 
 use crate::util::Span;
@@ -44,19 +44,15 @@ impl<'a> MemoryAllocator<'a> {
     /// * `size` - The number of bytes to allocate.
     /// * `alignment` - The alignment of the memory to allocate.
     ///
-    /// # Safety
+    /// # Returns
     ///
-    /// The caller must ensure that the returned pointer is not dereferenced after the allocator is dropped.
-    pub unsafe fn allocate_raw(
-        &self,
-        size: usize,
-        alignment: usize,
-    ) -> Option<*mut std::ffi::c_void> {
+    /// A mutable reference to the allocated memory, or [`None`] if allocation failed.
+    pub fn allocate_raw(&self, size: usize, alignment: usize) -> Option<&mut [u8]> {
         let ptr = unsafe { et_rs_c::MemoryAllocator_allocate(self.0.get(), size, alignment) };
         if ptr.is_null() {
             None
         } else {
-            Some(ptr)
+            Some(unsafe { std::slice::from_raw_parts_mut(ptr as *mut u8, size) })
         }
     }
 
@@ -70,7 +66,7 @@ impl<'a> MemoryAllocator<'a> {
     pub fn allocate<T: Default>(&self) -> Option<&mut T> {
         let size = std::mem::size_of::<T>();
         let alignment = std::mem::align_of::<T>();
-        let ptr = unsafe { self.allocate_raw(size, alignment) }? as *mut T;
+        let ptr = self.allocate_raw(size, alignment)?.as_mut_ptr() as *mut T;
         unsafe { ptr.write(Default::default()) };
         Some(unsafe { &mut *ptr })
     }
@@ -85,7 +81,7 @@ impl<'a> MemoryAllocator<'a> {
     pub fn allocate_pinned<T: Default>(&self) -> Option<Pin<&mut T>> {
         let size = std::mem::size_of::<T>();
         let alignment = std::mem::align_of::<T>();
-        let ptr = unsafe { self.allocate_raw(size, alignment) }? as *mut T;
+        let ptr = self.allocate_raw(size, alignment)?.as_mut_ptr() as *mut T;
         unsafe { ptr.write(Default::default()) };
         Some(unsafe { Pin::new_unchecked(&mut *ptr) })
     }
@@ -123,7 +119,7 @@ impl<'a> MemoryAllocator<'a> {
         let actual_elm_size = (elm_size + alignment - 1) & !(alignment - 1);
         let total_size = actual_elm_size * len;
 
-        let ptr = unsafe { self.allocate_raw(total_size, alignment) }? as *mut T;
+        let ptr = self.allocate_raw(total_size, alignment)?.as_mut_ptr() as *mut T;
         assert_eq!(actual_elm_size, {
             let elm0_addr =
                 (&unsafe { std::slice::from_raw_parts_mut(ptr, 2) }[0]) as *const T as usize;

@@ -268,7 +268,7 @@ impl<T: Destroy> Drop for NonTriviallyMovableVec<T> {
 ///     struct using a [`Box`]. The destructor of the Cpp object is called when the Rust object is dropped, and the [`Box`]
 ///     is deallocated.
 /// - Does not own the memory, owns the object: the pointer points to an allocated Cpp object in a [`Storage`], which is
-///     pinned in memory, possible on the stack (see later example). The destructor of the Cpp object is called when
+///     pinned in memory, possibly on the stack (see later example). The destructor of the Cpp object is called when
 ///     Rust object is dropped, but the [`Storage`] is not deallocated.
 /// - Does not own the memory, does not own the object: the pointer points to a Cpp object that is owned by another
 ///     entity, like a regular Rust reference. The destructor of the Cpp object is not called when the Rust object is
@@ -299,8 +299,8 @@ impl<T: Destroy> Drop for NonTriviallyMovableVec<T> {
 ///     let evalue = EValue::new(tensor);
 ///
 ///     // Create an EValue in a memory allocated by the allocator
-///     let allocator: impl AsMut<MemoryAllocator> = ...; // usually global
-///     let evalue = EValue::new_in_storage(tensor, allocator.allocate_pinned().unwrap());
+///     let allocator: impl AsRef<MemoryAllocator> = ...; // usually global
+///     let evalue = EValue::new_in_storage(tensor, allocator.as_ref().allocate_pinned().unwrap());
 ///     ```
 #[repr(transparent)]
 pub struct Storage<T: Storable>(MaybeUninit<T::Storage>, PhantomPinned);
