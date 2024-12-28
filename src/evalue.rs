@@ -13,49 +13,51 @@ use crate::util::{
 };
 use crate::{et_c, et_rs_c};
 
+use et_c::runtime::Tag as CTag;
+
 /// A tag indicating the type of the value stored in an [`EValue`].
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Tag {
     /// Tag for value [`TensorAny`].
-    Tensor = et_c::runtime::Tag::Tensor as u8,
+    Tensor = CTag::Tensor as u8,
     /// Tag for value `&[c_char]`.
-    String = et_c::runtime::Tag::String as u8,
+    String = CTag::String as u8,
     /// Tag for value `f64`.
-    Double = et_c::runtime::Tag::Double as u8,
+    Double = CTag::Double as u8,
     /// Tag for value `i64`.
-    Int = et_c::runtime::Tag::Int as u8,
+    Int = CTag::Int as u8,
     /// Tag for value `bool`.
-    Bool = et_c::runtime::Tag::Bool as u8,
+    Bool = CTag::Bool as u8,
     /// Tag for value `&[bool]`.
-    ListBool = et_c::runtime::Tag::ListBool as u8,
+    ListBool = CTag::ListBool as u8,
     /// Tag for value `&[f64]`.
-    ListDouble = et_c::runtime::Tag::ListDouble as u8,
+    ListDouble = CTag::ListDouble as u8,
     /// Tag for value `&[i64]`.
-    ListInt = et_c::runtime::Tag::ListInt as u8,
+    ListInt = CTag::ListInt as u8,
     /// Tag for value `&[TensorAny]`.
-    ListTensor = et_c::runtime::Tag::ListTensor as u8,
+    ListTensor = CTag::ListTensor as u8,
     /// Tag for value `Optional<TensorAny>`.
     ///
     /// Not supported at the moment.
-    ListOptionalTensor = et_c::runtime::Tag::ListOptionalTensor as u8,
+    ListOptionalTensor = CTag::ListOptionalTensor as u8,
 }
-impl IntoRust for &et_c::runtime::Tag {
+impl IntoRust for &CTag {
     type RsType = Option<Tag>;
     fn rs(self) -> Self::RsType {
         Some(match self {
-            et_c::runtime::Tag::None => return None,
-            et_c::runtime::Tag::Tensor => Tag::Tensor,
-            et_c::runtime::Tag::String => Tag::String,
-            et_c::runtime::Tag::Double => Tag::Double,
-            et_c::runtime::Tag::Int => Tag::Int,
-            et_c::runtime::Tag::Bool => Tag::Bool,
-            et_c::runtime::Tag::ListBool => Tag::ListBool,
-            et_c::runtime::Tag::ListDouble => Tag::ListDouble,
-            et_c::runtime::Tag::ListInt => Tag::ListInt,
-            et_c::runtime::Tag::ListTensor => Tag::ListTensor,
-            et_c::runtime::Tag::ListScalar => unimplemented!("ListScalar is not supported"),
-            et_c::runtime::Tag::ListOptionalTensor => Tag::ListOptionalTensor,
+            CTag::None => return None,
+            CTag::Tensor => Tag::Tensor,
+            CTag::String => Tag::String,
+            CTag::Double => Tag::Double,
+            CTag::Int => Tag::Int,
+            CTag::Bool => Tag::Bool,
+            CTag::ListBool => Tag::ListBool,
+            CTag::ListDouble => Tag::ListDouble,
+            CTag::ListInt => Tag::ListInt,
+            CTag::ListTensor => Tag::ListTensor,
+            CTag::ListScalar => unimplemented!("ListScalar is not supported"),
+            CTag::ListOptionalTensor => Tag::ListOptionalTensor,
         })
     }
 }

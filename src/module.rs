@@ -12,9 +12,8 @@ use std::collections::HashSet;
 use std::path::Path;
 use std::ptr;
 
-use executorch_sys::executorch_rs::VecChar;
-
 use crate::error::{fallible, Result};
+use crate::et_rs_c::VecChar;
 use crate::evalue::EValue;
 use crate::program::{MethodMeta, ProgramVerification};
 use crate::util::cpp_vec::CppVecImpl;

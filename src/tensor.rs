@@ -15,11 +15,13 @@ use crate::util::{Destroy, DimArr, FixedSizeDim, NonTriviallyMovable, Storable, 
 use crate::{et_c, et_rs_c};
 
 /// A type that represents the sizes (dimensions) of a tensor.
-pub type SizesType = executorch_sys::executorch::aten::SizesType;
+pub type SizesType = et_c::aten::SizesType;
 /// A type that represents the order of the dimensions of a tensor.
-pub type DimOrderType = executorch_sys::executorch::aten::DimOrderType;
+pub type DimOrderType = et_c::aten::DimOrderType;
 /// A type that represents the strides of a tensor.
-pub type StridesType = executorch_sys::executorch::aten::StridesType;
+pub type StridesType = et_c::aten::StridesType;
+
+use et_c::runtime::etensor::ScalarType as CScalarType;
 
 /// Data types (dtypes) that can be used as element types in Tensors.
 ///
@@ -29,110 +31,108 @@ pub type StridesType = executorch_sys::executorch::aten::StridesType;
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum ScalarType {
     /// 8-bit unsigned integer, `u8`
-    Byte = et_c::runtime::etensor::ScalarType::Byte as u8,
+    Byte = CScalarType::Byte as u8,
     /// 8-bit signed, integer, `i8`
-    Char = et_c::runtime::etensor::ScalarType::Char as u8,
+    Char = CScalarType::Char as u8,
     /// 16-bit signed integer, `i16`
-    Short = et_c::runtime::etensor::ScalarType::Short as u8,
+    Short = CScalarType::Short as u8,
     /// 32-bit signed integer, `i32`
-    Int = et_c::runtime::etensor::ScalarType::Int as u8,
+    Int = CScalarType::Int as u8,
     /// 64-bit signed integer, `i64`
-    Long = et_c::runtime::etensor::ScalarType::Long as u8,
+    Long = CScalarType::Long as u8,
     /// 16-bit floating point, `half::f16`, enabled by the `f16` feature
-    Half = et_c::runtime::etensor::ScalarType::Half as u8,
+    Half = CScalarType::Half as u8,
     /// 32-bit floating point, `f32`
-    Float = et_c::runtime::etensor::ScalarType::Float as u8,
+    Float = CScalarType::Float as u8,
     /// 64-bit floating point, `f64`
-    Double = et_c::runtime::etensor::ScalarType::Double as u8,
+    Double = CScalarType::Double as u8,
     /// 16-bit complex floating point, `num_complex::Complex<half::f16>`, enabled by the `complex` and `f16` features
-    ComplexHalf = et_c::runtime::etensor::ScalarType::ComplexHalf as u8,
+    ComplexHalf = CScalarType::ComplexHalf as u8,
     /// 32-bit complex floating point, `num_complex::Complex32`, enabled by the `complex` feature
-    ComplexFloat = et_c::runtime::etensor::ScalarType::ComplexFloat as u8,
+    ComplexFloat = CScalarType::ComplexFloat as u8,
     /// 64-bit complex floating point, `num_complex::Complex64`, enabled by the `complex` feature
-    ComplexDouble = et_c::runtime::etensor::ScalarType::ComplexDouble as u8,
+    ComplexDouble = CScalarType::ComplexDouble as u8,
     /// Boolean, `bool`
-    Bool = et_c::runtime::etensor::ScalarType::Bool as u8,
+    Bool = CScalarType::Bool as u8,
     /// **\[Unsupported\]** 8-bit quantized integer
-    QInt8 = et_c::runtime::etensor::ScalarType::QInt8 as u8,
+    QInt8 = CScalarType::QInt8 as u8,
     /// **\[Unsupported\]** 8-bit quantized unsigned integer
-    QUInt8 = et_c::runtime::etensor::ScalarType::QUInt8 as u8,
+    QUInt8 = CScalarType::QUInt8 as u8,
     /// **\[Unsupported\]** 32-bit quantized integer
-    QInt32 = et_c::runtime::etensor::ScalarType::QInt32 as u8,
+    QInt32 = CScalarType::QInt32 as u8,
     /// 16-bit floating point using the bfloat16 format, `half::bf16`, enabled by the `f16` feature
-    BFloat16 = et_c::runtime::etensor::ScalarType::BFloat16 as u8,
+    BFloat16 = CScalarType::BFloat16 as u8,
     /// **\[Unsupported\]**
-    QUInt4x2 = et_c::runtime::etensor::ScalarType::QUInt4x2 as u8,
+    QUInt4x2 = CScalarType::QUInt4x2 as u8,
     /// **\[Unsupported\]**
-    QUInt2x4 = et_c::runtime::etensor::ScalarType::QUInt2x4 as u8,
+    QUInt2x4 = CScalarType::QUInt2x4 as u8,
     /// **\[Unsupported\]**
-    Bits1x8 = et_c::runtime::etensor::ScalarType::Bits1x8 as u8,
+    Bits1x8 = CScalarType::Bits1x8 as u8,
     /// **\[Unsupported\]**
-    Bits2x4 = et_c::runtime::etensor::ScalarType::Bits2x4 as u8,
+    Bits2x4 = CScalarType::Bits2x4 as u8,
     /// **\[Unsupported\]**
-    Bits4x2 = et_c::runtime::etensor::ScalarType::Bits4x2 as u8,
+    Bits4x2 = CScalarType::Bits4x2 as u8,
     /// **\[Unsupported\]**
-    Bits8 = et_c::runtime::etensor::ScalarType::Bits8 as u8,
+    Bits8 = CScalarType::Bits8 as u8,
     /// **\[Unsupported\]**
-    Bits16 = et_c::runtime::etensor::ScalarType::Bits16 as u8,
+    Bits16 = CScalarType::Bits16 as u8,
 }
 impl ScalarType {
-    pub(crate) fn from_c_scalar_type(
-        scalar_type: et_c::runtime::etensor::ScalarType,
-    ) -> Option<Self> {
+    pub(crate) fn from_c_scalar_type(scalar_type: CScalarType) -> Option<Self> {
         Some(match scalar_type {
-            et_c::runtime::etensor::ScalarType::Byte => ScalarType::Byte,
-            et_c::runtime::etensor::ScalarType::Char => ScalarType::Char,
-            et_c::runtime::etensor::ScalarType::Short => ScalarType::Short,
-            et_c::runtime::etensor::ScalarType::Int => ScalarType::Int,
-            et_c::runtime::etensor::ScalarType::Long => ScalarType::Long,
-            et_c::runtime::etensor::ScalarType::Half => ScalarType::Half,
-            et_c::runtime::etensor::ScalarType::Float => ScalarType::Float,
-            et_c::runtime::etensor::ScalarType::Double => ScalarType::Double,
-            et_c::runtime::etensor::ScalarType::ComplexHalf => ScalarType::ComplexHalf,
-            et_c::runtime::etensor::ScalarType::ComplexFloat => ScalarType::ComplexFloat,
-            et_c::runtime::etensor::ScalarType::ComplexDouble => ScalarType::ComplexDouble,
-            et_c::runtime::etensor::ScalarType::Bool => ScalarType::Bool,
-            et_c::runtime::etensor::ScalarType::QInt8 => ScalarType::QInt8,
-            et_c::runtime::etensor::ScalarType::QUInt8 => ScalarType::QUInt8,
-            et_c::runtime::etensor::ScalarType::QInt32 => ScalarType::QInt32,
-            et_c::runtime::etensor::ScalarType::BFloat16 => ScalarType::BFloat16,
-            et_c::runtime::etensor::ScalarType::QUInt4x2 => ScalarType::QUInt4x2,
-            et_c::runtime::etensor::ScalarType::QUInt2x4 => ScalarType::QUInt2x4,
-            et_c::runtime::etensor::ScalarType::Bits1x8 => ScalarType::Bits1x8,
-            et_c::runtime::etensor::ScalarType::Bits2x4 => ScalarType::Bits2x4,
-            et_c::runtime::etensor::ScalarType::Bits4x2 => ScalarType::Bits4x2,
-            et_c::runtime::etensor::ScalarType::Bits8 => ScalarType::Bits8,
-            et_c::runtime::etensor::ScalarType::Bits16 => ScalarType::Bits16,
-            et_c::runtime::etensor::ScalarType::Undefined => return None,
-            et_c::runtime::etensor::ScalarType::NumOptions => panic!("Invalid scalar type"),
+            CScalarType::Byte => ScalarType::Byte,
+            CScalarType::Char => ScalarType::Char,
+            CScalarType::Short => ScalarType::Short,
+            CScalarType::Int => ScalarType::Int,
+            CScalarType::Long => ScalarType::Long,
+            CScalarType::Half => ScalarType::Half,
+            CScalarType::Float => ScalarType::Float,
+            CScalarType::Double => ScalarType::Double,
+            CScalarType::ComplexHalf => ScalarType::ComplexHalf,
+            CScalarType::ComplexFloat => ScalarType::ComplexFloat,
+            CScalarType::ComplexDouble => ScalarType::ComplexDouble,
+            CScalarType::Bool => ScalarType::Bool,
+            CScalarType::QInt8 => ScalarType::QInt8,
+            CScalarType::QUInt8 => ScalarType::QUInt8,
+            CScalarType::QInt32 => ScalarType::QInt32,
+            CScalarType::BFloat16 => ScalarType::BFloat16,
+            CScalarType::QUInt4x2 => ScalarType::QUInt4x2,
+            CScalarType::QUInt2x4 => ScalarType::QUInt2x4,
+            CScalarType::Bits1x8 => ScalarType::Bits1x8,
+            CScalarType::Bits2x4 => ScalarType::Bits2x4,
+            CScalarType::Bits4x2 => ScalarType::Bits4x2,
+            CScalarType::Bits8 => ScalarType::Bits8,
+            CScalarType::Bits16 => ScalarType::Bits16,
+            CScalarType::Undefined => return None,
+            CScalarType::NumOptions => panic!("Invalid scalar type"),
         })
     }
 
-    pub(crate) fn into_c_scalar_type(self) -> et_c::runtime::etensor::ScalarType {
+    pub(crate) fn into_c_scalar_type(self) -> CScalarType {
         match self {
-            ScalarType::Byte => et_c::runtime::etensor::ScalarType::Byte,
-            ScalarType::Char => et_c::runtime::etensor::ScalarType::Char,
-            ScalarType::Short => et_c::runtime::etensor::ScalarType::Short,
-            ScalarType::Int => et_c::runtime::etensor::ScalarType::Int,
-            ScalarType::Long => et_c::runtime::etensor::ScalarType::Long,
-            ScalarType::Half => et_c::runtime::etensor::ScalarType::Half,
-            ScalarType::Float => et_c::runtime::etensor::ScalarType::Float,
-            ScalarType::Double => et_c::runtime::etensor::ScalarType::Double,
-            ScalarType::ComplexHalf => et_c::runtime::etensor::ScalarType::ComplexHalf,
-            ScalarType::ComplexFloat => et_c::runtime::etensor::ScalarType::ComplexFloat,
-            ScalarType::ComplexDouble => et_c::runtime::etensor::ScalarType::ComplexDouble,
-            ScalarType::Bool => et_c::runtime::etensor::ScalarType::Bool,
-            ScalarType::QInt8 => et_c::runtime::etensor::ScalarType::QInt8,
-            ScalarType::QUInt8 => et_c::runtime::etensor::ScalarType::QUInt8,
-            ScalarType::QInt32 => et_c::runtime::etensor::ScalarType::QInt32,
-            ScalarType::BFloat16 => et_c::runtime::etensor::ScalarType::BFloat16,
-            ScalarType::QUInt4x2 => et_c::runtime::etensor::ScalarType::QUInt4x2,
-            ScalarType::QUInt2x4 => et_c::runtime::etensor::ScalarType::QUInt2x4,
-            ScalarType::Bits1x8 => et_c::runtime::etensor::ScalarType::Bits1x8,
-            ScalarType::Bits2x4 => et_c::runtime::etensor::ScalarType::Bits2x4,
-            ScalarType::Bits4x2 => et_c::runtime::etensor::ScalarType::Bits4x2,
-            ScalarType::Bits8 => et_c::runtime::etensor::ScalarType::Bits8,
-            ScalarType::Bits16 => et_c::runtime::etensor::ScalarType::Bits16,
+            ScalarType::Byte => CScalarType::Byte,
+            ScalarType::Char => CScalarType::Char,
+            ScalarType::Short => CScalarType::Short,
+            ScalarType::Int => CScalarType::Int,
+            ScalarType::Long => CScalarType::Long,
+            ScalarType::Half => CScalarType::Half,
+            ScalarType::Float => CScalarType::Float,
+            ScalarType::Double => CScalarType::Double,
+            ScalarType::ComplexHalf => CScalarType::ComplexHalf,
+            ScalarType::ComplexFloat => CScalarType::ComplexFloat,
+            ScalarType::ComplexDouble => CScalarType::ComplexDouble,
+            ScalarType::Bool => CScalarType::Bool,
+            ScalarType::QInt8 => CScalarType::QInt8,
+            ScalarType::QUInt8 => CScalarType::QUInt8,
+            ScalarType::QInt32 => CScalarType::QInt32,
+            ScalarType::BFloat16 => CScalarType::BFloat16,
+            ScalarType::QUInt4x2 => CScalarType::QUInt4x2,
+            ScalarType::QUInt2x4 => CScalarType::QUInt2x4,
+            ScalarType::Bits1x8 => CScalarType::Bits1x8,
+            ScalarType::Bits2x4 => CScalarType::Bits2x4,
+            ScalarType::Bits4x2 => CScalarType::Bits4x2,
+            ScalarType::Bits8 => CScalarType::Bits8,
+            ScalarType::Bits16 => CScalarType::Bits16,
         }
     }
 }

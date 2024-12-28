@@ -2,7 +2,7 @@
 #include <cstddef>
 #include <vector>
 #include <cassert>
-#include "executorch_rs_ext/api_utils.hpp"
+#include "executorch_rs/bridge.hpp"
 #include "executorch/runtime/core/exec_aten/util/tensor_util.h"
 
 namespace executorch_rs
