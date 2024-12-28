@@ -427,7 +427,7 @@ impl_array_ref!(u8, et_rs_c::ArrayRefU8);
 impl_array_ref!(i32, et_rs_c::ArrayRefI32);
 impl_array_ref!(f64, et_rs_c::ArrayRefF64);
 impl_array_ref!(bool, et_rs_c::ArrayRefBool);
-impl_array_ref!(et_c::EValue, et_rs_c::ArrayRefEValue);
+impl_array_ref!(et_c::runtime::EValue, et_rs_c::ArrayRefEValue);
 
 /// Represent a reference to an array (0 or more elements
 /// consecutively in memory), i.e. a start pointer and a length.  It allows
@@ -685,18 +685,18 @@ pub(crate) mod cpp_vec {
             unsafe { std::slice::from_raw_parts_mut(self.data, self.len) }
         }
     }
-    impl CppVecElm for et_c::EValue {
+    impl CppVecElm for et_c::runtime::EValue {
         type VecImpl = et_rs_c::VecEValue;
         fn drop_vec(vec: &mut CppVec<Self>) {
             unsafe { et_rs_c::VecEValue_destructor(&mut vec.0) }
         }
     }
     impl CppVecImpl for et_rs_c::VecEValue {
-        type Elm = et_c::EValue;
-        fn as_slice(&self) -> &[et_c::EValue] {
+        type Elm = et_c::runtime::EValue;
+        fn as_slice(&self) -> &[et_c::runtime::EValue] {
             unsafe { std::slice::from_raw_parts(self.data, self.len) }
         }
-        fn as_mut_slice(&mut self) -> &mut [et_c::EValue] {
+        fn as_mut_slice(&mut self) -> &mut [et_c::runtime::EValue] {
             unsafe { std::slice::from_raw_parts_mut(self.data, self.len) }
         }
     }

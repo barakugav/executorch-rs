@@ -11,6 +11,7 @@
 #include <executorch/runtime/core/evalue.h>
 #include <executorch/runtime/core/event_tracer.h>
 #include <executorch/runtime/core/exec_aten/exec_aten.h>
+#include <executorch/runtime/core/span.h>
 #include <executorch/runtime/executor/memory_manager.h>
 #include <executorch/runtime/executor/method_meta.h>
 #include <executorch/runtime/platform/compiler.h>
@@ -23,8 +24,8 @@ struct ExecutionPlan;
 struct EValue;
 } // namespace executorch_flatbuffer
 
-namespace torch {
-namespace executor {
+namespace executorch {
+namespace runtime {
 
 // Forward declare Program to avoid a circular reference.
 class Program;
@@ -32,8 +33,6 @@ class Program;
 // Forward declare internal types.
 class BackendDelegate;
 struct Chain;
-template <typename T>
-class Span;
 class KernelRuntimeContext;
 using OpFunction = void (*)(KernelRuntimeContext&, EValue**);
 /// A list of pointers into the master values table that together compose the
@@ -54,6 +53,7 @@ class Method final {
       : step_state_(rhs.step_state_),
         program_(rhs.program_),
         memory_manager_(rhs.memory_manager_),
+        temp_allocator_(rhs.temp_allocator_),
         serialization_plan_(rhs.serialization_plan_),
         event_tracer_(rhs.event_tracer_),
         n_value_(rhs.n_value_),
@@ -62,9 +62,7 @@ class Method final {
         delegates_(rhs.delegates_),
         n_chains_(rhs.n_chains_),
         chains_(rhs.chains_),
-        init_state_(rhs.init_state_),
-        pre_allocated_input_(rhs.pre_allocated_input_),
-        pre_allocated_output_(rhs.pre_allocated_output_) {
+        init_state_(rhs.init_state_) {
     // Required: clear out fields that the dtor looks at, so that we don't free
     // anything twice.
     rhs.n_value_ = 0;
@@ -82,8 +80,6 @@ class Method final {
     rhs.event_tracer_ = nullptr;
     rhs.n_chains_ = 0;
     rhs.chains_ = nullptr;
-    rhs.pre_allocated_input_ = false;
-    rhs.pre_allocated_output_ = false;
   }
 
   /**
@@ -104,7 +100,7 @@ class Method final {
    *
    * @returns Error::Ok on success, non-Ok on failure.
    */
-  __ET_NODISCARD Error set_input(const EValue& input_evalue, size_t input_idx);
+  ET_NODISCARD Error set_input(const EValue& input_evalue, size_t input_idx);
 
   /**
    * Sets the values of all method inputs.
@@ -118,8 +114,8 @@ class Method final {
    *
    * @returns Error::Ok on success, non-Ok on failure.
    */
-  __ET_NODISCARD Error
-  set_inputs(const exec_aten::ArrayRef<EValue>& input_evalues);
+  ET_NODISCARD Error
+  set_inputs(const executorch::aten::ArrayRef<EValue>& input_evalues);
 
   /**
    * Sets the data buffer of the specified method output to the provided value.
@@ -140,7 +136,7 @@ class Method final {
    *
    * @returns Error::Ok on success, non-Ok on failure.
    */
-  __ET_NODISCARD Error
+  ET_NODISCARD Error
   set_output_data_ptr(void* buffer, size_t size, size_t output_idx);
 
   /**
@@ -160,7 +156,7 @@ class Method final {
    *
    * @returns Error::Ok on success, non-Ok on failure.
    */
-  __ET_NODISCARD Error get_outputs(EValue* output_evalues, size_t length);
+  ET_NODISCARD Error get_outputs(EValue* output_evalues, size_t length);
 
   /**
    * Copies the method's inputs into the provided array.
@@ -176,41 +172,43 @@ class Method final {
    *
    * @returns Error::Ok on success, non-Ok on failure.
    */
-  __ET_NODISCARD Error get_inputs(EValue* input_evalues, size_t length);
+  ET_NODISCARD Error get_inputs(EValue* input_evalues, size_t length);
 
   /**
    * Execute the method.
    *
    * NOTE: Will fail if the method has been partially executed using the
-   * `experimental_step()` api.
+   * `step()` api.
    *
    * @returns Error::Ok on success, non-Ok on failure.
    */
-  __ET_NODISCARD Error execute();
+  ET_NODISCARD Error execute();
 
   /**
-   * Advances/executes a single instruction in the method.
-   *
-   * NOTE: Prototype API; subject to change.
+   * EXPERIMENTAL: Advances/executes a single instruction in the method.
    *
    * @retval Error::Ok step succeeded
    * @retval non-Ok step failed
    * @retval Error::EndOfMethod method finished executing successfully
    */
-  __ET_NODISCARD Error experimental_step();
+  ET_EXPERIMENTAL ET_NODISCARD Error step();
+
+  /// DEPRECATED: Use `step()` instead.
+  ET_DEPRECATED ET_NODISCARD Error experimental_step();
 
   /**
-   * Resets execution state to the start of the Method. For use with the
-   * `experimental_step()` API.
-   *
-   * NOTE: Prototype API; subject to change.
+   * EXPERIMENTAL: Resets execution state to the start of the Method. For use
+   * with the `step()` API.
    *
    * @retval Error:Ok on success
    * @retval Error::InvalidState if called before step-based execution reached
    *     the end of the Method. This means it is not possible to recover a
    *     Method that failed mid-execution.
    */
-  __ET_NODISCARD Error experimental_reset_execution();
+  ET_EXPERIMENTAL ET_NODISCARD Error reset_execution();
+
+  /// DEPRECATED: Use `reset_execution()` instead.
+  ET_DEPRECATED ET_NODISCARD Error experimental_reset_execution();
 
   /**
    * Returns the MethodMeta that corresponds to the calling Method.
@@ -236,13 +234,13 @@ class Method final {
 
   /// DEPRECATED: Use MethodMeta instead to access metadata, and set_input to
   /// update Method inputs.
-  __ET_DEPRECATED const EValue& get_input(size_t i) const;
+  ET_DEPRECATED const EValue& get_input(size_t i) const;
   /// DEPRECATED: Use MethodMeta instead to access metadata, and set_input to
   /// update Method inputs.
-  __ET_DEPRECATED EValue& mutable_input(size_t i);
+  ET_DEPRECATED EValue& mutable_input(size_t i);
   /// DEPRECATED: Use MethodMeta instead to access metadata, and get_output to
   /// retrieve Method outputs.
-  __ET_DEPRECATED EValue& mutable_output(size_t i);
+  ET_DEPRECATED EValue& mutable_output(size_t i);
 
   ~Method();
 
@@ -272,10 +270,12 @@ class Method final {
   Method(
       const Program* program,
       MemoryManager* memory_manager,
-      EventTracer* event_tracer)
+      EventTracer* event_tracer,
+      MemoryAllocator* temp_allocator)
       : step_state_(),
         program_(program),
         memory_manager_(memory_manager),
+        temp_allocator_(temp_allocator),
         serialization_plan_(nullptr),
         event_tracer_(event_tracer),
         n_value_(0),
@@ -284,12 +284,10 @@ class Method final {
         delegates_(nullptr),
         n_chains_(0),
         chains_(nullptr),
-        init_state_(InitializationState::Uninitialized),
-        pre_allocated_input_(false),
-        pre_allocated_output_(false) {}
+        init_state_(InitializationState::Uninitialized) {}
 
   /// Static factory used by Program.
-  __ET_NODISCARD static Result<Method> load(
+  ET_NODISCARD static Result<Method> load(
       executorch_flatbuffer::ExecutionPlan* s_plan,
       const Program* program,
       MemoryManager* memory_manager,
@@ -300,7 +298,7 @@ class Method final {
    *
    * @returns Error::Ok on success, non-Ok on failure.
    */
-  __ET_NODISCARD Error init(executorch_flatbuffer::ExecutionPlan* s_plan);
+  ET_NODISCARD Error init(executorch_flatbuffer::ExecutionPlan* s_plan);
 
   /// Returns true if the Method was successfully initialized.
   inline bool initialized() const {
@@ -313,11 +311,12 @@ class Method final {
   size_t get_output_index(size_t i) const;
 
   // Executes a single instruction using the state in step_state_
-  __ET_NODISCARD Error execute_instruction();
+  ET_NODISCARD Error execute_instruction();
 
   StepState step_state_;
   const Program* program_;
   MemoryManager* memory_manager_;
+  MemoryAllocator* temp_allocator_;
   executorch_flatbuffer::ExecutionPlan* serialization_plan_;
   EventTracer* event_tracer_;
 
@@ -331,17 +330,15 @@ class Method final {
   Chain* chains_;
 
   InitializationState init_state_;
-  bool pre_allocated_input_;
-  bool pre_allocated_output_;
 
   /**
    * Parses the elements of the values_ array. On error, n_value_ will be set to
    * the number of successfully-initialized entries so that ~Method doesn't try
    * to clean up uninitialized entries.
    */
-  __ET_NODISCARD Error parse_values();
+  ET_NODISCARD Error parse_values();
 
-  __ET_NODISCARD Error resolve_operator(
+  ET_NODISCARD Error resolve_operator(
       int32_t op_index,
       OpFunction* kernels,
       size_t kernel_index,
@@ -351,5 +348,13 @@ class Method final {
   void log_outputs();
 };
 
+} // namespace runtime
+} // namespace executorch
+
+namespace torch {
+namespace executor {
+// TODO(T197294990): Remove these deprecated aliases once all users have moved
+// to the new `::executorch` namespaces.
+using ::executorch::runtime::Method;
 } // namespace executor
 } // namespace torch

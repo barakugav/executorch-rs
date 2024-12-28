@@ -1,8 +1,8 @@
 import argparse
 import multiprocessing
-import sys
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 DEV_EXECUTORCH_DIR = (
@@ -54,7 +54,7 @@ def main():
 def clone_executorch():
     if not DEV_EXECUTORCH_DIR.exists():
         DEV_EXECUTORCH_DIR.parent.mkdir(parents=True, exist_ok=True)
-        # git clone --depth 1 --branch v0.3.0 https://github.com/pytorch/executorch.git
+        # git clone --depth 1 --branch v0.4.0 https://github.com/pytorch/executorch.git
         subprocess.check_call(
             [
                 "git",
@@ -62,7 +62,7 @@ def clone_executorch():
                 "--depth",
                 "1",
                 "--branch",
-                "v0.3.0",  # TODO: parse from somewhere
+                "v0.4.0",  # TODO: parse from somewhere
                 "https://github.com/pytorch/executorch.git",
             ],
             cwd=DEV_EXECUTORCH_DIR.parent,

@@ -107,7 +107,7 @@
 //!
 //! ## API Stability
 //! The C++ API is still in Alpha, and this Rust lib will continue to change with it. Currently the supported
-//! executorch version is `0.3.0`.
+//! executorch version is `0.4.0`.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -127,8 +127,8 @@ cfg_if::cfg_if! { if #[cfg(feature = "std")] {
     }
 } }
 
+use executorch_sys::executorch as et_c;
 use executorch_sys::executorch_rs as et_rs_c;
-use executorch_sys::torch::executor as et_c;
 
 #[macro_use]
 mod private;

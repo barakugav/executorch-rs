@@ -24,7 +24,7 @@ use crate::{et_c, et_rs_c};
 /// A facade class for loading programs and executing methods within them.
 ///
 /// See the `hello_world_add` example for how to load and execute a module.
-pub struct Module(NonTriviallyMovable<'static, et_c::Module>);
+pub struct Module(NonTriviallyMovable<'static, et_c::extension::Module>);
 impl Module {
     /// Constructs an instance by loading a program from a file with specified
     /// memory locking behavior.
@@ -41,10 +41,10 @@ impl Module {
     /// # Panics
     ///
     /// If the file path is not a valid UTF-8 string or contains a null character.
-    pub fn new(file_path: impl AsRef<Path>, mlock_config: Option<MlockConfig>) -> Self {
+    pub fn new(file_path: impl AsRef<Path>, mlock_config: Option<LoadMode>) -> Self {
         let file_path = file_path.as_ref().to_str().unwrap();
         let file_path = ArrayRef::from_slice(util::str2chars(file_path).unwrap());
-        let mlock_config = mlock_config.unwrap_or(MlockConfig::UseMlock);
+        let mlock_config = mlock_config.unwrap_or(LoadMode::MmapUseMlock);
         let event_tracer = ptr::null_mut(); // TODO: support event tracer
         Self(unsafe {
             NonTriviallyMovable::new_boxed(|p| {
@@ -65,17 +65,17 @@ impl Module {
     /// An Error to indicate success or failure of the loading process.
     pub fn load(&mut self, verification: Option<ProgramVerification>) -> Result<()> {
         let verification = verification.unwrap_or(ProgramVerification::Minimal);
-        unsafe { et_c::Module_load(self.0.as_mut().unwrap(), verification) }.rs()
+        unsafe { et_c::extension::Module_load(self.0.as_mut().unwrap(), verification) }.rs()
     }
 
-    /// Checks if the program is loaded.
-    ///
-    /// # Returns
-    ///
-    /// true if the program is loaded, false otherwise.
-    pub fn is_loaded(&self) -> bool {
-        unsafe { et_c::Module_is_loaded(self.0.as_ref()) }
-    }
+    // /// Checks if the program is loaded.
+    // ///
+    // /// # Returns
+    // ///
+    // /// true if the program is loaded, false otherwise.
+    // pub fn is_loaded(&self) -> bool {
+    //     unsafe { et_c::extension::Module_is_loaded(self.0.as_ref()) }
+    // }
 
     /// Get a list of method names available in the loaded program.
     /// Loads the program and method if needed.
@@ -206,11 +206,11 @@ impl Module {
         self.execute("forward", inputs)
     }
 }
-impl Destroy for et_c::Module {
+impl Destroy for et_c::extension::Module {
     unsafe fn destroy(&mut self) {
         unsafe { et_rs_c::Module_destructor(self) }
     }
 }
 
-/// Enum to define memory locking behavior.
-pub type MlockConfig = et_c::Module_MlockConfig;
+/// Enum to define loading behavior.
+pub type LoadMode = et_c::extension::Module_LoadMode;

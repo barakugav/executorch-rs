@@ -18,44 +18,44 @@ use crate::{et_c, et_rs_c};
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Tag {
     /// Tag for value [`TensorAny`].
-    Tensor = et_c::Tag::Tensor as u8,
+    Tensor = et_c::runtime::Tag::Tensor as u8,
     /// Tag for value `&[c_char]`.
-    String = et_c::Tag::String as u8,
+    String = et_c::runtime::Tag::String as u8,
     /// Tag for value `f64`.
-    Double = et_c::Tag::Double as u8,
+    Double = et_c::runtime::Tag::Double as u8,
     /// Tag for value `i64`.
-    Int = et_c::Tag::Int as u8,
+    Int = et_c::runtime::Tag::Int as u8,
     /// Tag for value `bool`.
-    Bool = et_c::Tag::Bool as u8,
+    Bool = et_c::runtime::Tag::Bool as u8,
     /// Tag for value `&[bool]`.
-    ListBool = et_c::Tag::ListBool as u8,
+    ListBool = et_c::runtime::Tag::ListBool as u8,
     /// Tag for value `&[f64]`.
-    ListDouble = et_c::Tag::ListDouble as u8,
+    ListDouble = et_c::runtime::Tag::ListDouble as u8,
     /// Tag for value `&[i64]`.
-    ListInt = et_c::Tag::ListInt as u8,
+    ListInt = et_c::runtime::Tag::ListInt as u8,
     /// Tag for value `&[TensorAny]`.
-    ListTensor = et_c::Tag::ListTensor as u8,
+    ListTensor = et_c::runtime::Tag::ListTensor as u8,
     /// Tag for value `Optional<TensorAny>`.
     ///
     /// Not supported at the moment.
-    ListOptionalTensor = et_c::Tag::ListOptionalTensor as u8,
+    ListOptionalTensor = et_c::runtime::Tag::ListOptionalTensor as u8,
 }
-impl IntoRust for &et_c::Tag {
+impl IntoRust for &et_c::runtime::Tag {
     type RsType = Option<Tag>;
     fn rs(self) -> Self::RsType {
         Some(match self {
-            et_c::Tag::None => return None,
-            et_c::Tag::Tensor => Tag::Tensor,
-            et_c::Tag::String => Tag::String,
-            et_c::Tag::Double => Tag::Double,
-            et_c::Tag::Int => Tag::Int,
-            et_c::Tag::Bool => Tag::Bool,
-            et_c::Tag::ListBool => Tag::ListBool,
-            et_c::Tag::ListDouble => Tag::ListDouble,
-            et_c::Tag::ListInt => Tag::ListInt,
-            et_c::Tag::ListTensor => Tag::ListTensor,
-            et_c::Tag::ListScalar => unimplemented!("ListScalar is not supported"),
-            et_c::Tag::ListOptionalTensor => Tag::ListOptionalTensor,
+            et_c::runtime::Tag::None => return None,
+            et_c::runtime::Tag::Tensor => Tag::Tensor,
+            et_c::runtime::Tag::String => Tag::String,
+            et_c::runtime::Tag::Double => Tag::Double,
+            et_c::runtime::Tag::Int => Tag::Int,
+            et_c::runtime::Tag::Bool => Tag::Bool,
+            et_c::runtime::Tag::ListBool => Tag::ListBool,
+            et_c::runtime::Tag::ListDouble => Tag::ListDouble,
+            et_c::runtime::Tag::ListInt => Tag::ListInt,
+            et_c::runtime::Tag::ListTensor => Tag::ListTensor,
+            et_c::runtime::Tag::ListScalar => unimplemented!("ListScalar is not supported"),
+            et_c::runtime::Tag::ListOptionalTensor => Tag::ListOptionalTensor,
         })
     }
 }
@@ -63,7 +63,7 @@ impl IntoRust for &et_c::Tag {
 /// Aggregate typing system similar to IValue only slimmed down with less
 /// functionality, no dependencies on atomic, and fewer supported types to better
 /// suit embedded systems (ie no intrusive ptr)
-pub struct EValue<'a>(NonTriviallyMovable<'a, et_c::EValue>);
+pub struct EValue<'a>(NonTriviallyMovable<'a, et_c::runtime::EValue>);
 impl<'a> EValue<'a> {
     /// Create a new [`EValue`] on the heap.
     ///
@@ -76,7 +76,7 @@ impl<'a> EValue<'a> {
     ///
     /// The closure must initialize the value correctly, otherwise the value will be in an invalid state.
     #[cfg(feature = "alloc")]
-    unsafe fn new_impl(init: impl FnOnce(*mut et_c::EValue)) -> Self {
+    unsafe fn new_impl(init: impl FnOnce(*mut et_c::runtime::EValue)) -> Self {
         Self(unsafe { NonTriviallyMovable::new_boxed(init) })
     }
 
@@ -104,7 +104,7 @@ impl<'a> EValue<'a> {
     ///
     /// The closure must initialize the value correctly, otherwise the value will be in an invalid state.
     unsafe fn new_in_storage_impl(
-        init: impl FnOnce(*mut et_c::EValue),
+        init: impl FnOnce(*mut et_c::runtime::EValue),
         storage: Pin<&'a mut Storage<EValue>>,
     ) -> Self {
         Self(unsafe { NonTriviallyMovable::new_in_storage(init, storage) })
@@ -136,7 +136,7 @@ impl<'a> EValue<'a> {
         value.into_evalue_in_storage(storage)
     }
 
-    pub(crate) fn from_inner_ref(value: &'a et_c::EValue) -> Self {
+    pub(crate) fn from_inner_ref(value: &'a et_c::runtime::EValue) -> Self {
         Self(NonTriviallyMovable::from_ref(value))
     }
 
@@ -147,11 +147,11 @@ impl<'a> EValue<'a> {
     /// The given value should not be used after this function is called, and its Cpp destructor should be called.
     #[cfg(feature = "alloc")]
     #[allow(dead_code)]
-    pub(crate) unsafe fn move_from(value: &mut et_c::EValue) -> Self {
+    pub(crate) unsafe fn move_from(value: &mut et_c::runtime::EValue) -> Self {
         Self(unsafe { NonTriviallyMovable::new_boxed(|p| et_rs_c::EValue_move(value, p)) })
     }
 
-    pub(crate) fn as_evalue(&self) -> &et_c::EValue {
+    pub(crate) fn as_evalue(&self) -> &et_c::runtime::EValue {
         self.0.as_ref()
     }
 
@@ -250,14 +250,14 @@ impl<'a> EValue<'a> {
         self.as_evalue().tag.rs()
     }
 }
-impl Destroy for et_c::EValue {
+impl Destroy for et_c::runtime::EValue {
     unsafe fn destroy(&mut self) {
         unsafe { et_rs_c::EValue_destructor(self) }
     }
 }
 
 impl Storable for EValue<'_> {
-    type Storage = et_c::EValue;
+    type Storage = et_c::runtime::EValue;
 }
 
 /// A type that can be converted into an [`EValue`].

@@ -14,16 +14,16 @@
 #include <executorch/runtime/executor/program.h>
 #include <executorch/schema/program_generated.h>
 
-namespace torch {
-namespace executor {
+namespace executorch {
+namespace runtime {
 namespace deserialization {
 
-__ET_NODISCARD Result<exec_aten::Tensor> parseTensor(
+ET_NODISCARD Result<executorch::aten::Tensor> parseTensor(
     const Program* program,
     MemoryManager* memory_manager,
     const executorch_flatbuffer::Tensor* s_tensor);
 
-__ET_NODISCARD Result<BoxedEvalueList<exec_aten::Tensor>> parseTensorList(
+ET_NODISCARD Result<BoxedEvalueList<executorch::aten::Tensor>> parseTensorList(
     const flatbuffers::Vector<int32_t>* tensor_indices,
     EValue* values_,
     MemoryManager* memory_manager);
@@ -32,7 +32,7 @@ __ET_NODISCARD Result<BoxedEvalueList<exec_aten::Tensor>> parseTensorList(
 // list of optionals: list of optional Tensor, list of optional float etc, so we
 // just use a template to avoid boilerplate.
 template <typename T>
-__ET_NODISCARD Result<BoxedEvalueList<exec_aten::optional<T>>>
+ET_NODISCARD Result<BoxedEvalueList<executorch::aten::optional<T>>>
 parseListOptionalType(
     const flatbuffers::Vector<int32_t>* value_indices,
     EValue* values_,
@@ -42,7 +42,7 @@ parseListOptionalType(
 
   auto* optional_tensor_list = ET_ALLOCATE_LIST_OR_RETURN_ERROR(
       memory_manager->method_allocator(),
-      exec_aten::optional<T>,
+      executorch::aten::optional<T>,
       value_indices->size());
 
   size_t output_idx = 0;
@@ -57,19 +57,19 @@ parseListOptionalType(
     // copy assignment is not defined if its non trivial.
     if (index == -1) {
       new (&optional_tensor_list[output_idx])
-          exec_aten::optional<T>(exec_aten::nullopt);
+          executorch::aten::optional<T>(executorch::aten::nullopt);
       // no value to point to. BoxedEvalueList for optional tensor will convert
       // this to nullopt.
       // TODO(T161156879): do something less hacky here.
       evalp_list[output_idx] = nullptr;
     } else {
       new (&optional_tensor_list[output_idx])
-          exec_aten::optional<T>(values_[index].toOptional<T>());
+          executorch::aten::optional<T>(values_[index].toOptional<T>());
       evalp_list[output_idx] = &values_[static_cast<size_t>(index)];
     }
     output_idx++;
   }
-  return BoxedEvalueList<exec_aten::optional<T>>(
+  return BoxedEvalueList<executorch::aten::optional<T>>(
       evalp_list, optional_tensor_list, value_indices->size());
 }
 
@@ -92,12 +92,25 @@ parseListOptionalType(
  * @returns On success, the data pointer to use for the tensor. On failure, a
  *     non-Ok Error.
  */
-__ET_NODISCARD Result<void*> getTensorDataPtr(
+ET_NODISCARD Result<void*> getTensorDataPtr(
     const executorch_flatbuffer::Tensor* s_tensor,
     const Program* program,
     size_t nbytes,
     HierarchicalAllocator* allocator);
 
+} // namespace deserialization
+} // namespace runtime
+} // namespace executorch
+
+namespace torch {
+namespace executor {
+namespace deserialization {
+// TODO(T197294990): Remove these deprecated aliases once all users have moved
+// to the new `::executorch` namespaces.
+using ::executorch::runtime::deserialization::getTensorDataPtr;
+using ::executorch::runtime::deserialization::parseListOptionalType;
+using ::executorch::runtime::deserialization::parseTensor;
+using ::executorch::runtime::deserialization::parseTensorList;
 } // namespace deserialization
 } // namespace executor
 } // namespace torch

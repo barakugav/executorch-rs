@@ -14,9 +14,9 @@ use crate::{et_c, et_rs_c};
 /// structs, such as [`Program`], take a reference to [`DataLoader`] instead of the concrete data loader type.
 ///
 /// [`Program`]: crate::program::Program
-pub struct DataLoader(pub(crate) UnsafeCell<et_c::DataLoader>);
+pub struct DataLoader(pub(crate) UnsafeCell<et_c::runtime::DataLoader>);
 impl DataLoader {
-    pub(crate) fn from_inner_ref(loader: &et_c::DataLoader) -> &Self {
+    pub(crate) fn from_inner_ref(loader: &et_c::runtime::DataLoader) -> &Self {
         // Safety: Self has a single field of (UnsafeCell of) et_c::DataLoader
         unsafe { std::mem::transmute(loader) }
     }
@@ -28,7 +28,7 @@ impl DataLoader {
 /// This can be used to wrap data that is directly embedded into the firmware
 /// image, or to wrap data that was allocated elsewhere.
 pub struct BufferDataLoader<'a>(
-    UnsafeCell<et_c::util::BufferDataLoader>,
+    UnsafeCell<et_c::extension::BufferDataLoader>,
     PhantomData<&'a ()>,
 );
 impl<'a> BufferDataLoader<'a> {
@@ -43,7 +43,9 @@ impl AsRef<DataLoader> for BufferDataLoader<'_> {
     fn as_ref(&self) -> &DataLoader {
         // Safely: et_c::util::BufferDataLoader is a subclass of et_c::DataLoader
         let loader = unsafe {
-            std::mem::transmute::<&et_c::util::BufferDataLoader, &et_c::DataLoader>(&*self.0.get())
+            std::mem::transmute::<&et_c::extension::BufferDataLoader, &et_c::runtime::DataLoader>(
+                &*self.0.get(),
+            )
         };
         DataLoader::from_inner_ref(loader)
     }
@@ -66,8 +68,8 @@ mod file_data_loader {
     /// with `malloc()`.
     ///
     /// Note that this will keep the file open for the duration of its lifetime, to
-    /// avoid the overhead of opening it again for every Load() call.
-    pub struct FileDataLoader(UnsafeCell<et_c::util::FileDataLoader>);
+    /// avoid the overhead of opening it again for every load() call.
+    pub struct FileDataLoader(UnsafeCell<et_c::extension::FileDataLoader>);
     impl FileDataLoader {
         /// Creates a new FileDataLoader given a [`Path`](std::path::Path).
         ///
@@ -140,7 +142,7 @@ mod file_data_loader {
     }
     impl Drop for FileDataLoader {
         fn drop(&mut self) {
-            unsafe { et_c::util::FileDataLoader_FileDataLoader_destructor(self.0.get_mut()) };
+            unsafe { et_c::extension::FileDataLoader_FileDataLoader_destructor(self.0.get_mut()) };
         }
     }
 
@@ -148,8 +150,8 @@ mod file_data_loader {
     /// with `mmap()`.
     ///
     /// Note that this will keep the file open for the duration of its lifetime, to
-    /// avoid the overhead of opening it again for every Load() call.
-    pub struct MmapDataLoader(UnsafeCell<et_c::util::MmapDataLoader>);
+    /// avoid the overhead of opening it again for every load() call.
+    pub struct MmapDataLoader(UnsafeCell<et_c::extension::MmapDataLoader>);
     impl MmapDataLoader {
         /// Creates a new MmapDataLoader from a [`Path`](std::path::Path).
         ///
@@ -158,7 +160,7 @@ mod file_data_loader {
         /// # Arguments
         ///
         /// * `file_name` - Path to the file to read from. The file will be kept open until the MmapDataLoader is
-        /// destroyed, to avoid the overhead of opening it again for every Load() call.
+        /// destroyed, to avoid the overhead of opening it again for every load() call.
         /// * `mlock_config` - How and whether to lock loaded pages with `mlock()`. Defaults to `MlockConfig::UseMlock`.
         ///
         /// # Returns
@@ -186,7 +188,7 @@ mod file_data_loader {
         /// # Arguments
         ///
         /// * `file_name` - Path to the file to read from. The file will be kept open until the MmapDataLoader is
-        /// destroyed, to avoid the overhead of opening it again for every Load() call.
+        /// destroyed, to avoid the overhead of opening it again for every load() call.
         /// * `mlock_config` - How and whether to lock loaded pages with `mlock()`. Defaults to `MlockConfig::UseMlock`.
         ///
         /// # Returns
@@ -213,7 +215,7 @@ mod file_data_loader {
     }
     impl Drop for MmapDataLoader {
         fn drop(&mut self) {
-            unsafe { et_c::util::MmapDataLoader_MmapDataLoader_destructor(self.0.get_mut()) };
+            unsafe { et_c::extension::MmapDataLoader_MmapDataLoader_destructor(self.0.get_mut()) };
         }
     }
 
@@ -222,5 +224,5 @@ mod file_data_loader {
     /// Using `mlock()` typically loads all of the pages immediately, and will
     /// typically ensure that they are not swapped out. The actual behavior
     /// will depend on the host system.
-    pub type MlockConfig = et_c::util::MmapDataLoader_MlockConfig;
+    pub type MlockConfig = et_c::extension::MmapDataLoader_MlockConfig;
 }
