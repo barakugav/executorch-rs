@@ -8,49 +8,48 @@ use et_c::runtime::Error as CError;
 
 /// ExecuTorch Error type.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-#[repr(u8)]
 pub enum Error {
     /* System errors */
     //
     /// An internal error occurred.
-    Internal = CError::Internal as u8,
+    Internal,
     /// Status indicating the executor is in an invalid state for a target
-    InvalidState = CError::InvalidState as u8,
+    InvalidState,
     /// Status indicating there are no more steps of execution to run
-    EndOfMethod = CError::EndOfMethod as u8,
+    EndOfMethod,
 
     /* Logical errors */
     //
     /// Operation is not supported in the current context.
-    NotSupported = CError::NotSupported as u8,
+    NotSupported,
     /// Operation is not yet implemented.
-    NotImplemented = CError::NotImplemented as u8,
+    NotImplemented,
     /// User provided an invalid argument.
-    InvalidArgument = CError::InvalidArgument as u8,
+    InvalidArgument,
     /// Object is an invalid type for the operation.
-    InvalidType = CError::InvalidType as u8,
+    InvalidType,
     /// Operator(s) missing in the operator registry.
-    OperatorMissing = CError::OperatorMissing as u8,
+    OperatorMissing,
 
     /* Resource errors */
     //
     /// Requested resource could not be found.
-    NotFound = CError::NotFound as u8,
+    NotFound,
     /// Could not allocate the requested memory.
-    MemoryAllocationFailed = CError::MemoryAllocationFailed as u8,
+    MemoryAllocationFailed,
     /// Could not access a resource.
-    AccessFailed = CError::AccessFailed as u8,
+    AccessFailed,
     /// Error caused by the contents of a program.
-    InvalidProgram = CError::InvalidProgram as u8,
+    InvalidProgram,
 
     /* Delegate errors */
     //
     /// Init stage: Backend receives an incompatible delegate version.
-    DelegateInvalidCompatibility = CError::DelegateInvalidCompatibility as u8,
+    DelegateInvalidCompatibility,
     /// Init stage: Backend fails to allocate memory.
-    DelegateMemoryAllocationFailed = CError::DelegateMemoryAllocationFailed as u8,
+    DelegateMemoryAllocationFailed,
     /// Execute stage: The handle is invalid.
-    DelegateInvalidHandle = CError::DelegateInvalidHandle as u8,
+    DelegateInvalidHandle,
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
