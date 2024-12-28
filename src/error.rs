@@ -4,6 +4,8 @@ use core::mem::MaybeUninit;
 
 use crate::{et_c, util::IntoRust};
 
+use et_c::runtime::Error as CError;
+
 /// ExecuTorch Error type.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 #[repr(u8)]
@@ -11,44 +13,44 @@ pub enum Error {
     /* System errors */
     //
     /// An internal error occurred.
-    Internal = et_c::runtime::Error::Internal as u8,
+    Internal = CError::Internal as u8,
     /// Status indicating the executor is in an invalid state for a target
-    InvalidState = et_c::runtime::Error::InvalidState as u8,
+    InvalidState = CError::InvalidState as u8,
     /// Status indicating there are no more steps of execution to run
-    EndOfMethod = et_c::runtime::Error::EndOfMethod as u8,
+    EndOfMethod = CError::EndOfMethod as u8,
 
     /* Logical errors */
     //
     /// Operation is not supported in the current context.
-    NotSupported = et_c::runtime::Error::NotSupported as u8,
+    NotSupported = CError::NotSupported as u8,
     /// Operation is not yet implemented.
-    NotImplemented = et_c::runtime::Error::NotImplemented as u8,
+    NotImplemented = CError::NotImplemented as u8,
     /// User provided an invalid argument.
-    InvalidArgument = et_c::runtime::Error::InvalidArgument as u8,
+    InvalidArgument = CError::InvalidArgument as u8,
     /// Object is an invalid type for the operation.
-    InvalidType = et_c::runtime::Error::InvalidType as u8,
+    InvalidType = CError::InvalidType as u8,
     /// Operator(s) missing in the operator registry.
-    OperatorMissing = et_c::runtime::Error::OperatorMissing as u8,
+    OperatorMissing = CError::OperatorMissing as u8,
 
     /* Resource errors */
     //
     /// Requested resource could not be found.
-    NotFound = et_c::runtime::Error::NotFound as u8,
+    NotFound = CError::NotFound as u8,
     /// Could not allocate the requested memory.
-    MemoryAllocationFailed = et_c::runtime::Error::MemoryAllocationFailed as u8,
+    MemoryAllocationFailed = CError::MemoryAllocationFailed as u8,
     /// Could not access a resource.
-    AccessFailed = et_c::runtime::Error::AccessFailed as u8,
+    AccessFailed = CError::AccessFailed as u8,
     /// Error caused by the contents of a program.
-    InvalidProgram = et_c::runtime::Error::InvalidProgram as u8,
+    InvalidProgram = CError::InvalidProgram as u8,
 
     /* Delegate errors */
     //
     /// Init stage: Backend receives an incompatible delegate version.
-    DelegateInvalidCompatibility = et_c::runtime::Error::DelegateInvalidCompatibility as u8,
+    DelegateInvalidCompatibility = CError::DelegateInvalidCompatibility as u8,
     /// Init stage: Backend fails to allocate memory.
-    DelegateMemoryAllocationFailed = et_c::runtime::Error::DelegateMemoryAllocationFailed as u8,
+    DelegateMemoryAllocationFailed = CError::DelegateMemoryAllocationFailed as u8,
     /// Execute stage: The handle is invalid.
-    DelegateInvalidHandle = et_c::runtime::Error::DelegateInvalidHandle as u8,
+    DelegateInvalidHandle = CError::DelegateInvalidHandle as u8,
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -77,37 +79,33 @@ impl std::fmt::Display for Error {
 #[cfg(feature = "std")]
 impl std::error::Error for Error {}
 
-impl IntoRust for et_c::runtime::Error {
+impl IntoRust for CError {
     type RsType = Result<()>;
     fn rs(self) -> Self::RsType {
         Err(match self {
-            et_c::runtime::Error::Ok => return Ok(()),
-            et_c::runtime::Error::Internal => Error::Internal,
-            et_c::runtime::Error::InvalidState => Error::InvalidState,
-            et_c::runtime::Error::EndOfMethod => Error::EndOfMethod,
-            et_c::runtime::Error::NotSupported => Error::NotSupported,
-            et_c::runtime::Error::NotImplemented => Error::NotImplemented,
-            et_c::runtime::Error::InvalidArgument => Error::InvalidArgument,
-            et_c::runtime::Error::InvalidType => Error::InvalidType,
-            et_c::runtime::Error::OperatorMissing => Error::OperatorMissing,
-            et_c::runtime::Error::NotFound => Error::NotFound,
-            et_c::runtime::Error::MemoryAllocationFailed => Error::MemoryAllocationFailed,
-            et_c::runtime::Error::AccessFailed => Error::AccessFailed,
-            et_c::runtime::Error::InvalidProgram => Error::InvalidProgram,
-            et_c::runtime::Error::DelegateInvalidCompatibility => {
-                Error::DelegateInvalidCompatibility
-            }
-            et_c::runtime::Error::DelegateMemoryAllocationFailed => {
-                Error::DelegateMemoryAllocationFailed
-            }
-            et_c::runtime::Error::DelegateInvalidHandle => Error::DelegateInvalidHandle,
+            CError::Ok => return Ok(()),
+            CError::Internal => Error::Internal,
+            CError::InvalidState => Error::InvalidState,
+            CError::EndOfMethod => Error::EndOfMethod,
+            CError::NotSupported => Error::NotSupported,
+            CError::NotImplemented => Error::NotImplemented,
+            CError::InvalidArgument => Error::InvalidArgument,
+            CError::InvalidType => Error::InvalidType,
+            CError::OperatorMissing => Error::OperatorMissing,
+            CError::NotFound => Error::NotFound,
+            CError::MemoryAllocationFailed => Error::MemoryAllocationFailed,
+            CError::AccessFailed => Error::AccessFailed,
+            CError::InvalidProgram => Error::InvalidProgram,
+            CError::DelegateInvalidCompatibility => Error::DelegateInvalidCompatibility,
+            CError::DelegateMemoryAllocationFailed => Error::DelegateMemoryAllocationFailed,
+            CError::DelegateInvalidHandle => Error::DelegateInvalidHandle,
         })
     }
 }
 
 pub(crate) type Result<T> = std::result::Result<T, Error>;
 
-pub(crate) fn fallible<T>(f: impl FnOnce(*mut T) -> et_c::runtime::Error) -> Result<T> {
+pub(crate) fn fallible<T>(f: impl FnOnce(*mut T) -> CError) -> Result<T> {
     let mut value = MaybeUninit::uninit();
     let err = f(value.as_mut_ptr());
     err.rs().map(|_| unsafe { value.assume_init() })
