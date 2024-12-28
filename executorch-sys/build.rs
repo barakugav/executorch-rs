@@ -9,13 +9,13 @@ fn main() {
         EXECUTORCH_VERSION
     );
 
-    build_c_extension();
+    build_c_bridge();
     generate_bindings();
     link_executorch();
 }
 
-fn build_c_extension() {
-    let c_ext_dir = cpp_ext_dir();
+fn build_c_bridge() {
+    let bridge_dir = cpp_bridge_dir();
     let mut builder = cc::Build::new();
     builder.cpp(true).std("c++17");
     // TODO: cpp executorch doesnt support nostd yet
@@ -24,24 +24,24 @@ fn build_c_extension() {
     //     builder.flag("-nostdlib");
     // }
     builder
-        .files([c_ext_dir.join("api_utils.cpp")])
-        .include(c_ext_dir.parent().unwrap())
+        .files([bridge_dir.join("bridge.cpp")])
+        .include(bridge_dir.parent().unwrap())
         .include(executorch_headers().parent().unwrap());
     for define in cpp_defines() {
         builder.define(define, None);
     }
-    builder.compile("executorch_rs_ext");
+    builder.compile("executorch_rs");
 
-    println!("cargo::rerun-if-changed={}", c_ext_dir.to_str().unwrap());
+    println!("cargo::rerun-if-changed={}", bridge_dir.to_str().unwrap());
 }
 
 fn generate_bindings() {
-    let c_ext_dir = cpp_ext_dir();
+    let bridge_dir = cpp_bridge_dir();
     let cpp_dir = Path::new(&env!("CARGO_MANIFEST_DIR")).join("cpp");
     println!("cargo::rerun-if-changed={}", cpp_dir.to_str().unwrap());
 
     let bindings_h = cpp_dir.join("bindings.hpp");
-    let bindings_defines_h = c_ext_dir.parent().unwrap().join("executorch_rs_defines.h");
+    let bindings_defines_h = bridge_dir.parent().unwrap().join("executorch_rs_defines.h");
     let mut bindings_defines = String::from("#pragma once\n");
     for define in cpp_defines() {
         bindings_defines.push_str(&format!("#define {}\n", define));
@@ -54,7 +54,7 @@ fn generate_bindings() {
         ))
         .clang_arg(format!(
             "-I{}",
-            c_ext_dir.parent().unwrap().to_str().unwrap()
+            bridge_dir.parent().unwrap().to_str().unwrap()
         ))
         .clang_arg("-std=c++17")
         .enable_cxx_namespaces()
@@ -66,7 +66,7 @@ fn generate_bindings() {
         .header(bindings_h.as_os_str().to_str().unwrap())
         .allowlist_file(format!(
             "{}/[a-zA-Z0-9_/]+.hpp",
-            c_ext_dir.to_str().unwrap(),
+            bridge_dir.to_str().unwrap(),
         ))
         .allowlist_item("et_pal_init")
         .allowlist_item("executorch::runtime::EValue")
@@ -222,10 +222,10 @@ fn executorch_headers() -> PathBuf {
         .join("executorch")
 }
 
-fn cpp_ext_dir() -> PathBuf {
+fn cpp_bridge_dir() -> PathBuf {
     Path::new(&env!("CARGO_MANIFEST_DIR"))
         .join("cpp")
-        .join("executorch_rs_ext")
+        .join("executorch_rs")
 }
 
 fn cpp_defines() -> Vec<&'static str> {

@@ -16,4 +16,4 @@
 #include "executorch/extension/module/module.h"
 #endif
 
-#include "executorch_rs_ext/api_utils.hpp"
+#include "executorch_rs/bridge.hpp"
