@@ -957,15 +957,15 @@ impl DataMut for ViewMutAny {}
 /// [`TensorImplBase`] that points to it.
 ///
 /// Use `as_tensor_impl()` and `as_tensor_impl_mut` to obtain a [`TensorImplBase`] pointing to this array data.
-pub struct Array<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> {
+pub struct ArrayStorage<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> {
     array: ArrayBase<S, D>,
     sizes: D::Arr<SizesType>,
     dim_order: D::Arr<DimOrderType>,
     strides: D::Arr<StridesType>,
 }
-impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> Array<A, S, D> {
-    /// Create a new [`Array`] from an ndarray.
-    pub fn new(array: ArrayBase<S, D>) -> Array<A, S, D> {
+impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> ArrayStorage<A, S, D> {
+    /// Create a new [`ArrayStorage`] from an ndarray.
+    pub fn new(array: ArrayBase<S, D>) -> Self {
         let ndim = array.ndim();
         let mut sizes = D::Arr::zeros(ndim);
         let mut dim_order = D::Arr::zeros(ndim);
@@ -979,7 +979,7 @@ impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> Array<A, S, D> {
         for (i, s) in (0..ndim).enumerate() {
             dim_order.as_mut()[i] = s as DimOrderType;
         }
-        Array {
+        Self {
             array,
             sizes,
             dim_order,
@@ -1011,7 +1011,7 @@ impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> Array<A, S, D> {
         &self.array
     }
 }
-impl<A: Scalar, S: ndarray::RawDataMut<Elem = A>, D: Dimension> Array<A, S, D> {
+impl<A: Scalar, S: ndarray::RawDataMut<Elem = A>, D: Dimension> ArrayStorage<A, S, D> {
     /// Create a [`TensorImplMut`] pointing to this struct's data.
     ///
     /// The [`TensorImplMut`] does not own the data or the sizes, dim order and strides of the tensor. This struct
@@ -1023,7 +1023,7 @@ impl<A: Scalar, S: ndarray::RawDataMut<Elem = A>, D: Dimension> Array<A, S, D> {
     }
 }
 impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> AsRef<ArrayBase<S, D>>
-    for Array<A, S, D>
+    for ArrayStorage<A, S, D>
 {
     fn as_ref(&self) -> &ArrayBase<S, D> {
         &self.array
@@ -1102,7 +1102,7 @@ mod tests {
     #[test]
     fn test_array_as_tensor() {
         // Create a 1D array and convert it to a tensor
-        let array = Array::<i32, _, _>::new(arr1(&[1, 2, 3]));
+        let array = ArrayStorage::<i32, _, _>::new(arr1(&[1, 2, 3]));
         let tensor_impl = array.as_tensor_impl();
         let tensor = Tensor::new(&tensor_impl);
         assert_eq!(tensor.nbytes(), 12);
@@ -1117,7 +1117,7 @@ mod tests {
         assert_eq!(tensor.as_ptr(), array.as_ref().as_ptr());
 
         // Create a 2D array and convert it to a tensor
-        let array = Array::<f64, _, _>::new(arr2(&[[1.0, 2.0, 7.0], [3.0, 4.0, 8.0]]));
+        let array = ArrayStorage::<f64, _, _>::new(arr2(&[[1.0, 2.0, 7.0], [3.0, 4.0, 8.0]]));
         let tensor_impl = array.as_tensor_impl();
         let tensor = Tensor::new(&tensor_impl);
         assert_eq!(tensor.nbytes(), 48);
@@ -1136,7 +1136,7 @@ mod tests {
     #[test]
     fn test_array_as_tensor_mut() {
         // Create a 1D array and convert it to a tensor
-        let mut array = Array::<i32, _, _>::new(arr1(&[1, 2, 3]));
+        let mut array = ArrayStorage::<i32, _, _>::new(arr1(&[1, 2, 3]));
         let arr_ptr = array.as_ref().as_ptr();
         let mut tensor_impl = array.as_tensor_impl_mut();
         let tensor = TensorMut::new(&mut tensor_impl);
@@ -1152,7 +1152,7 @@ mod tests {
         assert_eq!(tensor.as_ptr(), arr_ptr);
 
         // Create a 2D array and convert it to a tensor
-        let mut array = Array::<f64, _, _>::new(arr2(&[[1.0, 2.0, 7.0], [3.0, 4.0, 8.0]]));
+        let mut array = ArrayStorage::<f64, _, _>::new(arr2(&[[1.0, 2.0, 7.0], [3.0, 4.0, 8.0]]));
         let arr_ptr = array.as_ref().as_ptr();
         let mut tensor_impl = array.as_tensor_impl_mut();
         let tensor = TensorMut::new(&mut tensor_impl);
@@ -1171,7 +1171,7 @@ mod tests {
 
     #[test]
     fn test_tensor_as_array() {
-        let arr1 = Array::new(Array3::<f32>::zeros((3, 6, 4)));
+        let arr1 = ArrayStorage::new(Array3::<f32>::zeros((3, 6, 4)));
         let tensor_impl = arr1.as_tensor_impl();
         let tensor = Tensor::new(&tensor_impl);
         let arr2 = tensor.as_array::<Ix3>();
@@ -1179,7 +1179,7 @@ mod tests {
         assert_eq!(arr1.as_ref().strides(), arr2.strides());
 
         cfg_if::cfg_if! { if #[cfg(feature = "alloc")] {
-            let arr1 = Array::new(arr1.as_ref().view().into_dyn());
+            let arr1 = ArrayStorage::new(arr1.as_ref().view().into_dyn());
             let tensor_impl = arr1.as_tensor_impl();
             let tensor = Tensor::new(&tensor_impl);
             let arr2 = tensor.as_array::<ndarray::IxDyn>().into_shape_with_order(vec![18, 4]).unwrap();
@@ -1190,7 +1190,7 @@ mod tests {
 
     #[test]
     fn test_tensor_as_array_mut() {
-        let mut arr1 = Array::new(Array3::<f32>::zeros((3, 6, 4)));
+        let mut arr1 = ArrayStorage::new(Array3::<f32>::zeros((3, 6, 4)));
         let arr1_clone = arr1.as_ref().clone();
         let mut tensor_impl = arr1.as_tensor_impl_mut();
         let mut tensor = TensorMut::new(&mut tensor_impl);
@@ -1201,7 +1201,7 @@ mod tests {
         cfg_if::cfg_if! { if #[cfg(feature = "alloc")] {
             let mut arr1 = arr1_clone.into_dyn();
             let arr1_clone = arr1.clone();
-            let mut arr1 = Array::new(arr1.view_mut().into_shape_with_order((18, 4)).unwrap());
+            let mut arr1 = ArrayStorage::new(arr1.view_mut().into_shape_with_order((18, 4)).unwrap());
             let mut tensor_impl = arr1.as_tensor_impl_mut();
             let mut tensor = TensorMut::new(&mut tensor_impl);
             let arr2 = tensor.as_array_mut::<ndarray::IxDyn>();
@@ -1235,7 +1235,7 @@ mod tests {
 
     #[test]
     fn test_tensor_index() {
-        let arr = Array::new(Array3::<i32>::from_shape_fn((4, 5, 3), |(x, y, z)| {
+        let arr = ArrayStorage::new(Array3::<i32>::from_shape_fn((4, 5, 3), |(x, y, z)| {
             x as i32 * 1337 - y as i32 * 87 + z as i32 * 13
         }));
         let tensor_impl = arr.as_tensor_impl();
@@ -1251,7 +1251,7 @@ mod tests {
 
     #[test]
     fn test_tensor_index_mut() {
-        let mut arr = Array::new(Array3::<i32>::zeros((4, 5, 3)));
+        let mut arr = ArrayStorage::new(Array3::<i32>::zeros((4, 5, 3)));
         let mut tensor_impl = arr.as_tensor_impl_mut();
         let mut tensor = TensorMut::new(&mut tensor_impl);
 

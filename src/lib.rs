@@ -34,20 +34,20 @@
 //!
 //! Execute the model in Rust:
 //! ```rust,ignore
-//! use executorch::evalue::EValue;
+//! use executorch::evalue::IntoEValue;
 //! use executorch::module::Module;
-//! use executorch::tensor::{Array, Tensor};
+//! use executorch::tensor::{ArrayStorage, Tensor};
 //! use ndarray::array;
 //!
 //! let mut module = Module::new("model.pte", None);
 //!
-//! let input_array1 = Array::new(array![1.0_f32]);
+//! let input_array1 = ArrayStorage::new(array![1.0_f32]);
 //! let input_tensor1 = input_array1.as_tensor_impl();
-//! let input_evalue1 = EValue::new(Tensor::new(&input_tensor1));
+//! let input_evalue1 = Tensor::new(&input_tensor1).into_evalue();
 //!
-//! let input_array2 = Array::new(array![1.0_f32]);
+//! let input_array2 = ArrayStorage::new(array![1.0_f32]);
 //! let input_tensor2 = input_array2.as_tensor_impl();
-//! let input_evalue2 = EValue::new(Tensor::new(&input_tensor2));
+//! let input_evalue2 = Tensor::new(&input_tensor2).into_evalue();
 //!
 //! let outputs = module.forward(&[input_evalue1, input_evalue2]).unwrap();
 //! assert_eq!(outputs.len(), 1);
