@@ -1,5 +1,6 @@
 #![deny(warnings)]
 #![deny(missing_docs)]
+#![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 
 //! Bindings for ExecuTorch - On-device AI across mobile, embedded and edge for PyTorch.
 //!
