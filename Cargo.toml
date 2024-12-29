@@ -26,6 +26,7 @@ include = ["Cargo.toml", "src/", "README.md", "LICENSE"]
 
 [package.metadata.docs.rs]
 all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 executorch-sys = { path = "executorch-sys", version = "0.3.0", default-features = false }

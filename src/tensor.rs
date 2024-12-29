@@ -1,4 +1,25 @@
-//! Tensor struct is an input or output tensor to a executorch program.
+//! Tensor struct is an input or output tensor to an executorch program.
+//!
+//! The two core structs are [`TensorImplBase`] and [`TensorBase`]:
+//! - [`TensorImplBase`] is a container for the tensor's data/shape/strides/etc, and a concrete tensor point to such
+//!     container. It does not own the data, only holds reference to it.
+//!     It is templated with immutable/mutable and typed/erased marker types, and usually not instantiated directly,
+//!     rather through [`TensorImpl`] and [`TensorImplMut`] type aliases.
+//! - [`TensorBase`] is a "base" class for all immutable/mutable/typed/type-erased tensors though generics of marker
+//!     types. It points to a a tensor implementation and does not own it.
+//!     Usually it is not instantiated directly, rather through type aliases:
+//!     - [`Tensor`] typed immutable tensor.
+//!     - [`TensorMut`] typed mutable tensor.
+//!     - [`TensorAny`] type-erased immutable tensor.
+//!
+//! A [`ScalarType`] enum represents the possible scalar types of a typed-erased tensor, which can be converted into a
+//! typed tensor and visa-versa using the
+//! [`into_type_erased`](`TensorBase::into_type_erased`) and [`into_typed`](`TensorBase::into_typed`) methods.
+//!
+//! Both [`TensorImplBase`] and [`TensorBase`] are templated with a [`Data`] type, which is a trait that defines the
+//! tensor data type. The [`DataMut`] and [`DataTyped`] traits are used to define mutable and typed data types,
+//! extending the `Data` trait. The structs [`View`], [`ViewMut`], [`ViewAny`], and [`ViewMutAny`] are market types
+//! that implement these traits, and a user should not implement them for their own types.
 
 use core::ops::{Index, IndexMut};
 use core::ptr::NonNull;
@@ -173,7 +194,9 @@ impl_scalar!(half::bf16, BFloat16);
 /// A minimal Tensor type whose API is a source compatible subset of at::Tensor.
 ///
 /// This class is a base class for all immutable/mutable/typed/type-erased tensors and is not meant to be
-/// used directly. It is used to provide a common API for all of them.
+/// used directly.
+/// Use the aliases such as [`Tensor`], [`TensorAny`] or [`TensorMut`] instead.
+/// It is used to provide a common API for all of them.
 pub struct TensorBase<'a, D: Data>(
     NonTriviallyMovable<'a, et_c::runtime::etensor::Tensor>,
     PhantomData<(
@@ -368,7 +391,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
 
     /// Try to convert this tensor into a typed tensor with scalar type `S`.
     ///
-    /// Fails if the scalar type of the tensor does not match the type `S`.
+    /// Fails if the scalar type of the tensor does not match the required one.
     pub fn try_into_typed<S: Scalar>(self) -> Result<TensorBase<'a, D::Typed<S>>> {
         if self.scalar_type() != Some(S::TYPE) {
             return Err(Error::InvalidType);
@@ -381,7 +404,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     ///
     /// # Panics
     ///
-    /// If the scalar type of the tensor does not match the type `S`.
+    /// If the scalar type of the tensor does not match the required one.
     #[track_caller]
     pub fn into_typed<S: Scalar>(self) -> TensorBase<'a, D::Typed<S>> {
         self.try_into_typed().expect("Invalid type")
@@ -389,7 +412,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
 
     /// Try to get a typed tensor with scalar type `S` referencing the same internal data as this tensor.
     ///
-    /// Fails if the scalar type of the tensor does not match the type `S`.
+    /// Fails if the scalar type of the tensor does not match the required one.
     pub fn try_as_typed<S: Scalar>(&self) -> Result<TensorBase<<D::Immutable as Data>::Typed<S>>> {
         if self.scalar_type() != Some(S::TYPE) {
             return Err(Error::InvalidType);
@@ -403,7 +426,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     ///
     /// # Panics
     ///
-    /// If the scalar type of the tensor does not match the type `S`.
+    /// If the scalar type of the tensor does not match the required one.
     #[track_caller]
     pub fn as_typed<S: Scalar>(&self) -> TensorBase<<D::Immutable as Data>::Typed<S>> {
         self.try_as_typed().expect("Invalid type")
@@ -411,7 +434,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
 
     /// Try to get a mutable typed tensor with scalar type `S` referencing the same internal data as this tensor.
     ///
-    /// Fails if the scalar type of the tensor does not match the type `S`.
+    /// Fails if the scalar type of the tensor does not match the required one.
     pub fn try_as_typed_mut<S: Scalar>(&mut self) -> Result<TensorBase<D::Typed<S>>>
     where
         D: DataMut,
@@ -427,7 +450,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     ///
     /// # Panics
     ///
-    /// If the scalar type of the tensor does not match the type `S`.
+    /// If the scalar type of the tensor does not match the required one.
     #[track_caller]
     pub fn as_typed_mut<S: Scalar>(&mut self) -> TensorBase<D::Typed<S>>
     where
@@ -541,7 +564,7 @@ impl<D: Data> Debug for TensorBase<'_, D> {
 }
 
 impl<D: DataTyped> TensorBase<'_, D> {
-    /// Returns a pointer of type S to the constant underlying data blob.
+    /// Returns a pointer to the constant underlying data blob.
     pub fn as_ptr(&self) -> *const D::Scalar {
         debug_assert_eq!(self.scalar_type(), Some(D::Scalar::TYPE), "Invalid type");
         (unsafe { self.as_ptr_raw() }) as *const D::Scalar
@@ -551,7 +574,7 @@ impl<D: DataTyped> TensorBase<'_, D> {
     ///
     /// # Panics
     ///
-    /// If the number of dimensions of the tensor does not match the number of dimensions of the type `Dim
+    /// If the number of dimensions of the tensor does not match the number of dimensions of the type `Dim`
     pub fn as_array<Dim: Dimension>(&self) -> ArrayView<D::Scalar, Dim> {
         let ndim = self.dim() as usize;
         let mut dim = Dim::zeros(ndim);
@@ -663,9 +686,9 @@ impl<'a, S: Scalar> Tensor<'a, S> {
     ///
     /// The underlying Cpp object is allocated on the heap, which is preferred on systems in which allocations are
     /// available.
-    /// For an identical version that allocates the object in a given storage (possible on the stack), see the
+    /// For an identical version that allocates the object in a given storage (possibly on the stack), see the
     /// [`new_in_storage`][Tensor::new_in_storage] method.
-    /// Note that the tensor data is not copied, and the allocation required for the tensor is very small.
+    /// Note that the tensor data is not copied, and the required allocation is small.
     /// See [`Storage`] for more information.
     #[cfg(feature = "alloc")]
     pub fn new(tensor_impl: &'a TensorImpl<S>) -> Self {
@@ -675,9 +698,9 @@ impl<'a, S: Scalar> Tensor<'a, S> {
 
     /// Create a new [`Tensor`] from a [`TensorImpl`] in the given storage.
     ///
-    /// This function is identical to  [`Tensor::new`][Tensor::new], but it allows to create the tensor without the
+    /// This function is identical to [`Tensor::new`][Tensor::new], but it allows to create the tensor without the
     /// use of a heap.
-    /// Few examples of ways to create an [`EValue`](crate::evalue::EValue):
+    /// Few examples of ways to create a tensor:
     /// ```rust,ignore
     /// // The tensor is allocated on the heap
     /// let tensor = Tensor::new(&tensor_impl, storage);
@@ -688,9 +711,9 @@ impl<'a, S: Scalar> Tensor<'a, S> {
     ///
     /// // The tensor is allocated using a memory allocator
     /// let allocator: impl AsRef<MemoryAllocator> = ...; // usually global
-    /// let tensor = Tensor::new_in_storage(&tensor_impl, allocator.allocate_pinned().unwrap());
+    /// let tensor = Tensor::new_in_storage(&tensor_impl, allocator.as_ref().allocate_pinned().unwrap());
     /// ```
-    /// Note that the tensor data is not copied, and the allocation required for the tensor is very small.
+    /// Note that the tensor data is not copied, and the required allocation is small.
     /// See [`Storage`] for more information.
     pub fn new_in_storage(
         tensor_impl: &'a TensorImpl<S>,
@@ -708,9 +731,9 @@ impl<'a, S: Scalar> TensorMut<'a, S> {
     ///
     /// The underlying Cpp object is allocated on the heap, which is preferred on systems in which allocations are
     /// available.
-    /// For an identical version that allocates the object in a given storage (possible on the stack), see the
+    /// For an identical version that allocates the object in a given storage (possibly on the stack), see the
     /// [`new_in_storage`][TensorMut::new_in_storage] method.
-    /// Note that the tensor data is not copied, and the allocation required for the tensor is very small.
+    /// Note that the tensor data is not copied, and the required allocation is small.
     /// See [`Storage`] for more information.
     #[cfg(feature = "alloc")]
     pub fn new(tensor_impl: &'a mut TensorImplMut<S>) -> Self {
@@ -722,7 +745,7 @@ impl<'a, S: Scalar> TensorMut<'a, S> {
     ///
     /// This function is identical to  [`TensorMut::new`][TensorMut::new], but it allows to create the tensor without the
     /// use of a heap.
-    /// Few examples of ways to create an [`EValue`](crate::evalue::EValue):
+    /// Few examples of ways to create a tensor:
     /// ```rust,ignore
     /// // The tensor is allocated on the heap
     /// let tensor = TensorMut::new(&tensor_impl, storage);
@@ -733,9 +756,9 @@ impl<'a, S: Scalar> TensorMut<'a, S> {
     ///
     /// // The tensor is allocated using a memory allocator
     /// let allocator: impl AsRef<MemoryAllocator> = ...; // usually global
-    /// let tensor = TensorMut::new_in_storage(&tensor_impl, allocator.allocate_pinned().unwrap());
+    /// let tensor = TensorMut::new_in_storage(&tensor_impl, allocator.as_ref().allocate_pinned().unwrap());
     /// ```
-    /// Note that the tensor data is not copied, and the allocation required for the tensor is very small.
+    /// Note that the tensor data is not copied, and the required allocation is small.
     /// See the [`Storage`] struct for more information.
     pub fn new_in_storage(
         tensor_impl: &'a mut TensorImplMut<S>,
@@ -952,11 +975,13 @@ impl DataMut for ViewMutAny {}
 
 /// A wrapper around `ndarray::ArrayBase` that can be converted to [`TensorImplBase`].
 ///
-/// The [`TensorImplBase`] struct does not own any of the data it points to along side the dimensions and strides. This
-/// struct owns any additional data in addition to the underlying `ndarray::ArrayBase`, allowing to create a
-/// [`TensorImplBase`] that points to it.
+/// The [`TensorImplBase`] struct does not own any of the data it points to alongside the dimensions and strides arrays.
+/// This struct allocate any required auxiliary memory in addition to the underlying `ndarray::ArrayBase`,
+/// allowing to create a [`TensorImplBase`] that points to it.
+/// If the number of dimensions is known at compile time, this struct will not allocate any memory on the heap.
 ///
-/// Use `as_tensor_impl()` and `as_tensor_impl_mut` to obtain a [`TensorImplBase`] pointing to this array data.
+/// Use [`as_tensor_impl`](ArrayStorage::as_tensor_impl) and [`as_tensor_impl_mut`](ArrayStorage::as_tensor_impl_mut)
+/// to obtain a [`TensorImplBase`] pointing to this array data.
 pub struct ArrayStorage<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> {
     array: ArrayBase<S, D>,
     sizes: D::Arr<SizesType>,
@@ -1007,8 +1032,13 @@ impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> ArrayStorage<A, S, 
     }
 
     /// Get a reference to the underlying ndarray.
-    pub fn as_ndarray(&self) -> &ArrayBase<S, D> {
+    pub fn as_array(&self) -> &ArrayBase<S, D> {
         &self.array
+    }
+
+    /// Extract the inner array out of this wrapper
+    pub fn into_array(self) -> ArrayBase<S, D> {
+        self.array
     }
 }
 impl<A: Scalar, S: ndarray::RawDataMut<Elem = A>, D: Dimension> ArrayStorage<A, S, D> {
@@ -1027,6 +1057,13 @@ impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> AsRef<ArrayBase<S, 
 {
     fn as_ref(&self) -> &ArrayBase<S, D> {
         &self.array
+    }
+}
+impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> From<ArrayStorage<A, S, D>>
+    for ArrayBase<S, D>
+{
+    fn from(val: ArrayStorage<A, S, D>) -> Self {
+        val.array
     }
 }
 
@@ -1241,7 +1278,7 @@ mod tests {
         let tensor_impl = arr.as_tensor_impl();
         let tensor = Tensor::new(&tensor_impl);
 
-        let arr = arr.as_ndarray();
+        let arr = arr.as_array();
         for (ix, &expected) in arr.indexed_iter() {
             let ix: [usize; 3] = ix.into();
             let actual = tensor[&ix];

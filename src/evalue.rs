@@ -82,13 +82,13 @@ impl<'a> EValue<'a> {
         Self(unsafe { NonTriviallyMovable::new_boxed(init) })
     }
 
-    /// Create a new [`EValue`] from a value that can be converted into an [`EValue`].
+    /// Create a new [`EValue`] from a value that can be converted into one.
     ///
     /// The underlying Cpp object is allocated on the heap, which is preferred on systems in which allocations are
     /// available.
-    /// For an identical version that allocates the object in a given storage (possible on the stack), see the
+    /// For an identical version that allocates the object in a given storage (possibly on the stack), see the
     /// [`new_in_storage`][EValue::new_in_storage] method.
-    /// Note that the inner data is not copied, and the allocation required for the evalue is very small.
+    /// Note that the inner data is not copied, and the required allocation is small.
     #[cfg(feature = "alloc")]
     pub fn new(value: impl IntoEValue<'a>) -> Self {
         value.into_evalue()
@@ -112,7 +112,7 @@ impl<'a> EValue<'a> {
         Self(unsafe { NonTriviallyMovable::new_in_storage(init, storage) })
     }
 
-    /// Create a new [`EValue`] from a value that can be converted into an [`EValue`] in the given storage.
+    /// Create a new [`EValue`] from a value that can be converted into one in the given storage.
     ///
     /// This function is identical to [`EValue::new`][EValue::new], but it allows to create the evalue without the
     /// use of a heap.
@@ -127,9 +127,9 @@ impl<'a> EValue<'a> {
     ///
     /// // The value is allocated using a memory allocator
     /// let allocator: impl AsRef<MemoryAllocator> = ...; // usually global
-    /// let evalue = EValue::new_in_storage(value, allocator.allocate_pinned().unwrap());
+    /// let evalue = EValue::new_in_storage(value, allocator.as_ref().allocate_pinned().unwrap());
     /// ```
-    /// Note that the inner data is not copied, and the allocation required for the evalue is very small.
+    /// Note that the inner data is not copied, and the required allocation is small..
     /// See [`Storage`] for more information.
     pub fn new_in_storage(
         value: impl IntoEValue<'a>,
@@ -161,7 +161,9 @@ impl<'a> EValue<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if the value is not an `i64`. To check the type of the value, use the [`tag`][Self::tag] method.
+    /// Panics if the value is of different type.
+    /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
+    /// [`tag`][Self::tag] method.
     #[track_caller]
     pub fn as_i64(&self) -> i64 {
         self.try_into().expect("Invalid type")
@@ -171,7 +173,9 @@ impl<'a> EValue<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if the value is not an `f64`. To check the type of the value, use the [`tag`][Self::tag] method.
+    /// Panics if the value is of different type.
+    /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
+    /// [`tag`][Self::tag] method.
     #[track_caller]
     pub fn as_f64(&self) -> f64 {
         self.try_into().expect("Invalid type")
@@ -181,7 +185,9 @@ impl<'a> EValue<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if the value is not a `bool`. To check the type of the value, use the [`tag`][Self::tag] method.
+    /// Panics if the value is of different type.
+    /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
+    /// [`tag`][Self::tag] method.
     #[track_caller]
     pub fn as_bool(&self) -> bool {
         self.try_into().expect("Invalid type")
@@ -191,7 +197,9 @@ impl<'a> EValue<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if the value is not a [`TensorAny`]. To check the type of the value, use the [`tag`][Self::tag] method.
+    /// Panics if the value is of different type.
+    /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
+    /// [`tag`][Self::tag] method.
     #[track_caller]
     pub fn as_tensor(&self) -> TensorAny {
         self.try_into().expect("Invalid type")
@@ -201,7 +209,9 @@ impl<'a> EValue<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if the value is not a `&[c_char]`. To check the type of the value, use the [`tag`][Self::tag] method.
+    /// Panics if the value is of different type.
+    /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
+    /// [`tag`][Self::tag] method.
     #[track_caller]
     pub fn as_chars(&self) -> &[std::ffi::c_char] {
         self.try_into().expect("Invalid type")
@@ -211,7 +221,9 @@ impl<'a> EValue<'a> {
     // ///
     // /// # Panics
     // ///
-    // /// Panics if the value is not a `&[i64]`. To check the type of the value, use the [`tag`][Self::tag] method.
+    // /// Panics if the value is of different type.
+    // /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
+    // /// [`tag`][Self::tag] method.
     // #[track_caller]
     // pub fn as_i64_arr(&self) -> &[i64] {
     //     self.try_into().expect("Invalid type")
@@ -221,7 +233,9 @@ impl<'a> EValue<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if the value is not a `&[f64]`. To check the type of the value, use the [`tag`][Self::tag] method.
+    /// Panics if the value is of different type.
+    /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
+    /// [`tag`][Self::tag] method.
     #[track_caller]
     pub fn as_f64_arr(&self) -> &[f64] {
         self.try_into().expect("Invalid type")
@@ -231,7 +245,9 @@ impl<'a> EValue<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if the value is not a `&[bool]`. To check the type of the value, use the [`tag`][Self::tag] method.
+    /// Panics if the value is of different type.
+    /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
+    /// [`tag`][Self::tag] method.
     #[track_caller]
     pub fn as_bool_arr(&self) -> &[bool] {
         self.try_into().expect("Invalid type")
@@ -241,7 +257,9 @@ impl<'a> EValue<'a> {
     // ///
     // /// # Panics
     // ///
-    // /// Panics if the value is not a `&[TensorAny]`. To check the type of the value, use the [`tag`][Self::tag] method.
+    // /// Panics if the value is of different type.
+    // /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
+    // /// [`tag`][Self::tag] method.
     // #[track_caller]
     // pub fn as_tensor_arr(&self) -> &[TensorAny<'a>] {
     //     self.try_into().expect("Invalid type")
@@ -269,6 +287,7 @@ pub trait IntoEValue<'a> {
     /// This is the preferred method to create an [`EValue`] when allocations are available.
     /// Use `into_evalue_in_storage` for an identical version that allow to allocate the object without the
     /// use of a heap.
+    /// Note that the inner data is not copied, and the required allocation is small.
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a>;
 
@@ -277,6 +296,7 @@ pub trait IntoEValue<'a> {
     /// This function is identical to `into_evalue`, but it allows to create the evalue without the
     /// use of a heap.
     /// See [`Storage`] for more information.
+    /// Note that the inner data is not copied, and the required allocation is small.
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a>;
 }
 impl<'a> IntoEValue<'a> for i64 {
