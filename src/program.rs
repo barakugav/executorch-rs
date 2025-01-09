@@ -10,7 +10,7 @@ use std::marker::PhantomData;
 use std::ptr;
 
 use crate::data_loader::DataLoader;
-use crate::error::{fallible, Result};
+use crate::error::{try_new, Result};
 use crate::evalue::{EValue, Tag};
 use crate::memory::MemoryManager;
 use crate::tensor::ScalarType;
@@ -42,7 +42,7 @@ impl<'a> Program<'a> {
     ) -> Result<Self> {
         let data_loader = data_loader.as_ref().0.get();
         let verification = verification.unwrap_or(ProgramVerification::Minimal);
-        let program = fallible(|program| unsafe {
+        let program = try_new(|program| unsafe {
             et_rs_c::Program_load(data_loader, verification, program)
         })?;
         Ok(Self(program, PhantomData))
@@ -63,7 +63,7 @@ impl<'a> Program<'a> {
     ///
     /// The name of the requested method. The pointer is owned by the Program, and has the same lifetime as the Program.
     pub fn get_method_name(&self, method_index: usize) -> Result<&str> {
-        let method_name = fallible(|method_name| unsafe {
+        let method_name = try_new(|method_name| unsafe {
             et_rs_c::Program_get_method_name(&self.0, method_index, method_name)
         })?;
         Ok(unsafe { CStr::from_ptr(method_name).to_str().unwrap() })
@@ -86,7 +86,7 @@ impl<'a> Program<'a> {
     ) -> Result<Method<'b>> {
         let memory_manager = memory_manager.0.get();
         let event_tracer = ptr::null_mut(); // TODO: support event tracer
-        let method = fallible(|method| unsafe {
+        let method = try_new(|method| unsafe {
             et_rs_c::Program_load_method(
                 &self.0,
                 method_name.as_ptr(),
@@ -104,7 +104,7 @@ impl<'a> Program<'a> {
     ///
     /// * `method_name` - The name of the method to get metadata for.
     pub fn method_meta(&self, method_name: &CStr) -> Result<MethodMeta> {
-        let meta = fallible(|meta| unsafe {
+        let meta = try_new(|meta| unsafe {
             et_rs_c::Program_method_meta(&self.0, method_name.as_ptr(), meta)
         })?;
         Ok(unsafe { MethodMeta::new(meta) })
@@ -165,7 +165,7 @@ impl MethodMeta<'_> {
     ///
     /// The tag of input, can only be [Tensor, Int, Bool, Double, String].
     pub fn input_tag(&self, idx: usize) -> Result<Tag> {
-        let tag = fallible(|tag| unsafe { et_rs_c::MethodMeta_input_tag(&self.0, idx, tag) })?;
+        let tag = try_new(|tag| unsafe { et_rs_c::MethodMeta_input_tag(&self.0, idx, tag) })?;
         Ok(tag
             .rs()
             .expect("input tag is none, expected Tensor, Int, Bool, Double or String"))
@@ -182,7 +182,7 @@ impl MethodMeta<'_> {
     /// The metadata on success, or an error on failure. Only valid for `Tag::Tensor`
     pub fn input_tensor_meta(&self, idx: usize) -> Result<TensorInfo> {
         let info =
-            fallible(|info| unsafe { et_rs_c::MethodMeta_input_tensor_meta(&self.0, idx, info) })?;
+            try_new(|info| unsafe { et_rs_c::MethodMeta_input_tensor_meta(&self.0, idx, info) })?;
         Ok(unsafe { TensorInfo::new(info) })
     }
 
@@ -201,7 +201,7 @@ impl MethodMeta<'_> {
     ///
     /// The tag of output, can only be [Tensor, Int, Bool, Double, String].
     pub fn output_tag(&self, idx: usize) -> Result<Tag> {
-        let tag = fallible(|tag| unsafe { et_rs_c::MethodMeta_output_tag(&self.0, idx, tag) })?;
+        let tag = try_new(|tag| unsafe { et_rs_c::MethodMeta_output_tag(&self.0, idx, tag) })?;
         Ok(tag
             .rs()
             .expect("output tag is none, expected Tensor, Int, Bool, Double or String"))
@@ -218,7 +218,7 @@ impl MethodMeta<'_> {
     /// The metadata on success, or an error on failure. Only valid for `Tag::Tensor`
     pub fn output_tensor_meta(&self, idx: usize) -> Result<TensorInfo> {
         let info =
-            fallible(|info| unsafe { et_rs_c::MethodMeta_output_tensor_meta(&self.0, idx, info) })?;
+            try_new(|info| unsafe { et_rs_c::MethodMeta_output_tensor_meta(&self.0, idx, info) })?;
         Ok(unsafe { TensorInfo::new(info) })
     }
 
@@ -237,7 +237,7 @@ impl MethodMeta<'_> {
     ///
     /// The size in bytes on success, or an error on failure.
     pub fn memory_planned_buffer_size(&self, idx: usize) -> Result<usize> {
-        let size = fallible(|size| unsafe {
+        let size = try_new(|size| unsafe {
             et_rs_c::MethodMeta_memory_planned_buffer_size(&self.0, idx, size)
         })?;
         Ok(size as usize)

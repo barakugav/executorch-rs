@@ -610,7 +610,7 @@ pub(crate) fn str2chars(s: &str) -> Result<&[std::ffi::c_char], &'static str> {
 #[allow(dead_code)]
 #[cfg(feature = "std")]
 pub(crate) fn chars2string(chars: Vec<std::ffi::c_char>) -> String {
-    let bytes = unsafe { std::mem::transmute::<Vec<std::ffi::c_char>, Vec<u8>>(chars) };
+    let bytes = unsafe { std::mem::transmute::<Vec<i8>, Vec<u8>>(chars) };
     String::from_utf8(bytes).unwrap()
 }
 
