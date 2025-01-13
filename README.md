@@ -133,6 +133,12 @@ The build (and library) is tested on Ubuntu and MacOS, not on Windows.
     Includes the `Module` struct. The `libextension_module_static.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`.
     Also includes the `std` feature.
 
+- `ndarray`
+
+    Conversions between `executorch` tensors and `ndarray` arrays.
+    Adds a dependency to the `ndarray` crate.
+    This feature is enabled by default.
+
 - `f16`
 
     Support for half precision floating point numbers using the `half` crate. Models that require input or output tensors with `f16` data type can be operated on with this features.
@@ -155,4 +161,4 @@ The build (and library) is tested on Ubuntu and MacOS, not on Windows.
     This feature is enabled by the `std` feature, which is enabled by default.
     Its possible to enable this feature without the `std` feature, and the allocations will be done using the `alloc` crate, that requires a global allocator to be set.
 
-By default the `std` feature is enabled.
+By default the `std` and `ndarray` features are enabled.

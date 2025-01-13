@@ -27,12 +27,11 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::pin::Pin;
 
+#[cfg(feature = "ndarray")]
 use ndarray::{ArrayBase, ArrayView, ArrayViewMut, ShapeBuilder};
 
 use crate::error::{Error, Result};
-#[cfg(feature = "alloc")]
-use crate::et_alloc;
-use crate::util::{Destroy, DimArr, FixedSizeDim, NonTriviallyMovable, Storable, Storage};
+use crate::util::{Destroy, NonTriviallyMovable, Storable, Storage};
 use crate::{et_c, et_rs_c};
 
 /// A type that represents the sizes (dimensions) of a tensor.
@@ -468,6 +467,7 @@ impl<D: Data> Storable for TensorBase<'_, D> {
     type Storage = et_c::runtime::etensor::Tensor;
 }
 
+#[cfg(feature = "ndarray")]
 impl<D: Data> Debug for TensorBase<'_, D> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let mut st = f.debug_struct("Tensor");
@@ -575,6 +575,7 @@ impl<D: DataTyped> TensorBase<'_, D> {
     /// # Panics
     ///
     /// If the number of dimensions of the tensor does not match the number of dimensions of the type `Dim`
+    #[cfg(feature = "ndarray")]
     pub fn as_array<Dim: Dimension>(&self) -> ArrayView<D::Scalar, Dim> {
         let ndim = self.dim() as usize;
         let mut dim = Dim::zeros(ndim);
@@ -594,6 +595,7 @@ impl<D: DataTyped> TensorBase<'_, D> {
     }
 
     /// Get an array view of the tensor with dynamic number of dimensions.
+    #[cfg(feature = "ndarray")]
     #[cfg(feature = "alloc")]
     pub fn as_array_dyn(&self) -> ArrayView<D::Scalar, ndarray::IxDyn> {
         self.as_array()
@@ -624,6 +626,7 @@ impl<'a, D: DataTyped + DataMut> TensorBase<'a, D> {
     /// # Panics
     ///
     /// If the number of dimensions of the tensor does not match the number of dimensions of the type `Dim`.
+    #[cfg(feature = "ndarray")]
     pub fn as_array_mut<Dim: Dimension>(&mut self) -> ArrayViewMut<'a, D::Scalar, Dim> {
         let ndim = self.dim() as usize;
         let mut dim = Dim::zeros(ndim);
@@ -643,6 +646,7 @@ impl<'a, D: DataTyped + DataMut> TensorBase<'a, D> {
     }
 
     /// Get a mutable array view of the tensor with dynamic number of dimensions.
+    #[cfg(feature = "ndarray")]
     #[cfg(feature = "alloc")]
     pub fn as_array_mut_dyn(&mut self) -> ArrayViewMut<'a, D::Scalar, ndarray::IxDyn> {
         self.as_array_mut()
@@ -982,15 +986,19 @@ impl DataMut for ViewMutAny {}
 ///
 /// Use [`as_tensor_impl`](ArrayStorage::as_tensor_impl) and [`as_tensor_impl_mut`](ArrayStorage::as_tensor_impl_mut)
 /// to obtain a [`TensorImplBase`] pointing to this array data.
+#[cfg(feature = "ndarray")]
 pub struct ArrayStorage<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> {
     array: ArrayBase<S, D>,
     sizes: D::Arr<SizesType>,
     dim_order: D::Arr<DimOrderType>,
     strides: D::Arr<StridesType>,
 }
+#[cfg(feature = "ndarray")]
 impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> ArrayStorage<A, S, D> {
     /// Create a new [`ArrayStorage`] from an ndarray.
     pub fn new(array: ArrayBase<S, D>) -> Self {
+        use crate::util::DimArr;
+
         let ndim = array.ndim();
         let mut sizes = D::Arr::zeros(ndim);
         let mut dim_order = D::Arr::zeros(ndim);
@@ -1041,6 +1049,7 @@ impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> ArrayStorage<A, S, 
         self.array
     }
 }
+#[cfg(feature = "ndarray")]
 impl<A: Scalar, S: ndarray::RawDataMut<Elem = A>, D: Dimension> ArrayStorage<A, S, D> {
     /// Create a [`TensorImplMut`] pointing to this struct's data.
     ///
@@ -1052,6 +1061,7 @@ impl<A: Scalar, S: ndarray::RawDataMut<Elem = A>, D: Dimension> ArrayStorage<A, 
         unsafe { std::mem::transmute::<TensorImpl<'a, A>, TensorImplMut<'a, A>>(tensor) }
     }
 }
+#[cfg(feature = "ndarray")]
 impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> AsRef<ArrayBase<S, D>>
     for ArrayStorage<A, S, D>
 {
@@ -1059,6 +1069,7 @@ impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> AsRef<ArrayBase<S, 
         &self.array
     }
 }
+#[cfg(feature = "ndarray")]
 impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> From<ArrayStorage<A, S, D>>
     for ArrayBase<S, D>
 {
@@ -1068,26 +1079,32 @@ impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> From<ArrayStorage<A
 }
 
 /// An extension to `ndarray::Dimension` for dimensions used to convert to/from Tensors.
+#[cfg(feature = "ndarray")]
 pub trait Dimension: ndarray::Dimension {
     /// The array type that holds the sizes, dim order and strides of the tensor.
     ///
     /// Can be either a fixed size array (supported without alloc) or a dynamic array (vector).
-    type Arr<T: Clone + Copy + Default>: DimArr<T>;
+    type Arr<T: Clone + Copy + Default>: crate::util::DimArr<T>;
 }
-impl<D: FixedSizeDim> Dimension for D {
+#[cfg(feature = "ndarray")]
+impl<D: crate::util::FixedSizeDim> Dimension for D {
     type Arr<T: Clone + Copy + Default> = D::Arr<T>;
 }
+#[cfg(feature = "ndarray")]
 #[cfg(feature = "alloc")]
 impl Dimension for ndarray::IxDyn {
-    type Arr<T: Clone + Copy + Default> = et_alloc::Vec<T>;
+    type Arr<T: Clone + Copy + Default> = crate::et_alloc::Vec<T>;
 }
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "ndarray")]
     use ndarray::{arr1, arr2, Array3, Ix3};
 
+    #[allow(unused_imports)]
     use super::*;
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn test_tensor_from_ptr() {
         // Create a tensor with sizes [2, 3] and data [1, 2, 3, 4, 5, 6]
@@ -1112,6 +1129,7 @@ mod tests {
         assert_eq!(tensor.as_ptr(), data.as_ptr());
     }
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn test_tensor_mut_from_ptr() {
         // Create a tensor with sizes [2, 3] and data [1, 2, 3, 4, 5, 6]
@@ -1136,6 +1154,7 @@ mod tests {
         assert_eq!(tensor.as_ptr(), data.as_ptr());
     }
 
+    #[cfg(feature = "ndarray")]
     #[test]
     fn test_array_as_tensor() {
         // Create a 1D array and convert it to a tensor
@@ -1170,6 +1189,7 @@ mod tests {
         assert_eq!(tensor.as_ptr(), array.as_ref().as_ptr());
     }
 
+    #[cfg(feature = "ndarray")]
     #[test]
     fn test_array_as_tensor_mut() {
         // Create a 1D array and convert it to a tensor
@@ -1206,6 +1226,7 @@ mod tests {
         assert_eq!(tensor.as_ptr(), arr_ptr);
     }
 
+    #[cfg(feature = "ndarray")]
     #[test]
     fn test_tensor_as_array() {
         let arr1 = ArrayStorage::new(Array3::<f32>::zeros((3, 6, 4)));
@@ -1225,6 +1246,7 @@ mod tests {
         } }
     }
 
+    #[cfg(feature = "ndarray")]
     #[test]
     fn test_tensor_as_array_mut() {
         let mut arr1 = ArrayStorage::new(Array3::<f32>::zeros((3, 6, 4)));
@@ -1247,9 +1269,12 @@ mod tests {
         } }
     }
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn test_tensor_with_scalar_type() {
-        fn test_scalar_type<S: Scalar>(data_allocator: impl FnOnce(usize) -> et_alloc::Vec<S>) {
+        fn test_scalar_type<S: Scalar>(
+            data_allocator: impl FnOnce(usize) -> crate::et_alloc::Vec<S>,
+        ) {
             let sizes = [2, 4, 17];
             let data = data_allocator(2 * 4 * 17);
             let dim_order = [0, 1, 2];
@@ -1270,6 +1295,7 @@ mod tests {
         test_scalar_type::<bool>(|size| vec![false; size]);
     }
 
+    #[cfg(feature = "ndarray")]
     #[test]
     fn test_tensor_index() {
         let arr = ArrayStorage::new(Array3::<i32>::from_shape_fn((4, 5, 3), |(x, y, z)| {
@@ -1286,6 +1312,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "ndarray")]
     #[test]
     fn test_tensor_index_mut() {
         let mut arr = ArrayStorage::new(Array3::<i32>::zeros((4, 5, 3)));
@@ -1301,6 +1328,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "alloc")]
     fn indexed_iter<D: Data>(tensor: &TensorBase<D>) -> impl Iterator<Item = Vec<usize>> {
         let dim = tensor.dim() as usize;
         let sizes = tensor

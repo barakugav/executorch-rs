@@ -7,6 +7,7 @@ edition = "2021"
 [dependencies]
 executorch = { path = "../../", default-features = false, features = [
     "data-loader",
+    "ndarray",
 ] }
 log = "0.4.22"
 libc-print = "0.1.23"

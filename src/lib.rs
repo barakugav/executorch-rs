@@ -71,6 +71,10 @@
 //!     the lower-level [`Program`](crate::program::Program) API, which is mort suitable for embedded systems.
 //!     The `libextension_module_static.a` static library is required, compile C++ `executorch` with
 //!     `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`. Also includes the `std` feature.
+//! - `ndarray`:
+//!     Conversions between `executorch` tensors and `ndarray` arrays.
+//!     Adds a dependency to the `ndarray` crate.
+//!     This feature is enabled by default.
 //! - `f16`:
 //!     Support for half precision floating point numbers using the [`half`](https://docs.rs/half/latest/half/) crate.
 //!     Models that require input or output tensors with `f16` data type can be operated on with this features.
@@ -92,7 +96,7 @@
 //!     Its possible to enable this feature without the `std` feature, and the allocations will be done using the
 //!     [`alloc`](https://doc.rust-lang.org/alloc/) crate, that requires a global allocator to be set.
 //!
-//! By default the `std` feature is enabled.
+//! By default the `std` and `ndarray` features are enabled.
 //!
 //! ## Build
 //! To use the library you must compile the C++ executorch library yourself, as there are many configurations that

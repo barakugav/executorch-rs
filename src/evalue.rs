@@ -567,6 +567,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for &'a [bool] {
         }
     }
 }
+#[cfg(feature = "ndarray")]
 impl Debug for EValue<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let mut st = f.debug_struct("EValue");
