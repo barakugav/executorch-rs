@@ -10,5 +10,4 @@ executorch = { path = "../../", features = [
     "data-loader",
     "module",
 ] }
-log = "0.4.22"
 ndarray = { version = "0.16.0", default-features = false }

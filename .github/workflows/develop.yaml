@@ -39,6 +39,7 @@ jobs:
             ./
             executorch-sys
             examples/hello_world_add
+            examples/no_ndarray
             examples/no_std
       - name: Install Python
         uses: actions/setup-python@v5
@@ -93,6 +94,10 @@ jobs:
         # python export_model.py
         run: cargo run
         working-directory: examples/hello_world_add
+      - name: Run 'no_ndarray' example
+        # python export_model.py
+        run: cargo run
+        working-directory: examples/no_ndarray
       - name: Run 'no_std' example
         # python export_model.py
         run: cargo run
@@ -127,8 +132,6 @@ jobs:
           cache-workspaces: |
             ./
             executorch-sys
-            examples/hello_world_add
-            examples/no_std
 
       - name: cargo check executorch
         run: cargo check

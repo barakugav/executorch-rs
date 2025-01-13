@@ -1,0 +1,11 @@
+[package]
+publish = false
+name = "example-no-ndarray"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+executorch = { path = "../../", default-features = false, features = [
+    "module",
+    "data-loader",
+] }

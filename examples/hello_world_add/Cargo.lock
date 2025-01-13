@@ -89,7 +89,6 @@ name = "example-hellow-world-add"
 version = "0.0.0"
 dependencies = [
  "executorch",
- "log",
  "ndarray",
 ]
 

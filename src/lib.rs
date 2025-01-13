@@ -60,8 +60,6 @@
 //! ```
 //!
 //! ## Cargo Features
-//! The library have a few features that can be enabled or disabled:
-//! to the lower-level `Program` API, which is mort suitable for embedded systems.
 //! - `data-loader`:
 //!     Includes additional structs in the [`data_loader`] module for loading data. Without this feature the only
 //!     available data loader is `BufferDataLoader. `The `libextension_data_loader.a` static library is
