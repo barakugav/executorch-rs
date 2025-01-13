@@ -14,7 +14,7 @@ updates:
     schedule:
       interval: "monthly"
   - package-ecosystem: "cargo"
-    directory: "examples/hello_world_add_no_std/"
+    directory: "examples/no_std/"
     schedule:
       interval: "monthly"
 

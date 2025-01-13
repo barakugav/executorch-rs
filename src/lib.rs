@@ -82,7 +82,7 @@
 //! - `std`:
 //!     Enable the standard library. This feature is enabled by default, but can be disabled to build [`executorch`](crate)
 //!     in a `no_std` environment.
-//!     See the `hello_world_add_no_std` example.
+//!     See the `examples/no_std` example.
 //!     Also includes the `alloc` feature.
 //!     NOTE: no_std is still WIP, see <https://github.com/pytorch/executorch/issues/4561>
 //! - `alloc`:
@@ -103,7 +103,7 @@
 //! embedded systems, where the standard library is not available. The `alloc` feature can be used to provide an
 //! alternative to the standard library's allocator, but it is possible to use the library without allocations at all.
 //! Due to some difference between Cpp and Rust, it is not trivial to provide such API, and the interface may feel
-//! more verbose. See the `util::Storage` struct for stack allocations of Cpp objects, and the `hello_world_add_no_std`
+//! more verbose. See the `util::Storage` struct for stack allocations of Cpp objects, and the `examples/no_std`
 //! example for a full reference at the [crate Github](https://github.com/barakugav/executorch-rs/).
 //!
 //! ## API Stability

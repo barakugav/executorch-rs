@@ -51,7 +51,7 @@ let output = output.as_tensor().into_typed::<f32>();
 println!("Output tensor computed: {:?}", output);
 assert_eq!(array![2.0], output.as_array());
 ```
-See `example/hello_world_add` and `example/hello_world_add_no_std` for the complete examples.
+See `example/hello_world_add` and `example/no_std` for the complete examples.
 
 ## Build
 To build the library, you need to build the C++ library first.
@@ -144,7 +144,7 @@ The build (and library) is tested on Ubuntu and MacOS, not on Windows.
 - `std`
 
     Enable the standard library. This feature is enabled by default, but can be disabled to build `executorch` in a `no_std` environment.
-    See the `hello_world_add_no_std` example.
+    See the `examples/no_std` example.
     Also includes the `alloc` feature.
     NOTE: no_std is still WIP, see https://github.com/pytorch/executorch/issues/4561
 

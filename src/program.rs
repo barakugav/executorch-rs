@@ -3,7 +3,7 @@
 //! This module is the lowest level API for the ExecuTorch library. It provides the ability to load and execute
 //! programs, while controlling memory allocation and execution.
 //!
-//! See the `hello_world_add_no_std` example for how to load and execute a program.
+//! See the `examples/no_std` example for how to load and execute a program.
 
 use std::ffi::CStr;
 use std::marker::PhantomData;
@@ -19,7 +19,7 @@ use crate::{et_c, et_rs_c};
 
 /// A deserialized ExecuTorch program binary.
 ///
-/// See the `hello_world_add_no_std` example for how to load and execute a program.
+/// See the `examples/no_std` example for how to load and execute a program.
 pub struct Program<'a>(et_c::runtime::Program, PhantomData<&'a ()>);
 impl<'a> Program<'a> {
     /// Loads a Program from the provided loader. The Program will hold a pointer

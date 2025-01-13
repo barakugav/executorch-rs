@@ -39,7 +39,7 @@ jobs:
             ./
             executorch-sys
             examples/hello_world_add
-            examples/hello_world_add_no_std
+            examples/no_std
       - name: Install Python
         uses: actions/setup-python@v5
         with:
@@ -93,10 +93,10 @@ jobs:
         # python export_model.py
         run: cargo run
         working-directory: examples/hello_world_add
-      - name: Run 'hello world add no_std' example
+      - name: Run 'no_std' example
         # python export_model.py
         run: cargo run
-        working-directory: examples/hello_world_add_no_std
+        working-directory: examples/no_std
 
   rust-version-check-clippy:
     # check that we can build using different rust versions:
@@ -128,7 +128,7 @@ jobs:
             ./
             executorch-sys
             examples/hello_world_add
-            examples/hello_world_add_no_std
+            examples/no_std
 
       - name: cargo check executorch
         run: cargo check
