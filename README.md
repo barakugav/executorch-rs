@@ -7,7 +7,7 @@
 
 `executorch` is a Rust library for executing PyTorch models in Rust.
 It is a Rust wrapper around the [ExecuTorch C++ API](https://pytorch.org/executorch).
-It depends on version `0.4.0` of the Cpp API, but will advance as the API does.
+It depends on version `0.5.0` of the Cpp API, but will advance as the API does.
 The underlying C++ library is still in Beta, and its API is subject to change together with the Rust API.
 
 ## Usage
@@ -66,7 +66,7 @@ In the following example we build the C++ library with the necessary flags to ru
 ```bash
 # Clone the C++ library
 cd ${TEMP_DIR}
-git clone --depth 1 --branch v0.4.0 https://github.com/pytorch/executorch.git
+git clone --depth 1 --branch v0.5.0 https://github.com/pytorch/executorch.git
 cd executorch
 git submodule sync --recursive
 git submodule update --init --recursive
@@ -91,7 +91,7 @@ make -j
 # Static libraries are in cmake-out/
 # core:
 #   cmake-out/libexecutorch.a
-#   cmake-out/libexecutorch_no_prim_ops.a
+#   cmake-out/libexecutorch_core.a
 # kernels implementations:
 #   cmake-out/kernels/portable/libportable_ops_lib.a
 #   cmake-out/kernels/portable/libportable_kernels.a
@@ -109,7 +109,7 @@ EXECUTORCH_RS_EXECUTORCH_LIB_DIR=${TEMP_DIR}/executorch/cmake-out cargo run
 
 The `executorch` crate will always look for the following static libraries:
 - `libexecutorch.a`
-- `libexecutorch_no_prim_ops.a`
+- `libexecutorch_core.a`
 
 Additional libs are required if feature flags are enabled (see next section):
 - `libextension_data_loader.a`

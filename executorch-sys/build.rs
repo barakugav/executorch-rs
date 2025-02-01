@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-const EXECUTORCH_VERSION: &str = "0.4.0";
+const EXECUTORCH_VERSION: &str = "0.5.0";
 
 fn main() {
     // TODO: verify on runtime we use the correct version of executorch
@@ -210,7 +210,7 @@ fn link_executorch() {
 
     println!("cargo::rustc-link-search={}", libs_dir);
     println!("cargo::rustc-link-lib=static=executorch");
-    println!("cargo::rustc-link-lib=static=executorch_no_prim_ops");
+    println!("cargo::rustc-link-lib=static=executorch_core");
 
     if cfg!(feature = "data-loader") {
         println!(
