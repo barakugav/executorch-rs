@@ -8,7 +8,7 @@
 `executorch` is a Rust library for executing PyTorch models in Rust.
 It is a Rust wrapper around the [ExecuTorch C++ API](https://pytorch.org/executorch).
 It depends on version `0.4.0` of the Cpp API, but will advance as the API does.
-The underlying C++ library is still in alpha, and its API is subject to change together with the Rust API.
+The underlying C++ library is still in Beta, and its API is subject to change together with the Rust API.
 
 ## Usage
 Create a model in `Python` and export it:

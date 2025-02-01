@@ -66,7 +66,7 @@
 //!     required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON`.
 //! - `module`:
 //!     Includes the [`module`] API, a high-level API for loading and executing PyTorch models. It is an alternative to
-//!     the lower-level [`Program`](crate::program::Program) API, which is mort suitable for embedded systems.
+//!     the lower-level [`Program`](crate::program::Program) API, which is more suitable for embedded systems.
 //!     The `libextension_module_static.a` static library is required, compile C++ `executorch` with
 //!     `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`. Also includes the `std` feature.
 //! - `ndarray`:
@@ -106,10 +106,10 @@
 //! alternative to the standard library's allocator, but it is possible to use the library without allocations at all.
 //! Due to some difference between Cpp and Rust, it is not trivial to provide such API, and the interface may feel
 //! more verbose. See the `util::Storage` struct for stack allocations of Cpp objects, and the `examples/no_std`
-//! example for a full reference at the [crate Github](https://github.com/barakugav/executorch-rs/).
+//! example.
 //!
 //! ## API Stability
-//! The C++ API is still in Alpha, and this Rust lib will continue to change with it. Currently the supported
+//! The C++ API is still in Beta, and this Rust lib will continue to change with it. Currently the supported
 //! executorch version is `0.4.0`.
 
 #![cfg_attr(not(feature = "std"), no_std)]
