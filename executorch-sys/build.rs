@@ -47,7 +47,18 @@ fn generate_bindings() {
         bindings_defines.push_str(&format!("#define {}\n", define));
     }
 
+    let rust_version: [&str; 3] = env!("CARGO_PKG_RUST_VERSION")
+        .split('.')
+        .collect::<Vec<_>>()
+        .try_into()
+        .expect("Rust version is not in the format MAJOR.MINOR.PATCH");
+    let [_, minor, patch] = rust_version.map(|v| v.parse::<u64>().expect("Invalid rust version"));
+    let rust_version = bindgen::RustTarget::stable(minor, patch)
+        .map_err(|e| format!("{}", e))
+        .expect("Rust version not supported by bindgen");
+
     let bindings = bindgen::Builder::default()
+        .rust_target(rust_version)
         .clang_arg(format!(
             "-I{}",
             executorch_headers().parent().unwrap().to_str().unwrap()
