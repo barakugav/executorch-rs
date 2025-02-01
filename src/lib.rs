@@ -136,7 +136,7 @@ use executorch_sys::executorch_rs as et_rs_c;
 #[macro_use]
 mod private;
 pub mod data_loader;
-pub mod error;
+mod error;
 pub mod evalue;
 pub mod memory;
 #[cfg(feature = "module")]
@@ -145,3 +145,6 @@ pub mod platform;
 pub mod program;
 pub mod tensor;
 pub mod util;
+
+pub use error::Error;
+pub(crate) type Result<T> = std::result::Result<T, Error>;

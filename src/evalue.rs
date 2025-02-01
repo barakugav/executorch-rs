@@ -6,12 +6,12 @@
 use std::fmt::Debug;
 use std::pin::Pin;
 
-use crate::error::{Error, Result};
 use crate::tensor::{self, TensorAny, TensorBase};
 use crate::util::{
     ArrayRef, ArrayRefImpl, Destroy, IntoRust, NonTriviallyMovable, Storable, Storage,
 };
 use crate::{et_c, et_rs_c};
+use crate::{Error, Result};
 
 use et_c::runtime::Tag as CTag;
 

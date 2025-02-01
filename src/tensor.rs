@@ -30,9 +30,8 @@ use std::pin::Pin;
 #[cfg(feature = "ndarray")]
 use ndarray::{ArrayBase, ArrayView, ArrayViewMut, ShapeBuilder};
 
-use crate::error::{Error, Result};
 use crate::util::{Destroy, NonTriviallyMovable, Storable, Storage};
-use crate::{et_c, et_rs_c};
+use crate::{et_c, et_rs_c, Error, Result};
 
 /// A type that represents the sizes (dimensions) of a tensor.
 pub type SizesType = et_c::aten::SizesType;
