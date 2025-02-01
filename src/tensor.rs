@@ -707,7 +707,7 @@ impl<'a, S: Scalar> Tensor<'a, S> {
     /// Few examples of ways to create a tensor:
     /// ```rust,ignore
     /// // The tensor is allocated on the heap
-    /// let tensor = Tensor::new(&tensor_impl, storage);
+    /// let tensor = Tensor::new(&tensor_impl);
     ///
     /// // The tensor is allocated on the stack
     /// let storage = pin::pin!(executorch::memory::Storage::<Tensor<f32>>::default());
@@ -752,7 +752,7 @@ impl<'a, S: Scalar> TensorMut<'a, S> {
     /// Few examples of ways to create a tensor:
     /// ```rust,ignore
     /// // The tensor is allocated on the heap
-    /// let tensor = TensorMut::new(&tensor_impl, storage);
+    /// let tensor = TensorMut::new(&tensor_impl);
     ///
     /// // The tensor is allocated on the stack
     /// let storage = pin::pin!(executorch::memory::Storage::<TensorMut<f32>>::default());

@@ -316,7 +316,7 @@ impl<'a> MemoryManager<'a> {
 /// This solution works as it guarantees that the Cpp object is never moved from its original memory location. However,
 /// this solution is not viable in systems where the heap can not be used, for example in embedded systems. This is
 /// where the [`Storage`] struct comes in. It is a wrapper around a [`MaybeUninit`] that can be used to store a Cpp object,
-/// and it is intended to be pinned in memory and later be used as to allocate the Cpp object in place. This way, the
+/// and it is intended to be pinned in memory and later be used to allocate the Cpp object in place. This way, the
 /// Cpp object is never moved, and the Rust object that keeps a pointer to the storage can be moved around freely as
 /// usual.
 ///
@@ -338,7 +338,7 @@ impl<'a> MemoryManager<'a> {
 /// a straight forward `new` function that allocate the object on the heap which should be used in most cases.
 /// The `new` function is available when the `alloc` feature is enabled. When allocations are not available, the
 /// [`Storage`] struct should be used in one of two ways:
-/// - Create on the stack and pin a [`Storage`] object, and initialize the object in place through a variant of the `new` function such
+/// - Create on the stack and pin a [`Storage`], and initialize the object in place through a variant of the `new` function such
 ///     as `new_in_storage`:
 ///     ```rust,ignore
 ///     let tensor_impl: TensorImpl = ...;
