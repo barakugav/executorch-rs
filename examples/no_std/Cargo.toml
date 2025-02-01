@@ -1,14 +1,14 @@
 [package]
 publish = false
-name = "example-hellow-world-add-no-std"
+name = "example-no-std"
 version = "0.0.0"
 edition = "2021"
 
 [dependencies]
 executorch = { path = "../../", default-features = false, features = [
     "data-loader",
+    "ndarray",
 ] }
-log = "0.4.22"
 libc-print = "0.1.23"
 ndarray = { version = "0.16.0", default-features = false }
 cstr = "0.2.12"

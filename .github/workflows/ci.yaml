@@ -1,4 +1,4 @@
-name: Development CI
+name: CI
 
 on:
   push:
@@ -30,6 +30,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install C++ dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get install libc++-dev
       - name: Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
@@ -39,7 +42,8 @@ jobs:
             ./
             executorch-sys
             examples/hello_world_add
-            examples/hello_world_add_no_std
+            examples/no_ndarray
+            examples/no_std
       - name: Install Python
         uses: actions/setup-python@v5
         with:
@@ -93,10 +97,14 @@ jobs:
         # python export_model.py
         run: cargo run
         working-directory: examples/hello_world_add
-      - name: Run 'hello world add no_std' example
+      - name: Run 'no_ndarray' example
         # python export_model.py
         run: cargo run
-        working-directory: examples/hello_world_add_no_std
+        working-directory: examples/no_ndarray
+      - name: Run 'no_std' example
+        # python export_model.py
+        run: cargo run
+        working-directory: examples/no_std
 
   rust-version-check-clippy:
     # check that we can build using different rust versions:
@@ -127,8 +135,6 @@ jobs:
           cache-workspaces: |
             ./
             executorch-sys
-            examples/hello_world_add
-            examples/hello_world_add_no_std
 
       - name: cargo check executorch
         run: cargo check

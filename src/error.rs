@@ -104,7 +104,7 @@ impl IntoRust for CError {
 
 pub(crate) type Result<T> = std::result::Result<T, Error>;
 
-pub(crate) fn fallible<T>(f: impl FnOnce(*mut T) -> CError) -> Result<T> {
+pub(crate) fn try_new<T>(f: impl FnOnce(*mut T) -> CError) -> Result<T> {
     let mut value = MaybeUninit::uninit();
     let err = f(value.as_mut_ptr());
     err.rs().map(|_| unsafe { value.assume_init() })

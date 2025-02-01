@@ -12,7 +12,7 @@ use std::collections::HashSet;
 use std::path::Path;
 use std::ptr;
 
-use crate::error::{fallible, Result};
+use crate::error::{try_new, Result};
 use crate::et_rs_c::VecChar;
 use crate::evalue::EValue;
 use crate::program::{MethodMeta, ProgramVerification};
@@ -83,7 +83,7 @@ impl Module {
     ///
     /// A set of strings containing the names of the methods, or an error if the program or method failed to load.
     pub fn method_names(&mut self) -> Result<HashSet<String>> {
-        let names = fallible(|names| unsafe {
+        let names = try_new(|names| unsafe {
             et_rs_c::Module_method_names(self.0.as_mut().unwrap(), names)
         })?
         .rs();
@@ -147,7 +147,7 @@ impl Module {
     /// If the method name is not a valid UTF-8 string or contains a null character.
     pub fn method_meta(&self, method_name: impl AsRef<str>) -> Result<MethodMeta> {
         let method_name = ArrayRef::from_slice(util::str2chars(method_name.as_ref()).unwrap());
-        let meta = fallible(|meta| unsafe {
+        let meta = try_new(|meta| unsafe {
             et_rs_c::Module_method_meta(self.0.as_ref() as *const _ as *mut _, method_name.0, meta)
         })?;
         Ok(unsafe { MethodMeta::new(meta) })
@@ -180,7 +180,7 @@ impl Module {
             })
         };
         let inputs = ArrayRef::from_slice(inputs.as_slice());
-        let mut outputs = fallible(|outputs| unsafe {
+        let mut outputs = try_new(|outputs| unsafe {
             et_rs_c::Module_execute(self.0.as_mut().unwrap(), method_name.0, inputs.0, outputs)
         })?
         .rs();

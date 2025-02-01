@@ -610,7 +610,7 @@ pub(crate) fn str2chars(s: &str) -> Result<&[std::ffi::c_char], &'static str> {
 #[allow(dead_code)]
 #[cfg(feature = "std")]
 pub(crate) fn chars2string(chars: Vec<std::ffi::c_char>) -> String {
-    let bytes = unsafe { std::mem::transmute::<Vec<std::ffi::c_char>, Vec<u8>>(chars) };
+    let bytes = unsafe { std::mem::transmute::<Vec<i8>, Vec<u8>>(chars) };
     String::from_utf8(bytes).unwrap()
 }
 
@@ -733,26 +733,32 @@ pub(crate) fn to_bytes<T>(val: &T) -> Vec<u8> {
 ///
 /// This trait is useful for functions that avoid allocations and want to define additional arrays with the same size as
 /// a given dimension.
+#[cfg(feature = "ndarray")]
 pub trait FixedSizeDim: ndarray::Dimension {
     /// An array with the same fixed size as the dimension.
     type Arr<T: Clone + Copy + Default>: DimArr<T>;
     private_decl! {}
 }
-macro_rules! impl_fixed_size_dim {
-    ($size:expr) => {
-        impl FixedSizeDim for ndarray::Dim<[ndarray::Ix; $size]> {
-            type Arr<T: Clone + Copy + Default> = [T; $size];
-            private_impl! {}
-        }
-    };
+#[cfg(feature = "ndarray")]
+mod fixed_dim_impl {
+    use super::*;
+
+    macro_rules! impl_fixed_size_dim {
+        ($size:expr) => {
+            impl FixedSizeDim for ndarray::Dim<[ndarray::Ix; $size]> {
+                type Arr<T: Clone + Copy + Default> = [T; $size];
+                private_impl! {}
+            }
+        };
+    }
+    impl_fixed_size_dim!(0);
+    impl_fixed_size_dim!(1);
+    impl_fixed_size_dim!(2);
+    impl_fixed_size_dim!(3);
+    impl_fixed_size_dim!(4);
+    impl_fixed_size_dim!(5);
+    impl_fixed_size_dim!(6);
 }
-impl_fixed_size_dim!(0);
-impl_fixed_size_dim!(1);
-impl_fixed_size_dim!(2);
-impl_fixed_size_dim!(3);
-impl_fixed_size_dim!(4);
-impl_fixed_size_dim!(5);
-impl_fixed_size_dim!(6);
 
 /// An abstraction over fixed-size arrays and regular vectors if the `alloc` feature is enabled.
 pub trait DimArr<T>: AsRef<[T]> + AsMut<[T]> {
