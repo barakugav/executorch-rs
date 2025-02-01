@@ -6,10 +6,9 @@
 use std::fmt::Debug;
 use std::pin::Pin;
 
+use crate::memory::{Storable, Storage};
 use crate::tensor::{self, TensorAny, TensorBase};
-use crate::util::{
-    ArrayRef, ArrayRefImpl, Destroy, IntoRust, NonTriviallyMovable, Storable, Storage,
-};
+use crate::util::{ArrayRef, ArrayRefImpl, Destroy, IntoRust, NonTriviallyMovable};
 use crate::{et_c, et_rs_c};
 use crate::{Error, Result};
 
@@ -122,7 +121,7 @@ impl<'a> EValue<'a> {
     /// let evalue = EValue::new(value, storage);
     ///
     /// // The value is allocated on the stack
-    /// let storage = pin::pin!(executorch::util::Storage::<EValue>::default());
+    /// let storage = pin::pin!(executorch::memory::Storage::<EValue>::default());
     /// let evalue = EValue::new_in_storage(value, storage);
     ///
     /// // The value is allocated using a memory allocator

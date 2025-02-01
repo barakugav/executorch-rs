@@ -30,7 +30,8 @@ use std::pin::Pin;
 #[cfg(feature = "ndarray")]
 use ndarray::{ArrayBase, ArrayView, ArrayViewMut, ShapeBuilder};
 
-use crate::util::{Destroy, NonTriviallyMovable, Storable, Storage};
+use crate::memory::{Storable, Storage};
+use crate::util::{Destroy, NonTriviallyMovable};
 use crate::{et_c, et_rs_c, Error, Result};
 
 /// A type that represents the sizes (dimensions) of a tensor.
@@ -709,7 +710,7 @@ impl<'a, S: Scalar> Tensor<'a, S> {
     /// let tensor = Tensor::new(&tensor_impl, storage);
     ///
     /// // The tensor is allocated on the stack
-    /// let storage = pin::pin!(executorch::util::Storage::<Tensor<f32>>::default());
+    /// let storage = pin::pin!(executorch::memory::Storage::<Tensor<f32>>::default());
     /// let tensor = Tensor::new_in_storage(&tensor_impl, storage);
     ///
     /// // The tensor is allocated using a memory allocator
@@ -754,7 +755,7 @@ impl<'a, S: Scalar> TensorMut<'a, S> {
     /// let tensor = TensorMut::new(&tensor_impl, storage);
     ///
     /// // The tensor is allocated on the stack
-    /// let storage = pin::pin!(executorch::util::Storage::<TensorMut<f32>>::default());
+    /// let storage = pin::pin!(executorch::memory::Storage::<TensorMut<f32>>::default());
     /// let tensor = TensorMut::new_in_storage(&tensor_impl, storage);
     ///
     /// // The tensor is allocated using a memory allocator

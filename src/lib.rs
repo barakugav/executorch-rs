@@ -105,7 +105,7 @@
 //! embedded systems, where the standard library is not available. The `alloc` feature can be used to provide an
 //! alternative to the standard library's allocator, but it is possible to use the library without allocations at all.
 //! Due to some difference between Cpp and Rust, it is not trivial to provide such API, and the interface may feel
-//! more verbose. See the `util::Storage` struct for stack allocations of Cpp objects, and the `examples/no_std`
+//! more verbose. See the `memory::Storage` struct for stack allocations of Cpp objects, and the `examples/no_std`
 //! example.
 //!
 //! ## API Stability
