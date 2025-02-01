@@ -1,5 +1,10 @@
 # ExecuTorch-rs
 
+[![Crates.io](https://img.shields.io/crates/v/executorch.svg)](https://crates.io/crates/executorch/)
+[![Documentation](https://docs.rs/executorch/badge.svg)](https://docs.rs/executorch/)
+![License](https://img.shields.io/crates/l/executorch)
+
+
 `executorch` is a Rust library for executing PyTorch models in Rust.
 It is a Rust wrapper around the [ExecuTorch C++ API](https://pytorch.org/executorch).
 It depends on version `0.4.0` of the Cpp API, but will advance as the API does.
