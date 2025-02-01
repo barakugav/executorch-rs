@@ -6,12 +6,11 @@
 use std::fmt::Debug;
 use std::pin::Pin;
 
-use crate::error::{Error, Result};
+use crate::memory::{Storable, Storage};
 use crate::tensor::{self, TensorAny, TensorBase};
-use crate::util::{
-    ArrayRef, ArrayRefImpl, Destroy, IntoRust, NonTriviallyMovable, Storable, Storage,
-};
+use crate::util::{ArrayRef, ArrayRefImpl, Destroy, IntoRust, NonTriviallyMovable};
 use crate::{et_c, et_rs_c};
+use crate::{Error, Result};
 
 use et_c::runtime::Tag as CTag;
 
@@ -119,17 +118,17 @@ impl<'a> EValue<'a> {
     /// Few examples of ways to create an [`EValue`]:
     /// ```rust,ignore
     /// // The value is allocated on the heap
-    /// let evalue = EValue::new(value, storage);
+    /// let evalue = EValue::new(value);
     ///
     /// // The value is allocated on the stack
-    /// let storage = pin::pin!(executorch::util::Storage::<EValue>::default());
+    /// let storage = pin::pin!(executorch::memory::Storage::<EValue>::default());
     /// let evalue = EValue::new_in_storage(value, storage);
     ///
     /// // The value is allocated using a memory allocator
     /// let allocator: impl AsRef<MemoryAllocator> = ...; // usually global
     /// let evalue = EValue::new_in_storage(value, allocator.as_ref().allocate_pinned().unwrap());
     /// ```
-    /// Note that the inner data is not copied, and the required allocation is small..
+    /// Note that the inner data is not copied, and the required allocation is small.
     /// See [`Storage`] for more information.
     pub fn new_in_storage(
         value: impl IntoEValue<'a>,
@@ -266,6 +265,8 @@ impl<'a> EValue<'a> {
     // }
 
     /// Get the tag indicating the type of the value.
+    ///
+    /// Returns `None` if the inner Cpp tag is `None`.
     pub fn tag(&self) -> Option<Tag> {
         self.as_evalue().tag.rs()
     }

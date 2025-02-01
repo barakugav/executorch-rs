@@ -59,8 +59,8 @@ mod file_data_loader {
     use std::cell::UnsafeCell;
     use std::ffi::CStr;
 
-    use crate::error::{try_new, Result};
-    use crate::{et_c, et_rs_c};
+    use crate::error::try_new;
+    use crate::{et_c, et_rs_c, Result};
 
     use super::DataLoader;
 

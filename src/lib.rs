@@ -66,7 +66,7 @@
 //!     required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON`.
 //! - `module`:
 //!     Includes the [`module`] API, a high-level API for loading and executing PyTorch models. It is an alternative to
-//!     the lower-level [`Program`](crate::program::Program) API, which is mort suitable for embedded systems.
+//!     the lower-level [`Program`](crate::program::Program) API, which is more suitable for embedded systems.
 //!     The `libextension_module_static.a` static library is required, compile C++ `executorch` with
 //!     `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`. Also includes the `std` feature.
 //! - `ndarray`:
@@ -105,11 +105,11 @@
 //! embedded systems, where the standard library is not available. The `alloc` feature can be used to provide an
 //! alternative to the standard library's allocator, but it is possible to use the library without allocations at all.
 //! Due to some difference between Cpp and Rust, it is not trivial to provide such API, and the interface may feel
-//! more verbose. See the `util::Storage` struct for stack allocations of Cpp objects, and the `examples/no_std`
-//! example for a full reference at the [crate Github](https://github.com/barakugav/executorch-rs/).
+//! more verbose. See the `memory::Storage` struct for stack allocations of Cpp objects, and the `examples/no_std`
+//! example.
 //!
 //! ## API Stability
-//! The C++ API is still in Alpha, and this Rust lib will continue to change with it. Currently the supported
+//! The C++ API is still in Beta, and this Rust lib will continue to change with it. Currently the supported
 //! executorch version is `0.4.0`.
 
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -136,7 +136,7 @@ use executorch_sys::executorch_rs as et_rs_c;
 #[macro_use]
 mod private;
 pub mod data_loader;
-pub mod error;
+mod error;
 pub mod evalue;
 pub mod memory;
 #[cfg(feature = "module")]
@@ -145,3 +145,6 @@ pub mod platform;
 pub mod program;
 pub mod tensor;
 pub mod util;
+
+pub use error::Error;
+pub(crate) type Result<T> = std::result::Result<T, Error>;

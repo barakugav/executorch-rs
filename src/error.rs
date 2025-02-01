@@ -79,7 +79,7 @@ impl std::fmt::Display for Error {
 impl std::error::Error for Error {}
 
 impl IntoRust for CError {
-    type RsType = Result<()>;
+    type RsType = crate::Result<()>;
     fn rs(self) -> Self::RsType {
         Err(match self {
             CError::Ok => return Ok(()),
@@ -102,9 +102,7 @@ impl IntoRust for CError {
     }
 }
 
-pub(crate) type Result<T> = std::result::Result<T, Error>;
-
-pub(crate) fn try_new<T>(f: impl FnOnce(*mut T) -> CError) -> Result<T> {
+pub(crate) fn try_new<T>(f: impl FnOnce(*mut T) -> CError) -> crate::Result<T> {
     let mut value = MaybeUninit::uninit();
     let err = f(value.as_mut_ptr());
     err.rs().map(|_| unsafe { value.assume_init() })

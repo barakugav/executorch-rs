@@ -12,13 +12,13 @@ use std::collections::HashSet;
 use std::path::Path;
 use std::ptr;
 
-use crate::error::{try_new, Result};
+use crate::error::try_new;
 use crate::et_rs_c::VecChar;
 use crate::evalue::EValue;
 use crate::program::{MethodMeta, ProgramVerification};
 use crate::util::cpp_vec::CppVecImpl;
 use crate::util::{self, ArrayRef, Destroy, IntoRust, NonTriviallyMovable, NonTriviallyMovableVec};
-use crate::{et_c, et_rs_c};
+use crate::{et_c, et_rs_c, Result};
 
 /// A facade class for loading programs and executing methods within them.
 ///

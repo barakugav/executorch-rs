@@ -10,12 +10,12 @@ use std::marker::PhantomData;
 use std::ptr;
 
 use crate::data_loader::DataLoader;
-use crate::error::{try_new, Result};
+use crate::error::try_new;
 use crate::evalue::{EValue, Tag};
 use crate::memory::MemoryManager;
 use crate::tensor::ScalarType;
 use crate::util::{ArrayRef, IntoRust};
-use crate::{et_c, et_rs_c};
+use crate::{et_c, et_rs_c, Result};
 
 /// A deserialized ExecuTorch program binary.
 ///
