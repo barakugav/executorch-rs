@@ -96,6 +96,24 @@ pub enum ScalarType {
     Bits8 = CScalarType::Bits8 as u8,
     /// **\[Unsupported\]**
     Bits16 = CScalarType::Bits16 as u8,
+    /// **\[Unsupported\]**
+    #[allow(non_camel_case_types)]
+    Float8_e5m2 = CScalarType::Float8_e5m2 as u8,
+    /// **\[Unsupported\]**
+    #[allow(non_camel_case_types)]
+    Float8_e4m3fn = CScalarType::Float8_e4m3fn as u8,
+    /// **\[Unsupported\]**
+    #[allow(non_camel_case_types)]
+    Float8_e5m2fnuz = CScalarType::Float8_e5m2fnuz as u8,
+    /// **\[Unsupported\]**
+    #[allow(non_camel_case_types)]
+    Float8_e4m3fnuz = CScalarType::Float8_e4m3fnuz as u8,
+    /// 16-bit unsigned integer, `u16`
+    UInt16 = CScalarType::UInt16 as u8,
+    /// 32-bit unsigned integer, `u32`
+    UInt32 = CScalarType::UInt32 as u8,
+    /// 64-bit unsigned integer, `u64`
+    UInt64 = CScalarType::UInt64 as u8,
 }
 impl ScalarType {
     pub(crate) fn from_c_scalar_type(scalar_type: CScalarType) -> Option<Self> {
@@ -123,6 +141,13 @@ impl ScalarType {
             CScalarType::Bits4x2 => ScalarType::Bits4x2,
             CScalarType::Bits8 => ScalarType::Bits8,
             CScalarType::Bits16 => ScalarType::Bits16,
+            CScalarType::Float8_e5m2 => ScalarType::Float8_e5m2,
+            CScalarType::Float8_e4m3fn => ScalarType::Float8_e4m3fn,
+            CScalarType::Float8_e5m2fnuz => ScalarType::Float8_e5m2fnuz,
+            CScalarType::Float8_e4m3fnuz => ScalarType::Float8_e4m3fnuz,
+            CScalarType::UInt16 => ScalarType::UInt16,
+            CScalarType::UInt32 => ScalarType::UInt32,
+            CScalarType::UInt64 => ScalarType::UInt64,
             CScalarType::Undefined => return None,
             CScalarType::NumOptions => panic!("Invalid scalar type"),
         })
@@ -153,6 +178,13 @@ impl ScalarType {
             ScalarType::Bits4x2 => CScalarType::Bits4x2,
             ScalarType::Bits8 => CScalarType::Bits8,
             ScalarType::Bits16 => CScalarType::Bits16,
+            ScalarType::Float8_e5m2 => CScalarType::Float8_e5m2,
+            ScalarType::Float8_e4m3fn => CScalarType::Float8_e4m3fn,
+            ScalarType::Float8_e5m2fnuz => CScalarType::Float8_e5m2fnuz,
+            ScalarType::Float8_e4m3fnuz => CScalarType::Float8_e4m3fnuz,
+            ScalarType::UInt16 => CScalarType::UInt16,
+            ScalarType::UInt32 => CScalarType::UInt32,
+            ScalarType::UInt64 => CScalarType::UInt64,
         }
     }
 }
@@ -189,6 +221,9 @@ impl_scalar!(num_complex::Complex64, ComplexDouble);
 impl_scalar!(bool, Bool);
 #[cfg(feature = "f16")]
 impl_scalar!(half::bf16, BFloat16);
+impl_scalar!(u16, UInt16);
+impl_scalar!(u32, UInt32);
+impl_scalar!(u64, UInt64);
 
 /// A minimal Tensor type whose API is a source compatible subset of at::Tensor.
 ///
@@ -555,6 +590,13 @@ impl<D: Data> Debug for TensorBase<'_, D> {
             Some(ScalarType::Bits4x2) => add_data_field_unsupported(&mut st),
             Some(ScalarType::Bits8) => add_data_field_unsupported(&mut st),
             Some(ScalarType::Bits16) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::Float8_e5m2) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::Float8_e4m3fn) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::Float8_e5m2fnuz) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::Float8_e4m3fnuz) => add_data_field_unsupported(&mut st),
+            Some(ScalarType::UInt16) => add_data_field(self.as_typed::<u16>(), &mut st),
+            Some(ScalarType::UInt32) => add_data_field(self.as_typed::<u32>(), &mut st),
+            Some(ScalarType::UInt64) => add_data_field(self.as_typed::<u64>(), &mut st),
             None => {
                 st.field("data", &"None");
             }

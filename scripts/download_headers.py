@@ -44,6 +44,7 @@ def main():
         ]
         excludes = [
             "runtime/executor/platform_memory_allocator.h",
+            "extension/data_loader/file_descriptor_data_loader.h",
             "**/test/**",
             "**/testing_util/**",
         ]
