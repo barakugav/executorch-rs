@@ -4,7 +4,7 @@ on:
   schedule:
     # runs once a week
     # * is a special character in YAML so you have to quote this string
-    - cron:  '0 0 * * 0'
+    - cron: "0 0 * * 0"
   workflow_dispatch: {}
 
 permissions:
@@ -27,7 +27,11 @@ jobs:
         with:
           toolchain: 1.77.0
       - name: Install cargo-audit
-        run: cargo install cargo-audit
+        uses: baptiste0928/cargo-install@v3
+        with:
+          crate: cargo-audit
+          version: 0.20.0
+          locked: true
 
       ############ Checks ############
       - name: Audit
