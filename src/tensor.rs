@@ -634,6 +634,13 @@ impl<D: DataTyped> TensorBase<'_, D> {
     /// If the number of dimensions of the tensor does not match the number of dimensions of the type `Dim`
     #[cfg(feature = "ndarray")]
     pub fn as_array<Dim: Dimension>(&self) -> ArrayView<D::Scalar, Dim> {
+        if let Some(arr_ndim) = Dim::NDIM {
+            let tensor_ndim = self.dim() as usize;
+            assert_eq!(
+                tensor_ndim, arr_ndim,
+                "Dimension mismatch: {tensor_ndim} != {arr_ndim}",
+            );
+        }
         let ndim = self.dim() as usize;
         let mut dim = Dim::zeros(ndim);
         let mut strides = Dim::zeros(ndim);

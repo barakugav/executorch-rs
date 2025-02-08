@@ -1,0 +1,15 @@
+[package]
+name = "example-nano-gpt"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+
+[dependencies]
+executorch = { path = "../../", features = [
+    "ndarray",
+    "data-loader",
+    "module",
+] }
+ndarray = { version = "0.16.0", default-features = false }
+serde_json = "1.0"
