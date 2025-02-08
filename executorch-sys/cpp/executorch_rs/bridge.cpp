@@ -1,9 +1,10 @@
 
 #include <cstddef>
 #include <vector>
-#include <cassert>
 #include "executorch_rs/bridge.hpp"
 #include "executorch/runtime/core/exec_aten/util/tensor_util.h"
+#include "executorch/runtime/core/exec_aten/util/dim_order_util.h"
+#include "executorch/runtime/platform/assert.h"
 
 namespace executorch_rs
 {
@@ -112,8 +113,8 @@ namespace executorch_rs
     executorch::runtime::HierarchicalAllocator HierarchicalAllocator_new(SpanSpanU8 buffers)
     {
         executorch::runtime::Span<executorch::runtime::Span<uint8_t>> buffers_ = *reinterpret_cast<executorch::runtime::Span<executorch::runtime::Span<uint8_t>> *>(&buffers);
-        assert((void *)buffers_.begin() == (void *)buffers.data);
-        assert(buffers_.size() == buffers.len);
+        ET_CHECK((void *)buffers_.begin() == (void *)buffers.data);
+        ET_CHECK(buffers_.size() == buffers.len);
         return executorch::runtime::HierarchicalAllocator(buffers_);
     }
     void HierarchicalAllocator_destructor(executorch::runtime::HierarchicalAllocator &self)
@@ -250,9 +251,35 @@ namespace executorch_rs
     {
         return self.mutable_data_ptr();
     }
-    size_t Tensor_coordinate_to_index(const executorch::aten::Tensor &self, const size_t *coordinate)
+
+    ssize_t Tensor_coordinate_to_index(const executorch::aten::Tensor &self, ArrayRefUsizeType coordinate)
     {
-        return executorch::runtime::coordinateToIndex(self, coordinate);
+        auto ndim = (size_t)self.dim();
+        if (coordinate.len != ndim)
+        {
+            return -1;
+        }
+
+        auto sizes = self.sizes();
+        auto strides = self.strides();
+        auto dim_order = self.dim_order();
+        ET_CHECK_MSG(sizes.size() == ndim, "Sizes must have the same number of dimensions as the tensor");
+        ET_CHECK_MSG(strides.size() == ndim, "Strides must have the same number of dimensions as the tensor");
+        // TODO: support dim order
+        ET_CHECK_MSG(
+            dim_order.data() == nullptr || executorch::runtime::is_contiguous_dim_order(dim_order.data(), ndim),
+            "Only contiguous dim order is supported for now");
+
+        size_t index = 0;
+        for (size_t d = 0; d < ndim; d++)
+        {
+            if (coordinate.data[d] >= (size_t)sizes[d])
+            {
+                return -1;
+            }
+            index += coordinate.data[d] * strides[d];
+        }
+        return index;
     }
     void Tensor_destructor(executorch::aten::Tensor &self)
     {

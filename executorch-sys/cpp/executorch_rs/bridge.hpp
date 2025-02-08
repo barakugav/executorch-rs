@@ -81,6 +81,11 @@ namespace executorch_rs
         const double *data;
         size_t len;
     };
+    struct ArrayRefUsizeType
+    {
+        const size_t *data;
+        size_t len;
+    };
     struct ArrayRefSizesType
     {
         const executorch::aten::SizesType *data;
@@ -155,7 +160,7 @@ namespace executorch_rs
     ArrayRefStridesType Tensor_strides(const executorch::aten::Tensor &self);
     const void *Tensor_const_data_ptr(const executorch::aten::Tensor &self);
     void *Tensor_mutable_data_ptr(const executorch::aten::Tensor &self);
-    size_t Tensor_coordinate_to_index(const executorch::aten::Tensor &self, const size_t *coordinate);
+    ssize_t Tensor_coordinate_to_index(const executorch::aten::Tensor &self, ArrayRefUsizeType coordinate);
     void Tensor_destructor(executorch::aten::Tensor &self);
 
     // executorch::runtime::EValue EValue_shallow_clone(executorch::runtime::EValue *evalue);

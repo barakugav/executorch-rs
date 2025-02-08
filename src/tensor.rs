@@ -27,11 +27,12 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::pin::Pin;
 
+use executorch_sys::executorch_rs::ArrayRefUsizeType;
 #[cfg(feature = "ndarray")]
 use ndarray::{ArrayBase, ArrayView, ArrayViewMut, ShapeBuilder};
 
 use crate::memory::{Storable, Storage};
-use crate::util::{Destroy, NonTriviallyMovable};
+use crate::util::{ArrayRefImpl, Destroy, NonTriviallyMovable};
 use crate::{et_c, et_rs_c, Error, Result};
 
 /// A type that represents the sizes (dimensions) of a tensor.
@@ -492,6 +493,20 @@ impl<'a, D: Data> TensorBase<'a, D> {
     {
         self.try_as_typed_mut().expect("Invalid type")
     }
+
+    fn coordinate_to_index(&self, coordinate: &[usize]) -> Option<usize> {
+        let index = unsafe {
+            et_rs_c::Tensor_coordinate_to_index(
+                self.as_cpp_tensor(),
+                ArrayRefUsizeType::from_slice(coordinate),
+            )
+        };
+        if index < 0 {
+            None
+        } else {
+            Some(index as usize)
+        }
+    }
 }
 impl Destroy for et_c::runtime::etensor::Tensor {
     unsafe fn destroy(&mut self) {
@@ -699,13 +714,7 @@ impl<D: DataTyped> Index<&[usize]> for TensorBase<'_, D> {
     type Output = D::Scalar;
 
     fn index(&self, index: &[usize]) -> &Self::Output {
-        assert_eq!(
-            index.len(),
-            self.dim() as usize,
-            "Invalid number of dimensions"
-        );
-        let index =
-            unsafe { et_rs_c::Tensor_coordinate_to_index(self.as_cpp_tensor(), index.as_ptr()) };
+        let index = self.coordinate_to_index(index).expect("Invalid index");
         let base_ptr = self.as_ptr();
         debug_assert!(!base_ptr.is_null());
         unsafe { &*base_ptr.add(index) }
@@ -713,13 +722,7 @@ impl<D: DataTyped> Index<&[usize]> for TensorBase<'_, D> {
 }
 impl<D: DataTyped + DataMut> IndexMut<&[usize]> for TensorBase<'_, D> {
     fn index_mut(&mut self, index: &[usize]) -> &mut Self::Output {
-        assert_eq!(
-            index.len(),
-            self.dim() as usize,
-            "Invalid number of dimensions"
-        );
-        let index =
-            unsafe { et_rs_c::Tensor_coordinate_to_index(self.as_cpp_tensor(), index.as_ptr()) };
+        let index = self.coordinate_to_index(index).expect("Invalid index");
         let base_ptr = self.as_mut_ptr().as_ptr();
         unsafe { &mut *base_ptr.add(index) }
     }
@@ -820,6 +823,31 @@ pub type TensorAny<'a> = TensorBase<'a, ViewAny>;
 impl<'a> TensorAny<'a> {
     pub(crate) fn from_inner_ref(tensor: &'a et_c::runtime::etensor::Tensor) -> Self {
         Self(NonTriviallyMovable::from_ref(tensor), PhantomData)
+    }
+
+    /// Get a reference to the element at `index`, or return `None` if the scalar type of the tensor does not
+    /// match `S` or the index is out of bounds.
+    pub fn get<S: Scalar>(&self, index: &[usize]) -> Option<&S> {
+        if self.scalar_type() != Some(S::TYPE) {
+            return None;
+        }
+        let index = self.coordinate_to_index(index)?;
+        let base_ptr = (unsafe { self.as_ptr_raw() }) as *const S;
+        debug_assert!(!base_ptr.is_null());
+        Some(unsafe { &*base_ptr.add(index) })
+    }
+}
+impl TensorBase<'_, ViewMutAny> {
+    /// Get a mutable reference to the element at `index`, or return `None` if the scalar type of the tensor does not
+    /// match `S` or the index is out of bounds.
+    pub fn get_mut<S: Scalar>(&mut self, index: &[usize]) -> Option<&mut S> {
+        if self.scalar_type() != Some(S::TYPE) {
+            return None;
+        }
+        let index = self.coordinate_to_index(index)?;
+        let base_ptr = (unsafe { self.as_mut_ptr_raw().as_ptr() }) as *mut S;
+        debug_assert!(!base_ptr.is_null());
+        Some(unsafe { &mut *base_ptr.add(index) })
     }
 }
 
