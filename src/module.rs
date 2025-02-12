@@ -31,7 +31,7 @@ impl Module {
     /// # Arguments
     ///
     /// * `file_path` - The path to the ExecuTorch program file to load.
-    /// * `mlock_config` - The memory locking configuration to use. Defaults to `MlockConfig::UseMlock`.
+    /// * `load_mode` - The loading mode to use. Defaults to `LoadMode::MmapUseMlock`.
     ///
     /// # Returns
     ///
@@ -40,14 +40,14 @@ impl Module {
     /// # Panics
     ///
     /// If the file path is not a valid UTF-8 string or contains a null character.
-    pub fn new(file_path: impl AsRef<Path>, mlock_config: Option<LoadMode>) -> Self {
+    pub fn new(file_path: impl AsRef<Path>, load_mode: Option<LoadMode>) -> Self {
         let file_path = file_path.as_ref().to_str().unwrap();
         let file_path = ArrayRef::from_slice(util::str2chars(file_path).unwrap());
-        let mlock_config = mlock_config.unwrap_or(LoadMode::MmapUseMlock);
+        let load_mode = load_mode.unwrap_or(LoadMode::MmapUseMlock);
         let event_tracer = ptr::null_mut(); // TODO: support event tracer
         Self(unsafe {
             NonTriviallyMovable::new_boxed(|p| {
-                et_rs_c::Module_new(p, file_path.0, mlock_config, event_tracer)
+                et_rs_c::Module_new(p, file_path.0, load_mode, event_tracer)
             })
         })
     }

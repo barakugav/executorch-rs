@@ -311,6 +311,7 @@ impl_array_ref!(std::ffi::c_char, et_rs_c::ArrayRefChar);
 impl_array_ref!(u8, et_rs_c::ArrayRefU8);
 impl_array_ref!(i32, et_rs_c::ArrayRefI32);
 impl_array_ref!(f64, et_rs_c::ArrayRefF64);
+impl_array_ref!(usize, et_rs_c::ArrayRefUsizeType);
 impl_array_ref!(bool, et_rs_c::ArrayRefBool);
 impl_array_ref!(et_c::runtime::EValue, et_rs_c::ArrayRefEValue);
 
