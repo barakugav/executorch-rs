@@ -10,7 +10,7 @@ updates:
     schedule:
       interval: "monthly"
   - package-ecosystem: "cargo"
-    directory: "examples/hello_world_add/"
+    directory: "examples/hello_world/"
     schedule:
       interval: "monthly"
   - package-ecosystem: "cargo"

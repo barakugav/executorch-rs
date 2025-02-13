@@ -41,7 +41,7 @@ jobs:
           cache-workspaces: |
             ./
             executorch-sys
-            examples/hello_world_add
+            examples/hello_world
             examples/no_ndarray
             examples/no_std
       - uses: taiki-e/install-action@cargo-hack
@@ -104,7 +104,7 @@ jobs:
       - name: Run 'hello world add' example
         # python export_model.py
         run: cargo run
-        working-directory: examples/hello_world_add
+        working-directory: examples/hello_world
       - name: Run 'no_ndarray' example
         # python export_model.py
         run: cargo run

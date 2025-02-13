@@ -9,7 +9,7 @@
 //! The C++ library allow for great flexibility with many flags, customizing which modules, kernels, and extensions are
 //! built.
 //! Multiple static libraries are built, and the Rust library links to them.
-//! In the following example we build the C++ library with the necessary flags to run example `hello_world_add`:
+//! In the following example we build the C++ library with the necessary flags to run example `hello_world`:
 //! ```bash
 //! # Clone the C++ library
 //! cd ${TEMP_DIR}
@@ -49,7 +49,7 @@
 //!
 //! # Run example
 //! # We set EXECUTORCH_RS_EXECUTORCH_LIB_DIR to the path of the C++ build output
-//! cd ${EXECUTORCH_RS_DIR}/examples/hello_world_add
+//! cd ${EXECUTORCH_RS_DIR}/examples/hello_world
 //! python export_model.py
 //! EXECUTORCH_RS_EXECUTORCH_LIB_DIR=${TEMP_DIR}/executorch/cmake-out cargo run
 //! ```
@@ -64,7 +64,7 @@
 //!
 //! The static libraries of the kernels implementations are required only if your model uses them, and they should be
 //! **linked manually** by the binary that uses the `executorch` crate.
-//! For example, the `hello_world_add` example uses a model with a single addition operation, so it compile the C++
+//! For example, the `hello_world` example uses a model with a single addition operation, so it compile the C++
 //! library with `DEXECUTORCH_SELECT_OPS_LIST=aten::add.out` and contain the following lines in its `build.rs`:
 //! ```rust
 //! println!("cargo::rustc-link-lib=static:+whole-archive=portable_kernels");
