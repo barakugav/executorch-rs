@@ -10,6 +10,8 @@ fn main() {
     // );
 
     build_c_bridge();
+    #[cfg(feature = "tensor-ptr")]
+    build_cxx_bridge();
     generate_bindings();
     link_executorch();
 }
@@ -30,7 +32,31 @@ fn build_c_bridge() {
     for define in cpp_defines() {
         builder.define(define, None);
     }
-    builder.compile("executorch_rs");
+    let c_bridge_lib_name = format!("executorch_rs_c_bridge_{}", env!("CARGO_PKG_VERSION"));
+    builder.compile(&c_bridge_lib_name);
+
+    println!("cargo::rerun-if-changed={}", bridge_dir.to_str().unwrap());
+}
+
+#[cfg(feature = "tensor-ptr")]
+fn build_cxx_bridge() {
+    let bridge_dir = cpp_bridge_dir();
+    let mut builder = cxx_build::bridge("src/cxx_bridge.rs");
+    builder.cpp(true).std("c++17");
+    // TODO: cpp executorch doesnt support nostd yet
+    // if !cfg!(feature = "std") {
+    //     builder.cpp_set_stdlib(None);
+    //     builder.flag("-nostdlib");
+    // }
+    builder
+        .files([bridge_dir.join("cxx_bridge.cpp")])
+        .include(bridge_dir.parent().unwrap())
+        .include(executorch_headers().parent().unwrap());
+    for define in cpp_defines() {
+        builder.define(define, None);
+    }
+    let cxx_bridge_lib_name = format!("executorch_rs_cxx_bridge_{}", env!("CARGO_PKG_VERSION"));
+    builder.compile(&cxx_bridge_lib_name);
 
     println!("cargo::rerun-if-changed={}", bridge_dir.to_str().unwrap());
 }
@@ -231,6 +257,13 @@ fn link_executorch() {
         }
         println!("cargo::rustc-link-lib=static:+whole-archive=extension_module_static");
     }
+
+    if cfg!(feature = "tensor-ptr") {
+        if let Some(libs_dir) = &libs_dir {
+            println!("cargo::rustc-link-search={}/extension/tensor/", libs_dir);
+        }
+        println!("cargo::rustc-link-lib=static:+whole-archive=extension_tensor");
+    }
 }
 
 fn executorch_headers() -> PathBuf {
@@ -252,6 +285,9 @@ fn cpp_defines() -> Vec<&'static str> {
     }
     if cfg!(feature = "module") {
         defines.push("EXECUTORCH_RS_MODULE");
+    }
+    if cfg!(feature = "tensor-ptr") {
+        defines.push("EXECUTORCH_RS_TESTOR_PTR");
     }
     if cfg!(feature = "std") {
         defines.push("EXECUTORCH_RS_STD");

@@ -27,6 +27,7 @@ cmake \
     -DBUILD_EXECUTORCH_PORTABLE_OPS=ON \
     -DEXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON \
     -DEXECUTORCH_BUILD_EXTENSION_MODULE=ON \
+    -DEXECUTORCH_BUILD_EXTENSION_TENSOR=ON \
     -DEXECUTORCH_ENABLE_PROGRAM_VERIFICATION=ON \
     -DEXECUTORCH_ENABLE_LOGGING=ON \
     ..
@@ -43,6 +44,8 @@ make -j
 #   cmake-out/extension/data_loader/libextension_data_loader.a
 # extension module, enabled with EXECUTORCH_BUILD_EXTENSION_MODULE=ON:
 #   cmake-out/extension/module/libextension_module_static.a
+# extension tensor, enabled with EXECUTORCH_BUILD_EXTENSION_TENSOR=ON:
+#   cmake-out/extension/tensor/libextension_tensor.a
 
 # Run example
 # We set EXECUTORCH_RS_EXECUTORCH_LIB_DIR to the path of the C++ build output
@@ -58,6 +61,7 @@ The `executorch` crate will always look for the following static libraries:
 Additional libs are required if feature flags are enabled (see next section):
 - `libextension_data_loader.a`
 - `libextension_module_static.a`
+- `libextension_tensor.a`
 
 The static libraries of the kernels implementations are required only if your model uses them, and they should be **linked manually** by the binary that uses the `executorch` crate.
 For example, the `hello_world` example uses a model with a single addition operation, so it compile the C++ library with `DEXECUTORCH_SELECT_OPS_LIST=aten::add.out` and contain the following lines in its `build.rs`:
@@ -70,6 +74,13 @@ println!("cargo::rustc-link-search={}/kernels/portable/", libs_dir);
 ```
 Note that the ops and kernels libs are linked with `+whole-archive` to ensure that all symbols are included in the binary.
 
+The `EXECUTORCH_RS_EXECUTORCH_LIB_DIR` environment variable should be set to the path of the C++ build output.
+If its not provided, its the resposibility of the binary to add the libs directories to the linker search path, and
+the crate will just link to the static libraries using `cargo::rustc-link-lib=...`.
+
+If you want to link to executorch libs yourself, set the environment variable `EXECUTORCH_RS_LINK` to `0`, and
+the crate will not link to any library and not modify the linker search path.
+
 ## Cargo Features
 - `data-loader`
 
@@ -78,6 +89,13 @@ Note that the ops and kernels libs are linked with `+whole-archive` to ensure th
 - `module`
 
     Includes the `Module` struct. The `libextension_module_static.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`.
+    Also includes the `std` feature.
+
+- `tensor-ptr`
+
+    Includes a few functions creating `cxx::SharedPtr<Tensor>` pointers, that manage the lifetime of the tensor
+    object alongside the lifetimes of the data buffer and additional metadata. The `extension_tensor.a`
+    static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_TENSOR=ON`.
     Also includes the `std` feature.
 
 - `std`

@@ -417,6 +417,18 @@ impl<'a, D: tensor::Data> IntoEValue<'a> for &'a TensorBase<'_, D> {
         }
     }
 }
+#[cfg(feature = "tensor-ptr")]
+impl<'a, D: tensor::Data> IntoEValue<'a> for &'a tensor::TensorPtr<'_, D> {
+    #[cfg(feature = "alloc")]
+    fn into_evalue(self) -> EValue<'a> {
+        self.as_tensor().into_evalue()
+    }
+
+    fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
+        self.as_tensor().into_evalue_in_storage(storage)
+    }
+}
+
 // /// Create a new [`EValue`] from a list of `i64`.
 // ///
 // /// The functions accept two lists, one of [`EValue`] wrapping the `i64` values and one of `i64` values. See

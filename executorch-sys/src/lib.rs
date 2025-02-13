@@ -1,3 +1,6 @@
+#![deny(warnings)]
+#![deny(missing_docs)]
+
 //! Unsafe bindings for ExecuTorch - On-device AI across mobile, embedded and edge for PyTorch.
 //!
 //! Provides a low level Rust bindings for the ExecuTorch library.
@@ -30,6 +33,7 @@
 //!     -DBUILD_EXECUTORCH_PORTABLE_OPS=ON \
 //!     -DEXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON \
 //!     -DEXECUTORCH_BUILD_EXTENSION_MODULE=ON \
+//!     -DEXECUTORCH_BUILD_EXTENSION_TENSOR=ON \
 //!     -DEXECUTORCH_ENABLE_PROGRAM_VERIFICATION=ON \
 //!     -DEXECUTORCH_ENABLE_LOGGING=ON \
 //!     ..
@@ -46,6 +50,8 @@
 //! #   cmake-out/extension/data_loader/libextension_data_loader.a
 //! # extension module, enabled with EXECUTORCH_BUILD_EXTENSION_MODULE=ON:
 //! #   cmake-out/extension/module/libextension_module_static.a
+//! # extension tensor, enabled with EXECUTORCH_BUILD_EXTENSION_TENSOR=ON:
+//! #   cmake-out/extension/tensor/libextension_tensor.a
 //!
 //! # Run example
 //! # We set EXECUTORCH_RS_EXECUTORCH_LIB_DIR to the path of the C++ build output
@@ -61,6 +67,7 @@
 //! Additional libs are required if feature flags are enabled (see next section):
 //! - `libextension_data_loader.a`
 //! - `libextension_module_static.a`
+//! - `libextension_tensor.a`
 //!
 //! The static libraries of the kernels implementations are required only if your model uses them, and they should be
 //! **linked manually** by the binary that uses the `executorch` crate.
@@ -76,6 +83,13 @@
 //! Note that the ops and kernels libs are linked with `+whole-archive` to ensure that all symbols are included in the
 //! binary.
 //!
+//! The `EXECUTORCH_RS_EXECUTORCH_LIB_DIR` environment variable should be set to the path of the C++ build output.
+//! If its not provided, its the resposibility of the binary to add the libs directories to the linker search path, and
+//! the crate will just link to the static libraries using `cargo::rustc-link-lib=...`.
+//!
+//! If you want to link to executorch libs yourself, set the environment variable `EXECUTORCH_RS_LINK` to `0`, and
+//! the crate will not link to any library and not modify the linker search path.
+//!
 //! ## Cargo Features
 //! By default all features are disabled.
 //! - `data-loader`: Includes the [`FileDataLoader`] and [`MmapDataLoader`] structs. Without this feature the only available
@@ -83,6 +97,14 @@
 //!     `executorch` with `EXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON`.
 //! - `module`: Includes the [`Module`] struct. The `libextension_module_static.a` static library is required, compile C++
 //!     `executorch` with `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`.
+//! - `tensor-ptr`:
+//!     Includes a few functions creating `cxx::SharedPtr<Tensor>` pointers, that manage the lifetime of the tensor
+//!     object alongside the lifetimes of the data buffer and additional metadata. The `extension_tensor.a`
+//!     static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_TENSOR=ON`.
+//!     Also includes the `std` feature.
+//! - `std`:
+//!     Enable the standard library. This feature is enabled by default, but can be disabled to build `executorch` in a `no_std` environment.
+//!     NOTE: no_std is still WIP, see <https://github.com/pytorch/executorch/issues/4561>
 //!
 //! [`FileDataLoader`]: crate::executorch::extension::FileDataLoader
 //! [`MmapDataLoader`]: crate::executorch::extension::MmapDataLoader
@@ -101,7 +123,29 @@ mod c_link {
     #![allow(clippy::missing_safety_doc)]
     #![allow(rustdoc::invalid_html_tags)]
     #![allow(rustdoc::broken_intra_doc_links)]
+    #![allow(missing_docs)]
 
     include!(concat!(env!("OUT_DIR"), "/executorch_bindings.rs"));
 }
-pub use c_link::root::*;
+
+#[cfg(feature = "tensor-ptr")]
+mod cxx_bridge;
+#[cfg(feature = "tensor-ptr")]
+pub use cxx;
+
+#[cfg(feature = "tensor-ptr")]
+pub use cxx_bridge::cxx_util;
+
+#[allow(missing_docs)]
+pub mod executorch {
+    pub use super::c_link::root::et_pal_init;
+    pub use super::c_link::root::executorch::*;
+}
+
+/// Bindings to C/C++ wrapper functions and structs written by this crate around the Cpp `executorch` library.
+pub mod executorch_rs {
+    pub use super::c_link::root::executorch_rs::*;
+
+    #[cfg(feature = "tensor-ptr")]
+    pub use super::cxx_bridge::ffi::*;
+}

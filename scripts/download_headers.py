@@ -36,6 +36,7 @@ def main():
             "extension/data_loader/**/*.h",
             "extension/memory_allocator/**/*.h",
             "extension/module/**/*.h",
+            "extension/tensor/tensor_ptr.h",
             "runtime/core/**/*.h",
             "runtime/executor/**/*.h",
             "runtime/platform/**/*.h",
