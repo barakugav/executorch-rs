@@ -2,8 +2,10 @@ use std::collections::HashMap;
 use std::io::Write;
 use std::path::Path;
 
+use executorch::evalue::IntoEValue;
 use executorch::module::Module;
-use executorch::tensor::{Tensor, TensorImpl};
+use executorch::tensor::TensorPtr;
+use ndarray::ArrayView2;
 
 fn main() {
     // Load the exported nanoGPT program, which was generated via the previous
@@ -56,28 +58,14 @@ impl Gpt2 {
         for _ in 0..max_output_length {
             // Convert the input_tokens from a vector of int64_t to EValue. EValue is a
             // unified data type in the ExecuTorch runtime.
-            // auto inputs = from_blob(
-            //     input_tokens.data(),
-            //     {1, static_cast<int>(input_tokens.size())},
-            //     ScalarType::Long);
-            let inputs_sizes = [1, input_tokens.len() as i32];
-            let inputs_data = input_tokens.as_ptr();
-            let inputs_dim_order = [0, 1];
-            let inputs_strides = [input_tokens.len() as i32, 1];
-            let inputs_tensor_impl = unsafe {
-                TensorImpl::from_ptr(
-                    &inputs_sizes,
-                    inputs_data,
-                    &inputs_dim_order,
-                    &inputs_strides,
-                )
-            };
-            let inputs_tensor = Tensor::new(&inputs_tensor_impl);
+            let input_tensor = TensorPtr::from_array_view(
+                ArrayView2::from_shape((1, input_tokens.len()), &input_tokens).unwrap(),
+            );
 
             // Run the model. It will return a tensor of logits (log-probabilities).
             let model_outputs = self
                 .model
-                .forward(&[inputs_tensor.into()])
+                .forward(&[input_tensor.into_evalue()])
                 .expect("Failed to run model");
 
             // Convert the output logits from EValue to std::vector, which is what the

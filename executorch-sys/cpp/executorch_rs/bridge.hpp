@@ -26,8 +26,6 @@
 #include "executorch/extension/memory_allocator/malloc_memory_allocator.h"
 #endif
 
-#include <cstdint>
-
 namespace executorch_rs
 {
 #if defined(EXECUTORCH_RS_STD)
@@ -194,5 +192,4 @@ namespace executorch_rs
     executorch::runtime::Error Module_method_meta(executorch::extension::Module &self, ArrayRefChar method_name, executorch::runtime::MethodMeta *method_meta_out);
     executorch::runtime::Error Module_execute(executorch::extension::Module &self, ArrayRefChar method_name, ArrayRefEValue inputs, VecEValue *outputs);
 #endif
-
 }

@@ -10,6 +10,7 @@ executorch = { path = "../../", features = [
     "ndarray",
     "data-loader",
     "module",
+    "tensor-ptr",
 ] }
 ndarray = { version = "0.16.0", default-features = false }
 serde_json = "1.0"

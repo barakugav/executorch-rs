@@ -24,10 +24,6 @@ categories = [
 ]
 include = ["Cargo.toml", "src/", "README.md", "LICENSE"]
 
-[package.metadata.docs.rs]
-all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
-
 [dependencies]
 executorch-sys = { path = "executorch-sys", version = "0.4.0", default-features = false }
 ndarray = { version = "0.16", default-features = false, optional = true }
@@ -42,5 +38,10 @@ alloc = []
 ndarray = ["dep:ndarray"]
 data-loader = ["executorch-sys/data-loader"]
 module = ["executorch-sys/module", "std"]
+tensor-ptr = ["executorch-sys/tensor-ptr", "std"]
 f16 = ["half"]
 complex = ["num-complex"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

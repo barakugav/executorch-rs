@@ -37,20 +37,16 @@
 //! ```rust,ignore
 //! use executorch::evalue::IntoEValue;
 //! use executorch::module::Module;
-//! use executorch::tensor::{ArrayStorage, Tensor};
+//! use executorch::tensor::TensorPtr;
 //! use ndarray::array;
 //!
 //! let mut module = Module::new("model.pte", None);
 //!
-//! let input_array1 = ArrayStorage::new(array![1.0_f32]);
-//! let input_tensor1 = input_array1.as_tensor_impl();
-//! let input_evalue1 = Tensor::new(&input_tensor1).into_evalue();
+//! let tensor1 = TensorPtr::from_array(array![1.0_f32]);
+//! let tensor2 = TensorPtr::from_array(array![1.0_f32]);
+//! let inputs = [tensor1.into_evalue(), tensor2.into_evalue()];
 //!
-//! let input_array2 = ArrayStorage::new(array![1.0_f32]);
-//! let input_tensor2 = input_array2.as_tensor_impl();
-//! let input_evalue2 = Tensor::new(&input_tensor2).into_evalue();
-//!
-//! let outputs = module.forward(&[input_evalue1, input_evalue2]).unwrap();
+//! let outputs = module.forward(&[inputs]).unwrap();
 //! assert_eq!(outputs.len(), 1);
 //! let output = outputs.into_iter().next().unwrap();
 //! let output = output.as_tensor().into_typed::<f32>();
@@ -69,6 +65,11 @@
 //!     the lower-level [`Program`](crate::program::Program) API, which is more suitable for embedded systems.
 //!     The `libextension_module_static.a` static library is required, compile C++ `executorch` with
 //!     `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`. Also includes the `std` feature.
+//! - `tensor-ptr`:
+//!     Includes the [`tensor::TensorPtr`] struct, a smart pointer for tensors that manage the lifetime of the tensor
+//!     object alongside the lifetimes of the data buffer and additional metadata. The `extension_tensor.a`
+//!     static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_TENSOR=ON`.
+//!     Also includes the `std` feature.
 //! - `ndarray`:
 //!     Conversions between `executorch` tensors and `ndarray` arrays.
 //!     Adds a dependency to the `ndarray` crate.
@@ -79,7 +80,7 @@
 //! - `complex`:
 //!     Support for complex numbers using the [`num-complex`](https://docs.rs/num/latest/num/complex/struct.Complex.html)
 //!     crate. Models that require input or output tensors with complex `32` or `64` bit floating point numbers can be
-//!     operated on with this feature. If in addition the `f16` feature is enabled, complex numbers with half
+//!     operated on with this feature. If the `f16` feature is enabled as well, complex numbers with half
 //!     precision can be used.
 //! - `std`:
 //!     Enable the standard library. This feature is enabled by default, but can be disabled to build [`executorch`](crate)

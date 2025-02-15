@@ -1,6 +1,6 @@
 [package]
 publish = false
-name = "example-hellow-world-add"
+name = "example-hello-world"
 version = "0.0.0"
 edition = "2021"
 
@@ -9,5 +9,6 @@ executorch = { path = "../../", features = [
     "ndarray",
     "data-loader",
     "module",
+    "tensor-ptr",
 ] }
 ndarray = { version = "0.16.0", default-features = false }

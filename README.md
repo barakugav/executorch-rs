@@ -35,20 +35,16 @@ Execute the model in Rust:
 ```rust
 use executorch::evalue::IntoEValue;
 use executorch::module::Module;
-use executorch::tensor::{ArrayStorage, Tensor};
+use executorch::tensor::TensorPtr;
 use ndarray::array;
 
 let mut module = Module::new("model.pte", None);
 
-let input_array1 = ArrayStorage::new(array![1.0_f32]);
-let input_tensor1 = input_array1.as_tensor_impl();
-let input_evalue1 = Tensor::new(&input_tensor1).into_evalue();
+let tensor1 = TensorPtr::from_array(array![1.0_f32]);
+let tensor2 = TensorPtr::from_array(array![1.0_f32]);
+let inputs = [tensor1.into_evalue(), tensor2.into_evalue()];
 
-let input_array2 = ArrayStorage::new(array![1.0_f32]);
-let input_tensor2 = input_array2.as_tensor_impl();
-let input_evalue2 = Tensor::new(&input_tensor2).into_evalue();
-
-let outputs = module.forward(&[input_evalue1, input_evalue2]).unwrap();
+let outputs = module.forward(&inputs).unwrap();
 assert_eq!(outputs.len(), 1);
 let output = outputs.into_iter().next().unwrap();
 let output = output.as_tensor().into_typed::<f32>();
@@ -56,13 +52,13 @@ let output = output.as_tensor().into_typed::<f32>();
 println!("Output tensor computed: {:?}", output);
 assert_eq!(array![2.0], output.as_array());
 ```
-See `example/hello_world_add` for a complete example.
+See `example/hello_world` for a complete example.
 
 ## Build
 To build the library, you need to build the C++ library first.
 The C++ library allow for great flexibility with many flags, customizing which modules, kernels, and extensions are built.
 Multiple static libraries are built, and the Rust library links to them.
-In the following example we build the C++ library with the necessary flags to run example `hello_world_add`:
+In the following example we build the C++ library with the necessary flags to run example `hello_world`:
 ```bash
 # Clone the C++ library
 cd ${TEMP_DIR}
@@ -83,6 +79,7 @@ cmake \
     -DBUILD_EXECUTORCH_PORTABLE_OPS=ON \
     -DEXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON \
     -DEXECUTORCH_BUILD_EXTENSION_MODULE=ON \
+    -DEXECUTORCH_BUILD_EXTENSION_TENSOR=ON \
     -DEXECUTORCH_ENABLE_PROGRAM_VERIFICATION=ON \
     -DEXECUTORCH_ENABLE_LOGGING=ON \
     ..
@@ -99,10 +96,12 @@ make -j
 #   cmake-out/extension/data_loader/libextension_data_loader.a
 # extension module, enabled with EXECUTORCH_BUILD_EXTENSION_MODULE=ON:
 #   cmake-out/extension/module/libextension_module_static.a
+# extension tensor, enabled with EXECUTORCH_BUILD_EXTENSION_TENSOR=ON:
+#   cmake-out/extension/tensor/libextension_tensor.a
 
 # Run example
 # We set EXECUTORCH_RS_EXECUTORCH_LIB_DIR to the path of the C++ build output
-cd ${EXECUTORCH_RS_DIR}/examples/hello_world_add
+cd ${EXECUTORCH_RS_DIR}/examples/hello_world
 python export_model.py
 EXECUTORCH_RS_EXECUTORCH_LIB_DIR=${TEMP_DIR}/executorch/cmake-out cargo run
 ```
@@ -114,9 +113,10 @@ The `executorch` crate will always look for the following static libraries:
 Additional libs are required if feature flags are enabled (see next section):
 - `libextension_data_loader.a`
 - `libextension_module_static.a`
+- `libextension_tensor.a`
 
 The static libraries of the kernels implementations are required only if your model uses them, and they should be **linked manually** by the binary that uses the `executorch` crate.
-For example, the `hello_world_add` example uses a model with a single addition operation, so it compile the C++ library with `DEXECUTORCH_SELECT_OPS_LIST=aten::add.out` and contain the following lines in its `build.rs`:
+For example, the `hello_world` example uses a model with a single addition operation, so it compile the C++ library with `DEXECUTORCH_SELECT_OPS_LIST=aten::add.out` and contain the following lines in its `build.rs`:
 ```rust
 println!("cargo::rustc-link-lib=static:+whole-archive=portable_kernels");
 println!("cargo::rustc-link-lib=static:+whole-archive=portable_ops_lib");
@@ -138,6 +138,13 @@ The build (and library) is tested on Ubuntu and MacOS, not on Windows.
     Includes the `Module` struct. The `libextension_module_static.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`.
     Also includes the `std` feature.
 
+- `tensor-ptr`
+
+    Includes the `TensorPtr` struct, a smart pointer for tensors that manage the lifetime of the tensor
+    object alongside the lifetimes of the data buffer and additional metadata. The `extension_tensor.a`
+    static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_TENSOR=ON`.
+    Also includes the `std` feature.
+
 - `ndarray`
 
     Conversions between `executorch` tensors and `ndarray` arrays.
@@ -150,7 +157,7 @@ The build (and library) is tested on Ubuntu and MacOS, not on Windows.
 
 - `complex`
 
-    Support for complex numbers using the `num-complex` crate. Models that require input or output tensors with complex `32` or `64` bit floating point numbers can be operated on with this feature. If in addition the `f16` feature is enabled, complex numbers with half precision can be used.
+    Support for complex numbers using the `num-complex` crate. Models that require input or output tensors with complex `32` or `64` bit floating point numbers can be operated on with this feature. If the `f16` feature is enabled as well, complex numbers with half precision can be used.
 
 - `std`
 
