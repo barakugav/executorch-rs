@@ -61,17 +61,14 @@ impl Gpt2 {
             //     {1, static_cast<int>(input_tokens.size())},
             //     ScalarType::Long);
             let inputs_sizes = [1, input_tokens.len() as i32];
-            let inputs_data = input_tokens.as_ptr();
             let inputs_dim_order = [0, 1];
             let inputs_strides = [input_tokens.len() as i32, 1];
-            let inputs_tensor_impl = unsafe {
-                TensorImpl::from_ptr(
-                    &inputs_sizes,
-                    inputs_data,
-                    &inputs_dim_order,
-                    &inputs_strides,
-                )
-            };
+            let inputs_tensor_impl = TensorImpl::from_slice(
+                &inputs_sizes,
+                &input_tokens,
+                &inputs_dim_order,
+                &inputs_strides,
+            );
             let inputs_tensor = Tensor::new(&inputs_tensor_impl);
 
             // Run the model. It will return a tensor of logits (log-probabilities).

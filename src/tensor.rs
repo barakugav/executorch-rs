@@ -940,6 +940,27 @@ impl<'a, S: Scalar> TensorImpl<'a, S> {
     ) -> Self {
         unsafe { Self::from_ptr_impl(sizes, data as *mut S, dim_order, strides) }
     }
+
+    /// Create a new TensorImpl from a data slice.
+    ///
+    /// # Arguments
+    ///
+    /// * `sizes` - The sizes (dimensions) of the tensor. The length of this slice is the number of dimensions of
+    ///     the tensor. The slice must be valid for the lifetime of the TensorImpl.
+    /// * `data` - The data of the tensor. The slice may be bigger than expected (according to the sizes and strides)
+    ///     but not smaller.
+    /// * `dim_order` - The order of the dimensions of the tensor, must have the same length as `sizes`.
+    /// * `strides` - The strides of the tensor, must have the same length as `sizes`.
+    pub fn from_slice(
+        sizes: &'a [SizesType],
+        data: &'a [S],
+        dim_order: &'a [DimOrderType],
+        strides: &'a [StridesType],
+    ) -> Self {
+        // TODO: verify the data length make sense with the sizes/dim_order/strides
+        let data_ptr = data.as_ptr() as *mut S;
+        unsafe { Self::from_ptr_impl(sizes, data_ptr, dim_order, strides) }
+    }
 }
 
 /// A mutable tensor implementation that does not own the underlying data.
@@ -952,7 +973,8 @@ impl<'a, S: Scalar> TensorImplMut<'a, S> {
     /// * `sizes` - The sizes (dimensions) of the tensor. The length of this slice is the number of dimensions of
     ///     the tensor. The slice must be valid for the lifetime of the TensorImplMut.
     /// * `data` - A pointer to the data of the tensor. The caller must ensure that the data is valid for the
-    ///     lifetime of the TensorImplMut.
+    ///     lifetime of the TensorImplMut, and that there is not more references to the data (as the passed pointer
+    ///     will be used to mutate the data).
     /// * `dim_order` - The order of the dimensions of the tensor, must have the same length as `sizes`.
     /// * `strides` - The strides of the tensor, must have the same length as `sizes`.
     ///
@@ -967,6 +989,27 @@ impl<'a, S: Scalar> TensorImplMut<'a, S> {
         strides: &'a [StridesType],
     ) -> Self {
         unsafe { Self::from_ptr_impl(sizes, data, dim_order, strides) }
+    }
+
+    ///  Create a new TensorImplMut from a data slice.
+    ///
+    /// # Arguments
+    ///
+    /// * `sizes` - The sizes (dimensions) of the tensor. The length of this slice is the number of dimensions of
+    ///    the tensor. The slice must be valid for the lifetime of the TensorImplMut.
+    /// * `data` - The data of the tensor. The slice may be bigger than expected (according to the sizes and strides)
+    ///   but not smaller.
+    /// * `dim_order` - The order of the dimensions of the tensor, must have the same length as `sizes`.
+    /// * `strides` - The strides of the tensor, must have the same length as `sizes`.
+    pub fn from_slice(
+        sizes: &'a [SizesType],
+        data: &'a mut [S],
+        dim_order: &'a [DimOrderType],
+        strides: &'a [StridesType],
+    ) -> Self {
+        // TODO: verify the data length make sense with the sizes/dim_order/strides
+        let data_ptr = data.as_ptr() as *mut S;
+        unsafe { Self::from_ptr_impl(sizes, data_ptr, dim_order, strides) }
     }
 }
 
@@ -1208,10 +1251,35 @@ mod tests {
 
     #[cfg(feature = "alloc")]
     #[test]
+    fn test_tensor_from_slice() {
+        // Create a tensor with sizes [2, 3] and data [1, 2, 3, 4, 5, 6]
+        let sizes = [2, 3];
+        let data = [1, 2, 3, 4, 5, 6];
+        let dim_order = [0, 1];
+        let strides = [3, 1];
+        let tensor_impl = TensorImpl::from_slice(&sizes, &data, &dim_order, &strides);
+        let tensor = Tensor::new(&tensor_impl);
+
+        assert_eq!(tensor.nbytes(), 24);
+        assert_eq!(tensor.size(0), 2);
+        assert_eq!(tensor.size(1), 3);
+        assert_eq!(tensor.dim(), 2);
+        assert_eq!(tensor.numel(), 6);
+        assert_eq!(tensor.scalar_type(), Some(ScalarType::Int));
+        assert_eq!(tensor.element_size(), 4);
+        assert_eq!(tensor.sizes(), &[2, 3]);
+        assert_eq!(tensor.dim_order(), &[0, 1]);
+        assert_eq!(tensor.strides(), &[3, 1]);
+        assert_eq!(tensor.as_ptr(), data.as_ptr());
+    }
+
+    #[cfg(feature = "alloc")]
+    #[test]
     fn test_tensor_mut_from_ptr() {
         // Create a tensor with sizes [2, 3] and data [1, 2, 3, 4, 5, 6]
         let sizes = [2, 3];
         let mut data = [1, 2, 3, 4, 5, 6];
+        let data_ptr = data.as_ptr();
         let dim_order = [0, 1];
         let strides = [3, 1];
         let mut tensor_impl =
@@ -1228,7 +1296,32 @@ mod tests {
         assert_eq!(tensor.sizes(), &[2, 3]);
         assert_eq!(tensor.dim_order(), &[0, 1]);
         assert_eq!(tensor.strides(), &[3, 1]);
-        assert_eq!(tensor.as_ptr(), data.as_ptr());
+        assert_eq!(tensor.as_ptr(), data_ptr);
+    }
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn test_tensor_mut_from_slice() {
+        // Create a tensor with sizes [2, 3] and data [1, 2, 3, 4, 5, 6]
+        let sizes = [2, 3];
+        let mut data = [1, 2, 3, 4, 5, 6];
+        let data_ptr = data.as_ptr();
+        let dim_order = [0, 1];
+        let strides = [3, 1];
+        let mut tensor_impl = TensorImplMut::from_slice(&sizes, &mut data, &dim_order, &strides);
+        let tensor = TensorMut::new(&mut tensor_impl);
+
+        assert_eq!(tensor.nbytes(), 24);
+        assert_eq!(tensor.size(0), 2);
+        assert_eq!(tensor.size(1), 3);
+        assert_eq!(tensor.dim(), 2);
+        assert_eq!(tensor.numel(), 6);
+        assert_eq!(tensor.scalar_type(), Some(ScalarType::Int));
+        assert_eq!(tensor.element_size(), 4);
+        assert_eq!(tensor.sizes(), &[2, 3]);
+        assert_eq!(tensor.dim_order(), &[0, 1]);
+        assert_eq!(tensor.strides(), &[3, 1]);
+        assert_eq!(tensor.as_ptr(), data_ptr);
     }
 
     #[cfg(feature = "ndarray")]
