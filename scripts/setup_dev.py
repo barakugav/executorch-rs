@@ -37,7 +37,13 @@ def main():
 
     subprocess.check_call([sys.executable, "-m", "ensurepip"])
     if not args.skip_executorch_python:
-        subprocess.check_call(["./install_requirements.sh"], cwd=DEV_EXECUTORCH_DIR)
+        subprocess.check_call(
+            [
+                "./install_requirements.sh",
+                *["--pybind", "xnnpack"],
+            ],
+            cwd=DEV_EXECUTORCH_DIR,
+        )
     else:
         deps = [
             "cmake",
@@ -49,6 +55,10 @@ def main():
         ]
         subprocess.check_call([sys.executable, "-m", "pip", "install", *deps])
     build_executorch_with_dev_cfg()
+
+    subprocess.check_call(
+        [sys.executable, "-m", "pip", "install", "huggingface_hub[cli]"]
+    )
 
 
 def clone_executorch():
@@ -83,16 +93,19 @@ def build_executorch_with_dev_cfg():
     subprocess.check_call(
         [
             "cmake",
-            "-DDEXECUTORCH_SELECT_OPS_LIST=aten::add.out",
+            f"-DPYTHON_EXECUTABLE={sys.executable}",
             "-DEXECUTORCH_BUILD_EXECUTOR_RUNNER=OFF",
             "-DEXECUTORCH_BUILD_EXTENSION_RUNNER_UTIL=OFF",
+            "-DEXECUTORCH_ENABLE_PROGRAM_VERIFICATION=ON",
+            "-DEXECUTORCH_ENABLE_LOGGING=ON",
             "-DBUILD_EXECUTORCH_PORTABLE_OPS=ON",
             "-DEXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON",
             "-DEXECUTORCH_BUILD_EXTENSION_MODULE=ON",
-            "-DEXECUTORCH_BUILD_KERNELS_OPTIMIZED=ON",
             "-DEXECUTORCH_BUILD_EXTENSION_TENSOR=ON",
-            "-DEXECUTORCH_ENABLE_PROGRAM_VERIFICATION=ON",
-            "-DEXECUTORCH_ENABLE_LOGGING=ON",
+            "-DEXECUTORCH_BUILD_XNNPACK=ON",
+            "-DEXECUTORCH_BUILD_KERNELS_QUANTIZED=ON",
+            "-DEXECUTORCH_BUILD_KERNELS_OPTIMIZED=ON",
+            "-DEXECUTORCH_BUILD_KERNELS_CUSTOM=ON",
             # TODO check USE_ATEN_LIB=true/false in CI
             "..",
         ],

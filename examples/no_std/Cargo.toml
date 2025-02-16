@@ -10,7 +10,6 @@ executorch = { path = "../../", default-features = false, features = [
     "ndarray",
 ] }
 libc-print = "0.1.23"
-ndarray = { version = "0.16.0", default-features = false }
 cstr = "0.2.12"
 
 [profile.release]

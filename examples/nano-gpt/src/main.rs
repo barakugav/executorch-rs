@@ -1,29 +1,47 @@
 use std::collections::HashMap;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
+use clap::Parser;
 use executorch::evalue::IntoEValue;
 use executorch::module::Module;
+use executorch::ndarray::{self, ArrayView2};
 use executorch::tensor::TensorPtr;
-use ndarray::ArrayView2;
+
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// Path to the model in flatbuffer format (.pte)
+    #[arg(long)]
+    model: PathBuf,
+
+    /// Path to the tokenizer
+    #[arg(long)]
+    tokenizer: PathBuf,
+
+    /// Prompt to generate text from
+    #[arg(long)]
+    prompt: String,
+
+    /// Total number of tokens to generate (prompt + output).
+    #[arg(long, default_value_t = 128)]
+    length: usize,
+
+    /// Verbose prints
+    #[arg(long, default_value_t = false)]
+    verbose: bool,
+}
 
 fn main() {
+    let args = Args::parse();
+    executorch::platform::pal_init();
+
     // Load the exported nanoGPT program, which was generated via the previous
     // steps.
-    let mut model = Gpt2::new(
-        &Path::new(env!("CARGO_MANIFEST_DIR")).join("nanogpt.pte"),
-        &Path::new(env!("CARGO_MANIFEST_DIR")).join("vocab.json"),
-    );
-
-    // Set up the prompt. This provides the seed text for the model to elaborate.
-    println!("Enter model prompt: ");
-    let mut prompt = String::new();
-    std::io::stdin().read_line(&mut prompt).unwrap();
+    let mut model = Gpt2::new(&args.model, &args.tokenizer);
 
     let max_input_tokens = 1024;
-    let max_output_tokens = 30;
-    println!("{}", prompt);
-    model.generate(&prompt, max_input_tokens, max_output_tokens);
+    model.generate(&args.prompt, max_input_tokens, args.length);
 }
 
 struct Gpt2 {
@@ -43,23 +61,20 @@ impl Gpt2 {
         Self { model, tokenizer }
     }
 
-    pub fn generate(
-        &mut self,
-        prompt: &str,
-        max_input_length: usize,
-        max_output_length: usize,
-    ) -> String {
+    pub fn generate(&mut self, prompt: &str, max_input_length: usize, max_output_length: usize) {
         // Convert the input text into a list of integers (tokens) that represents it,
         // using the string-to-token mapping that the model was trained on. Each token
         // is an integer that represents a word or part of a word.
-        let mut input_tokens = self.tokenizer.encode(prompt);
-        let mut output_tokens = Vec::new();
+        let mut tokens = self.tokenizer.encode(prompt);
 
         for _ in 0..max_output_length {
-            // Convert the input_tokens from a vector of int64_t to EValue. EValue is a
-            // unified data type in the ExecuTorch runtime.
+            let input_tokens = if tokens.len() < max_input_length {
+                &tokens
+            } else {
+                &tokens[(tokens.len() - max_input_length)..]
+            };
             let input_tensor = TensorPtr::from_array_view(
-                ArrayView2::from_shape((1, input_tokens.len()), &input_tokens).unwrap(),
+                ArrayView2::from_shape((1, input_tokens.len()), input_tokens).unwrap(),
             );
 
             // Run the model. It will return a tensor of logits (log-probabilities).
@@ -88,22 +103,12 @@ impl Gpt2 {
                 break;
             }
 
-            // Add the next token to the output.
-            output_tokens.push(next_token);
-
-            print!("{}", self.tokenizer.decode(&[next_token]));
-            std::io::stdout().flush().unwrap();
-
             // Update next input.
-            input_tokens.push(next_token);
-            if input_tokens.len() > max_input_length {
-                input_tokens.remove(0);
-            }
-        }
-        println!();
+            tokens.push(next_token);
 
-        // Convert the output tokens into a human-readable string.
-        self.tokenizer.decode(&output_tokens)
+            println!("{}", self.tokenizer.decode(&tokens));
+            std::io::stdout().flush().unwrap();
+        }
     }
 
     fn sample(logits: &[f32]) -> i64 {

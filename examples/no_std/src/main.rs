@@ -5,6 +5,7 @@
 use executorch::data_loader::FileDataLoader;
 use executorch::evalue::EValue;
 use executorch::memory::{HierarchicalAllocator, MemoryAllocator, MemoryManager};
+use executorch::ndarray::array;
 use executorch::program::{Program, ProgramVerification};
 use executorch::tensor::{ArrayStorage, Tensor};
 use executorch::util::Span;
@@ -49,13 +50,13 @@ fn real_main() {
         .load_method(cstr::cstr!(b"forward"), &memory_manager)
         .unwrap();
 
-    let input_array1 = ArrayStorage::new(ndarray::arr1(&[1.0_f32]));
+    let input_array1 = ArrayStorage::new(array!(1.0_f32));
     let input_tensor_impl1 = input_array1.as_tensor_impl();
     let input_tensor1 =
         Tensor::new_in_storage(&input_tensor_impl1, allocator.allocate_pinned().unwrap());
     let input_evalue1 = EValue::new_in_storage(input_tensor1, allocator.allocate_pinned().unwrap());
 
-    let input_array2 = ArrayStorage::new(ndarray::arr1(&[1.0_f32]));
+    let input_array2 = ArrayStorage::new(array!(1.0_f32));
     let input_tensor_impl2 = input_array2.as_tensor_impl();
     let input_tensor2 =
         Tensor::new_in_storage(&input_tensor_impl2, allocator.allocate_pinned().unwrap());
@@ -71,7 +72,7 @@ fn real_main() {
     let output = output.as_tensor().into_typed::<f32>();
 
     libc_println!("Output tensor computed: {:?}", output);
-    assert_eq!(ndarray::arr1(&[2.0]), output.as_array());
+    assert_eq!(array!(2.0), output.as_array());
 }
 
 // FIXME: Unfortunately, no_std is WIP
