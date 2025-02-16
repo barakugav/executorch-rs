@@ -74,9 +74,11 @@ jobs:
         working-directory: .
 
       - name: cargo check executorch
+        if: ${{ matrix.runner == 'ubuntu-latest' }}
         run: cargo hack check --feature-powerset
         working-directory: .
       - name: cargo check executorch-sys
+        if: ${{ matrix.runner == 'ubuntu-latest' }}
         run: cargo hack check --feature-powerset
         working-directory: executorch-sys
 
