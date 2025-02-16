@@ -411,9 +411,9 @@ namespace executorch_rs
         std::string method_name_str(method_name.data, method_name.data + method_name.len);
         return self.is_method_loaded(method_name_str);
     }
-    executorch::runtime::Error Module_method_meta(executorch::extension::Module &self, executorch::runtime::ArrayRef<char> method_name, executorch::runtime::MethodMeta *method_meta_out)
+    executorch::runtime::Error Module_method_meta(executorch::extension::Module &self, ArrayRefChar method_name, executorch::runtime::MethodMeta *method_meta_out)
     {
-        std::string method_name_str(method_name.begin(), method_name.end());
+        std::string method_name_str(method_name.data, method_name.data + method_name.len);
         return extract_result(self.method_meta(method_name_str), method_meta_out);
     }
     executorch::runtime::Error Module_execute(executorch::extension::Module &self, ArrayRefChar method_name, ArrayRefEValue inputs, VecEValue *outputs)
