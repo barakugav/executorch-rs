@@ -190,7 +190,6 @@ name = "example-nano-gpt"
 version = "0.0.0"
 dependencies = [
  "executorch",
- "ndarray",
  "serde_json",
 ]
 

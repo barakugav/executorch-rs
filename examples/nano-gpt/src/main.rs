@@ -4,8 +4,8 @@ use std::path::Path;
 
 use executorch::evalue::IntoEValue;
 use executorch::module::Module;
+use executorch::ndarray::{self, ArrayView2};
 use executorch::tensor::TensorPtr;
-use ndarray::ArrayView2;
 
 fn main() {
     // Load the exported nanoGPT program, which was generated via the previous

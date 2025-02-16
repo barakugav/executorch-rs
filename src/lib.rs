@@ -149,3 +149,12 @@ pub mod util;
 
 pub use error::Error;
 pub(crate) type Result<T> = std::result::Result<T, Error>;
+
+#[cfg(feature = "ndarray")]
+pub use ndarray;
+
+#[cfg(feature = "f16")]
+pub use half;
+
+#[cfg(feature = "complex")]
+pub use num_complex;

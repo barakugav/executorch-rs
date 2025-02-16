@@ -101,7 +101,6 @@ dependencies = [
  "cstr",
  "executorch",
  "libc-print",
- "ndarray",
 ]
 
 [[package]]
