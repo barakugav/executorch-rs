@@ -236,31 +236,28 @@ fn link_executorch() {
     }
 
     if let Some(libs_dir) = &libs_dir {
-        println!("cargo::rustc-link-search={}", libs_dir);
+        println!("cargo::rustc-link-search=native={libs_dir}");
     }
     println!("cargo::rustc-link-lib=static:+whole-archive=executorch");
     println!("cargo::rustc-link-lib=static:+whole-archive=executorch_core");
 
     if cfg!(feature = "data-loader") {
         if let Some(libs_dir) = &libs_dir {
-            println!(
-                "cargo::rustc-link-search={}/extension/data_loader/",
-                libs_dir
-            );
+            println!("cargo::rustc-link-search=native={libs_dir}/extension/data_loader/");
         }
         println!("cargo::rustc-link-lib=static:+whole-archive=extension_data_loader");
     }
 
     if cfg!(feature = "module") {
         if let Some(libs_dir) = &libs_dir {
-            println!("cargo::rustc-link-search={}/extension/module/", libs_dir);
+            println!("cargo::rustc-link-search=native={libs_dir}/extension/module/");
         }
         println!("cargo::rustc-link-lib=static:+whole-archive=extension_module_static");
     }
 
     if cfg!(feature = "tensor-ptr") {
         if let Some(libs_dir) = &libs_dir {
-            println!("cargo::rustc-link-search={}/extension/tensor/", libs_dir);
+            println!("cargo::rustc-link-search=native={libs_dir}/extension/tensor/");
         }
         println!("cargo::rustc-link-lib=static:+whole-archive=extension_tensor");
     }

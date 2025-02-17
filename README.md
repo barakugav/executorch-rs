@@ -122,7 +122,7 @@ println!("cargo::rustc-link-lib=static:+whole-archive=portable_kernels");
 println!("cargo::rustc-link-lib=static:+whole-archive=portable_ops_lib");
 
 let libs_dir = std::env::var("EXECUTORCH_RS_EXECUTORCH_LIB_DIR").unwrap();
-println!("cargo::rustc-link-search={}/kernels/portable/", libs_dir);
+println!("cargo::rustc-link-search=native={libs_dir}/kernels/portable/");
 ```
 Note that the ops and kernels libs are linked with `+whole-archive` to ensure that all symbols are included in the binary.
 
