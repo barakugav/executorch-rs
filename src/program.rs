@@ -165,10 +165,7 @@ impl MethodMeta<'_> {
     ///
     /// The tag of input, can only be [Tensor, Int, Bool, Double, String].
     pub fn input_tag(&self, idx: usize) -> Result<Tag> {
-        let tag = try_new(|tag| unsafe { et_rs_c::MethodMeta_input_tag(&self.0, idx, tag) })?;
-        Ok(tag
-            .rs()
-            .expect("input tag is none, expected Tensor, Int, Bool, Double or String"))
+        try_new(|tag| unsafe { et_rs_c::MethodMeta_input_tag(&self.0, idx, tag) })
     }
 
     /// Get metadata about the specified input.
@@ -201,10 +198,7 @@ impl MethodMeta<'_> {
     ///
     /// The tag of output, can only be [Tensor, Int, Bool, Double, String].
     pub fn output_tag(&self, idx: usize) -> Result<Tag> {
-        let tag = try_new(|tag| unsafe { et_rs_c::MethodMeta_output_tag(&self.0, idx, tag) })?;
-        Ok(tag
-            .rs()
-            .expect("output tag is none, expected Tensor, Int, Bool, Double or String"))
+        try_new(|tag| unsafe { et_rs_c::MethodMeta_output_tag(&self.0, idx, tag) })
     }
 
     /// Get metadata about the specified output.

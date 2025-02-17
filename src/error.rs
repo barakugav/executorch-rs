@@ -101,7 +101,7 @@ impl std::error::Error for ErrorKind {}
 impl IntoRust for CError {
     type RsType = Result<()>;
     fn rs(self) -> Self::RsType {
-        let kind = match self {
+        Err(Error::simple(match self {
             CError::Ok => return Ok(()),
             CError::Internal => ErrorKind::Internal,
             CError::InvalidState => ErrorKind::InvalidState,
@@ -118,8 +118,7 @@ impl IntoRust for CError {
             CError::DelegateInvalidCompatibility => ErrorKind::DelegateInvalidCompatibility,
             CError::DelegateMemoryAllocationFailed => ErrorKind::DelegateMemoryAllocationFailed,
             CError::DelegateInvalidHandle => ErrorKind::DelegateInvalidHandle,
-        };
-        Err(Error::simple(kind))
+        }))
     }
 }
 
