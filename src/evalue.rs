@@ -9,8 +9,7 @@ use std::pin::Pin;
 use crate::memory::{Storable, Storage};
 use crate::tensor::{self, TensorAny, TensorBase};
 use crate::util::{ArrayRef, ArrayRefImpl, Destroy, IntoRust, NonTriviallyMovable};
-use crate::{et_c, et_rs_c};
-use crate::{Error, Result};
+use crate::{et_c, et_rs_c, Error, ErrorKind, Result};
 
 use et_c::runtime::Tag as CTag;
 
@@ -488,7 +487,7 @@ impl TryFrom<&EValue<'_>> for i64 {
     fn try_from(value: &EValue) -> Result<i64> {
         match value.tag() {
             Some(Tag::Int) => Ok(unsafe { et_rs_c::EValue_as_i64(value.as_evalue()) }),
-            _ => Err(Error::InvalidType),
+            _ => Err(Error::simple(ErrorKind::InvalidType)),
         }
     }
 }
@@ -497,7 +496,7 @@ impl TryFrom<&EValue<'_>> for f64 {
     fn try_from(value: &EValue) -> Result<f64> {
         match value.tag() {
             Some(Tag::Double) => Ok(unsafe { et_rs_c::EValue_as_f64(value.as_evalue()) }),
-            _ => Err(Error::InvalidType),
+            _ => Err(Error::simple(ErrorKind::InvalidType)),
         }
     }
 }
@@ -506,7 +505,7 @@ impl TryFrom<&EValue<'_>> for bool {
     fn try_from(value: &EValue) -> Result<bool> {
         match value.tag() {
             Some(Tag::Bool) => Ok(unsafe { et_rs_c::EValue_as_bool(value.as_evalue()) }),
-            _ => Err(Error::InvalidType),
+            _ => Err(Error::simple(ErrorKind::InvalidType)),
         }
     }
 }
@@ -518,7 +517,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for TensorAny<'a> {
                 let inner = &*value.as_evalue().payload.as_tensor;
                 TensorAny::from_inner_ref(inner)
             }),
-            _ => Err(Error::InvalidType),
+            _ => Err(Error::simple(ErrorKind::InvalidType)),
         }
     }
 }
@@ -531,7 +530,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for TensorAny<'a> {
 //                 let inner = ManuallyDrop::take(&mut value.0.payload.as_tensor);
 //                 Tensor::from_inner(inner)
 //             }),
-//             _ => Err(Error::InvalidType),
+//             _ => Err(Error::simple(ErrorKind::InvalidType)),
 //         }
 //     }
 // }
@@ -542,7 +541,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for &'a [std::ffi::c_char] {
             Some(Tag::String) => {
                 Ok(unsafe { et_rs_c::EValue_as_string(value.as_evalue()).as_slice() })
             }
-            _ => Err(Error::InvalidType),
+            _ => Err(Error::simple(ErrorKind::InvalidType)),
         }
     }
 }
@@ -554,7 +553,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for &'a [std::ffi::c_char] {
 //                 let arr = &*value.as_evalue().payload.copyable_union.as_int_list;
 //                 BoxedEvalueList::from_inner(arr).get()
 //             }),
-//             _ => Err(Error::InvalidType),
+//             _ => Err(Error::simple(ErrorKind::InvalidType)),
 //         }
 //     }
 // }
@@ -565,7 +564,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for &'a [f64] {
             Some(Tag::ListDouble) => {
                 Ok(unsafe { et_rs_c::EValue_as_f64_list(value.as_evalue()).as_slice() })
             }
-            _ => Err(Error::InvalidType),
+            _ => Err(Error::simple(ErrorKind::InvalidType)),
         }
     }
 }
@@ -576,7 +575,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for &'a [bool] {
             Some(Tag::ListBool) => {
                 Ok(unsafe { et_rs_c::EValue_as_bool_list(value.as_evalue()).as_slice() })
             }
-            _ => Err(Error::InvalidType),
+            _ => Err(Error::simple(ErrorKind::InvalidType)),
         }
     }
 }
