@@ -147,8 +147,8 @@ pub mod program;
 pub mod tensor;
 pub mod util;
 
-pub use error::Error;
-pub(crate) type Result<T> = std::result::Result<T, Error>;
+pub(crate) use error::Result;
+pub use error::{Error, ErrorKind};
 
 #[cfg(feature = "ndarray")]
 pub use ndarray;

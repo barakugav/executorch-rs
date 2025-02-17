@@ -7,8 +7,47 @@ use crate::{et_c, util::IntoRust};
 use et_c::runtime::Error as CError;
 
 /// ExecuTorch Error type.
+pub struct Error {
+    inner: ErrorInner,
+}
+enum ErrorInner {
+    Simple(ErrorKind),
+}
+impl Error {
+    pub(crate) fn simple(kind: ErrorKind) -> Self {
+        Self {
+            inner: ErrorInner::Simple(kind),
+        }
+    }
+
+    /// Get the kind of error.
+    pub fn kind(&self) -> ErrorKind {
+        match self.inner {
+            ErrorInner::Simple(err) => err,
+        }
+    }
+}
+impl std::fmt::Debug for Error {
+    fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self.inner {
+            ErrorInner::Simple(kind) => fmt.debug_tuple("Kind").field(&kind).finish(),
+        }
+    }
+}
+impl std::fmt::Display for Error {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self.inner {
+            ErrorInner::Simple(err) => std::fmt::Display::fmt(&err, fmt),
+        }
+    }
+}
+#[cfg(feature = "std")]
+impl std::error::Error for Error {}
+
+/// Categories of errors that can occur in executorch.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub enum Error {
+#[non_exhaustive]
+pub enum ErrorKind {
     /* System errors */
     //
     /// An internal error occurred.
@@ -51,56 +90,40 @@ pub enum Error {
     /// Execute stage: The handle is invalid.
     DelegateInvalidHandle,
 }
-impl std::fmt::Display for Error {
+impl std::fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let msg = match self {
-            Error::Internal => "An internal error occurred",
-            Error::InvalidState => "Executor is in an invalid state for a target",
-            Error::EndOfMethod => "No more steps of execution to run",
-            Error::NotSupported => "Operation is not supported in the current context",
-            Error::NotImplemented => "Operation is not yet implemented",
-            Error::InvalidArgument => "User provided an invalid argument",
-            Error::InvalidType => "Object is an invalid type for the operation",
-            Error::OperatorMissing => "Operator(s) missing in the operator registry",
-            Error::NotFound => "Requested resource could not be found",
-            Error::MemoryAllocationFailed => "Could not allocate the requested memory",
-            Error::AccessFailed => "Could not access a resource",
-            Error::InvalidProgram => "Error caused by the contents of a program",
-            Error::DelegateInvalidCompatibility => {
-                "Backend receives an incompatible delegate version"
-            }
-            Error::DelegateMemoryAllocationFailed => "Backend fails to allocate memory",
-            Error::DelegateInvalidHandle => "The handle is invalid",
-        };
-        write!(f, "{}", msg)
+        write!(f, "{self:?}")
     }
 }
 #[cfg(feature = "std")]
-impl std::error::Error for Error {}
+impl std::error::Error for ErrorKind {}
 
 impl IntoRust for CError {
-    type RsType = crate::Result<()>;
+    type RsType = Result<()>;
     fn rs(self) -> Self::RsType {
-        Err(match self {
+        let kind = match self {
             CError::Ok => return Ok(()),
-            CError::Internal => Error::Internal,
-            CError::InvalidState => Error::InvalidState,
-            CError::EndOfMethod => Error::EndOfMethod,
-            CError::NotSupported => Error::NotSupported,
-            CError::NotImplemented => Error::NotImplemented,
-            CError::InvalidArgument => Error::InvalidArgument,
-            CError::InvalidType => Error::InvalidType,
-            CError::OperatorMissing => Error::OperatorMissing,
-            CError::NotFound => Error::NotFound,
-            CError::MemoryAllocationFailed => Error::MemoryAllocationFailed,
-            CError::AccessFailed => Error::AccessFailed,
-            CError::InvalidProgram => Error::InvalidProgram,
-            CError::DelegateInvalidCompatibility => Error::DelegateInvalidCompatibility,
-            CError::DelegateMemoryAllocationFailed => Error::DelegateMemoryAllocationFailed,
-            CError::DelegateInvalidHandle => Error::DelegateInvalidHandle,
-        })
+            CError::Internal => ErrorKind::Internal,
+            CError::InvalidState => ErrorKind::InvalidState,
+            CError::EndOfMethod => ErrorKind::EndOfMethod,
+            CError::NotSupported => ErrorKind::NotSupported,
+            CError::NotImplemented => ErrorKind::NotImplemented,
+            CError::InvalidArgument => ErrorKind::InvalidArgument,
+            CError::InvalidType => ErrorKind::InvalidType,
+            CError::OperatorMissing => ErrorKind::OperatorMissing,
+            CError::NotFound => ErrorKind::NotFound,
+            CError::MemoryAllocationFailed => ErrorKind::MemoryAllocationFailed,
+            CError::AccessFailed => ErrorKind::AccessFailed,
+            CError::InvalidProgram => ErrorKind::InvalidProgram,
+            CError::DelegateInvalidCompatibility => ErrorKind::DelegateInvalidCompatibility,
+            CError::DelegateMemoryAllocationFailed => ErrorKind::DelegateMemoryAllocationFailed,
+            CError::DelegateInvalidHandle => ErrorKind::DelegateInvalidHandle,
+        };
+        Err(Error::simple(kind))
     }
 }
+
+pub(crate) type Result<T> = std::result::Result<T, Error>;
 
 pub(crate) fn try_new<T>(f: impl FnOnce(*mut T) -> CError) -> crate::Result<T> {
     let mut value = MaybeUninit::uninit();
@@ -113,14 +136,8 @@ mod tests {
     use super::Error;
 
     #[test]
-    fn test_error_send() {
-        fn assert_send<T: Send>() {}
-        assert_send::<Error>();
-    }
-
-    #[test]
-    fn test_error_sync() {
-        fn assert_sync<T: Sync>() {}
-        assert_sync::<Error>();
+    fn test_error_send_sync() {
+        fn assert_send_sync<T: Send + Sync>() {}
+        assert_send_sync::<Error>();
     }
 }
