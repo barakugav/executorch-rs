@@ -366,10 +366,14 @@ pub struct Storage<T: Storable>(MaybeUninit<T::Storage>, PhantomPinned);
 impl<T: Storable> Default for Storage<T> {
     /// Create a new [`Storage`] object with an uninitialized inner value.
     fn default() -> Self {
-        Self(MaybeUninit::uninit(), PhantomPinned)
+        Self::new()
     }
 }
 impl<T: Storable> Storage<T> {
+    pub(crate) const fn new() -> Self {
+        Self(MaybeUninit::uninit(), PhantomPinned)
+    }
+
     pub(crate) fn as_mut_ptr(&mut self) -> *mut T::Storage {
         self.0.as_mut_ptr()
     }

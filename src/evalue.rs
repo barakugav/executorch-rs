@@ -3,62 +3,28 @@
 //! [`EValue`] is a type-erased value that can hold different types like scalars, lists or tensors. It is used to pass
 //! arguments to and return values from the runtime.
 
-use std::fmt::Debug;
 use std::pin::Pin;
 
 use crate::memory::{Storable, Storage};
 use crate::tensor::{self, TensorAny, TensorBase};
-use crate::util::{ArrayRef, ArrayRefImpl, Destroy, IntoRust, NonTriviallyMovable};
+use crate::util::{ArrayRef, ArrayRefImpl, Destroy, NonTriviallyMovable};
 use crate::{et_c, et_rs_c, Error, ErrorKind, Result};
 
-use et_c::runtime::Tag as CTag;
-
 /// A tag indicating the type of the value stored in an [`EValue`].
-#[repr(u8)]
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub enum Tag {
-    /// Tag for value [`TensorAny`].
-    Tensor = CTag::Tensor as u8,
-    /// Tag for value `&[c_char]`.
-    String = CTag::String as u8,
-    /// Tag for value `f64`.
-    Double = CTag::Double as u8,
-    /// Tag for value `i64`.
-    Int = CTag::Int as u8,
-    /// Tag for value `bool`.
-    Bool = CTag::Bool as u8,
-    /// Tag for value `&[bool]`.
-    ListBool = CTag::ListBool as u8,
-    /// Tag for value `&[f64]`.
-    ListDouble = CTag::ListDouble as u8,
-    /// Tag for value `&[i64]`.
-    ListInt = CTag::ListInt as u8,
-    /// Tag for value `&[TensorAny]`.
-    ListTensor = CTag::ListTensor as u8,
-    /// Tag for value `Optional<TensorAny>`.
-    ///
-    /// Not supported at the moment.
-    ListOptionalTensor = CTag::ListOptionalTensor as u8,
-}
-impl IntoRust for &CTag {
-    type RsType = Option<Tag>;
-    fn rs(self) -> Self::RsType {
-        Some(match self {
-            CTag::None => return None,
-            CTag::Tensor => Tag::Tensor,
-            CTag::String => Tag::String,
-            CTag::Double => Tag::Double,
-            CTag::Int => Tag::Int,
-            CTag::Bool => Tag::Bool,
-            CTag::ListBool => Tag::ListBool,
-            CTag::ListDouble => Tag::ListDouble,
-            CTag::ListInt => Tag::ListInt,
-            CTag::ListTensor => Tag::ListTensor,
-            CTag::ListScalar => unimplemented!("ListScalar is not supported"),
-            CTag::ListOptionalTensor => Tag::ListOptionalTensor,
-        })
-    }
-}
+///
+/// - `Tensor`: Tag for value [`TensorAny`].
+/// - `String`: Tag for value `&[c_char]`.
+/// - `Double`: Tag for value `f64`.
+/// - `Int`: Tag for value `i64`.
+/// - `Bool`: Tag for value `bool`.
+/// - `ListBool`: Tag for value `&[bool]`.
+/// - `ListDouble`: Tag for value `&[f64]`.
+/// - `ListInt`: Tag for value `&[i64]`.
+/// - `ListTensor`: Tag for value `&[TensorAny]`.
+/// - `ListScalar`: unsupported at the moment.
+/// - `ListOptionalTensor`: unsupported at the moment.
+///
+pub use et_c::runtime::Tag;
 
 /// Aggregate typing system similar to IValue only slimmed down with less
 /// functionality, no dependencies on atomic, and fewer supported types to better
@@ -153,6 +119,29 @@ impl<'a> EValue<'a> {
 
     pub(crate) fn as_evalue(&self) -> &et_c::runtime::EValue {
         self.0.as_ref()
+    }
+
+    /// Create a new [`EValue`] with the no value (tag `None`).
+    #[cfg(feature = "alloc")]
+    pub fn none() -> Self {
+        // Safety: the closure init the pointer
+        let mut none = unsafe { EValue::new_impl(|p| et_rs_c::EValue_new_from_i64(p, 0)) };
+        unsafe { none.0.as_mut().unwrap().tag = Tag::None };
+        none
+    }
+
+    /// Create a new [`EValue`] with the no value (tag `None`) in the given storage.
+    pub fn none_in_storage(storage: Pin<&'a mut Storage<EValue>>) -> Self {
+        // Safety: the closure init the pointer
+        let mut none =
+            unsafe { EValue::new_in_storage_impl(|p| et_rs_c::EValue_new_from_i64(p, 0), storage) };
+        unsafe { none.0.as_mut().unwrap().tag = Tag::None };
+        none
+    }
+
+    /// Check if the value is of type `None`.
+    pub fn is_none(&self) -> bool {
+        self.tag() == Tag::None
     }
 
     /// Get a reference to the value as an `i64`.
@@ -266,8 +255,8 @@ impl<'a> EValue<'a> {
     /// Get the tag indicating the type of the value.
     ///
     /// Returns `None` if the inner Cpp tag is `None`.
-    pub fn tag(&self) -> Option<Tag> {
-        self.as_evalue().tag.rs()
+    pub fn tag(&self) -> Tag {
+        self.as_evalue().tag
     }
 }
 impl Destroy for et_c::runtime::EValue {
@@ -485,119 +474,121 @@ where
 impl TryFrom<&EValue<'_>> for i64 {
     type Error = Error;
     fn try_from(value: &EValue) -> Result<i64> {
-        match value.tag() {
-            Some(Tag::Int) => Ok(unsafe { et_rs_c::EValue_as_i64(value.as_evalue()) }),
-            _ => Err(Error::simple(ErrorKind::InvalidType)),
+        if value.tag() == Tag::Int {
+            Ok(unsafe { et_rs_c::EValue_as_i64(value.as_evalue()) })
+        } else {
+            Err(Error::simple(ErrorKind::InvalidType))
         }
     }
 }
 impl TryFrom<&EValue<'_>> for f64 {
     type Error = Error;
     fn try_from(value: &EValue) -> Result<f64> {
-        match value.tag() {
-            Some(Tag::Double) => Ok(unsafe { et_rs_c::EValue_as_f64(value.as_evalue()) }),
-            _ => Err(Error::simple(ErrorKind::InvalidType)),
+        if value.tag() == Tag::Double {
+            Ok(unsafe { et_rs_c::EValue_as_f64(value.as_evalue()) })
+        } else {
+            Err(Error::simple(ErrorKind::InvalidType))
         }
     }
 }
 impl TryFrom<&EValue<'_>> for bool {
     type Error = Error;
     fn try_from(value: &EValue) -> Result<bool> {
-        match value.tag() {
-            Some(Tag::Bool) => Ok(unsafe { et_rs_c::EValue_as_bool(value.as_evalue()) }),
-            _ => Err(Error::simple(ErrorKind::InvalidType)),
+        if value.tag() == Tag::Bool {
+            Ok(unsafe { et_rs_c::EValue_as_bool(value.as_evalue()) })
+        } else {
+            Err(Error::simple(ErrorKind::InvalidType))
         }
     }
 }
 impl<'a> TryFrom<&'a EValue<'_>> for TensorAny<'a> {
     type Error = Error;
     fn try_from(value: &'a EValue) -> Result<TensorAny<'a>> {
-        match value.tag() {
-            Some(Tag::Tensor) => Ok(unsafe {
-                let inner = &*value.as_evalue().payload.as_tensor;
-                TensorAny::from_inner_ref(inner)
-            }),
-            _ => Err(Error::simple(ErrorKind::InvalidType)),
+        if value.tag() == Tag::Tensor {
+            let inner = unsafe { &*value.as_evalue().payload.as_tensor };
+            Ok(TensorAny::from_inner_ref(inner))
+        } else {
+            Err(Error::simple(ErrorKind::InvalidType))
         }
     }
 }
 // impl<'a> TryFrom<EValue<'a>> for Tensor<'a> {
 //     type Error = Error;
 //     fn try_from(mut value: EValue<'a>) -> Result<Tensor<'a>> {
-//         match value.tag() {
-//             Some(Tag::Tensor) => Ok(unsafe {
+//         if value.tag() == Tag::Tensor {
+//             Ok(unsafe {
 //                 value.0.tag = et_c::Tag::None;
 //                 let inner = ManuallyDrop::take(&mut value.0.payload.as_tensor);
 //                 Tensor::from_inner(inner)
-//             }),
-//             _ => Err(Error::simple(ErrorKind::InvalidType)),
+//             })
+//         } else {
+//             Err(Error::simple(ErrorKind::InvalidType))
 //         }
 //     }
 // }
 impl<'a> TryFrom<&'a EValue<'_>> for &'a [std::ffi::c_char] {
     type Error = Error;
     fn try_from(value: &'a EValue) -> Result<&'a [std::ffi::c_char]> {
-        match value.tag() {
-            Some(Tag::String) => {
-                Ok(unsafe { et_rs_c::EValue_as_string(value.as_evalue()).as_slice() })
-            }
-            _ => Err(Error::simple(ErrorKind::InvalidType)),
+        if value.tag() == Tag::String {
+            Ok(unsafe { et_rs_c::EValue_as_string(value.as_evalue()).as_slice() })
+        } else {
+            Err(Error::simple(ErrorKind::InvalidType))
         }
     }
 }
 // impl<'a> TryFrom<&'a EValue<'_>> for &'a [i64] {
 //     type Error = Error;
 //     fn try_from(value: &'a EValue) -> Result<&'a [i64]> {
-//         match value.tag() {
-//             Some(Tag::ListInt) => Ok(unsafe {
+//         if value.tag() == Tag::ListInt {
+//             Ok(unsafe {
 //                 let arr = &*value.as_evalue().payload.copyable_union.as_int_list;
 //                 BoxedEvalueList::from_inner(arr).get()
-//             }),
-//             _ => Err(Error::simple(ErrorKind::InvalidType)),
+//             })
+//         } else {
+//             Err(Error::simple(ErrorKind::InvalidType))
 //         }
 //     }
 // }
 impl<'a> TryFrom<&'a EValue<'_>> for &'a [f64] {
     type Error = Error;
     fn try_from(value: &'a EValue) -> Result<&'a [f64]> {
-        match value.tag() {
-            Some(Tag::ListDouble) => {
-                Ok(unsafe { et_rs_c::EValue_as_f64_list(value.as_evalue()).as_slice() })
-            }
-            _ => Err(Error::simple(ErrorKind::InvalidType)),
+        if value.tag() == Tag::ListDouble {
+            Ok(unsafe { et_rs_c::EValue_as_f64_list(value.as_evalue()).as_slice() })
+        } else {
+            Err(Error::simple(ErrorKind::InvalidType))
         }
     }
 }
 impl<'a> TryFrom<&'a EValue<'_>> for &'a [bool] {
     type Error = Error;
     fn try_from(value: &'a EValue) -> Result<&'a [bool]> {
-        match value.tag() {
-            Some(Tag::ListBool) => {
-                Ok(unsafe { et_rs_c::EValue_as_bool_list(value.as_evalue()).as_slice() })
-            }
-            _ => Err(Error::simple(ErrorKind::InvalidType)),
+        if value.tag() == Tag::ListBool {
+            Ok(unsafe { et_rs_c::EValue_as_bool_list(value.as_evalue()).as_slice() })
+        } else {
+            Err(Error::simple(ErrorKind::InvalidType))
         }
     }
 }
 #[cfg(feature = "ndarray")]
-impl Debug for EValue<'_> {
+impl std::fmt::Debug for EValue<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let mut st = f.debug_struct("EValue");
         st.field("tag", &self.tag());
         match self.tag() {
-            Some(Tag::Int) => st.field("value", &self.as_i64()),
-            Some(Tag::Double) => st.field("value", &self.as_f64()),
-            Some(Tag::Bool) => st.field("value", &self.as_bool()),
-            Some(Tag::Tensor) => st.field("value", &self.as_tensor()),
-            Some(Tag::String) => st.field("value", &self.as_chars()),
-            // Some(Tag::ListInt) => st.field("value", &self.as_i64_arr()),
-            Some(Tag::ListInt) => st.field("value", &"Unsupported type"),
-            Some(Tag::ListDouble) => st.field("value", &self.as_f64_arr()),
-            Some(Tag::ListBool) => st.field("value", &self.as_bool_arr()),
-            // Some(Tag::ListTensor) => st.field("value", &self.as_tensor_arr()),
-            Some(Tag::ListTensor) => st.field("value", &"Unsupported type"),
-            Some(Tag::ListOptionalTensor) => st.field("value", &"Unsupported type"),
-            None => st.field("value", &"None"),
+            Tag::Int => st.field("value", &self.as_i64()),
+            Tag::Double => st.field("value", &self.as_f64()),
+            Tag::Bool => st.field("value", &self.as_bool()),
+            Tag::Tensor => st.field("value", &self.as_tensor()),
+            Tag::String => st.field("value", &self.as_chars()),
+            // Tag::ListInt => st.field("value", &self.as_i64_arr()),
+            Tag::ListInt => st.field("value", &"Unsupported type"),
+            Tag::ListDouble => st.field("value", &self.as_f64_arr()),
+            Tag::ListBool => st.field("value", &self.as_bool_arr()),
+            // Tag::ListTensor => st.field("value", &self.as_tensor_arr()),
+            Tag::ListTensor => st.field("value", &"Unsupported type"),
+            Tag::ListOptionalTensor => st.field("value", &"Unsupported type"),
+            Tag::ListScalar => st.field("value", &"Unsupported type"),
+            Tag::None => st.field("value", &"None"),
         };
         st.finish()
     }
