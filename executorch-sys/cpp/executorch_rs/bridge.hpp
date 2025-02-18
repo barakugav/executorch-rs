@@ -28,6 +28,26 @@
 
 namespace executorch_rs
 {
+    struct OptionalTensor
+    {
+        // Why is this not static?
+        struct trivial_init_t
+        {
+        } trivial_init{};
+
+        union storage_t
+        {
+            /// A small, trivially-constructable alternative to T.
+            unsigned char dummy_;
+            /// The constructed value itself, if optional::has_value_ is true.
+            executorch::aten::Tensor value_;
+        };
+        storage_t storage_;
+        bool init_;
+    };
+    static_assert(sizeof(executorch::aten::optional<executorch::aten::Tensor>) == sizeof(OptionalTensor));
+    static_assert(std::alignment_of<executorch::aten::optional<executorch::aten::Tensor>>() == std::alignment_of<OptionalTensor>());
+
 #if defined(EXECUTORCH_RS_STD)
     struct VecChar
     {
@@ -74,6 +94,11 @@ namespace executorch_rs
         const int32_t *data;
         size_t len;
     };
+    struct ArrayRefI64
+    {
+        const int64_t *data;
+        size_t len;
+    };
     struct ArrayRefF64
     {
         const double *data;
@@ -99,9 +124,24 @@ namespace executorch_rs
         const executorch::aten::StridesType *data;
         size_t len;
     };
+    struct ArrayRefTensor
+    {
+        const executorch::aten::Tensor *data;
+        size_t len;
+    };
+    struct ArrayRefOptionalTensor
+    {
+        const OptionalTensor *data;
+        size_t len;
+    };
     struct ArrayRefEValue
     {
         const executorch::runtime::EValue *data;
+        size_t len;
+    };
+    struct ArrayRefEValuePtr
+    {
+        const executorch::runtime::EValue *const *data;
         size_t len;
     };
     struct SpanU8
@@ -113,6 +153,41 @@ namespace executorch_rs
     {
         SpanU8 *data;
         size_t len;
+    };
+    // struct SpanEValue
+    // {
+    //     executorch::runtime::EValue *data;
+    //     size_t len;
+    // };
+    struct SpanI64
+    {
+        int64_t *data;
+        size_t len;
+    };
+    struct SpanTensor
+    {
+        executorch::aten::Tensor *data;
+        size_t len;
+    };
+    struct SpanOptionalTensor
+    {
+        OptionalTensor *data;
+        size_t len;
+    };
+    struct BoxedEvalueListI64
+    {
+        ArrayRefEValuePtr wrapped_vals;
+        SpanI64 unwrapped_vals;
+    };
+    struct BoxedEvalueListTensor
+    {
+        ArrayRefEValuePtr wrapped_vals;
+        SpanTensor unwrapped_vals;
+    };
+    struct BoxedEvalueListOptionalTensor
+    {
+        ArrayRefEValuePtr wrapped_vals;
+        SpanOptionalTensor unwrapped_vals;
     };
 
     executorch::runtime::MemoryAllocator MemoryAllocator_new(uint32_t size, uint8_t *base_address);
@@ -163,18 +238,24 @@ namespace executorch_rs
 
     // executorch::runtime::EValue EValue_shallow_clone(executorch::runtime::EValue *evalue);
     void EValue_new_from_i64(executorch::runtime::EValue *self, int64_t value);
+    void EValue_new_from_i64_list(executorch::runtime::EValue *self, BoxedEvalueListI64 value);
     void EValue_new_from_f64(executorch::runtime::EValue *self, double value);
-    void EValue_new_from_f64_arr(executorch::runtime::EValue *self, ArrayRefF64 value);
+    void EValue_new_from_f64_list(executorch::runtime::EValue *self, ArrayRefF64 value);
     void EValue_new_from_bool(executorch::runtime::EValue *self, bool value);
-    void EValue_new_from_bool_arr(executorch::runtime::EValue *self, ArrayRefBool value);
-    void EValue_new_from_chars(executorch::runtime::EValue *self, ArrayRefChar value);
+    void EValue_new_from_bool_list(executorch::runtime::EValue *self, ArrayRefBool value);
+    void EValue_new_from_string(executorch::runtime::EValue *self, ArrayRefChar value);
     void EValue_new_from_tensor(executorch::runtime::EValue *self, const executorch::aten::Tensor *value);
+    void EValue_new_from_tensor_list(executorch::runtime::EValue *self, BoxedEvalueListTensor value);
+    void EValue_new_from_optional_tensor_list(executorch::runtime::EValue *self, BoxedEvalueListOptionalTensor value);
     int64_t EValue_as_i64(const executorch::runtime::EValue &self);
+    ArrayRefI64 EValue_as_i64_list(const executorch::runtime::EValue &self);
     double EValue_as_f64(const executorch::runtime::EValue &self);
-    bool EValue_as_bool(const executorch::runtime::EValue &self);
-    ArrayRefChar EValue_as_string(const executorch::runtime::EValue &self);
-    ArrayRefBool EValue_as_bool_list(const executorch::runtime::EValue &self);
     ArrayRefF64 EValue_as_f64_list(const executorch::runtime::EValue &self);
+    bool EValue_as_bool(const executorch::runtime::EValue &self);
+    ArrayRefBool EValue_as_bool_list(const executorch::runtime::EValue &self);
+    ArrayRefChar EValue_as_string(const executorch::runtime::EValue &self);
+    ArrayRefTensor EValue_as_tensor_list(const executorch::runtime::EValue &self);
+    ArrayRefOptionalTensor EValue_as_optional_tensor_list(const executorch::runtime::EValue &self);
     void EValue_copy(const executorch::runtime::EValue *src, executorch::runtime::EValue *dst);
     void EValue_destructor(executorch::runtime::EValue &self);
     void EValue_move(executorch::runtime::EValue *src, executorch::runtime::EValue *dst);

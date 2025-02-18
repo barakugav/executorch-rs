@@ -25,9 +25,9 @@
 //! unerlying data buffer and the metadata (sizes/strides/etc arrays) of the tensor.
 //! It has the most user-friendly API, but can not be used in `no_std` environments.
 
-use core::ops::{Index, IndexMut};
 use std::fmt::Debug;
 use std::marker::PhantomData;
+use std::ops::{Index, IndexMut};
 use std::pin::Pin;
 
 use executorch_sys::executorch_rs::ArrayRefUsizeType;
@@ -35,7 +35,7 @@ use executorch_sys::executorch_rs::ArrayRefUsizeType;
 use ndarray::{ArrayBase, ArrayView, ArrayViewMut, ShapeBuilder};
 
 use crate::memory::{Storable, Storage};
-use crate::util::{ArrayRefImpl, Destroy, NonTriviallyMovable};
+use crate::util::{Destroy, NonTriviallyMovable, __ArrayRefImpl};
 use crate::{et_c, et_rs_c, Error, ErrorKind, Result};
 
 /// A type that represents the sizes (dimensions) of a tensor.
@@ -518,7 +518,7 @@ impl Destroy for et_c::runtime::etensor::Tensor {
     }
 }
 impl<D: Data> Storable for TensorBase<'_, D> {
-    type Storage = et_c::runtime::etensor::Tensor;
+    type __Storage = et_c::runtime::etensor::Tensor;
 }
 
 #[cfg(feature = "ndarray")]
@@ -1226,6 +1226,10 @@ mod ptr;
 #[cfg(feature = "tensor-ptr")]
 pub use ptr::*;
 
+impl Storable for Option<TensorAny<'_>> {
+    type __Storage = et_rs_c::OptionalTensor;
+}
+
 #[cfg(test)]
 mod tests {
     #[cfg(feature = "ndarray")]
@@ -1236,7 +1240,7 @@ mod tests {
 
     #[cfg(feature = "alloc")]
     #[test]
-    fn test_tensor_from_ptr() {
+    fn tensor_from_ptr() {
         // Create a tensor with sizes [2, 3] and data [1, 2, 3, 4, 5, 6]
         let sizes = [2, 3];
         let data = [1, 2, 3, 4, 5, 6];
@@ -1261,7 +1265,7 @@ mod tests {
 
     #[cfg(feature = "alloc")]
     #[test]
-    fn test_tensor_from_slice() {
+    fn tensor_from_slice() {
         // Create a tensor with sizes [2, 3] and data [1, 2, 3, 4, 5, 6]
         let sizes = [2, 3];
         let data = [1, 2, 3, 4, 5, 6];
@@ -1285,7 +1289,7 @@ mod tests {
 
     #[cfg(feature = "alloc")]
     #[test]
-    fn test_tensor_mut_from_ptr() {
+    fn tensor_mut_from_ptr() {
         // Create a tensor with sizes [2, 3] and data [1, 2, 3, 4, 5, 6]
         let sizes = [2, 3];
         let mut data = [1, 2, 3, 4, 5, 6];
@@ -1311,7 +1315,7 @@ mod tests {
 
     #[cfg(feature = "alloc")]
     #[test]
-    fn test_tensor_mut_from_slice() {
+    fn tensor_mut_from_slice() {
         // Create a tensor with sizes [2, 3] and data [1, 2, 3, 4, 5, 6]
         let sizes = [2, 3];
         let mut data = [1, 2, 3, 4, 5, 6];
@@ -1336,7 +1340,7 @@ mod tests {
 
     #[cfg(feature = "ndarray")]
     #[test]
-    fn test_array_as_tensor() {
+    fn array_as_tensor() {
         // Create a 1D array and convert it to a tensor
         let array = ArrayStorage::<i32, _, _>::new(arr1(&[1, 2, 3]));
         let tensor_impl = array.as_tensor_impl();
@@ -1371,7 +1375,7 @@ mod tests {
 
     #[cfg(feature = "ndarray")]
     #[test]
-    fn test_array_as_tensor_mut() {
+    fn array_as_tensor_mut() {
         // Create a 1D array and convert it to a tensor
         let mut array = ArrayStorage::<i32, _, _>::new(arr1(&[1, 2, 3]));
         let arr_ptr = array.as_ref().as_ptr();
@@ -1408,7 +1412,7 @@ mod tests {
 
     #[cfg(feature = "ndarray")]
     #[test]
-    fn test_tensor_as_array() {
+    fn tensor_as_array() {
         let arr1 = ArrayStorage::new(Array3::<f32>::zeros((3, 6, 4)));
         let tensor_impl = arr1.as_tensor_impl();
         let tensor = Tensor::new(&tensor_impl);
@@ -1428,7 +1432,7 @@ mod tests {
 
     #[cfg(feature = "ndarray")]
     #[test]
-    fn test_tensor_as_array_mut() {
+    fn tensor_as_array_mut() {
         let mut arr1 = ArrayStorage::new(Array3::<f32>::zeros((3, 6, 4)));
         let arr1_clone = arr1.as_ref().clone();
         let mut tensor_impl = arr1.as_tensor_impl_mut();
@@ -1451,7 +1455,7 @@ mod tests {
 
     #[cfg(feature = "alloc")]
     #[test]
-    fn test_tensor_with_scalar_type() {
+    fn tensor_with_scalar_type() {
         fn test_scalar_type<S: Scalar>(
             data_allocator: impl FnOnce(usize) -> crate::et_alloc::Vec<S>,
         ) {
@@ -1477,7 +1481,7 @@ mod tests {
 
     #[cfg(feature = "ndarray")]
     #[test]
-    fn test_tensor_index() {
+    fn tensor_index() {
         let arr = ArrayStorage::new(Array3::<i32>::from_shape_fn((4, 5, 3), |(x, y, z)| {
             x as i32 * 1337 - y as i32 * 87 + z as i32 * 13
         }));
@@ -1494,7 +1498,7 @@ mod tests {
 
     #[cfg(feature = "ndarray")]
     #[test]
-    fn test_tensor_index_mut() {
+    fn tensor_index_mut() {
         let mut arr = ArrayStorage::new(Array3::<i32>::zeros((4, 5, 3)));
         let mut tensor_impl = arr.as_tensor_impl_mut();
         let mut tensor = TensorMut::new(&mut tensor_impl);

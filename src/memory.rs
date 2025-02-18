@@ -4,10 +4,9 @@
 //! This enable using the library in embedded systems where dynamic memory allocation is not allowed, or when allocation
 //! is a performance bottleneck.
 
-use core::marker::PhantomPinned;
-use core::mem::MaybeUninit;
 use std::cell::UnsafeCell;
-use std::marker::PhantomData;
+use std::marker::{PhantomData, PhantomPinned};
+use std::mem::MaybeUninit;
 use std::pin::Pin;
 use std::ptr;
 
@@ -244,8 +243,8 @@ impl<'a> MemoryManager<'a> {
     /// * `temp_allocator` - The allocator to use when allocating temporary data during kernel or delegate execution.
     ///     Must outlive the Method that uses it. May be [`None`] if the Method does not use kernels or delegates that
     ///     allocate temporary data. This allocator will be reset after every kernel or delegate call during execution.
-    pub fn new<'b: 'a>(
-        method_allocator: &'a impl AsRef<MemoryAllocator<'b>>,
+    pub fn new(
+        method_allocator: &'a impl AsRef<MemoryAllocator<'a>>,
         planned_memory: Option<&'a mut HierarchicalAllocator>,
         temp_allocator: Option<&'a mut MemoryAllocator>,
     ) -> Self {
@@ -362,7 +361,7 @@ impl<'a> MemoryManager<'a> {
 ///     let evalue = EValue::new_in_storage(tensor, allocator.as_ref().allocate_pinned().unwrap());
 ///     ```
 #[repr(transparent)]
-pub struct Storage<T: Storable>(MaybeUninit<T::Storage>, PhantomPinned);
+pub struct Storage<T: Storable>(MaybeUninit<T::__Storage>, PhantomPinned);
 impl<T: Storable> Default for Storage<T> {
     /// Create a new [`Storage`] object with an uninitialized inner value.
     fn default() -> Self {
@@ -374,7 +373,7 @@ impl<T: Storable> Storage<T> {
         Self(MaybeUninit::uninit(), PhantomPinned)
     }
 
-    pub(crate) fn as_mut_ptr(&mut self) -> *mut T::Storage {
+    pub(crate) fn as_mut_ptr(&mut self) -> *mut T::__Storage {
         self.0.as_mut_ptr()
     }
 }
@@ -383,5 +382,17 @@ impl<T: Storable> Storage<T> {
 /// Usually the type is a Cpp object that is not trivially movable. See the [`Storage`] struct for more information.
 pub trait Storable {
     /// The underlying Cpp object type, defining the memory layout of a [`Storage`] object.
-    type Storage;
+    #[doc(hidden)]
+    type __Storage;
 }
+
+macro_rules! impl_default_storable {
+    ($($t:ty),*) => {
+        $(
+            impl Storable for $t {
+                type __Storage = $t;
+            }
+        )*
+    };
+}
+impl_default_storable!(i8, i16, i32, i64, u8, u16, u32, u64, f32, f64);

@@ -3,11 +3,14 @@
 //! [`EValue`] is a type-erased value that can hold different types like scalars, lists or tensors. It is used to pass
 //! arguments to and return values from the runtime.
 
+use std::ffi::CStr;
+use std::marker::PhantomData;
+use std::mem::MaybeUninit;
 use std::pin::Pin;
 
 use crate::memory::{Storable, Storage};
 use crate::tensor::{self, TensorAny, TensorBase};
-use crate::util::{ArrayRef, ArrayRefImpl, Destroy, NonTriviallyMovable};
+use crate::util::{ArrayRef, Destroy, NonTriviallyMovable, __ArrayRefImpl};
 use crate::{et_c, et_rs_c, Error, ErrorKind, Result};
 
 /// A tag indicating the type of the value stored in an [`EValue`].
@@ -22,7 +25,7 @@ use crate::{et_c, et_rs_c, Error, ErrorKind, Result};
 /// - `ListInt`: Tag for value `&[i64]`.
 /// - `ListTensor`: Tag for value `&[TensorAny]`.
 /// - `ListScalar`: unsupported at the moment.
-/// - `ListOptionalTensor`: unsupported at the moment.
+/// - `ListOptionalTensor`: Tag for value `&[Option<TensorAny>]`.
 ///
 pub use et_c::runtime::Tag;
 
@@ -156,6 +159,18 @@ impl<'a> EValue<'a> {
         self.try_into().expect("Invalid type")
     }
 
+    /// Get a reference to the value as a `&[i64]`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is of different type.
+    /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
+    /// [`tag`][Self::tag] method.
+    #[track_caller]
+    pub fn as_i64_list(&self) -> &[i64] {
+        self.try_into().expect("Invalid type")
+    }
+
     /// Get a reference to the value as an `f64`.
     ///
     /// # Panics
@@ -165,6 +180,18 @@ impl<'a> EValue<'a> {
     /// [`tag`][Self::tag] method.
     #[track_caller]
     pub fn as_f64(&self) -> f64 {
+        self.try_into().expect("Invalid type")
+    }
+
+    /// Get a reference to the value as a `&[f64]`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is of different type.
+    /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
+    /// [`tag`][Self::tag] method.
+    #[track_caller]
+    pub fn as_f64_list(&self) -> &[f64] {
         self.try_into().expect("Invalid type")
     }
 
@@ -180,7 +207,7 @@ impl<'a> EValue<'a> {
         self.try_into().expect("Invalid type")
     }
 
-    /// Get a reference to the value as a [`TensorAny`].
+    /// Get a reference to the value as a `&[bool]`.
     ///
     /// # Panics
     ///
@@ -188,7 +215,7 @@ impl<'a> EValue<'a> {
     /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
     /// [`tag`][Self::tag] method.
     #[track_caller]
-    pub fn as_tensor(&self) -> TensorAny {
+    pub fn as_bool_list(&self) -> &[bool] {
         self.try_into().expect("Invalid type")
     }
 
@@ -204,19 +231,18 @@ impl<'a> EValue<'a> {
         self.try_into().expect("Invalid type")
     }
 
-    // /// Get a reference to the value as a `&[i64]`.
-    // ///
-    // /// # Panics
-    // ///
-    // /// Panics if the value is of different type.
-    // /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
-    // /// [`tag`][Self::tag] method.
-    // #[track_caller]
-    // pub fn as_i64_arr(&self) -> &[i64] {
-    //     self.try_into().expect("Invalid type")
-    // }
+    /// Get a reference to the value as a `CStr`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is of different type.
+    /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
+    /// [`tag`][Self::tag] method.
+    pub fn as_cstr(&self) -> &CStr {
+        self.try_into().expect("Invalid type")
+    }
 
-    /// Get a reference to the value as a `&[f64]`.
+    /// Get a reference to the value as a [`TensorAny`].
     ///
     /// # Panics
     ///
@@ -224,33 +250,31 @@ impl<'a> EValue<'a> {
     /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
     /// [`tag`][Self::tag] method.
     #[track_caller]
-    pub fn as_f64_arr(&self) -> &[f64] {
+    pub fn as_tensor(&self) -> TensorAny {
         self.try_into().expect("Invalid type")
     }
 
-    /// Get a reference to the value as a `&[bool]`.
+    /// Get a reference to the value as a [`TensorList`].
     ///
     /// # Panics
     ///
     /// Panics if the value is of different type.
     /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
     /// [`tag`][Self::tag] method.
-    #[track_caller]
-    pub fn as_bool_arr(&self) -> &[bool] {
+    pub fn as_tensor_list(&self) -> TensorList {
         self.try_into().expect("Invalid type")
     }
 
-    // /// Get a reference to the value as a `&[TensorAny]`.
-    // ///
-    // /// # Panics
-    // ///
-    // /// Panics if the value is of different type.
-    // /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
-    // /// [`tag`][Self::tag] method.
-    // #[track_caller]
-    // pub fn as_tensor_arr(&self) -> &[TensorAny<'a>] {
-    //     self.try_into().expect("Invalid type")
-    // }
+    /// Get a reference to the value as a [`OptionalTensorList`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is of different type.
+    /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
+    /// [`tag`][Self::tag] method.
+    pub fn as_optional_tensor_list(&self) -> OptionalTensorList {
+        self.try_into().expect("Invalid type")
+    }
 
     /// Get the tag indicating the type of the value.
     ///
@@ -266,7 +290,7 @@ impl Destroy for et_c::runtime::EValue {
 }
 
 impl Storable for EValue<'_> {
-    type Storage = et_c::runtime::EValue;
+    type __Storage = et_c::runtime::EValue;
 }
 
 /// A type that can be converted into an [`EValue`].
@@ -300,6 +324,20 @@ impl<'a> IntoEValue<'a> for i64 {
         unsafe { EValue::new_in_storage_impl(|p| et_rs_c::EValue_new_from_i64(p, self), storage) }
     }
 }
+impl<'a> IntoEValue<'a> for BoxedEvalueList<'a, i64> {
+    #[cfg(feature = "alloc")]
+    fn into_evalue(self) -> EValue<'a> {
+        // Safety: the closure init the pointer
+        unsafe { EValue::new_impl(|p| et_rs_c::EValue_new_from_i64_list(p, self.0)) }
+    }
+
+    fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
+        // Safety: the closure init the pointer
+        unsafe {
+            EValue::new_in_storage_impl(|p| et_rs_c::EValue_new_from_i64_list(p, self.0), storage)
+        }
+    }
+}
 impl<'a> IntoEValue<'a> for f64 {
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a> {
@@ -310,6 +348,22 @@ impl<'a> IntoEValue<'a> for f64 {
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
         // Safety: the closure init the pointer
         unsafe { EValue::new_in_storage_impl(|p| et_rs_c::EValue_new_from_f64(p, self), storage) }
+    }
+}
+impl<'a> IntoEValue<'a> for &'a [f64] {
+    #[cfg(feature = "alloc")]
+    fn into_evalue(self) -> EValue<'a> {
+        let arr = ArrayRef::from_slice(self);
+        // Safety: the closure init the pointer
+        unsafe { EValue::new_impl(|p| et_rs_c::EValue_new_from_f64_list(p, arr.0)) }
+    }
+
+    fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
+        let arr = ArrayRef::from_slice(self);
+        // Safety: the closure init the pointer
+        unsafe {
+            EValue::new_in_storage_impl(|p| et_rs_c::EValue_new_from_f64_list(p, arr.0), storage)
+        }
     }
 }
 impl<'a> IntoEValue<'a> for bool {
@@ -324,35 +378,19 @@ impl<'a> IntoEValue<'a> for bool {
         unsafe { EValue::new_in_storage_impl(|p| et_rs_c::EValue_new_from_bool(p, self), storage) }
     }
 }
-impl<'a> IntoEValue<'a> for &'a [f64] {
-    #[cfg(feature = "alloc")]
-    fn into_evalue(self) -> EValue<'a> {
-        let arr = ArrayRef::from_slice(self);
-        // Safety: the closure init the pointer
-        unsafe { EValue::new_impl(|p| et_rs_c::EValue_new_from_f64_arr(p, arr.0)) }
-    }
-
-    fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
-        let arr = ArrayRef::from_slice(self);
-        // Safety: the closure init the pointer
-        unsafe {
-            EValue::new_in_storage_impl(|p| et_rs_c::EValue_new_from_f64_arr(p, arr.0), storage)
-        }
-    }
-}
 impl<'a> IntoEValue<'a> for &'a [bool] {
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a> {
         let arr = ArrayRef::from_slice(self);
         // Safety: the closure init the pointer
-        unsafe { EValue::new_impl(|p| et_rs_c::EValue_new_from_bool_arr(p, arr.0)) }
+        unsafe { EValue::new_impl(|p| et_rs_c::EValue_new_from_bool_list(p, arr.0)) }
     }
 
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
         let arr = ArrayRef::from_slice(self);
         // Safety: the closure init the pointer
         unsafe {
-            EValue::new_in_storage_impl(|p| et_rs_c::EValue_new_from_bool_arr(p, arr.0), storage)
+            EValue::new_in_storage_impl(|p| et_rs_c::EValue_new_from_bool_list(p, arr.0), storage)
         }
     }
 }
@@ -361,15 +399,25 @@ impl<'a> IntoEValue<'a> for &'a [std::ffi::c_char] {
     fn into_evalue(self) -> EValue<'a> {
         let arr = ArrayRef::from_slice(self);
         // Safety: the closure init the pointer
-        unsafe { EValue::new_impl(|p| et_rs_c::EValue_new_from_chars(p, arr.0)) }
+        unsafe { EValue::new_impl(|p| et_rs_c::EValue_new_from_string(p, arr.0)) }
     }
 
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
         let arr = ArrayRef::from_slice(self);
         // Safety: the closure init the pointer
         unsafe {
-            EValue::new_in_storage_impl(|p| et_rs_c::EValue_new_from_chars(p, arr.0), storage)
+            EValue::new_in_storage_impl(|p| et_rs_c::EValue_new_from_string(p, arr.0), storage)
         }
+    }
+}
+impl<'a> IntoEValue<'a> for &'a CStr {
+    #[cfg(feature = "alloc")]
+    fn into_evalue(self) -> EValue<'a> {
+        crate::util::cstr2chars(self).into_evalue()
+    }
+
+    fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
+        crate::util::cstr2chars(self).into_evalue_in_storage(storage)
     }
 }
 impl<'a, D: tensor::Data> IntoEValue<'a> for TensorBase<'a, D> {
@@ -416,51 +464,41 @@ impl<'a, D: tensor::Data> IntoEValue<'a> for &'a tensor::TensorPtr<'_, D> {
         self.as_tensor().into_evalue_in_storage(storage)
     }
 }
+impl<'a> IntoEValue<'a> for BoxedEvalueList<'a, TensorAny<'a>> {
+    #[cfg(feature = "alloc")]
+    fn into_evalue(self) -> EValue<'a> {
+        // Safety: the closure init the pointer
+        unsafe { EValue::new_impl(|p| et_rs_c::EValue_new_from_tensor_list(p, self.0)) }
+    }
 
-// /// Create a new [`EValue`] from a list of `i64`.
-// ///
-// /// The functions accept two lists, one of [`EValue`] wrapping the `i64` values and one of `i64` values. See
-// /// [`BoxedEvalueList`] for more information.
-// ///
-// /// # Arguments
-// ///
-// /// * `wrapped_vals` - A list of [`EValue`] wrapping the `i64` values. This is the actual values list.
-// /// * `unwrapped_vals` - A mutable buffer to store the unwrapped `i64` values, used to avoid double copying. The
-// /// given array can be uninitialized.
-// pub fn from_i64_arr(wrapped_vals: &'a [&EValue], unwrapped_vals: &'a mut [i64]) -> Self {
-//     let value = et_c::EValue_Payload_TriviallyCopyablePayload {
-//         as_int_list: ManuallyDrop::new(BoxedEvalueList::new(wrapped_vals, unwrapped_vals).0),
-//     };
-//     unsafe { EValue::new_trivially_copyable(value, et_c::Tag::ListInt) }
-// }
+    fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
+        // Safety: the closure init the pointer
+        unsafe {
+            EValue::new_in_storage_impl(
+                |p| et_rs_c::EValue_new_from_tensor_list(p, self.0),
+                storage,
+            )
+        }
+    }
+}
+impl<'a> IntoEValue<'a> for BoxedEvalueList<'a, Option<TensorAny<'a>>> {
+    #[cfg(feature = "alloc")]
+    fn into_evalue(self) -> EValue<'a> {
+        // Safety: the closure init the pointer
+        unsafe { EValue::new_impl(|p| et_rs_c::EValue_new_from_optional_tensor_list(p, self.0)) }
+    }
 
-// /// Create a new [`EValue`] from a list of [`Tensor`].
-// ///
-// /// The functions accept two lists, one of [`EValue`] wrapping the [`Tensor`] values and one of [`Tensor`] values. See
-// /// [`BoxedEvalueList`] for more information.
-// ///
-// /// # Arguments
-// ///
-// /// * `wrapped_vals` - A list of [`EValue`] wrapping the [`Tensor`] values. This is the actual values list.
-// /// * `unwrapped_vals` - A mutable buffer to store the unwrapped [`Tensor`] values, used to avoid double copying. The
-// /// given array can be uninitialized.
-// pub fn from_tensor_arr(
-//     wrapped_vals: &'a [&EValue],
-//     unwrapped_vals: &'a mut [Tensor<'a>],
-// ) -> Self {
-//     let list = BoxedEvalueList::new(wrapped_vals, unwrapped_vals).0;
-//     // Safety: Tensor and et_c::Tensor have the same memory layout
-//     let list = unsafe {
-//         std::mem::transmute::<
-//             et_c::BoxedEvalueList<Tensor<'a>>,
-//             et_c::BoxedEvalueList<et_c::Tensor>,
-//         >(list)
-//     };
-//     let value = et_c::EValue_Payload_TriviallyCopyablePayload {
-//         as_tensor_list: ManuallyDrop::new(list),
-//     };
-//     unsafe { EValue::new_trivially_copyable(value, et_c::Tag::ListTensor) }
-// }
+    fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
+        // Safety: the closure init the pointer
+        unsafe {
+            EValue::new_in_storage_impl(
+                |p| et_rs_c::EValue_new_from_optional_tensor_list(p, self.0),
+                storage,
+            )
+        }
+    }
+}
+
 #[cfg(feature = "alloc")]
 impl<'a, T> From<T> for EValue<'a>
 where
@@ -473,7 +511,7 @@ where
 
 impl TryFrom<&EValue<'_>> for i64 {
     type Error = Error;
-    fn try_from(value: &EValue) -> Result<i64> {
+    fn try_from(value: &EValue) -> Result<Self> {
         if value.tag() == Tag::Int {
             Ok(unsafe { et_rs_c::EValue_as_i64(value.as_evalue()) })
         } else {
@@ -481,9 +519,19 @@ impl TryFrom<&EValue<'_>> for i64 {
         }
     }
 }
+impl<'a> TryFrom<&'a EValue<'_>> for &'a [i64] {
+    type Error = Error;
+    fn try_from(value: &'a EValue) -> Result<Self> {
+        if value.tag() == Tag::ListInt {
+            Ok(unsafe { et_rs_c::EValue_as_i64_list(value.as_evalue()).as_slice() })
+        } else {
+            Err(Error::simple(ErrorKind::InvalidType))
+        }
+    }
+}
 impl TryFrom<&EValue<'_>> for f64 {
     type Error = Error;
-    fn try_from(value: &EValue) -> Result<f64> {
+    fn try_from(value: &EValue) -> Result<Self> {
         if value.tag() == Tag::Double {
             Ok(unsafe { et_rs_c::EValue_as_f64(value.as_evalue()) })
         } else {
@@ -491,9 +539,19 @@ impl TryFrom<&EValue<'_>> for f64 {
         }
     }
 }
+impl<'a> TryFrom<&'a EValue<'_>> for &'a [f64] {
+    type Error = Error;
+    fn try_from(value: &'a EValue) -> Result<Self> {
+        if value.tag() == Tag::ListDouble {
+            Ok(unsafe { et_rs_c::EValue_as_f64_list(value.as_evalue()).as_slice() })
+        } else {
+            Err(Error::simple(ErrorKind::InvalidType))
+        }
+    }
+}
 impl TryFrom<&EValue<'_>> for bool {
     type Error = Error;
-    fn try_from(value: &EValue) -> Result<bool> {
+    fn try_from(value: &EValue) -> Result<Self> {
         if value.tag() == Tag::Bool {
             Ok(unsafe { et_rs_c::EValue_as_bool(value.as_evalue()) })
         } else {
@@ -501,12 +559,38 @@ impl TryFrom<&EValue<'_>> for bool {
         }
     }
 }
+impl<'a> TryFrom<&'a EValue<'_>> for &'a [bool] {
+    type Error = Error;
+    fn try_from(value: &'a EValue) -> Result<Self> {
+        if value.tag() == Tag::ListBool {
+            Ok(unsafe { et_rs_c::EValue_as_bool_list(value.as_evalue()).as_slice() })
+        } else {
+            Err(Error::simple(ErrorKind::InvalidType))
+        }
+    }
+}
+impl<'a> TryFrom<&'a EValue<'_>> for &'a [std::ffi::c_char] {
+    type Error = Error;
+    fn try_from(value: &'a EValue) -> Result<Self> {
+        if value.tag() == Tag::String {
+            Ok(unsafe { et_rs_c::EValue_as_string(value.as_evalue()).as_slice() })
+        } else {
+            Err(Error::simple(ErrorKind::InvalidType))
+        }
+    }
+}
+impl<'a> TryFrom<&'a EValue<'_>> for &'a CStr {
+    type Error = Error;
+    fn try_from(value: &'a EValue) -> Result<Self> {
+        let chars: &[std::ffi::c_char] = value.try_into()?;
+        Ok(unsafe { CStr::from_ptr(chars.as_ptr()) })
+    }
+}
 impl<'a> TryFrom<&'a EValue<'_>> for TensorAny<'a> {
     type Error = Error;
-    fn try_from(value: &'a EValue) -> Result<TensorAny<'a>> {
+    fn try_from(value: &'a EValue) -> Result<Self> {
         if value.tag() == Tag::Tensor {
-            let inner = unsafe { &*value.as_evalue().payload.as_tensor };
-            Ok(TensorAny::from_inner_ref(inner))
+            Ok(unsafe { TensorAny::from_inner_ref(&value.as_evalue().payload.as_tensor) })
         } else {
             Err(Error::simple(ErrorKind::InvalidType))
         }
@@ -515,55 +599,33 @@ impl<'a> TryFrom<&'a EValue<'_>> for TensorAny<'a> {
 // impl<'a> TryFrom<EValue<'a>> for Tensor<'a> {
 //     type Error = Error;
 //     fn try_from(mut value: EValue<'a>) -> Result<Tensor<'a>> {
-//         if value.tag() == Tag::Tensor {
-//             Ok(unsafe {
+//         match value.tag() {
+//             Some(Tag::Tensor) => Ok(unsafe {
 //                 value.0.tag = et_c::Tag::None;
 //                 let inner = ManuallyDrop::take(&mut value.0.payload.as_tensor);
 //                 Tensor::from_inner(inner)
-//             })
-//         } else {
-//             Err(Error::simple(ErrorKind::InvalidType))
+//             }),
+//             _ => Err(Error::simple(ErrorKind::InvalidType)),
 //         }
 //     }
 // }
-impl<'a> TryFrom<&'a EValue<'_>> for &'a [std::ffi::c_char] {
+impl<'a> TryFrom<&'a EValue<'_>> for TensorList<'a> {
     type Error = Error;
-    fn try_from(value: &'a EValue) -> Result<&'a [std::ffi::c_char]> {
-        if value.tag() == Tag::String {
-            Ok(unsafe { et_rs_c::EValue_as_string(value.as_evalue()).as_slice() })
+    fn try_from(value: &'a EValue) -> Result<Self> {
+        if value.tag() == Tag::ListTensor {
+            let list = unsafe { et_rs_c::EValue_as_tensor_list(value.as_evalue()) };
+            Ok(unsafe { Self::from_array_ref(list) })
         } else {
             Err(Error::simple(ErrorKind::InvalidType))
         }
     }
 }
-// impl<'a> TryFrom<&'a EValue<'_>> for &'a [i64] {
-//     type Error = Error;
-//     fn try_from(value: &'a EValue) -> Result<&'a [i64]> {
-//         if value.tag() == Tag::ListInt {
-//             Ok(unsafe {
-//                 let arr = &*value.as_evalue().payload.copyable_union.as_int_list;
-//                 BoxedEvalueList::from_inner(arr).get()
-//             })
-//         } else {
-//             Err(Error::simple(ErrorKind::InvalidType))
-//         }
-//     }
-// }
-impl<'a> TryFrom<&'a EValue<'_>> for &'a [f64] {
+impl<'a> TryFrom<&'a EValue<'_>> for OptionalTensorList<'a> {
     type Error = Error;
-    fn try_from(value: &'a EValue) -> Result<&'a [f64]> {
-        if value.tag() == Tag::ListDouble {
-            Ok(unsafe { et_rs_c::EValue_as_f64_list(value.as_evalue()).as_slice() })
-        } else {
-            Err(Error::simple(ErrorKind::InvalidType))
-        }
-    }
-}
-impl<'a> TryFrom<&'a EValue<'_>> for &'a [bool] {
-    type Error = Error;
-    fn try_from(value: &'a EValue) -> Result<&'a [bool]> {
-        if value.tag() == Tag::ListBool {
-            Ok(unsafe { et_rs_c::EValue_as_bool_list(value.as_evalue()).as_slice() })
+    fn try_from(value: &'a EValue) -> Result<Self> {
+        if value.tag() == Tag::ListOptionalTensor {
+            let list = unsafe { et_rs_c::EValue_as_optional_tensor_list(value.as_evalue()) };
+            Ok(unsafe { Self::from_array_ref(list) })
         } else {
             Err(Error::simple(ErrorKind::InvalidType))
         }
@@ -580,145 +642,958 @@ impl std::fmt::Debug for EValue<'_> {
             Tag::Bool => st.field("value", &self.as_bool()),
             Tag::Tensor => st.field("value", &self.as_tensor()),
             Tag::String => st.field("value", &self.as_chars()),
-            // Tag::ListInt => st.field("value", &self.as_i64_arr()),
-            Tag::ListInt => st.field("value", &"Unsupported type"),
-            Tag::ListDouble => st.field("value", &self.as_f64_arr()),
-            Tag::ListBool => st.field("value", &self.as_bool_arr()),
-            // Tag::ListTensor => st.field("value", &self.as_tensor_arr()),
-            Tag::ListTensor => st.field("value", &"Unsupported type"),
-            Tag::ListOptionalTensor => st.field("value", &"Unsupported type"),
-            Tag::ListScalar => st.field("value", &"Unsupported type"),
+            Tag::ListInt => st.field("value", &self.as_i64_list()),
+            Tag::ListDouble => st.field("value", &self.as_f64_list()),
+            Tag::ListBool => st.field("value", &self.as_bool_list()),
+            Tag::ListTensor => st.field("value", &self.as_tensor_list()),
+            Tag::ListOptionalTensor => st.field("value", &self.as_optional_tensor_list()),
+            Tag::ListScalar => st.field("value", &"Unsupported type: ListScalar"),
             Tag::None => st.field("value", &"None"),
         };
         st.finish()
     }
 }
 
-// /// Helper class used to correlate EValues in the executor table, with the
-// /// unwrapped list of the proper type. Because values in the runtime's values
-// /// table can change during execution, we cannot statically allocate list of
-// /// objects at deserialization. Imagine the serialized list says index 0 in the
-// /// value table is element 2 in the list, but during execution the value in
-// /// element 2 changes (in the case of tensor this means the &TensorImpl stored in
-// /// the tensor changes). To solve this instead they must be created dynamically
-// /// whenever they are used.
-// pub struct BoxedEvalueList<'a, T: BoxedEvalue>(et_c::BoxedEvalueList<T>, PhantomData<&'a ()>);
-// impl<'a, T: BoxedEvalue> BoxedEvalueList<'a, T> {
-//     pub(crate) unsafe fn from_inner(inner: &et_c::BoxedEvalueList<T>) -> &Self {
-//         // Safety: BoxedEvalueList and et_c::BoxedEvalueList have the same memory layout
-//         std::mem::transmute::<&et_c::BoxedEvalueList<T>, &BoxedEvalueList<T>>(inner)
-//     }
+/// A list of tensors.
+pub struct TensorList<'a>(&'a [et_c::aten::Tensor]);
+impl TensorList<'_> {
+    /// Safety: the array must be valid for the lifetime of the returned list.
+    unsafe fn from_array_ref(array: et_rs_c::ArrayRefTensor) -> Self {
+        Self(unsafe { std::slice::from_raw_parts(array.data, array.len) })
+    }
 
-//     /// Wrapped_vals is a list of pointers into the values table of the runtime
-//     /// whose destinations correlate with the elements of the list, unwrapped_vals
-//     /// is a container of the same size whose serves as memory to construct the
-//     /// unwrapped vals.
-//     pub fn new(wrapped_vals: &'a [&EValue], unwrapped_vals: &'a mut [T]) -> Self {
-//         assert_eq!(
-//             wrapped_vals.len(),
-//             unwrapped_vals.len(),
-//             "Length mismatch between wrapped and unwrapped values"
-//         );
-//         assert!(
-//             wrapped_vals.iter().all(|val| val.tag() == Some(T::TAG)),
-//             "wrapped_vals contains type different from T"
-//         );
+    /// Get the length of the list.
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
 
-//         let wrapped_vals = ArrayRef::from_slice(wrapped_vals).0;
-//         // Safety: EValue and et_c::EValue have the same memory layout
-//         let wrapped_vals = unsafe {
-//             std::mem::transmute::<et_c::ArrayRef<&EValue>, et_c::ArrayRef<&et_c::EValue>>(
-//                 wrapped_vals,
-//             )
-//         };
-//         // Safety: &et_c::EValue and *mut et_c::EValue have the same memory layout, and ArrayRef is an immutable type
-//         // so it's safe to transmute its inner values to a mutable type as they will not be mutated
-//         let wrapped_vals = unsafe {
-//             std::mem::transmute::<et_c::ArrayRef<&et_c::EValue>, et_c::ArrayRef<*mut et_c::EValue>>(
-//                 wrapped_vals,
-//             )
-//         };
+    /// Check if the list is empty.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 
-//         let list = et_c::BoxedEvalueList {
-//             wrapped_vals_: wrapped_vals,
-//             unwrapped_vals_: unwrapped_vals.as_mut_ptr(),
-//             _phantom_0: PhantomData,
-//         };
-//         Self(list, PhantomData)
-//     }
+    /// Get the tensor at the given index.
+    pub fn get(&self, index: usize) -> Option<TensorAny> {
+        self.0.get(index).map(TensorAny::from_inner_ref)
+    }
+}
+#[cfg(feature = "ndarray")]
+impl std::fmt::Debug for TensorList<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let mut l = f.debug_list();
+        for i in 0..self.len() {
+            l.entry(&self.get(i).unwrap());
+        }
+        l.finish()
+    }
+}
 
-//     /// Constructs and returns the list of T specified by the EValue pointers
-//     pub fn get(&self) -> &'a [T] {
-//         let evalues = unsafe { ArrayRef::from_inner(&self.0.wrapped_vals_) }.as_slice();
-//         // Safety: EValue and et_c::EValue have the same memory layout
-//         let evalues = unsafe { std::mem::transmute::<&[*mut et_c::EValue], &[&EValue]>(evalues) };
-//         assert!(
-//             evalues.iter().all(|val| val.tag() == Some(T::TAG)),
-//             "EValues have different tags"
-//         );
+/// A list of optional tensors.
+pub struct OptionalTensorList<'a>(&'a [et_rs_c::OptionalTensor]);
+impl OptionalTensorList<'_> {
+    /// Safety: the array must be valid for the lifetime of the returned list.
+    unsafe fn from_array_ref(array: et_rs_c::ArrayRefOptionalTensor) -> Self {
+        Self(unsafe { std::slice::from_raw_parts(array.data, array.len) })
+    }
 
-//         let unwrapped_list = match T::TAG {
-//             Tag::Int => {
-//                 // Safety: T is i64
-//                 let list = unsafe {
-//                     std::mem::transmute::<&BoxedEvalueList<'a, T>, &BoxedEvalueList<'a, i64>>(self)
-//                 };
-//                 let unwrapped_list = unsafe { et_rs_c::BoxedEvalueList_i64_get(&list.0) };
-//                 // Safety: i64 is T
-//                 unsafe {
-//                     std::mem::transmute::<et_c::ArrayRef<i64>, et_c::ArrayRef<T>>(unwrapped_list)
-//                 }
-//             }
-//             Tag::Tensor => {
-//                 // Safety: T is Tensor
-//                 let list = unsafe {
-//                     std::mem::transmute::<&BoxedEvalueList<'a, T>, &BoxedEvalueList<'a, Tensor<'_>>>(
-//                         self,
-//                     )
-//                 };
-//                 // Safety: Tensor and et_c::Tensor have the same memory layout
-//                 let list = unsafe {
-//                     std::mem::transmute::<
-//                         &et_c::BoxedEvalueList<Tensor<'_>>,
-//                         &et_c::BoxedEvalueList<et_c::Tensor>,
-//                     >(&list.0)
-//                 };
-//                 let unwrapped_list = unsafe { et_rs_c::BoxedEvalueList_Tensor_get(list) };
-//                 // Safety: et_c::Tensor and Tensor have the same memory layout
-//                 let unwrapped_list = unsafe {
-//                     std::mem::transmute::<et_c::ArrayRef<et_c::Tensor>, et_c::ArrayRef<Tensor<'_>>>(
-//                         unwrapped_list,
-//                     )
-//                 };
-//                 // Safety: Tensor is T
-//                 unsafe {
-//                     std::mem::transmute::<et_c::ArrayRef<Tensor<'a>>, et_c::ArrayRef<T>>(
-//                         unwrapped_list,
-//                     )
-//                 }
-//             }
-//             unsupported_type => panic!("Unsupported type: {:?}", unsupported_type),
-//         };
-//         unsafe { ArrayRef::from_inner(&unwrapped_list).as_slice() }
-//     }
-// }
-// impl<T: BoxedEvalue + Debug> Debug for BoxedEvalueList<'_, T> {
-//     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-//         self.get().fmt(f)
-//     }
-// }
+    /// Get the length of the list.
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
 
-// /// A trait for types that can be used within a [`BoxedEvalueList`].
-// pub trait BoxedEvalue {
-//     /// The [`Tag`] variant corresponding to boxed type.
-//     const TAG: Tag;
-//     private_decl! {}
-// }
-// impl BoxedEvalue for i64 {
-//     const TAG: Tag = Tag::Int;
-//     private_impl! {}
-// }
-// impl BoxedEvalue for Tensor<'_> {
-//     const TAG: Tag = Tag::Tensor;
-//     private_impl! {}
-// }
+    /// Check if the list is empty.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Get the tensor at the given index.
+    ///
+    /// # Returns
+    ///
+    /// - `None` if the index is out of bounds.
+    /// - `Some(None)` if the tensor at the index is `None`.
+    /// - `Some(Some(tensor))` if the tensor at the index is not `None`.
+    pub fn get(&self, index: usize) -> Option<Option<TensorAny>> {
+        self.0.get(index).map(|opt| {
+            opt.init_
+                .then(|| TensorAny::from_inner_ref(unsafe { &opt.storage_.value_ }))
+        })
+    }
+}
+#[cfg(feature = "ndarray")]
+impl std::fmt::Debug for OptionalTensorList<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let mut l = f.debug_list();
+        for i in 0..self.len() {
+            l.entry(&self.get(i).unwrap());
+        }
+        l.finish()
+    }
+}
+
+/// Helper class used to correlate EValues in the executor table, with the
+/// unwrapped list of the proper type.
+///
+/// Because values in the runtime's values
+/// table can change during execution, we cannot statically allocate list of
+/// objects at deserialization. Imagine the serialized list says index 0 in the
+/// value table is element 2 in the list, but during execution the value in
+/// element 2 changes (in the case of tensor this means the TensorImpl* stored in
+/// the tensor changes). To solve this instead they must be created dynamically
+/// whenever they are used.
+///
+/// Practically this struct is not so easy to work with, but thats the one provided
+/// by the Cpp library :).
+/// The struct consist of two lists:
+/// - `wrapped_vals`: a list of `[*const EValue]`, which contain the actual values of
+///     list, boxed in `EValue`.
+/// - `unwrapped_vals`: a list of `[T]`, initially uninitialized but when a reference
+///     to the actual `T` values is required the values are "unwrapped" from the boxed
+///     `EValue` into this array, and returned to the user as a slice.
+///
+/// This struct is used to represent lists of `i64`, `Tensor` and `Option<Tensor>`
+/// within an `EValue`, and it is used to initialize such EValues, but rarely should
+/// be used for anything else.
+/// EValues internally hold such boxed lists, and expose `&[T]` by unwrapping the
+/// wrapped values into the `unwrapped_vals`, keeping the reading interface simple.
+///
+/// ```rust,ignore
+/// let (evalue1, evalue2, evalue3) = (EValue::new(42), EValue::new(17), EValue::new(6));
+/// let wrapped_vals = EValuePtrList::new([&evalue1, &evalue2, &evalue3]);
+/// let unwrapped_vals = pin::pin!([0; 3].map(|_| Storage::<i64>::default()));
+/// let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals).unwrap();
+///
+/// let evalue = EValue::new(list);
+/// assert_eq!(evalue.tag(), Tag::ListInt);
+/// assert_eq!(evalue.as_i64_list(), &[42, 17, 6]);
+/// ```
+pub struct BoxedEvalueList<'a, T: BoxedEvalueListElement<'a>>(
+    pub(crate) T::__ListImpl,
+    PhantomData<&'a ()>,
+);
+
+impl<'a, T: BoxedEvalueListElement<'a>> BoxedEvalueList<'a, T> {
+    /// Create a new boxed list of the given type.
+    ///
+    /// # Arguments
+    /// - `wrapped_vals`: a list of `EValue` that contain the actual values of the list. The inner values
+    ///     within the `EValue` must match the type `T`.
+    /// - `unwrapped_vals`: an allocation of the unwrapped values. The length of the allocation must
+    ///    match the length of the `wrapped_vals`.
+    ///
+    /// # Returns
+    /// A new boxed list with the given values, or an error:
+    /// - `InvalidArgument`: if the length of the `wrapped_vals` and `unwrapped_vals` do not match.
+    /// - `InvalidType`: if the inner values of the `wrapped_vals` do not match the type `T`.
+    pub fn new(
+        wrapped_vals: &'a EValuePtrList<'_>,
+        unwrapped_vals: Pin<&'a mut [Storage<T>]>,
+    ) -> Result<Self> {
+        let wrapped_vals_slice = wrapped_vals.as_slice();
+        if wrapped_vals_slice.len() != unwrapped_vals.len() {
+            return Err(Error::simple(ErrorKind::InvalidArgument));
+        }
+        for i in 0..wrapped_vals_slice.len() {
+            let elm = wrapped_vals.get(i).unwrap();
+            if let Some(elm) = elm {
+                if elm.tag() != T::__ELEMENT_TAG {
+                    return Err(Error::simple(ErrorKind::InvalidType));
+                }
+            } else if !T::__ALLOW_NULL_ELEMENT {
+                return Err(Error::simple(ErrorKind::InvalidType));
+            }
+        }
+
+        let wrapped_vals = et_rs_c::ArrayRefEValuePtr {
+            data: wrapped_vals_slice.as_ptr(),
+            len: wrapped_vals_slice.len(),
+        };
+
+        let list = unsafe { T::__ListImpl::__new(wrapped_vals, unwrapped_vals)? };
+        Ok(Self(list, PhantomData))
+    }
+}
+
+/// A marker trait for types that can be stored in a [`BoxedEvalueList`].
+pub trait BoxedEvalueListElement<'a>: Storable {
+    /// The tag of inner values within the list.
+    #[doc(hidden)]
+    const __ELEMENT_TAG: Tag;
+
+    /// Whether the inner values can be `None`.
+    #[doc(hidden)]
+    const __ALLOW_NULL_ELEMENT: bool;
+
+    /// The Cpp object that represents the list.
+    #[doc(hidden)]
+    type __ListImpl: __BoxedEvalueListImpl<Element<'a> = Self>;
+
+    private_decl! {}
+}
+
+/// A Cpp list object of a specific element type.
+#[doc(hidden)]
+pub trait __BoxedEvalueListImpl {
+    type Element<'a>: BoxedEvalueListElement<'a, __ListImpl = Self>;
+
+    /// Create a new list from the given wrapped and unwrapped values.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the lengths of the wrapped and unwrapped values match,
+    /// that the wrapped values are of the correct type, and that both wrapped and unwrapped
+    /// arrays are valid for the lifetime of the returned object.
+    unsafe fn __new(
+        wrapped_vals: et_rs_c::ArrayRefEValuePtr,
+        unwrapped_vals: Pin<&mut [Storage<Self::Element<'_>>]>,
+    ) -> Result<Self>
+    where
+        Self: Sized;
+
+    private_decl! {}
+}
+
+macro_rules! impl_boxed_evalue_list {
+    ($element:path, $list_impl:path, $unwrapped_span_type:path, $element_tag:ident, $allow_null_element:expr) => {
+        impl<'a> BoxedEvalueListElement<'a> for $element {
+            const __ELEMENT_TAG: Tag = Tag::$element_tag;
+            const __ALLOW_NULL_ELEMENT: bool = $allow_null_element;
+            type __ListImpl = $list_impl;
+            private_impl! {}
+        }
+        impl __BoxedEvalueListImpl for $list_impl {
+            type Element<'a> = $element;
+
+            unsafe fn __new(
+                wrapped_vals: et_rs_c::ArrayRefEValuePtr,
+                unwrapped_vals: Pin<&mut [Storage<Self::Element<'_>>]>,
+            ) -> Result<Self> {
+                // Safety: we dont move out of the pinned slice.
+                let unwrapped_vals = unsafe { unwrapped_vals.get_unchecked_mut() };
+                Ok(Self {
+                    wrapped_vals,
+                    unwrapped_vals: {
+                        $unwrapped_span_type {
+                            data: unwrapped_vals.as_mut_ptr()
+                                as *mut <Self::Element<'_> as Storable>::__Storage,
+                            len: unwrapped_vals.len(),
+                        }
+                    },
+                })
+            }
+
+            private_impl! {}
+        }
+    };
+}
+impl_boxed_evalue_list!(
+    i64,
+    et_rs_c::BoxedEvalueListI64,
+    et_rs_c::SpanI64,
+    Int,
+    false
+);
+impl_boxed_evalue_list!(
+    TensorAny<'a>,
+    et_rs_c::BoxedEvalueListTensor,
+    et_rs_c::SpanTensor,
+    Tensor,
+    false
+);
+impl_boxed_evalue_list!(
+    Option<TensorAny<'a>>,
+    et_rs_c::BoxedEvalueListOptionalTensor,
+    et_rs_c::SpanOptionalTensor,
+    Tensor,
+    true
+);
+
+/// A list of pointers to `EValue`.
+///
+/// Usually such list is used as an input to a [`BoxedEvalueList`].
+pub struct EValuePtrList<'a>(EValuePtrListInner<'a>);
+enum EValuePtrListInner<'a> {
+    #[cfg(feature = "alloc")]
+    Vec(
+        (
+            crate::et_alloc::Vec<*const et_c::runtime::EValue>,
+            // A lifetime for the `*const EValue` values
+            PhantomData<&'a ()>,
+        ),
+    ),
+    Slice(
+        (
+            &'a [*const et_c::runtime::EValue],
+            // A lifetime for the `*const EValue` values
+            PhantomData<&'a ()>,
+        ),
+    ),
+}
+impl<'a> EValuePtrList<'a> {
+    #[cfg(feature = "alloc")]
+    fn new_impl(values: impl IntoIterator<Item = Option<&'a EValue<'a>>>) -> Self {
+        let values: crate::et_alloc::Vec<*const et_c::runtime::EValue> = values
+            .into_iter()
+            .map(|value| match value {
+                Some(value) => value.as_evalue() as *const _,
+                None => std::ptr::null(),
+            })
+            .collect();
+        Self(EValuePtrListInner::Vec((values, PhantomData)))
+    }
+
+    /// Create a new list with the give values.
+    ///
+    /// Usually such list is used as an input to a [`BoxedEvalueList`]. In that case the
+    /// values should be of the same type.
+    ///
+    /// This function require a small allocation on the heap. To avoid this allocation, use
+    /// [`new_in_storage`][Self::new_in_storage] instead.
+    #[cfg(feature = "alloc")]
+    pub fn new(values: impl IntoIterator<Item = &'a EValue<'a>>) -> Self {
+        Self::new_impl(values.into_iter().map(Some))
+    }
+
+    /// Create a new list with the give values, where some values can be `None`.
+    ///
+    /// Usually such list is used as an input to a [`BoxedEvalueList`]. In that case the
+    /// values should be of the same type, and only `Option<TensorAny>` support `None` values.
+    ///
+    /// This function require a small allocation on the heap. To avoid this allocation, use
+    /// [`new_optional_in_storage`][Self::new_optional_in_storage] instead.
+    #[cfg(feature = "alloc")]
+    pub fn new_optional(values: impl IntoIterator<Item = Option<&'a EValue<'a>>>) -> Self {
+        Self::new_impl(values)
+    }
+
+    fn new_in_storage_impl(
+        values: impl IntoIterator<Item = Option<&'a EValue<'a>>>,
+        storage: Pin<&'a mut [Storage<EValuePtrListElem>]>,
+    ) -> Self {
+        let mut values = values.into_iter();
+        // Safety: we dont move out of the pinned slice.
+        let storage = unsafe { storage.get_unchecked_mut() };
+        // Safety: Storage<T> is transparent MaybeUninit<<T as Storable>::__Storage>
+        let storage = unsafe {
+            std::mem::transmute::<
+                &mut [Storage<EValuePtrListElem>],
+                &mut [MaybeUninit<<EValuePtrListElem as Storable>::__Storage>],
+            >(storage)
+        };
+        let mut storage_iter = storage.iter_mut();
+        loop {
+            match (values.next(), storage_iter.next()) {
+                (Some(value), Some(storage)) => {
+                    storage.write(match value {
+                        Some(value) => value.as_evalue() as *const _,
+                        None => std::ptr::null(),
+                    });
+                }
+                (None, None) => break,
+                _ => panic!("Mismatched lengths"),
+            }
+        }
+        // Safety: We wrote to all elements of the slice.
+        let storage = unsafe {
+            std::mem::transmute::<
+                &mut [MaybeUninit<<EValuePtrListElem as Storable>::__Storage>],
+                &mut [<EValuePtrListElem as Storable>::__Storage],
+            >(storage)
+        };
+        Self(EValuePtrListInner::Slice((storage, PhantomData)))
+    }
+
+    /// Create a new list with the give values using the given storage.
+    ///
+    /// Usually such list is used as an input to a [`BoxedEvalueList`]. In that case the
+    /// values should be of the same type.
+    ///
+    /// This function does not allocate on the heap.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the length of the `values` and `storage` do not match.
+    pub fn new_in_storage(
+        values: impl IntoIterator<Item = &'a EValue<'a>>,
+        storage: Pin<&'a mut [Storage<EValuePtrListElem>]>,
+    ) -> Self {
+        Self::new_in_storage_impl(values.into_iter().map(Some), storage)
+    }
+
+    /// Create a new list with the give values using the given storage, where some values can be `None`.
+    ///
+    /// Usually such list is used as an input to a [`BoxedEvalueList`]. In that case the
+    /// values should be of the same type, and only `Option<TensorAny>` support `None` values.
+    ///
+    /// This function does not allocate on the heap.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the length of the `values` and `storage` do not match.
+    pub fn new_optional_in_storage(
+        values: impl IntoIterator<Item = Option<&'a EValue<'a>>>,
+        storage: Pin<&'a mut [Storage<EValuePtrListElem>]>,
+    ) -> Self {
+        Self::new_in_storage_impl(values, storage)
+    }
+
+    fn as_slice(&self) -> &[*const et_c::runtime::EValue] {
+        match &self.0 {
+            #[cfg(feature = "alloc")]
+            EValuePtrListInner::Vec((values, _)) => values.as_slice(),
+            EValuePtrListInner::Slice((values, _)) => values,
+        }
+    }
+
+    /// Returns None if index is out of range.
+    /// Returns Some(None) if the pointer at the given entry is null.
+    fn get(&self, index: usize) -> Option<Option<EValue>> {
+        let ptr = *self.as_slice().get(index)?;
+        Some(if ptr.is_null() {
+            None
+        } else {
+            Some(unsafe { EValue::from_inner_ref(&*ptr) })
+        })
+    }
+}
+/// An element within a [`EValuePtrList`].
+///
+/// Used solely for the `Storable` implementation:
+/// ```rust,ignore
+/// let (evalue1, evalue2, evalue3) = (EValue::new(42), EValue::new(17), EValue::new(6));
+/// let wrapped_vals_storage = pin::pin!([0; 3].map(|_| Storage::<EValuePtrListElement>::default()));
+/// let wrapped_vals = EValuePtrList::new_in_storage([&evalue1, &evalue2, &evalue3], wrapped_vals_storage);
+/// ```
+pub struct EValuePtrListElem(#[allow(dead_code)] *const et_c::runtime::EValue);
+impl Storable for EValuePtrListElem {
+    type __Storage = *const et_c::runtime::EValue;
+}
+
+#[cfg(test)]
+mod tests {
+    #[cfg(feature = "tensor-ptr")]
+    use crate::tensor::TensorPtr;
+    use crate::tensor::{SizesType, Tensor, TensorImpl};
+
+    use super::*;
+    use std::pin;
+
+    #[test]
+    fn none() {
+        #[cfg(feature = "alloc")]
+        {
+            let evalue = EValue::none();
+            assert_eq!(evalue.tag(), Tag::None);
+            assert!(evalue.is_none());
+        }
+        {
+            let storage = pin::pin!(Storage::<EValue>::default());
+            let evalue = EValue::none_in_storage(storage);
+            assert_eq!(evalue.tag(), Tag::None);
+            assert!(evalue.is_none());
+        }
+    }
+
+    #[test]
+    fn i64() {
+        #[cfg(feature = "alloc")]
+        {
+            let evalue = EValue::new(42);
+            assert_eq!(evalue.tag(), Tag::Int);
+            assert_eq!(evalue.as_i64(), 42);
+        }
+        {
+            let storage = pin::pin!(Storage::<EValue>::default());
+            let evalue = EValue::new_in_storage(17, storage);
+            assert_eq!(evalue.tag(), Tag::Int);
+            assert_eq!(evalue.as_i64(), 17);
+        }
+    }
+
+    #[test]
+    fn i64_list() {
+        #[cfg(feature = "alloc")]
+        {
+            let (evalue1, evalue2, evalue3) = (EValue::new(42), EValue::new(17), EValue::new(6));
+            let wrapped_vals = EValuePtrList::new([&evalue1, &evalue2, &evalue3]);
+            let unwrapped_vals = pin::pin!([0; 3].map(|_| Storage::<i64>::default()));
+            let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals).unwrap();
+
+            let evalue = EValue::new(list);
+            assert_eq!(evalue.tag(), Tag::ListInt);
+            assert_eq!(evalue.as_i64_list(), &[42, 17, 6]);
+        }
+        {
+            let evalue1_storage = pin::pin!(Storage::<EValue>::default());
+            let evalue2_storage = pin::pin!(Storage::<EValue>::default());
+            let evalue3_storage = pin::pin!(Storage::<EValue>::default());
+            let evalue1 = EValue::new_in_storage(42, evalue1_storage);
+            let evalue2 = EValue::new_in_storage(17, evalue2_storage);
+            let evalue3 = EValue::new_in_storage(6, evalue3_storage);
+
+            let wrapped_vals_storage =
+                pin::pin!([0; 3].map(|_| Storage::<EValuePtrListElem>::default()));
+            let wrapped_vals =
+                EValuePtrList::new_in_storage([&evalue1, &evalue2, &evalue3], wrapped_vals_storage);
+            let unwrapped_vals = pin::pin!([0; 3].map(|_| Storage::<i64>::default()));
+            let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals).unwrap();
+
+            let evalue_storage = pin::pin!(Storage::<EValue>::default());
+            let evalue = EValue::new_in_storage(list, evalue_storage);
+            assert_eq!(evalue.tag(), Tag::ListInt);
+            assert_eq!(evalue.as_i64_list(), &[42, 17, 6]);
+        }
+    }
+
+    #[test]
+    fn f64() {
+        #[cfg(feature = "alloc")]
+        {
+            let evalue = EValue::new(42.0);
+            assert_eq!(evalue.tag(), Tag::Double);
+            assert_eq!(evalue.as_f64(), 42.0);
+        }
+        {
+            let storage = pin::pin!(Storage::<EValue>::default());
+            let evalue = EValue::new_in_storage(17.0, storage);
+            assert_eq!(evalue.tag(), Tag::Double);
+            assert_eq!(evalue.as_f64(), 17.0);
+        }
+    }
+
+    #[test]
+    fn f64_list() {
+        let list = [42.0, 17.0, 6.0];
+
+        #[cfg(feature = "alloc")]
+        {
+            let evalue = EValue::new(list.as_slice());
+            assert_eq!(evalue.tag(), Tag::ListDouble);
+            assert_eq!(evalue.as_f64_list(), [42.0, 17.0, 6.0]);
+        }
+        {
+            let storage = pin::pin!(Storage::<EValue>::default());
+            let evalue = EValue::new_in_storage(list.as_slice(), storage);
+            assert_eq!(evalue.tag(), Tag::ListDouble);
+            assert_eq!(evalue.as_f64_list(), [42.0, 17.0, 6.0]);
+        }
+    }
+
+    #[test]
+    fn bool() {
+        #[cfg(feature = "alloc")]
+        {
+            let evalue = EValue::new(true);
+            assert_eq!(evalue.tag(), Tag::Bool);
+            assert!(evalue.as_bool());
+        }
+        {
+            let storage = pin::pin!(Storage::<EValue>::default());
+            let evalue = EValue::new_in_storage(false, storage);
+            assert_eq!(evalue.tag(), Tag::Bool);
+            assert!(!evalue.as_bool());
+        }
+    }
+
+    #[test]
+    fn bool_list() {
+        let list = [true, false, true];
+
+        #[cfg(feature = "alloc")]
+        {
+            let evalue = EValue::new(list.as_slice());
+            assert_eq!(evalue.tag(), Tag::ListBool);
+            assert_eq!(evalue.as_bool_list(), [true, false, true]);
+        }
+        {
+            let storage = pin::pin!(Storage::<EValue>::default());
+            let evalue = EValue::new_in_storage(list.as_slice(), storage);
+            assert_eq!(evalue.tag(), Tag::ListBool);
+            assert_eq!(evalue.as_bool_list(), [true, false, true]);
+        }
+    }
+
+    #[test]
+    fn string() {
+        let string = cstr::cstr!(b"hello world!");
+        let chars = crate::util::cstr2chars(string);
+
+        #[cfg(feature = "alloc")]
+        {
+            let evalue = EValue::new(string);
+            assert_eq!(evalue.tag(), Tag::String);
+            assert_eq!(evalue.as_cstr(), string);
+            assert_eq!(evalue.as_chars(), chars);
+        }
+        {
+            let storage = pin::pin!(Storage::<EValue>::default());
+            let evalue = EValue::new_in_storage(string, storage);
+            assert_eq!(evalue.tag(), Tag::String);
+            assert_eq!(evalue.as_cstr(), string);
+            assert_eq!(evalue.as_chars(), chars);
+        }
+    }
+
+    #[test]
+    fn tensor() {
+        let data: [i32; 3] = [42, 17, 6];
+
+        #[cfg(feature = "alloc")]
+        {
+            let sizes = [data.len() as SizesType];
+            let dim_order = [0];
+            let strides = [1];
+            let tensor_impl = TensorImpl::from_slice(&sizes, &data, &dim_order, &strides);
+            let tensor = Tensor::new(&tensor_impl);
+
+            // Borrow tensor by EValue
+            let evalue = EValue::new(&tensor);
+            assert_eq!(evalue.tag(), Tag::Tensor);
+            let tensor = evalue.as_tensor().into_typed::<i32>();
+            let tensor_data = unsafe { std::slice::from_raw_parts(tensor.as_ptr(), data.len()) };
+            assert_eq!(tensor_data, data);
+
+            // Move tensor into evalue
+            let evalue = EValue::new(tensor);
+            assert_eq!(evalue.tag(), Tag::Tensor);
+            let tensor = evalue.as_tensor().into_typed::<i32>();
+            let tensor_data = unsafe { std::slice::from_raw_parts(tensor.as_ptr(), data.len()) };
+            assert_eq!(tensor_data, data);
+        }
+        #[cfg(feature = "tensor-ptr")]
+        {
+            let tensor = TensorPtr::from_slice(&data);
+            let evalue = EValue::new(&tensor);
+            assert_eq!(evalue.tag(), Tag::Tensor);
+            let tensor = evalue.as_tensor().into_typed::<i32>();
+            let tensor_data = unsafe { std::slice::from_raw_parts(tensor.as_ptr(), data.len()) };
+            assert_eq!(tensor_data, data);
+        }
+        {
+            let sizes = [data.len() as SizesType];
+            let dim_order = [0];
+            let strides = [1];
+            let tensor_impl = TensorImpl::from_slice(&sizes, &data, &dim_order, &strides);
+            let tensor_storage = pin::pin!(Storage::<Tensor<i32>>::default());
+            let tensor = Tensor::new_in_storage(&tensor_impl, tensor_storage);
+
+            // Borrow tensor by EValue
+            let evalue_storage = pin::pin!(Storage::<EValue>::default());
+            let evalue = EValue::new_in_storage(&tensor, evalue_storage);
+            assert_eq!(evalue.tag(), Tag::Tensor);
+            let tensor = evalue.as_tensor().into_typed::<i32>();
+            let tensor_data = unsafe { std::slice::from_raw_parts(tensor.as_ptr(), data.len()) };
+            assert_eq!(tensor_data, data);
+
+            // Move tensor into evalue
+            let evalue_storage = pin::pin!(Storage::<EValue>::default());
+            let evalue = EValue::new_in_storage(tensor, evalue_storage);
+            assert_eq!(evalue.tag(), Tag::Tensor);
+            let tensor = evalue.as_tensor().into_typed::<i32>();
+            let tensor_data = unsafe { std::slice::from_raw_parts(tensor.as_ptr(), data.len()) };
+            assert_eq!(tensor_data, data);
+        }
+    }
+
+    #[test]
+    fn tensor_list() {
+        let data1: [i32; 3] = [42, 17, 6];
+        let data2: [i32; 2] = [55, 8];
+        let data3: [i32; 2] = [106, 144];
+
+        #[cfg(feature = "alloc")]
+        {
+            let sizes = [data1.len() as SizesType];
+            let dim_order = [0];
+            let strides = [1];
+            let tensor_impl = TensorImpl::from_slice(&sizes, &data1, &dim_order, &strides);
+            let tensor1 = Tensor::new(&tensor_impl);
+
+            let sizes = [data2.len() as SizesType];
+            let dim_order = [0];
+            let strides = [1];
+            let tensor_impl = TensorImpl::from_slice(&sizes, &data2, &dim_order, &strides);
+            let tensor2 = Tensor::new(&tensor_impl);
+
+            let sizes = [data3.len() as SizesType];
+            let dim_order = [0];
+            let strides = [1];
+            let tensor_impl = TensorImpl::from_slice(&sizes, &data3, &dim_order, &strides);
+            let tensor3 = Tensor::new(&tensor_impl);
+
+            let evalue1 = EValue::new(tensor1);
+            let evalue2 = EValue::new(tensor2);
+            let evalue3 = EValue::new(tensor3);
+            let wrapped_vals = EValuePtrList::new([&evalue1, &evalue2, &evalue3]);
+            let unwrapped_vals = pin::pin!([0; 3].map(|_| Storage::<TensorAny>::default()));
+            let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals).unwrap();
+
+            let evalue = EValue::new(list);
+            assert_eq!(evalue.tag(), Tag::ListTensor);
+            let tensor_list = evalue.as_tensor_list();
+            assert_eq!(tensor_list.len(), 3);
+
+            for (i, data) in [data1.as_slice(), &data2, &data3].iter().enumerate() {
+                let tensor = tensor_list.get(i).unwrap().into_typed::<i32>();
+                let tensor_data =
+                    unsafe { std::slice::from_raw_parts(tensor.as_ptr(), data.len()) };
+                assert_eq!(&tensor_data, data);
+            }
+        }
+        #[cfg(feature = "tensor-ptr")]
+        {
+            let tensor1 = TensorPtr::from_slice(&data1);
+            let tensor2 = TensorPtr::from_slice(&data2);
+            let tensor3 = TensorPtr::from_slice(&data3);
+            let evalue1 = EValue::new(&tensor1);
+            let evalue2 = EValue::new(&tensor2);
+            let evalue3 = EValue::new(&tensor3);
+            let wrapped_vals = EValuePtrList::new([&evalue1, &evalue2, &evalue3]);
+            let unwrapped_vals = pin::pin!([0; 3].map(|_| Storage::<TensorAny>::default()));
+            let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals).unwrap();
+
+            let evalue = EValue::new(list);
+            assert_eq!(evalue.tag(), Tag::ListTensor);
+            let tensor_list = evalue.as_tensor_list();
+            assert_eq!(tensor_list.len(), 3);
+
+            for (i, data) in [data1.as_slice(), &data2, &data3].iter().enumerate() {
+                let tensor = tensor_list.get(i).unwrap().into_typed::<i32>();
+                let tensor_data =
+                    unsafe { std::slice::from_raw_parts(tensor.as_ptr(), data.len()) };
+                assert_eq!(&tensor_data, data);
+            }
+        }
+        {
+            let sizes = [data1.len() as SizesType];
+            let dim_order = [0];
+            let strides = [1];
+            let tensor_impl = TensorImpl::from_slice(&sizes, &data1, &dim_order, &strides);
+            let tensor_storage = pin::pin!(Storage::<Tensor<i32>>::default());
+            let tensor1 = Tensor::new_in_storage(&tensor_impl, tensor_storage);
+
+            let sizes = [data2.len() as SizesType];
+            let dim_order = [0];
+            let strides = [1];
+            let tensor_impl = TensorImpl::from_slice(&sizes, &data2, &dim_order, &strides);
+            let tensor_storage = pin::pin!(Storage::<Tensor<i32>>::default());
+            let tensor2 = Tensor::new_in_storage(&tensor_impl, tensor_storage);
+
+            let sizes = [data3.len() as SizesType];
+            let dim_order = [0];
+            let strides = [1];
+            let tensor_impl = TensorImpl::from_slice(&sizes, &data3, &dim_order, &strides);
+            let tensor_storage = pin::pin!(Storage::<Tensor<i32>>::default());
+            let tensor3 = Tensor::new_in_storage(&tensor_impl, tensor_storage);
+
+            let evalue_storage = pin::pin!(Storage::<EValue>::default());
+            let evalue1 = EValue::new_in_storage(&tensor1, evalue_storage);
+            let evalue_storage = pin::pin!(Storage::<EValue>::default());
+            let evalue2 = EValue::new_in_storage(&tensor2, evalue_storage);
+            let evalue_storage = pin::pin!(Storage::<EValue>::default());
+            let evalue3 = EValue::new_in_storage(&tensor3, evalue_storage);
+
+            let wrapped_vals_storage =
+                pin::pin!([0; 3].map(|_| Storage::<EValuePtrListElem>::default()));
+            let wrapped_vals =
+                EValuePtrList::new_in_storage([&evalue1, &evalue2, &evalue3], wrapped_vals_storage);
+            let unwrapped_vals = pin::pin!([0; 3].map(|_| Storage::<TensorAny>::default()));
+            let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals).unwrap();
+
+            let evalue_storage = pin::pin!(Storage::<EValue>::default());
+            let evalue = EValue::new_in_storage(list, evalue_storage);
+            assert_eq!(evalue.tag(), Tag::ListTensor);
+            let tensor_list = evalue.as_tensor_list();
+            assert_eq!(tensor_list.len(), 3);
+
+            for (i, data) in [data1.as_slice(), &data2, &data3].iter().enumerate() {
+                let tensor = tensor_list.get(i).unwrap().into_typed::<i32>();
+                let tensor_data =
+                    unsafe { std::slice::from_raw_parts(tensor.as_ptr(), data.len()) };
+                assert_eq!(&tensor_data, data);
+            }
+        }
+    }
+
+    #[test]
+    fn optional_tensor_list() {
+        let data1: [i32; 3] = [42, 17, 6];
+        let data2: [i32; 2] = [55, 8];
+        let data4: [i32; 2] = [106, 144];
+
+        #[cfg(feature = "alloc")]
+        {
+            let sizes = [data1.len() as SizesType];
+            let dim_order = [0];
+            let strides = [1];
+            let tensor_impl = TensorImpl::from_slice(&sizes, &data1, &dim_order, &strides);
+            let tensor1 = Tensor::new(&tensor_impl);
+
+            let sizes = [data2.len() as SizesType];
+            let dim_order = [0];
+            let strides = [1];
+            let tensor_impl = TensorImpl::from_slice(&sizes, &data2, &dim_order, &strides);
+            let tensor2 = Tensor::new(&tensor_impl);
+
+            // let tensor3 = None;
+
+            let sizes = [data4.len() as SizesType];
+            let dim_order = [0];
+            let strides = [1];
+            let tensor_impl = TensorImpl::from_slice(&sizes, &data4, &dim_order, &strides);
+            let tensor4 = Tensor::new(&tensor_impl);
+
+            let evalue1 = EValue::new(tensor1);
+            let evalue2 = EValue::new(tensor2);
+            let evalue3 = None;
+            let evalue4 = EValue::new(tensor4);
+            let wrapped_vals = EValuePtrList::new_optional([
+                Some(&evalue1),
+                Some(&evalue2),
+                evalue3,
+                Some(&evalue4),
+            ]);
+            let unwrapped_vals = pin::pin!([0; 4].map(|_| Storage::<Option<TensorAny>>::default()));
+            let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals).unwrap();
+
+            let evalue = EValue::new(list);
+            assert_eq!(evalue.tag(), Tag::ListOptionalTensor);
+            let tensor_list = evalue.as_optional_tensor_list();
+            assert_eq!(tensor_list.len(), 4);
+
+            for (i, data) in [Some(data1.as_slice()), Some(&data2), None, Some(&data4)]
+                .iter()
+                .enumerate()
+            {
+                let tensor = tensor_list.get(i).unwrap();
+                assert_eq!(tensor.is_some(), data.is_some());
+                match (tensor, data) {
+                    (None, None) => {}
+                    (Some(tensor), Some(data)) => {
+                        let tensor_data = unsafe {
+                            std::slice::from_raw_parts(
+                                tensor.into_typed::<i32>().as_ptr(),
+                                data.len(),
+                            )
+                        };
+                        assert_eq!(&tensor_data, data);
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        }
+        #[cfg(feature = "tensor-ptr")]
+        {
+            let tensor1 = TensorPtr::from_slice(&data1);
+            let tensor2 = TensorPtr::from_slice(&data2);
+            // let tensor3 = None;
+            let tensor4 = TensorPtr::from_slice(&data4);
+            let evalue1 = EValue::new(&tensor1);
+            let evalue2 = EValue::new(&tensor2);
+            let evalue3 = None;
+            let evalue4 = EValue::new(&tensor4);
+            let wrapped_vals = EValuePtrList::new_optional([
+                Some(&evalue1),
+                Some(&evalue2),
+                evalue3,
+                Some(&evalue4),
+            ]);
+            let unwrapped_vals = pin::pin!([0; 4].map(|_| Storage::<Option<TensorAny>>::default()));
+            let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals).unwrap();
+
+            let evalue = EValue::new(list);
+            assert_eq!(evalue.tag(), Tag::ListOptionalTensor);
+            let tensor_list = evalue.as_optional_tensor_list();
+            assert_eq!(tensor_list.len(), 4);
+
+            for (i, data) in [Some(data1.as_slice()), Some(&data2), None, Some(&data4)]
+                .iter()
+                .enumerate()
+            {
+                let tensor = tensor_list.get(i).unwrap();
+                assert_eq!(tensor.is_some(), data.is_some());
+                match (tensor, data) {
+                    (None, None) => {}
+                    (Some(tensor), Some(data)) => {
+                        let tensor_data = unsafe {
+                            std::slice::from_raw_parts(
+                                tensor.into_typed::<i32>().as_ptr(),
+                                data.len(),
+                            )
+                        };
+                        assert_eq!(&tensor_data, data);
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        }
+        {
+            let sizes = [data1.len() as SizesType];
+            let dim_order = [0];
+            let strides = [1];
+            let tensor_impl = TensorImpl::from_slice(&sizes, &data1, &dim_order, &strides);
+            let tensor_storage = pin::pin!(Storage::<Tensor<i32>>::default());
+            let tensor1 = Tensor::new_in_storage(&tensor_impl, tensor_storage);
+
+            let sizes = [data2.len() as SizesType];
+            let dim_order = [0];
+            let strides = [1];
+            let tensor_impl = TensorImpl::from_slice(&sizes, &data2, &dim_order, &strides);
+            let tensor_storage = pin::pin!(Storage::<Tensor<i32>>::default());
+            let tensor2 = Tensor::new_in_storage(&tensor_impl, tensor_storage);
+
+            // let tensor3 = None;
+
+            let sizes = [data4.len() as SizesType];
+            let dim_order = [0];
+            let strides = [1];
+            let tensor_impl = TensorImpl::from_slice(&sizes, &data4, &dim_order, &strides);
+            let tensor_storage = pin::pin!(Storage::<Tensor<i32>>::default());
+            let tensor4 = Tensor::new_in_storage(&tensor_impl, tensor_storage);
+
+            let evalue_storage = pin::pin!(Storage::<EValue>::default());
+            let evalue1 = EValue::new_in_storage(&tensor1, evalue_storage);
+            let evalue_storage = pin::pin!(Storage::<EValue>::default());
+            let evalue2 = EValue::new_in_storage(&tensor2, evalue_storage);
+            let evalue3 = None;
+            let evalue_storage = pin::pin!(Storage::<EValue>::default());
+            let evalue4 = EValue::new_in_storage(&tensor4, evalue_storage);
+
+            let wrapped_vals_storage =
+                pin::pin!([0; 4].map(|_| Storage::<EValuePtrListElem>::default()));
+            let wrapped_vals = EValuePtrList::new_optional_in_storage(
+                [Some(&evalue1), Some(&evalue2), evalue3, Some(&evalue4)],
+                wrapped_vals_storage,
+            );
+            let unwrapped_vals = pin::pin!([0; 4].map(|_| Storage::<Option<TensorAny>>::default()));
+            let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals).unwrap();
+
+            let evalue_storage = pin::pin!(Storage::<EValue>::default());
+            let evalue = EValue::new_in_storage(list, evalue_storage);
+            assert_eq!(evalue.tag(), Tag::ListOptionalTensor);
+            let tensor_list = evalue.as_optional_tensor_list();
+            assert_eq!(tensor_list.len(), 4);
+
+            for (i, data) in [Some(data1.as_slice()), Some(&data2), None, Some(&data4)]
+                .iter()
+                .enumerate()
+            {
+                let tensor = tensor_list.get(i).unwrap();
+                assert_eq!(tensor.is_some(), data.is_some());
+                match (tensor, data) {
+                    (None, None) => {}
+                    (Some(tensor), Some(data)) => {
+                        let tensor_data = unsafe {
+                            std::slice::from_raw_parts(
+                                tensor.into_typed::<i32>().as_ptr(),
+                                data.len(),
+                            )
+                        };
+                        assert_eq!(&tensor_data, data);
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        }
+    }
+}
