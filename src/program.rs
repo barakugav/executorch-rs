@@ -20,7 +20,7 @@ use crate::{et_c, et_rs_c, Result};
 /// A deserialized ExecuTorch program binary.
 ///
 /// See the `examples/no_std` example for how to load and execute a program.
-pub struct Program<'a>(et_c::runtime::Program, PhantomData<&'a ()>);
+pub struct Program<'a>(et_rs_c::Program, PhantomData<&'a ()>);
 impl<'a> Program<'a> {
     /// Loads a Program from the provided loader. The Program will hold a pointer
     /// to the loader, which must outlive the returned Program instance.
@@ -50,7 +50,7 @@ impl<'a> Program<'a> {
 
     /// Returns the number of methods in the program.
     pub fn num_methods(&self) -> usize {
-        unsafe { self.0.num_methods() }
+        unsafe { et_rs_c::executorch_Program_num_methods(&self.0) }
     }
 
     /// Returns the name of the method at particular index.
@@ -120,7 +120,7 @@ impl<'a> Program<'a> {
     ///
     /// A value describing the presence of a header in the data.
     pub fn check_header(data: &[u8]) -> HeaderStatus {
-        unsafe { et_c::runtime::Program::check_header(data.as_ptr() as *const _, data.len()) }
+        unsafe { et_rs_c::executorch_Program_check_header(data.as_ptr() as *const _, data.len()) }
     }
 }
 impl Drop for Program<'_> {

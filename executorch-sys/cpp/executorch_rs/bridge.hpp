@@ -60,6 +60,11 @@ namespace executorch_rs
         size_t _blob[8];
     };
     static_assert(layout_of<TensorImpl>() == layout_of<executorch::aten::TensorImpl>());
+    struct Program
+    {
+        size_t _blob[11];
+    };
+    static_assert(layout_of<Program>() == layout_of<executorch::runtime::Program>());
 
     struct OptionalTensor
     {
@@ -236,11 +241,13 @@ namespace executorch_rs
     executorch::runtime::Error MmapDataLoader_new(const char *file_path, executorch::extension::MmapDataLoader::MlockConfig mlock_config, executorch::extension::MmapDataLoader *out);
 
     // Program
-    executorch::runtime::Error Program_load(executorch::runtime::DataLoader *loader, executorch::runtime::Program::Verification verification, executorch::runtime::Program *out);
-    executorch::runtime::Error Program_load_method(const executorch::runtime::Program &self, const char *method_name, executorch::runtime::MemoryManager *memory_manager, executorch::runtime::EventTracer *event_tracer, executorch::runtime::Method *out);
-    executorch::runtime::Error Program_get_method_name(const executorch::runtime::Program &self, size_t method_index, const char **out);
-    executorch::runtime::Error Program_method_meta(const executorch::runtime::Program &self, const char *method_name, executorch::runtime::MethodMeta *method_meta_out);
-    void Program_destructor(executorch::runtime::Program &self);
+    executorch::runtime::Program::HeaderStatus executorch_Program_check_header(const void *data, size_t size);
+    executorch::runtime::Error Program_load(executorch::runtime::DataLoader *loader, executorch::runtime::Program::Verification verification, Program *out);
+    executorch::runtime::Error Program_load_method(const Program *self, const char *method_name, executorch::runtime::MemoryManager *memory_manager, executorch::runtime::EventTracer *event_tracer, executorch::runtime::Method *out);
+    executorch::runtime::Error Program_get_method_name(const Program *self, size_t method_index, const char **out);
+    executorch::runtime::Error Program_method_meta(const Program *self, const char *method_name, executorch::runtime::MethodMeta *method_meta_out);
+    size_t executorch_Program_num_methods(const Program *self);
+    void Program_destructor(Program *self);
 
     // MethodMeta
     executorch::runtime::Error executorch_Method_set_input(executorch::runtime::Method &self, const EValue *input_evalue, size_t input_idx);

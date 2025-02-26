@@ -67,11 +67,6 @@ namespace executorch_rs
         return result.error();
     }
 
-    void Program_destructor(executorch::runtime::Program &self)
-    {
-        self.~Program();
-    }
-
     executorch::runtime::Error executorch_Method_set_input(executorch::runtime::Method &self, const EValue *input_evalue, size_t input_idx)
     {
         auto input_evalue_ = reinterpret_cast<const executorch::runtime::EValue *>(input_evalue);
@@ -154,33 +149,51 @@ namespace executorch_rs
     }
 
     // Program
-    executorch::runtime::Error Program_load(executorch::runtime::DataLoader *loader, executorch::runtime::Program::Verification verification, executorch::runtime::Program *out)
+    executorch::runtime::Program::HeaderStatus executorch_Program_check_header(const void *data, size_t size)
     {
+        return executorch::runtime::Program::check_header(data, size);
+    }
+    executorch::runtime::Error Program_load(executorch::runtime::DataLoader *loader, executorch::runtime::Program::Verification verification, Program *out)
+    {
+        auto out_ = reinterpret_cast<executorch::runtime::Program *>(out);
         // return extract_result(executorch::runtime::Program::load(loader, verification), out);
         auto res = executorch::runtime::Program::load(loader, verification);
         if (!res.ok())
             return res.error();
         auto &program = res.get();
-        new (out) executorch::runtime::Program(std::move(program));
+        new (out_) executorch::runtime::Program(std::move(program));
         return executorch::runtime::Error::Ok;
     }
-    executorch::runtime::Error Program_load_method(const executorch::runtime::Program &self, const char *method_name, executorch::runtime::MemoryManager *memory_manager, executorch::runtime::EventTracer *event_tracer, executorch::runtime::Method *out)
+    executorch::runtime::Error Program_load_method(const Program *self, const char *method_name, executorch::runtime::MemoryManager *memory_manager, executorch::runtime::EventTracer *event_tracer, executorch::runtime::Method *out)
     {
+        auto self_ = reinterpret_cast<const executorch::runtime::Program *>(self);
         // return extract_result(std::move(self.load_method(method_name, memory_manager, event_tracer)), out);
-        auto res = self.load_method(method_name, memory_manager, event_tracer);
+        auto res = self_->load_method(method_name, memory_manager, event_tracer);
         if (!res.ok())
             return res.error();
         auto &method = res.get();
         new (out) executorch::runtime::Method(std::move(method));
         return executorch::runtime::Error::Ok;
     }
-    executorch::runtime::Error Program_get_method_name(const executorch::runtime::Program &self, size_t method_index, const char **out)
+    executorch::runtime::Error Program_get_method_name(const Program *self, size_t method_index, const char **out)
     {
-        return extract_result(self.get_method_name(method_index), out);
+        auto self_ = reinterpret_cast<const executorch::runtime::Program *>(self);
+        return extract_result(self_->get_method_name(method_index), out);
     }
-    executorch::runtime::Error Program_method_meta(const executorch::runtime::Program &self, const char *method_name, executorch::runtime::MethodMeta *method_meta_out)
+    executorch::runtime::Error Program_method_meta(const Program *self, const char *method_name, executorch::runtime::MethodMeta *method_meta_out)
     {
-        return extract_result(self.method_meta(method_name), method_meta_out);
+        auto self_ = reinterpret_cast<const executorch::runtime::Program *>(self);
+        return extract_result(self_->method_meta(method_name), method_meta_out);
+    }
+    size_t executorch_Program_num_methods(const Program *self)
+    {
+        auto self_ = reinterpret_cast<const executorch::runtime::Program *>(self);
+        return self_->num_methods();
+    }
+    void Program_destructor(Program *self)
+    {
+        auto self_ = reinterpret_cast<executorch::runtime::Program *>(self);
+        self_->~Program();
     }
 
     // TensorInfo

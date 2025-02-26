@@ -145,6 +145,7 @@ fn generate_bindings() {
         .blocklist_item("executorch::runtime::Method_StepState")
         .blocklist_item("executorch::runtime::Method_InitializationState")
         .blocklist_item("executorch::runtime::Program_kMinHeadBytes")
+        .blocklist_item("executorch::runtime::Program_num_methods")
         .blocklist_item("executorch::runtime::EventTracerEntry")
         // feature module
         .blocklist_item("executorch::extension::Module_MethodHolder")
@@ -154,7 +155,7 @@ fn generate_bindings() {
         .blocklist_item("executorch::extension::Module_execute")
         .blocklist_item("executorch::extension::Module_Module")
         .opaque_type("std::.*")
-        .opaque_type("executorch::runtime::Program")
+        .blocklist_item("executorch::runtime::Program")
         .opaque_type("executorch::runtime::EventTracer")
         .opaque_type("executorch::runtime::Method")
         .opaque_type("executorch::runtime::MethodMeta")
