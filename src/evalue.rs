@@ -149,131 +149,87 @@ impl<'a> EValue<'a> {
 
     /// Get a reference to the value as an `i64`.
     ///
-    /// # Panics
-    ///
-    /// Panics if the value is of different type.
-    /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
-    /// [`tag`][Self::tag] method.
+    /// Returns `None` if the value is of different type.
     #[track_caller]
-    pub fn as_i64(&self) -> i64 {
-        self.try_into().expect("Invalid type")
+    pub fn as_i64(&self) -> Option<i64> {
+        self.try_into().ok()
     }
 
     /// Get a reference to the value as a `&[i64]`.
     ///
-    /// # Panics
-    ///
-    /// Panics if the value is of different type.
-    /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
-    /// [`tag`][Self::tag] method.
+    /// Returns `None` if the value is of different type.
     #[track_caller]
-    pub fn as_i64_list(&self) -> &[i64] {
-        self.try_into().expect("Invalid type")
+    pub fn as_i64_list(&self) -> Option<&[i64]> {
+        self.try_into().ok()
     }
 
     /// Get a reference to the value as an `f64`.
     ///
-    /// # Panics
-    ///
-    /// Panics if the value is of different type.
-    /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
-    /// [`tag`][Self::tag] method.
+    /// Returns `None` if the value is of different type.
     #[track_caller]
-    pub fn as_f64(&self) -> f64 {
-        self.try_into().expect("Invalid type")
+    pub fn as_f64(&self) -> Option<f64> {
+        self.try_into().ok()
     }
 
     /// Get a reference to the value as a `&[f64]`.
     ///
-    /// # Panics
-    ///
-    /// Panics if the value is of different type.
-    /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
-    /// [`tag`][Self::tag] method.
+    /// Returns `None` if the value is of different type.
     #[track_caller]
-    pub fn as_f64_list(&self) -> &[f64] {
-        self.try_into().expect("Invalid type")
+    pub fn as_f64_list(&self) -> Option<&[f64]> {
+        self.try_into().ok()
     }
 
     /// Get a reference to the value as a `bool`.
     ///
-    /// # Panics
-    ///
-    /// Panics if the value is of different type.
-    /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
-    /// [`tag`][Self::tag] method.
+    /// Returns `None` if the value is of different type.
     #[track_caller]
-    pub fn as_bool(&self) -> bool {
-        self.try_into().expect("Invalid type")
+    pub fn as_bool(&self) -> Option<bool> {
+        self.try_into().ok()
     }
 
     /// Get a reference to the value as a `&[bool]`.
     ///
-    /// # Panics
-    ///
-    /// Panics if the value is of different type.
-    /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
-    /// [`tag`][Self::tag] method.
+    /// Returns `None` if the value is of different type.
     #[track_caller]
-    pub fn as_bool_list(&self) -> &[bool] {
-        self.try_into().expect("Invalid type")
+    pub fn as_bool_list(&self) -> Option<&[bool]> {
+        self.try_into().ok()
     }
 
     /// Get a reference to the value as a `&[c_char]`.
     ///
-    /// # Panics
-    ///
-    /// Panics if the value is of different type.
-    /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
-    /// [`tag`][Self::tag] method.
+    /// Returns `None` if the value is of different type.
     #[track_caller]
-    pub fn as_chars(&self) -> &[std::ffi::c_char] {
-        self.try_into().expect("Invalid type")
+    pub fn as_chars(&self) -> Option<&[std::ffi::c_char]> {
+        self.try_into().ok()
     }
 
     /// Get a reference to the value as a `CStr`.
     ///
-    /// # Panics
-    ///
-    /// Panics if the value is of different type.
-    /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
-    /// [`tag`][Self::tag] method.
-    pub fn as_cstr(&self) -> &CStr {
-        self.try_into().expect("Invalid type")
+    /// Returns `None` if the value is of different type.
+    pub fn as_cstr(&self) -> Option<&CStr> {
+        self.try_into().ok()
     }
 
     /// Get a reference to the value as a [`TensorAny`].
     ///
-    /// # Panics
-    ///
-    /// Panics if the value is of different type.
-    /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
-    /// [`tag`][Self::tag] method.
+    /// Returns `None` if the value is of different type.
     #[track_caller]
-    pub fn as_tensor(&self) -> TensorAny {
-        self.try_into().expect("Invalid type")
+    pub fn as_tensor(&self) -> Option<TensorAny> {
+        self.try_into().ok()
     }
 
     /// Get a reference to the value as a [`TensorList`].
     ///
-    /// # Panics
-    ///
-    /// Panics if the value is of different type.
-    /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
-    /// [`tag`][Self::tag] method.
-    pub fn as_tensor_list(&self) -> TensorList {
-        self.try_into().expect("Invalid type")
+    /// Returns `None` if the value is of different type.
+    pub fn as_tensor_list(&self) -> Option<TensorList> {
+        self.try_into().ok()
     }
 
     /// Get a reference to the value as a [`OptionalTensorList`].
     ///
-    /// # Panics
-    ///
-    /// Panics if the value is of different type.
-    /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
-    /// [`tag`][Self::tag] method.
-    pub fn as_optional_tensor_list(&self) -> OptionalTensorList {
-        self.try_into().expect("Invalid type")
+    /// Returns `None` if the value is of different type.
+    pub fn as_optional_tensor_list(&self) -> Option<OptionalTensorList> {
+        self.try_into().ok()
     }
 
     /// Get the tag indicating the type of the value.
@@ -637,16 +593,16 @@ impl std::fmt::Debug for EValue<'_> {
         let mut st = f.debug_struct("EValue");
         st.field("tag", &self.tag());
         match self.tag() {
-            Tag::Int => st.field("value", &self.as_i64()),
-            Tag::Double => st.field("value", &self.as_f64()),
-            Tag::Bool => st.field("value", &self.as_bool()),
-            Tag::Tensor => st.field("value", &self.as_tensor()),
-            Tag::String => st.field("value", &self.as_chars()),
-            Tag::ListInt => st.field("value", &self.as_i64_list()),
-            Tag::ListDouble => st.field("value", &self.as_f64_list()),
-            Tag::ListBool => st.field("value", &self.as_bool_list()),
-            Tag::ListTensor => st.field("value", &self.as_tensor_list()),
-            Tag::ListOptionalTensor => st.field("value", &self.as_optional_tensor_list()),
+            Tag::Int => st.field("value", &self.as_i64().unwrap()),
+            Tag::Double => st.field("value", &self.as_f64().unwrap()),
+            Tag::Bool => st.field("value", &self.as_bool().unwrap()),
+            Tag::Tensor => st.field("value", &self.as_tensor().unwrap()),
+            Tag::String => st.field("value", &self.as_chars().unwrap()),
+            Tag::ListInt => st.field("value", &self.as_i64_list().unwrap()),
+            Tag::ListDouble => st.field("value", &self.as_f64_list().unwrap()),
+            Tag::ListBool => st.field("value", &self.as_bool_list().unwrap()),
+            Tag::ListTensor => st.field("value", &self.as_tensor_list().unwrap()),
+            Tag::ListOptionalTensor => st.field("value", &self.as_optional_tensor_list().unwrap()),
             Tag::ListScalar => st.field("value", &"Unsupported type: ListScalar"),
             Tag::None => st.field("value", &"None"),
         };
@@ -1100,13 +1056,13 @@ mod tests {
         {
             let evalue = EValue::new(42);
             assert_eq!(evalue.tag(), Tag::Int);
-            assert_eq!(evalue.as_i64(), 42);
+            assert_eq!(evalue.as_i64().unwrap(), 42);
         }
         {
             let storage = pin::pin!(Storage::<EValue>::default());
             let evalue = EValue::new_in_storage(17, storage);
             assert_eq!(evalue.tag(), Tag::Int);
-            assert_eq!(evalue.as_i64(), 17);
+            assert_eq!(evalue.as_i64().unwrap(), 17);
         }
     }
 
@@ -1121,7 +1077,7 @@ mod tests {
 
             let evalue = EValue::new(list);
             assert_eq!(evalue.tag(), Tag::ListInt);
-            assert_eq!(evalue.as_i64_list(), &[42, 17, 6]);
+            assert_eq!(evalue.as_i64_list().unwrap(), &[42, 17, 6]);
         }
         {
             let evalue1_storage = pin::pin!(Storage::<EValue>::default());
@@ -1141,7 +1097,7 @@ mod tests {
             let evalue_storage = pin::pin!(Storage::<EValue>::default());
             let evalue = EValue::new_in_storage(list, evalue_storage);
             assert_eq!(evalue.tag(), Tag::ListInt);
-            assert_eq!(evalue.as_i64_list(), &[42, 17, 6]);
+            assert_eq!(evalue.as_i64_list().unwrap(), &[42, 17, 6]);
         }
     }
 
@@ -1151,13 +1107,13 @@ mod tests {
         {
             let evalue = EValue::new(42.0);
             assert_eq!(evalue.tag(), Tag::Double);
-            assert_eq!(evalue.as_f64(), 42.0);
+            assert_eq!(evalue.as_f64().unwrap(), 42.0);
         }
         {
             let storage = pin::pin!(Storage::<EValue>::default());
             let evalue = EValue::new_in_storage(17.0, storage);
             assert_eq!(evalue.tag(), Tag::Double);
-            assert_eq!(evalue.as_f64(), 17.0);
+            assert_eq!(evalue.as_f64().unwrap(), 17.0);
         }
     }
 
@@ -1169,13 +1125,13 @@ mod tests {
         {
             let evalue = EValue::new(list.as_slice());
             assert_eq!(evalue.tag(), Tag::ListDouble);
-            assert_eq!(evalue.as_f64_list(), [42.0, 17.0, 6.0]);
+            assert_eq!(evalue.as_f64_list().unwrap(), [42.0, 17.0, 6.0]);
         }
         {
             let storage = pin::pin!(Storage::<EValue>::default());
             let evalue = EValue::new_in_storage(list.as_slice(), storage);
             assert_eq!(evalue.tag(), Tag::ListDouble);
-            assert_eq!(evalue.as_f64_list(), [42.0, 17.0, 6.0]);
+            assert_eq!(evalue.as_f64_list().unwrap(), [42.0, 17.0, 6.0]);
         }
     }
 
@@ -1185,13 +1141,13 @@ mod tests {
         {
             let evalue = EValue::new(true);
             assert_eq!(evalue.tag(), Tag::Bool);
-            assert!(evalue.as_bool());
+            assert!(evalue.as_bool().unwrap());
         }
         {
             let storage = pin::pin!(Storage::<EValue>::default());
             let evalue = EValue::new_in_storage(false, storage);
             assert_eq!(evalue.tag(), Tag::Bool);
-            assert!(!evalue.as_bool());
+            assert!(!evalue.as_bool().unwrap());
         }
     }
 
@@ -1203,13 +1159,13 @@ mod tests {
         {
             let evalue = EValue::new(list.as_slice());
             assert_eq!(evalue.tag(), Tag::ListBool);
-            assert_eq!(evalue.as_bool_list(), [true, false, true]);
+            assert_eq!(evalue.as_bool_list().unwrap(), [true, false, true]);
         }
         {
             let storage = pin::pin!(Storage::<EValue>::default());
             let evalue = EValue::new_in_storage(list.as_slice(), storage);
             assert_eq!(evalue.tag(), Tag::ListBool);
-            assert_eq!(evalue.as_bool_list(), [true, false, true]);
+            assert_eq!(evalue.as_bool_list().unwrap(), [true, false, true]);
         }
     }
 
@@ -1222,15 +1178,15 @@ mod tests {
         {
             let evalue = EValue::new(string);
             assert_eq!(evalue.tag(), Tag::String);
-            assert_eq!(evalue.as_cstr(), string);
-            assert_eq!(evalue.as_chars(), chars);
+            assert_eq!(evalue.as_cstr().unwrap(), string);
+            assert_eq!(evalue.as_chars().unwrap(), chars);
         }
         {
             let storage = pin::pin!(Storage::<EValue>::default());
             let evalue = EValue::new_in_storage(string, storage);
             assert_eq!(evalue.tag(), Tag::String);
-            assert_eq!(evalue.as_cstr(), string);
-            assert_eq!(evalue.as_chars(), chars);
+            assert_eq!(evalue.as_cstr().unwrap(), string);
+            assert_eq!(evalue.as_chars().unwrap(), chars);
         }
     }
 
@@ -1249,14 +1205,14 @@ mod tests {
             // Borrow tensor by EValue
             let evalue = EValue::new(&tensor);
             assert_eq!(evalue.tag(), Tag::Tensor);
-            let tensor = evalue.as_tensor().into_typed::<i32>();
+            let tensor = evalue.as_tensor().unwrap().into_typed::<i32>();
             let tensor_data = unsafe { std::slice::from_raw_parts(tensor.as_ptr(), data.len()) };
             assert_eq!(tensor_data, data);
 
             // Move tensor into evalue
             let evalue = EValue::new(tensor);
             assert_eq!(evalue.tag(), Tag::Tensor);
-            let tensor = evalue.as_tensor().into_typed::<i32>();
+            let tensor = evalue.as_tensor().unwrap().into_typed::<i32>();
             let tensor_data = unsafe { std::slice::from_raw_parts(tensor.as_ptr(), data.len()) };
             assert_eq!(tensor_data, data);
         }
@@ -1265,7 +1221,7 @@ mod tests {
             let tensor = TensorPtr::from_slice(&data);
             let evalue = EValue::new(&tensor);
             assert_eq!(evalue.tag(), Tag::Tensor);
-            let tensor = evalue.as_tensor().into_typed::<i32>();
+            let tensor = evalue.as_tensor().unwrap().into_typed::<i32>();
             let tensor_data = unsafe { std::slice::from_raw_parts(tensor.as_ptr(), data.len()) };
             assert_eq!(tensor_data, data);
         }
@@ -1281,7 +1237,7 @@ mod tests {
             let evalue_storage = pin::pin!(Storage::<EValue>::default());
             let evalue = EValue::new_in_storage(&tensor, evalue_storage);
             assert_eq!(evalue.tag(), Tag::Tensor);
-            let tensor = evalue.as_tensor().into_typed::<i32>();
+            let tensor = evalue.as_tensor().unwrap().into_typed::<i32>();
             let tensor_data = unsafe { std::slice::from_raw_parts(tensor.as_ptr(), data.len()) };
             assert_eq!(tensor_data, data);
 
@@ -1289,7 +1245,7 @@ mod tests {
             let evalue_storage = pin::pin!(Storage::<EValue>::default());
             let evalue = EValue::new_in_storage(tensor, evalue_storage);
             assert_eq!(evalue.tag(), Tag::Tensor);
-            let tensor = evalue.as_tensor().into_typed::<i32>();
+            let tensor = evalue.as_tensor().unwrap().into_typed::<i32>();
             let tensor_data = unsafe { std::slice::from_raw_parts(tensor.as_ptr(), data.len()) };
             assert_eq!(tensor_data, data);
         }
@@ -1330,7 +1286,7 @@ mod tests {
 
             let evalue = EValue::new(list);
             assert_eq!(evalue.tag(), Tag::ListTensor);
-            let tensor_list = evalue.as_tensor_list();
+            let tensor_list = evalue.as_tensor_list().unwrap();
             assert_eq!(tensor_list.len(), 3);
 
             for (i, data) in [data1.as_slice(), &data2, &data3].iter().enumerate() {
@@ -1354,7 +1310,7 @@ mod tests {
 
             let evalue = EValue::new(list);
             assert_eq!(evalue.tag(), Tag::ListTensor);
-            let tensor_list = evalue.as_tensor_list();
+            let tensor_list = evalue.as_tensor_list().unwrap();
             assert_eq!(tensor_list.len(), 3);
 
             for (i, data) in [data1.as_slice(), &data2, &data3].iter().enumerate() {
@@ -1403,7 +1359,7 @@ mod tests {
             let evalue_storage = pin::pin!(Storage::<EValue>::default());
             let evalue = EValue::new_in_storage(list, evalue_storage);
             assert_eq!(evalue.tag(), Tag::ListTensor);
-            let tensor_list = evalue.as_tensor_list();
+            let tensor_list = evalue.as_tensor_list().unwrap();
             assert_eq!(tensor_list.len(), 3);
 
             for (i, data) in [data1.as_slice(), &data2, &data3].iter().enumerate() {
@@ -1458,7 +1414,7 @@ mod tests {
 
             let evalue = EValue::new(list);
             assert_eq!(evalue.tag(), Tag::ListOptionalTensor);
-            let tensor_list = evalue.as_optional_tensor_list();
+            let tensor_list = evalue.as_optional_tensor_list().unwrap();
             assert_eq!(tensor_list.len(), 4);
 
             for (i, data) in [Some(data1.as_slice()), Some(&data2), None, Some(&data4)]
@@ -1503,7 +1459,7 @@ mod tests {
 
             let evalue = EValue::new(list);
             assert_eq!(evalue.tag(), Tag::ListOptionalTensor);
-            let tensor_list = evalue.as_optional_tensor_list();
+            let tensor_list = evalue.as_optional_tensor_list().unwrap();
             assert_eq!(tensor_list.len(), 4);
 
             for (i, data) in [Some(data1.as_slice()), Some(&data2), None, Some(&data4)]
@@ -1571,7 +1527,7 @@ mod tests {
             let evalue_storage = pin::pin!(Storage::<EValue>::default());
             let evalue = EValue::new_in_storage(list, evalue_storage);
             assert_eq!(evalue.tag(), Tag::ListOptionalTensor);
-            let tensor_list = evalue.as_optional_tensor_list();
+            let tensor_list = evalue.as_optional_tensor_list().unwrap();
             assert_eq!(tensor_list.len(), 4);
 
             for (i, data) in [Some(data1.as_slice()), Some(&data2), None, Some(&data4)]

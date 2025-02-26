@@ -87,6 +87,7 @@ impl Gpt2 {
             // sampler expects.
             let logits = model_outputs[0]
                 .as_tensor()
+                .unwrap()
                 .as_typed::<f32>()
                 .as_array_dyn()
                 .squeeze()

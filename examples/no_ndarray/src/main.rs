@@ -29,7 +29,7 @@ fn main() {
     let outputs = module.forward(&[input_evalue1, input_evalue2]).unwrap();
     assert_eq!(outputs.len(), 1);
     let output = outputs.into_iter().next().unwrap();
-    let output = output.as_tensor().into_typed::<f32>();
+    let output = output.as_tensor().unwrap().into_typed::<f32>();
 
     assert_eq!(output.dim(), 1);
     assert_eq!(output.sizes()[0], 1);

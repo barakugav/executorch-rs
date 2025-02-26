@@ -65,7 +65,8 @@ fn main() {
         .into_iter()
         .next()
         .unwrap()
-        .as_i64() as usize;
+        .as_i64()
+        .unwrap() as usize;
     // let bos_token = model
     //     .execute("get_bos_id", &[])
     //     .unwrap()
@@ -126,6 +127,7 @@ fn main() {
         assert_eq!(outputs.len(), 1);
         let logits = outputs[0]
             .as_tensor()
+            .unwrap()
             .into_typed::<executorch::half::bf16>();
         let logits = logits
             .as_array()

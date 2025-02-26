@@ -69,7 +69,7 @@ fn real_main() {
 
     let outputs = method_exe.execute().unwrap();
     let output = outputs.get(0);
-    let output = output.as_tensor().into_typed::<f32>();
+    let output = output.as_tensor().unwrap().into_typed::<f32>();
 
     libc_println!("Output tensor computed: {:?}", output);
     assert_eq!(array!(2.0), output.as_array());

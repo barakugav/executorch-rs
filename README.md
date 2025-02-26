@@ -47,7 +47,7 @@ let inputs = [tensor1.into_evalue(), tensor2.into_evalue()];
 let outputs = module.forward(&inputs).unwrap();
 assert_eq!(outputs.len(), 1);
 let output = outputs.into_iter().next().unwrap();
-let output = output.as_tensor().into_typed::<f32>();
+let output = output.as_tensor().unwrap().into_typed::<f32>();
 
 println!("Output tensor computed: {:?}", output);
 assert_eq!(array![2.0], output.as_array());
