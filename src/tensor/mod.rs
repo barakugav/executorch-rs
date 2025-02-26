@@ -36,7 +36,7 @@ use ndarray::{ArrayBase, ArrayView, ArrayViewMut, ShapeBuilder};
 
 use crate::memory::{Storable, Storage};
 use crate::util::{Destroy, NonTriviallyMovable, __ArrayRefImpl};
-use crate::{et_c, et_rs_c, Error, ErrorKind, Result};
+use crate::{et_c, et_rs_c, CError, Error, Result};
 
 /// A type that represents the sizes (dimensions) of a tensor.
 pub type SizesType = et_c::aten::SizesType;
@@ -433,7 +433,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// Fails if the scalar type of the tensor does not match the required one.
     pub fn try_into_typed<S: Scalar>(self) -> Result<TensorBase<'a, D::Typed<S>>> {
         if self.scalar_type() != Some(S::TYPE) {
-            return Err(Error::simple(ErrorKind::InvalidType));
+            return Err(Error::CError(CError::InvalidType));
         }
         // Safety: the scalar type is checked, D::Typed is compatible with D
         Ok(unsafe { TensorBase::<'a, D::Typed<S>>::convert_from(self) })
@@ -454,7 +454,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// Fails if the scalar type of the tensor does not match the required one.
     pub fn try_as_typed<S: Scalar>(&self) -> Result<TensorBase<<D::Immutable as Data>::Typed<S>>> {
         if self.scalar_type() != Some(S::TYPE) {
-            return Err(Error::simple(ErrorKind::InvalidType));
+            return Err(Error::CError(CError::InvalidType));
         }
         // Safety: the scalar type is checked, <D::Immutable as Data>::Typed<S> is compatible with D and its
         //  immutable (we took &self)
@@ -479,7 +479,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
         D: DataMut,
     {
         if self.scalar_type() != Some(S::TYPE) {
-            return Err(Error::simple(ErrorKind::InvalidType));
+            return Err(Error::CError(CError::InvalidType));
         }
         // Safety: the scalar type is checked, D::Typed<S> is compatible with D
         Ok(unsafe { TensorBase::<D::Typed<S>>::convert_from_mut_ref(self) })

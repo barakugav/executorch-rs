@@ -148,7 +148,7 @@ pub mod tensor;
 pub mod util;
 
 pub(crate) use error::Result;
-pub use error::{Error, ErrorKind};
+pub use error::{CError, Error};
 
 #[cfg(feature = "ndarray")]
 pub use ndarray;

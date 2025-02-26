@@ -4,40 +4,18 @@ use std::mem::MaybeUninit;
 
 use crate::{et_c, util::IntoRust};
 
-use et_c::runtime::Error as CError;
+use et_c::runtime::Error as RawCError;
 
 /// ExecuTorch Error type.
-pub struct Error {
-    inner: ErrorInner,
-}
-enum ErrorInner {
-    Simple(ErrorKind),
-}
-impl Error {
-    pub(crate) fn simple(kind: ErrorKind) -> Self {
-        Self {
-            inner: ErrorInner::Simple(kind),
-        }
-    }
-
-    /// Get the kind of error.
-    pub fn kind(&self) -> ErrorKind {
-        match self.inner {
-            ErrorInner::Simple(err) => err,
-        }
-    }
-}
-impl std::fmt::Debug for Error {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.inner {
-            ErrorInner::Simple(kind) => fmt.debug_tuple("Kind").field(&kind).finish(),
-        }
-    }
+#[derive(Debug)]
+pub enum Error {
+    /// An error from the Cpp underlying library.
+    CError(CError),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self.inner {
-            ErrorInner::Simple(err) => std::fmt::Display::fmt(&err, fmt),
+        match self {
+            Error::CError(error) => std::fmt::Display::fmt(error, fmt),
         }
     }
 }
@@ -47,7 +25,7 @@ impl std::error::Error for Error {}
 /// Categories of errors that can occur in executorch.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 #[non_exhaustive]
-pub enum ErrorKind {
+pub enum CError {
     /* System errors */
     //
     /// An internal error occurred.
@@ -90,41 +68,41 @@ pub enum ErrorKind {
     /// Execute stage: The handle is invalid.
     DelegateInvalidHandle,
 }
-impl std::fmt::Display for ErrorKind {
+impl std::fmt::Display for CError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{self:?}")
     }
 }
 #[cfg(feature = "std")]
-impl std::error::Error for ErrorKind {}
+impl std::error::Error for CError {}
 
-impl IntoRust for CError {
+impl IntoRust for RawCError {
     type RsType = Result<()>;
     fn rs(self) -> Self::RsType {
-        Err(Error::simple(match self {
-            CError::Ok => return Ok(()),
-            CError::Internal => ErrorKind::Internal,
-            CError::InvalidState => ErrorKind::InvalidState,
-            CError::EndOfMethod => ErrorKind::EndOfMethod,
-            CError::NotSupported => ErrorKind::NotSupported,
-            CError::NotImplemented => ErrorKind::NotImplemented,
-            CError::InvalidArgument => ErrorKind::InvalidArgument,
-            CError::InvalidType => ErrorKind::InvalidType,
-            CError::OperatorMissing => ErrorKind::OperatorMissing,
-            CError::NotFound => ErrorKind::NotFound,
-            CError::MemoryAllocationFailed => ErrorKind::MemoryAllocationFailed,
-            CError::AccessFailed => ErrorKind::AccessFailed,
-            CError::InvalidProgram => ErrorKind::InvalidProgram,
-            CError::DelegateInvalidCompatibility => ErrorKind::DelegateInvalidCompatibility,
-            CError::DelegateMemoryAllocationFailed => ErrorKind::DelegateMemoryAllocationFailed,
-            CError::DelegateInvalidHandle => ErrorKind::DelegateInvalidHandle,
+        Err(Error::CError(match self {
+            RawCError::Ok => return Ok(()),
+            RawCError::Internal => CError::Internal,
+            RawCError::InvalidState => CError::InvalidState,
+            RawCError::EndOfMethod => CError::EndOfMethod,
+            RawCError::NotSupported => CError::NotSupported,
+            RawCError::NotImplemented => CError::NotImplemented,
+            RawCError::InvalidArgument => CError::InvalidArgument,
+            RawCError::InvalidType => CError::InvalidType,
+            RawCError::OperatorMissing => CError::OperatorMissing,
+            RawCError::NotFound => CError::NotFound,
+            RawCError::MemoryAllocationFailed => CError::MemoryAllocationFailed,
+            RawCError::AccessFailed => CError::AccessFailed,
+            RawCError::InvalidProgram => CError::InvalidProgram,
+            RawCError::DelegateInvalidCompatibility => CError::DelegateInvalidCompatibility,
+            RawCError::DelegateMemoryAllocationFailed => CError::DelegateMemoryAllocationFailed,
+            RawCError::DelegateInvalidHandle => CError::DelegateInvalidHandle,
         }))
     }
 }
 
 pub(crate) type Result<T> = std::result::Result<T, Error>;
 
-pub(crate) fn try_new<T>(f: impl FnOnce(*mut T) -> CError) -> crate::Result<T> {
+pub(crate) fn try_new<T>(f: impl FnOnce(*mut T) -> RawCError) -> crate::Result<T> {
     let mut value = MaybeUninit::uninit();
     let err = f(value.as_mut_ptr());
     err.rs().map(|_| unsafe { value.assume_init() })
