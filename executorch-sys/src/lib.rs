@@ -128,13 +128,13 @@ mod c_link {
     include!(concat!(env!("OUT_DIR"), "/executorch_bindings.rs"));
 }
 
-#[cfg(feature = "tensor-ptr")]
+#[cfg(any(feature = "tensor-ptr", feature = "module"))]
 mod cxx_bridge;
-#[cfg(feature = "tensor-ptr")]
+#[cfg(any(feature = "tensor-ptr", feature = "module"))]
 pub use cxx;
 
 #[cfg(feature = "tensor-ptr")]
-pub use cxx_bridge::cxx_util;
+pub use cxx_bridge::tensor_ptr::cxx_util;
 
 #[allow(missing_docs)]
 pub mod executorch {
@@ -148,8 +148,10 @@ pub mod executorch_rs {
 
     /// cxx
     pub mod cxx {
+        #[cfg(feature = "module")]
+        pub use super::super::cxx_bridge::module::ffi as module;
         #[cfg(feature = "tensor-ptr")]
-        pub use super::super::cxx_bridge::ffi::*;
+        pub use super::super::cxx_bridge::tensor_ptr::ffi as tensor_ptr;
     }
 }
 

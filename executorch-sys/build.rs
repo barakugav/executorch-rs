@@ -10,7 +10,7 @@ fn main() {
     // );
 
     build_c_bridge();
-    #[cfg(feature = "tensor-ptr")]
+    #[cfg(any(feature = "tensor-ptr", feature = "module"))]
     build_cxx_bridge();
     generate_bindings();
     link_executorch();
@@ -38,10 +38,17 @@ fn build_c_bridge() {
     println!("cargo::rerun-if-changed={}", bridge_dir.to_str().unwrap());
 }
 
-#[cfg(feature = "tensor-ptr")]
+#[cfg(any(feature = "tensor-ptr", feature = "module"))]
 fn build_cxx_bridge() {
     let bridge_dir = cpp_bridge_dir();
-    let mut builder = cxx_build::bridge("src/cxx_bridge.rs");
+    let mut bridges = Vec::new();
+    if cfg!(feature = "module") {
+        bridges.push("src/cxx_bridge/module.rs");
+    }
+    if cfg!(feature = "tensor-ptr") {
+        bridges.push("src/cxx_bridge/tensor_ptr.rs");
+    }
+    let mut builder = cxx_build::bridges(bridges);
     builder.cpp(true).std("c++17");
     // TODO: cpp executorch doesnt support nostd yet
     // if !cfg!(feature = "std") {
@@ -217,7 +224,9 @@ fn generate_bindings() {
         .opaque_type("executorch::extension::MmapDataLoader")
         .opaque_type("executorch::extension::BufferDataLoader")
         // feature module
-        .opaque_type("executorch::extension::Module")
+        .blocklist_item("executorch::extension::Module")
+        .blocklist_item("executorch::extension::Module_Module.*")
+        .blocklist_item("executorch::extension::Module_[a-z].*")
         .default_enum_style(bindgen::EnumVariation::Rust {
             non_exhaustive: false,
         })
@@ -302,7 +311,7 @@ fn cpp_defines() -> Vec<&'static str> {
         defines.push("EXECUTORCH_RS_MODULE");
     }
     if cfg!(feature = "tensor-ptr") {
-        defines.push("EXECUTORCH_RS_TESTOR_PTR");
+        defines.push("EXECUTORCH_RS_TENSOR_PTR");
     }
     if cfg!(feature = "std") {
         defines.push("EXECUTORCH_RS_STD");

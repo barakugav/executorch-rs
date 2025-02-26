@@ -8,24 +8,19 @@
 //!
 //! See the `hello_world` example for how to load and execute a module.
 
-use core::ffi::CStr;
 use std::collections::HashSet;
-use std::ffi::CString;
 use std::path::Path;
-use std::ptr;
 
 use crate::error::try_new;
-use crate::et_rs_c::VecChar;
 use crate::evalue::EValue;
 use crate::program::{MethodMeta, ProgramVerification};
-use crate::util::cpp_vec::CppVecImpl;
-use crate::util::{self, ArrayRef, Destroy, IntoRust, NonTriviallyMovable, NonTriviallyMovableVec};
+use crate::util::{ArrayRef, IntoRust, NonTriviallyMovableVec};
 use crate::{et_c, et_rs_c, Result};
 
 /// A facade class for loading programs and executing methods within them.
 ///
 /// See the `hello_world` example for how to load and execute a module.
-pub struct Module(NonTriviallyMovable<'static, et_c::extension::Module>);
+pub struct Module(executorch_sys::cxx::UniquePtr<et_rs_c::cxx::module::Module>);
 impl Module {
     /// Constructs an instance by loading a program from a file with specified
     /// memory locking behavior.
@@ -43,15 +38,12 @@ impl Module {
     ///
     /// If the file path is not a valid UTF-8 string or contains a null character.
     pub fn new(file_path: impl AsRef<Path>, load_mode: Option<LoadMode>) -> Self {
-        let file_path = CString::new(file_path.as_ref().to_str().unwrap()).unwrap();
-        let file_path = ArrayRef::from_slice(util::cstr2chars(&file_path));
         let load_mode = load_mode.unwrap_or(LoadMode::MmapUseMlock);
-        let event_tracer = ptr::null_mut(); // TODO: support event tracer
-        Self(unsafe {
-            NonTriviallyMovable::new_boxed(|p| {
-                et_rs_c::Module_new(p, file_path.0, load_mode, event_tracer)
-            })
-        })
+        // let event_tracer = ptr::null_mut(); // TODO: support event tracer
+        Self(et_rs_c::cxx::module::Module_new(
+            file_path.as_ref().to_str().unwrap(),
+            load_mode,
+        ))
     }
 
     /// Loads the program using the specified data loader and memory allocator.
@@ -66,7 +58,7 @@ impl Module {
     /// An Error to indicate success or failure of the loading process.
     pub fn load(&mut self, verification: Option<ProgramVerification>) -> Result<()> {
         let verification = verification.unwrap_or(ProgramVerification::Minimal);
-        unsafe { et_c::extension::Module_load(self.0.as_mut().unwrap(), verification) }.rs()
+        et_rs_c::cxx::module::Module_load(self.0.as_mut().unwrap(), verification).rs()
     }
 
     // /// Checks if the program is loaded.
@@ -85,18 +77,9 @@ impl Module {
     ///
     /// A set of strings containing the names of the methods, or an error if the program or method failed to load.
     pub fn method_names(&mut self) -> Result<HashSet<String>> {
-        let names = try_new(|names| unsafe {
-            et_rs_c::Module_method_names(self.0.as_mut().unwrap(), names)
-        })?
-        .rs();
-        Ok(names
-            .as_slice()
-            .iter()
-            .map(|s: &VecChar| {
-                let s = unsafe { CStr::from_ptr(s.as_slice().as_ptr()) };
-                s.to_str().unwrap().to_string()
-            })
-            .collect())
+        let mut names = Vec::new();
+        et_rs_c::cxx::module::Module_method_names(self.0.as_mut().unwrap(), &mut names).rs()?;
+        Ok(names.into_iter().map(|s| s.to_string()).collect())
     }
 
     /// Load a specific method from the program and set up memory management if needed.
@@ -114,9 +97,8 @@ impl Module {
     ///
     /// If the method name is not a valid UTF-8 string or contains a null character.
     pub fn load_method(&mut self, method_name: impl AsRef<str>) -> Result<()> {
-        let method_name = CString::new(method_name.as_ref()).unwrap();
-        let method_name = ArrayRef::from_slice(util::cstr2chars(&method_name));
-        unsafe { et_rs_c::Module_load_method(self.0.as_mut().unwrap(), method_name.0) }.rs()
+        et_rs_c::cxx::module::Module_load_method(self.0.as_mut().unwrap(), method_name.as_ref())
+            .rs()
     }
 
     /// Checks if a specific method is loaded.
@@ -133,9 +115,10 @@ impl Module {
     ///
     /// If the method name is not a valid UTF-8 string or contains a null character.
     pub fn is_method_loaded(&self, method_name: impl AsRef<str>) -> bool {
-        let method_name = CString::new(method_name.as_ref()).unwrap();
-        let method_name = ArrayRef::from_slice(util::cstr2chars(&method_name));
-        unsafe { et_rs_c::Module_is_method_loaded(self.0.as_ref(), method_name.0) }
+        et_rs_c::cxx::module::Module_is_method_loaded(
+            self.0.as_ref().unwrap(),
+            method_name.as_ref(),
+        )
     }
 
     /// Get a method metadata struct by method name.
@@ -152,11 +135,13 @@ impl Module {
     /// # Panics
     ///
     /// If the method name is not a valid UTF-8 string or contains a null character.
-    pub fn method_meta(&self, method_name: impl AsRef<str>) -> Result<MethodMeta> {
-        let method_name = CString::new(method_name.as_ref()).unwrap();
-        let method_name = ArrayRef::from_slice(util::cstr2chars(&method_name));
+    pub fn method_meta(&mut self, method_name: impl AsRef<str>) -> Result<MethodMeta> {
         let meta = try_new(|meta| unsafe {
-            et_rs_c::Module_method_meta(self.0.as_ref() as *const _ as *mut _, method_name.0, meta)
+            et_rs_c::cxx::module::Module_method_meta(
+                self.0.as_mut().unwrap(),
+                method_name.as_ref(),
+                meta,
+            )
         })?;
         Ok(unsafe { MethodMeta::new(meta) })
     }
@@ -181,8 +166,6 @@ impl Module {
         method_name: impl AsRef<str>,
         inputs: &[EValue],
     ) -> Result<Vec<EValue<'a>>> {
-        let method_name = CString::new(method_name.as_ref()).unwrap();
-        let method_name = ArrayRef::from_slice(util::cstr2chars(&method_name));
         let inputs = unsafe {
             NonTriviallyMovableVec::new(inputs.len(), |i, p| {
                 et_rs_c::EValue_copy(inputs[i].as_evalue(), p.as_mut_ptr())
@@ -190,7 +173,12 @@ impl Module {
         };
         let inputs = ArrayRef::from_slice(inputs.as_slice());
         let mut outputs = try_new(|outputs| unsafe {
-            et_rs_c::Module_execute(self.0.as_mut().unwrap(), method_name.0, inputs.0, outputs)
+            et_rs_c::cxx::module::Module_execute(
+                self.0.as_mut().unwrap(),
+                method_name.as_ref(),
+                inputs.0,
+                outputs,
+            )
         })?
         .rs();
         Ok(outputs
@@ -212,11 +200,6 @@ impl Module {
     /// A result object containing either a vector of output values from the 'forward' method or an error to indicate failure.
     pub fn forward<'a>(&'a mut self, inputs: &[EValue]) -> Result<Vec<EValue<'a>>> {
         self.execute("forward", inputs)
-    }
-}
-impl Destroy for et_c::extension::Module {
-    unsafe fn destroy(&mut self) {
-        unsafe { et_rs_c::Module_destructor(self) }
     }
 }
 

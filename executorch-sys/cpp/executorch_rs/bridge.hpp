@@ -340,14 +340,4 @@ namespace executorch_rs
     void EValue_move(EValue *src, EValue *dst);
 
     executorch::extension::BufferDataLoader BufferDataLoader_new(const void *data, size_t size);
-
-#if defined(EXECUTORCH_RS_MODULE)
-    void Module_new(executorch::extension::Module *self, ArrayRefChar file_path, const executorch::extension::Module::LoadMode load_mode, executorch::runtime::EventTracer *event_tracer);
-    void Module_destructor(executorch::extension::Module &self);
-    executorch::runtime::Error Module_method_names(executorch::extension::Module &self, VecVecChar *method_names_out);
-    executorch::runtime::Error Module_load_method(executorch::extension::Module &self, ArrayRefChar method_name);
-    bool Module_is_method_loaded(const executorch::extension::Module &self, ArrayRefChar method_name);
-    executorch::runtime::Error Module_method_meta(executorch::extension::Module &self, ArrayRefChar method_name, MethodMeta *method_meta_out);
-    executorch::runtime::Error Module_execute(executorch::extension::Module &self, ArrayRefChar method_name, ArrayRefEValue inputs, VecEValue *outputs);
-#endif
 }

@@ -319,7 +319,7 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
         // TODO: check sizes, dim_order and strides make sense with respect to the data_bound
 
         let tensor = unsafe {
-            executorch_sys::executorch_rs::cxx::TensorPtr_new(
+            executorch_sys::executorch_rs::cxx::tensor_ptr::TensorPtr_new(
                 self.sizes,
                 data_ptr as *const u8 as *mut u8,
                 dim_order,
@@ -373,7 +373,7 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
         // TODO: check sizes, dim_order and strides make sense with respect to the data_bound
 
         let tensor = unsafe {
-            executorch_sys::executorch_rs::cxx::TensorPtr_new(
+            executorch_sys::executorch_rs::cxx::tensor_ptr::TensorPtr_new(
                 self.sizes,
                 data_ptr as *const u8 as *mut u8,
                 dim_order,

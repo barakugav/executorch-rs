@@ -1,5 +1,3 @@
-use cxx::{type_id, ExternType};
-
 /// Utility functions and structs used by the cxx bridge.
 pub mod cxx_util {
     /// A wrapper around `std::any::Any` that can be used in the cxx bridge.
@@ -72,19 +70,4 @@ pub mod ffi {
     }
 
     impl SharedPtr<Tensor> {}
-}
-
-unsafe impl ExternType for crate::executorch::runtime::etensor::ScalarType {
-    type Id = type_id!("executorch::aten::ScalarType");
-    type Kind = cxx::kind::Trivial;
-}
-
-unsafe impl ExternType for crate::executorch::runtime::TensorShapeDynamism {
-    type Id = type_id!("executorch::aten::TensorShapeDynamism");
-    type Kind = cxx::kind::Trivial;
-}
-
-unsafe impl ExternType for crate::executorch_rs::Tensor {
-    type Id = type_id!("executorch_rs::Tensor");
-    type Kind = cxx::kind::Opaque;
 }
