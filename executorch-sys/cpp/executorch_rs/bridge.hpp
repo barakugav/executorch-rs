@@ -65,6 +65,21 @@ namespace executorch_rs
         size_t _blob[11];
     };
     static_assert(layout_of<Program>() == layout_of<executorch::runtime::Program>());
+    struct TensorInfo
+    {
+        size_t _blob[6];
+    };
+    static_assert(layout_of<TensorInfo>() == layout_of<executorch::runtime::TensorInfo>());
+    struct MethodMeta
+    {
+        size_t _blob[1];
+    };
+    static_assert(layout_of<MethodMeta>() == layout_of<executorch::runtime::MethodMeta>());
+    struct Method
+    {
+        size_t _blob[14];
+    };
+    static_assert(layout_of<Method>() == layout_of<executorch::runtime::Method>());
 
     struct OptionalTensor
     {
@@ -243,24 +258,34 @@ namespace executorch_rs
     // Program
     executorch::runtime::Program::HeaderStatus executorch_Program_check_header(const void *data, size_t size);
     executorch::runtime::Error Program_load(executorch::runtime::DataLoader *loader, executorch::runtime::Program::Verification verification, Program *out);
-    executorch::runtime::Error Program_load_method(const Program *self, const char *method_name, executorch::runtime::MemoryManager *memory_manager, executorch::runtime::EventTracer *event_tracer, executorch::runtime::Method *out);
+    executorch::runtime::Error Program_load_method(const Program *self, const char *method_name, executorch::runtime::MemoryManager *memory_manager, executorch::runtime::EventTracer *event_tracer, Method *out);
     executorch::runtime::Error Program_get_method_name(const Program *self, size_t method_index, const char **out);
-    executorch::runtime::Error Program_method_meta(const Program *self, const char *method_name, executorch::runtime::MethodMeta *method_meta_out);
+    executorch::runtime::Error Program_method_meta(const Program *self, const char *method_name, MethodMeta *method_meta_out);
     size_t executorch_Program_num_methods(const Program *self);
     void Program_destructor(Program *self);
 
     // MethodMeta
-    executorch::runtime::Error executorch_Method_set_input(executorch::runtime::Method &self, const EValue *input_evalue, size_t input_idx);
-    const EValue *executorch_Method_get_output(const executorch::runtime::Method &self, size_t i);
-    executorch::runtime::Error MethodMeta_input_tag(const executorch::runtime::MethodMeta &self, size_t index, executorch::runtime::Tag *tag_out);
-    executorch::runtime::Error MethodMeta_output_tag(const executorch::runtime::MethodMeta &self, size_t index, executorch::runtime::Tag *tag_out);
-    executorch::runtime::Error MethodMeta_input_tensor_meta(const executorch::runtime::MethodMeta &self, size_t index, executorch::runtime::TensorInfo *tensor_info_out);
-    executorch::runtime::Error MethodMeta_output_tensor_meta(const executorch::runtime::MethodMeta &self, size_t index, executorch::runtime::TensorInfo *tensor_info_out);
-    executorch::runtime::Error MethodMeta_memory_planned_buffer_size(const executorch::runtime::MethodMeta &self, size_t index, int64_t *size_out);
+    size_t executorch_Method_inputs_size(const Method *self);
+    size_t executorch_Method_outputs_size(const Method *self);
+    executorch::runtime::Error executorch_Method_set_input(Method *self, const EValue *input_evalue, size_t input_idx);
+    const EValue *executorch_Method_get_output(const Method *self, size_t i);
+    executorch::runtime::Error executorch_Method_execute(Method *self);
+    void executorch_Method_destructor(Method *self);
+    const char *executorch_MethodMeta_name(const MethodMeta *self);
+    size_t executorch_MethodMeta_num_inputs(const MethodMeta *self);
+    size_t executorch_MethodMeta_num_outputs(const MethodMeta *self);
+    size_t executorch_MethodMeta_num_memory_planned_buffers(const MethodMeta *self);
+    executorch::runtime::Error MethodMeta_input_tag(const MethodMeta *self, size_t index, executorch::runtime::Tag *tag_out);
+    executorch::runtime::Error MethodMeta_output_tag(const MethodMeta *self, size_t index, executorch::runtime::Tag *tag_out);
+    executorch::runtime::Error MethodMeta_input_tensor_meta(const MethodMeta *self, size_t index, TensorInfo *tensor_info_out);
+    executorch::runtime::Error MethodMeta_output_tensor_meta(const MethodMeta *self, size_t index, TensorInfo *tensor_info_out);
+    executorch::runtime::Error MethodMeta_memory_planned_buffer_size(const MethodMeta *self, size_t index, int64_t *size_out);
 
     // TensorInfo
-    ArrayRefI32 TensorInfo_sizes(const executorch::runtime::TensorInfo &self);
-    ArrayRefU8 TensorInfo_dim_order(const executorch::runtime::TensorInfo &self);
+    ArrayRefI32 TensorInfo_sizes(const TensorInfo *self);
+    ArrayRefU8 TensorInfo_dim_order(const TensorInfo *self);
+    executorch::aten::ScalarType executorch_TensorInfo_scalar_type(const TensorInfo *self);
+    size_t executorch_TensorInfo_nbytes(const TensorInfo *self);
 
     // Tensor
     void executorch_TensorImpl_new(
@@ -322,7 +347,7 @@ namespace executorch_rs
     executorch::runtime::Error Module_method_names(executorch::extension::Module &self, VecVecChar *method_names_out);
     executorch::runtime::Error Module_load_method(executorch::extension::Module &self, ArrayRefChar method_name);
     bool Module_is_method_loaded(const executorch::extension::Module &self, ArrayRefChar method_name);
-    executorch::runtime::Error Module_method_meta(executorch::extension::Module &self, ArrayRefChar method_name, executorch::runtime::MethodMeta *method_meta_out);
+    executorch::runtime::Error Module_method_meta(executorch::extension::Module &self, ArrayRefChar method_name, MethodMeta *method_meta_out);
     executorch::runtime::Error Module_execute(executorch::extension::Module &self, ArrayRefChar method_name, ArrayRefEValue inputs, VecEValue *outputs);
 #endif
 }

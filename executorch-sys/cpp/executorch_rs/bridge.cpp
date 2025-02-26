@@ -67,35 +67,85 @@ namespace executorch_rs
         return result.error();
     }
 
-    executorch::runtime::Error executorch_Method_set_input(executorch::runtime::Method &self, const EValue *input_evalue, size_t input_idx)
+    size_t executorch_Method_inputs_size(const Method *self)
     {
-        auto input_evalue_ = reinterpret_cast<const executorch::runtime::EValue *>(input_evalue);
-        return self.set_input(*input_evalue_, input_idx);
+        auto self_ = reinterpret_cast<const executorch::runtime::Method *>(self);
+        return self_->inputs_size();
     }
-    const EValue *executorch_Method_get_output(const executorch::runtime::Method &self, size_t i)
+    size_t executorch_Method_outputs_size(const Method *self)
     {
-        const executorch::runtime::EValue *output = &self.get_output(i);
+        auto self_ = reinterpret_cast<const executorch::runtime::Method *>(self);
+        return self_->outputs_size();
+    }
+    executorch::runtime::Error executorch_Method_set_input(Method *self, const EValue *input_evalue, size_t input_idx)
+    {
+        auto self_ = reinterpret_cast<executorch::runtime::Method *>(self);
+        auto input_evalue_ = reinterpret_cast<const executorch::runtime::EValue *>(input_evalue);
+        return self_->set_input(*input_evalue_, input_idx);
+    }
+    const EValue *executorch_Method_get_output(const Method *self, size_t i)
+    {
+        auto self_ = reinterpret_cast<const executorch::runtime::Method *>(self);
+        const executorch::runtime::EValue *output = &self_->get_output(i);
         return reinterpret_cast<const EValue *>(output);
     }
-    executorch::runtime::Error MethodMeta_input_tag(const executorch::runtime::MethodMeta &self, size_t index, executorch::runtime::Tag *tag_out)
+    executorch::runtime::Error executorch_Method_execute(Method *self)
     {
-        return extract_result(self.input_tag(index), tag_out);
+        auto self_ = reinterpret_cast<executorch::runtime::Method *>(self);
+        return self_->execute();
     }
-    executorch::runtime::Error MethodMeta_output_tag(const executorch::runtime::MethodMeta &self, size_t index, executorch::runtime::Tag *tag_out)
+    void executorch_Method_destructor(Method *self)
     {
-        return extract_result(self.output_tag(index), tag_out);
+        auto self_ = reinterpret_cast<executorch::runtime::Method *>(self);
+        self_->~Method();
     }
-    executorch::runtime::Error MethodMeta_input_tensor_meta(const executorch::runtime::MethodMeta &self, size_t index, executorch::runtime::TensorInfo *tensor_info_out)
+    const char *executorch_MethodMeta_name(const MethodMeta *self)
     {
-        return extract_result(self.input_tensor_meta(index), tensor_info_out);
+        auto self_ = reinterpret_cast<const executorch::runtime::MethodMeta *>(self);
+        return self_->name();
+        self_->num_inputs();
     }
-    executorch::runtime::Error MethodMeta_output_tensor_meta(const executorch::runtime::MethodMeta &self, size_t index, executorch::runtime::TensorInfo *tensor_info_out)
+    size_t executorch_MethodMeta_num_inputs(const MethodMeta *self)
     {
-        return extract_result(self.output_tensor_meta(index), tensor_info_out);
+        auto self_ = reinterpret_cast<const executorch::runtime::MethodMeta *>(self);
+        return self_->num_inputs();
     }
-    executorch::runtime::Error MethodMeta_memory_planned_buffer_size(const executorch::runtime::MethodMeta &self, size_t index, int64_t *size_out)
+    size_t executorch_MethodMeta_num_outputs(const MethodMeta *self)
     {
-        return extract_result(self.memory_planned_buffer_size(index), size_out);
+        auto self_ = reinterpret_cast<const executorch::runtime::MethodMeta *>(self);
+        return self_->num_outputs();
+    }
+    size_t executorch_MethodMeta_num_memory_planned_buffers(const MethodMeta *self)
+    {
+        auto self_ = reinterpret_cast<const executorch::runtime::MethodMeta *>(self);
+        return self_->num_memory_planned_buffers();
+    }
+    executorch::runtime::Error MethodMeta_input_tag(const MethodMeta *self, size_t index, executorch::runtime::Tag *tag_out)
+    {
+        auto self_ = reinterpret_cast<const executorch::runtime::MethodMeta *>(self);
+        return extract_result(self_->input_tag(index), tag_out);
+    }
+    executorch::runtime::Error MethodMeta_output_tag(const MethodMeta *self, size_t index, executorch::runtime::Tag *tag_out)
+    {
+        auto self_ = reinterpret_cast<const executorch::runtime::MethodMeta *>(self);
+        return extract_result(self_->output_tag(index), tag_out);
+    }
+    executorch::runtime::Error MethodMeta_input_tensor_meta(const MethodMeta *self, size_t index, TensorInfo *tensor_info_out)
+    {
+        auto self_ = reinterpret_cast<const executorch::runtime::MethodMeta *>(self);
+        auto tensor_info_out_ = reinterpret_cast<executorch::runtime::TensorInfo *>(tensor_info_out);
+        return extract_result(self_->input_tensor_meta(index), tensor_info_out_);
+    }
+    executorch::runtime::Error MethodMeta_output_tensor_meta(const MethodMeta *self, size_t index, TensorInfo *tensor_info_out)
+    {
+        auto self_ = reinterpret_cast<const executorch::runtime::MethodMeta *>(self);
+        auto tensor_info_out_ = reinterpret_cast<executorch::runtime::TensorInfo *>(tensor_info_out);
+        return extract_result(self_->output_tensor_meta(index), tensor_info_out_);
+    }
+    executorch::runtime::Error MethodMeta_memory_planned_buffer_size(const MethodMeta *self, size_t index, int64_t *size_out)
+    {
+        auto self_ = reinterpret_cast<const executorch::runtime::MethodMeta *>(self);
+        return extract_result(self_->memory_planned_buffer_size(index), size_out);
     }
 
     executorch::runtime::MemoryAllocator MemoryAllocator_new(uint32_t size, uint8_t *base_address)
@@ -164,15 +214,16 @@ namespace executorch_rs
         new (out_) executorch::runtime::Program(std::move(program));
         return executorch::runtime::Error::Ok;
     }
-    executorch::runtime::Error Program_load_method(const Program *self, const char *method_name, executorch::runtime::MemoryManager *memory_manager, executorch::runtime::EventTracer *event_tracer, executorch::runtime::Method *out)
+    executorch::runtime::Error Program_load_method(const Program *self, const char *method_name, executorch::runtime::MemoryManager *memory_manager, executorch::runtime::EventTracer *event_tracer, Method *out)
     {
         auto self_ = reinterpret_cast<const executorch::runtime::Program *>(self);
+        auto out_ = reinterpret_cast<executorch::runtime::Method *>(out);
         // return extract_result(std::move(self.load_method(method_name, memory_manager, event_tracer)), out);
         auto res = self_->load_method(method_name, memory_manager, event_tracer);
         if (!res.ok())
             return res.error();
         auto &method = res.get();
-        new (out) executorch::runtime::Method(std::move(method));
+        new (out_) executorch::runtime::Method(std::move(method));
         return executorch::runtime::Error::Ok;
     }
     executorch::runtime::Error Program_get_method_name(const Program *self, size_t method_index, const char **out)
@@ -180,10 +231,11 @@ namespace executorch_rs
         auto self_ = reinterpret_cast<const executorch::runtime::Program *>(self);
         return extract_result(self_->get_method_name(method_index), out);
     }
-    executorch::runtime::Error Program_method_meta(const Program *self, const char *method_name, executorch::runtime::MethodMeta *method_meta_out)
+    executorch::runtime::Error Program_method_meta(const Program *self, const char *method_name, MethodMeta *method_meta_out)
     {
         auto self_ = reinterpret_cast<const executorch::runtime::Program *>(self);
-        return extract_result(self_->method_meta(method_name), method_meta_out);
+        auto method_meta_out_ = reinterpret_cast<executorch::runtime::MethodMeta *>(method_meta_out);
+        return extract_result(self_->method_meta(method_name), method_meta_out_);
     }
     size_t executorch_Program_num_methods(const Program *self)
     {
@@ -197,21 +249,33 @@ namespace executorch_rs
     }
 
     // TensorInfo
-    ArrayRefI32 TensorInfo_sizes(const executorch::runtime::TensorInfo &self)
+    ArrayRefI32 TensorInfo_sizes(const TensorInfo *self)
     {
-        auto sizes = self.sizes();
+        auto self_ = reinterpret_cast<const executorch::runtime::TensorInfo *>(self);
+        auto sizes = self_->sizes();
         return ArrayRefI32{
             .data = sizes.data(),
             .len = sizes.size(),
         };
     }
-    ArrayRefU8 TensorInfo_dim_order(const executorch::runtime::TensorInfo &self)
+    ArrayRefU8 TensorInfo_dim_order(const TensorInfo *self)
     {
-        auto dim_order = self.dim_order();
+        auto self_ = reinterpret_cast<const executorch::runtime::TensorInfo *>(self);
+        auto dim_order = self_->dim_order();
         return ArrayRefU8{
             .data = dim_order.data(),
             .len = dim_order.size(),
         };
+    }
+    executorch::aten::ScalarType executorch_TensorInfo_scalar_type(const TensorInfo *self)
+    {
+        auto self_ = reinterpret_cast<const executorch::runtime::TensorInfo *>(self);
+        return self_->scalar_type();
+    }
+    size_t executorch_TensorInfo_nbytes(const TensorInfo *self)
+    {
+        auto self_ = reinterpret_cast<const executorch::runtime::TensorInfo *>(self);
+        return self_->nbytes();
     }
 
     // Tensor
@@ -555,10 +619,11 @@ namespace executorch_rs
         std::string method_name_str(method_name.data, method_name.data + method_name.len);
         return self.is_method_loaded(method_name_str);
     }
-    executorch::runtime::Error Module_method_meta(executorch::extension::Module &self, ArrayRefChar method_name, executorch::runtime::MethodMeta *method_meta_out)
+    executorch::runtime::Error Module_method_meta(executorch::extension::Module &self, ArrayRefChar method_name, MethodMeta *method_meta_out)
     {
+        auto method_meta_out_ = reinterpret_cast<executorch::runtime::MethodMeta *>(method_meta_out);
         std::string method_name_str(method_name.data, method_name.data + method_name.len);
-        return extract_result(self.method_meta(method_name_str), method_meta_out);
+        return extract_result(self.method_meta(method_name_str), method_meta_out_);
     }
     executorch::runtime::Error Module_execute(executorch::extension::Module &self, ArrayRefChar method_name, ArrayRefEValue inputs, VecEValue *outputs)
     {
