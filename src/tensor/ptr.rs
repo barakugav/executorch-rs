@@ -417,7 +417,7 @@ mod tests {
 
     #[cfg(feature = "ndarray")]
     #[test]
-    fn tensor_ptr_fron_array() {
+    fn fron_array() {
         let array = ndarray::array![[1, 2], [3, 4]];
         let tensor_ptr = TensorPtr::from_array(array.clone());
         let tensor = tensor_ptr.as_tensor();
@@ -425,7 +425,7 @@ mod tests {
     }
 
     #[test]
-    fn tensor_ptr_fron_vec() {
+    fn fron_vec() {
         let vec = vec![1, 2, 3, 4];
         let tensor_ptr = TensorPtr::from_vec(vec.clone());
         let tensor = tensor_ptr.as_tensor();
@@ -437,7 +437,7 @@ mod tests {
 
     #[cfg(feature = "ndarray")]
     #[test]
-    fn tensor_ptr_fron_array_view() {
+    fn fron_array_view() {
         let array = ndarray::array![[1, 2], [3, 4]];
         let tensor_ptr = TensorPtr::from_array_view(array.view());
         let tensor = tensor_ptr.as_tensor();
@@ -445,7 +445,7 @@ mod tests {
     }
 
     #[test]
-    fn tensor_ptr_fron_slice() {
+    fn fron_slice() {
         let data = [1, 2, 3, 4];
         let tensor_ptr = TensorPtr::from_slice(&data);
         let tensor = tensor_ptr.as_tensor();
@@ -456,7 +456,7 @@ mod tests {
     }
 
     #[test]
-    fn tensor_ptr_as_tensor_mut() {
+    fn as_tensor_mut() {
         let mut data = [1, 2, 3, 4];
         let mut tensor_ptr = TensorPtrBuilder::<ViewMut<_>>::from_slice_mut(&mut data).build_mut();
         let mut tensor = tensor_ptr.as_tensor_mut();
@@ -467,7 +467,7 @@ mod tests {
 
     #[cfg(feature = "ndarray")]
     #[test]
-    fn tensor_ptr_builer_from_array() {
+    fn builer_from_array() {
         let array = ndarray::array![[1, 2], [3, 4]];
         let tensor_ptr = TensorPtrBuilder::<View<_>>::from_array(array.clone()).build();
         let tensor = tensor_ptr.as_tensor();
@@ -476,7 +476,7 @@ mod tests {
 
     #[cfg(feature = "ndarray")]
     #[test]
-    fn tensor_ptr_builer_from_array_build_mut() {
+    fn builer_from_array_build_mut() {
         let array = ndarray::array![[1, 2], [3, 4]];
         let mut tensor_ptr = TensorPtrBuilder::<ViewMut<_>>::from_array(array.clone()).build_mut();
         let mut tensor = tensor_ptr.as_tensor_mut();
@@ -490,7 +490,7 @@ mod tests {
     }
 
     #[test]
-    fn tensor_ptr_builer_from_vec() {
+    fn builer_from_vec() {
         let vec = vec![1, 2, 3, 4];
         let tensor_ptr = TensorPtrBuilder::<View<_>>::from_vec(vec.clone()).build();
         let tensor = tensor_ptr.as_tensor();
@@ -501,7 +501,7 @@ mod tests {
     }
 
     #[test]
-    fn tensor_ptr_builer_from_vec_build_mut() {
+    fn builer_from_vec_build_mut() {
         let vec = vec![1, 2, 3, 4];
         let mut tensor_ptr = TensorPtrBuilder::<ViewMut<_>>::from_vec(vec.clone()).build_mut();
         let mut tensor = tensor_ptr.as_tensor_mut();
@@ -518,7 +518,7 @@ mod tests {
 
     #[cfg(feature = "ndarray")]
     #[test]
-    fn tensor_ptr_builer_from_array_view() {
+    fn builer_from_array_view() {
         let array = ndarray::array![[1, 2], [3, 4]];
         let tensor_ptr = TensorPtrBuilder::from_array_view(array.view()).build();
         let tensor = tensor_ptr.as_tensor();
@@ -527,7 +527,7 @@ mod tests {
 
     #[cfg(feature = "ndarray")]
     #[test]
-    fn tensor_ptr_builer_from_array_view_mut() {
+    fn builer_from_array_view_mut() {
         let array_orig = ndarray::array![[1, 2], [3, 4]];
         let mut array = array_orig.clone();
         let mut tensor_ptr = TensorPtrBuilder::from_array_view_mut(array.view_mut()).build_mut();
@@ -543,7 +543,7 @@ mod tests {
     }
 
     #[test]
-    fn tensor_ptr_builer_from_slice() {
+    fn builer_from_slice() {
         let data = [1, 2, 3, 4];
         let tensor_ptr = TensorPtrBuilder::from_slice(&data).build();
         let tensor = tensor_ptr.as_tensor();
@@ -554,7 +554,7 @@ mod tests {
     }
 
     #[test]
-    fn tensor_ptr_builer_from_slice_mut() {
+    fn builer_from_slice_mut() {
         let data_orig = [1, 2, 3, 4];
         let mut data = data_orig.clone();
         let mut tensor_ptr = TensorPtrBuilder::from_slice_mut(&mut data).build_mut();
@@ -577,7 +577,7 @@ mod tests {
     }
 
     #[test]
-    fn tensor_ptr_builer_from_ptr() {
+    fn builer_from_ptr() {
         let data = [1, 2, 3, 4];
         let tensor_ptr =
             unsafe { TensorPtrBuilder::from_ptr(data.as_ptr(), [data.len() as SizesType]).build() };
@@ -589,7 +589,7 @@ mod tests {
     }
 
     #[test]
-    fn tensor_ptr_builer_from_ptr_mut() {
+    fn builer_from_ptr_mut() {
         let data_orig = [1, 2, 3, 4];
         let mut data = data_orig.clone();
         let mut tensor_ptr = unsafe {

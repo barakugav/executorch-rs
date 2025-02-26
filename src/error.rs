@@ -1,6 +1,6 @@
 //! Error types used in the [`executortorch`](crate) crate.
 
-use core::mem::MaybeUninit;
+use std::mem::MaybeUninit;
 
 use crate::{et_c, util::IntoRust};
 
@@ -28,7 +28,7 @@ impl Error {
     }
 }
 impl std::fmt::Debug for Error {
-    fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.inner {
             ErrorInner::Simple(kind) => fmt.debug_tuple("Kind").field(&kind).finish(),
         }

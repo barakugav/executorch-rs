@@ -329,7 +329,7 @@ impl<'a> Execution<'a> {
     ///     have buffer space pre-allocated for them. In this case the executor will alias the memory of the tensors
     ///     provided as inputs here rather then deepcopy the input into the memory planned arena.
     /// * `input_idx` - Zero-based index of the input to set. Must be less than the value returned by inputs_size().
-    pub fn set_input<'b: 'a>(&mut self, input: &'b EValue, input_idx: usize) -> Result<()> {
+    pub fn set_input(&mut self, input: &'a EValue, input_idx: usize) -> Result<()> {
         unsafe { self.method.set_input(input.as_evalue(), input_idx) }.rs()?;
         self.set_inputs |= 1 << input_idx;
         Ok(())

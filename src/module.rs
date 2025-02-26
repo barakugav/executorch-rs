@@ -8,7 +8,9 @@
 //!
 //! See the `hello_world` example for how to load and execute a module.
 
+use core::ffi::CStr;
 use std::collections::HashSet;
+use std::ffi::CString;
 use std::path::Path;
 use std::ptr;
 
@@ -41,8 +43,8 @@ impl Module {
     ///
     /// If the file path is not a valid UTF-8 string or contains a null character.
     pub fn new(file_path: impl AsRef<Path>, load_mode: Option<LoadMode>) -> Self {
-        let file_path = file_path.as_ref().to_str().unwrap();
-        let file_path = ArrayRef::from_slice(util::str2chars(file_path).unwrap());
+        let file_path = CString::new(file_path.as_ref().to_str().unwrap()).unwrap();
+        let file_path = ArrayRef::from_slice(util::cstr2chars(&file_path));
         let load_mode = load_mode.unwrap_or(LoadMode::MmapUseMlock);
         let event_tracer = ptr::null_mut(); // TODO: support event tracer
         Self(unsafe {
@@ -90,7 +92,10 @@ impl Module {
         Ok(names
             .as_slice()
             .iter()
-            .map(|s: &VecChar| util::chars2string(s.as_slice().to_vec()))
+            .map(|s: &VecChar| {
+                let s = unsafe { CStr::from_ptr(s.as_slice().as_ptr()) };
+                s.to_str().unwrap().to_string()
+            })
             .collect())
     }
 
@@ -109,7 +114,8 @@ impl Module {
     ///
     /// If the method name is not a valid UTF-8 string or contains a null character.
     pub fn load_method(&mut self, method_name: impl AsRef<str>) -> Result<()> {
-        let method_name = ArrayRef::from_slice(util::str2chars(method_name.as_ref()).unwrap());
+        let method_name = CString::new(method_name.as_ref()).unwrap();
+        let method_name = ArrayRef::from_slice(util::cstr2chars(&method_name));
         unsafe { et_rs_c::Module_load_method(self.0.as_mut().unwrap(), method_name.0) }.rs()
     }
 
@@ -127,7 +133,8 @@ impl Module {
     ///
     /// If the method name is not a valid UTF-8 string or contains a null character.
     pub fn is_method_loaded(&self, method_name: impl AsRef<str>) -> bool {
-        let method_name = ArrayRef::from_slice(util::str2chars(method_name.as_ref()).unwrap());
+        let method_name = CString::new(method_name.as_ref()).unwrap();
+        let method_name = ArrayRef::from_slice(util::cstr2chars(&method_name));
         unsafe { et_rs_c::Module_is_method_loaded(self.0.as_ref(), method_name.0) }
     }
 
@@ -146,7 +153,8 @@ impl Module {
     ///
     /// If the method name is not a valid UTF-8 string or contains a null character.
     pub fn method_meta(&self, method_name: impl AsRef<str>) -> Result<MethodMeta> {
-        let method_name = ArrayRef::from_slice(util::str2chars(method_name.as_ref()).unwrap());
+        let method_name = CString::new(method_name.as_ref()).unwrap();
+        let method_name = ArrayRef::from_slice(util::cstr2chars(&method_name));
         let meta = try_new(|meta| unsafe {
             et_rs_c::Module_method_meta(self.0.as_ref() as *const _ as *mut _, method_name.0, meta)
         })?;
@@ -173,7 +181,8 @@ impl Module {
         method_name: impl AsRef<str>,
         inputs: &[EValue],
     ) -> Result<Vec<EValue<'a>>> {
-        let method_name = ArrayRef::from_slice(util::str2chars(method_name.as_ref()).unwrap());
+        let method_name = CString::new(method_name.as_ref()).unwrap();
+        let method_name = ArrayRef::from_slice(util::cstr2chars(&method_name));
         let inputs = unsafe {
             NonTriviallyMovableVec::new(inputs.len(), |i, p| {
                 et_rs_c::EValue_copy(inputs[i].as_evalue(), p.as_mut_ptr())

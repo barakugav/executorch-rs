@@ -290,11 +290,20 @@ namespace executorch_rs
     {
         new (self) executorch::runtime::EValue(value);
     }
+    void EValue_new_from_i64_list(executorch::runtime::EValue *self, BoxedEvalueListI64 value)
+    {
+        ET_CHECK(value.wrapped_vals.len == value.unwrapped_vals.len);
+        executorch::runtime::BoxedEvalueList<int64_t> list(
+            const_cast<executorch::runtime::EValue **>(value.wrapped_vals.data),
+            value.unwrapped_vals.data,
+            (int)value.wrapped_vals.len);
+        new (self) executorch::runtime::EValue(list);
+    }
     void EValue_new_from_f64(executorch::runtime::EValue *self, double value)
     {
         new (self) executorch::runtime::EValue(value);
     }
-    void EValue_new_from_f64_arr(executorch::runtime::EValue *self, ArrayRefF64 value)
+    void EValue_new_from_f64_list(executorch::runtime::EValue *self, ArrayRefF64 value)
     {
         executorch::aten::ArrayRef<double> value_(value.data, value.len);
         new (self) executorch::runtime::EValue(value_);
@@ -303,12 +312,12 @@ namespace executorch_rs
     {
         new (self) executorch::runtime::EValue(value);
     }
-    void EValue_new_from_bool_arr(executorch::runtime::EValue *self, ArrayRefBool value)
+    void EValue_new_from_bool_list(executorch::runtime::EValue *self, ArrayRefBool value)
     {
         executorch::aten::ArrayRef<bool> value_(value.data, value.len);
         new (self) executorch::runtime::EValue(value_);
     }
-    void EValue_new_from_chars(executorch::runtime::EValue *self, ArrayRefChar value)
+    void EValue_new_from_string(executorch::runtime::EValue *self, ArrayRefChar value)
     {
         new (self) executorch::runtime::EValue(value.data, value.len);
     }
@@ -316,17 +325,60 @@ namespace executorch_rs
     {
         new (self) executorch::runtime::EValue(*value);
     }
+    void EValue_new_from_tensor_list(executorch::runtime::EValue *self, BoxedEvalueListTensor value)
+    {
+        ET_CHECK(value.wrapped_vals.len == value.unwrapped_vals.len);
+        executorch::runtime::BoxedEvalueList<executorch::aten::Tensor> list(
+            const_cast<executorch::runtime::EValue **>(value.wrapped_vals.data),
+            value.unwrapped_vals.data,
+            (int)value.wrapped_vals.len);
+        new (self) executorch::runtime::EValue(list);
+    }
+    void EValue_new_from_optional_tensor_list(executorch::runtime::EValue *self, BoxedEvalueListOptionalTensor value)
+    {
+        ET_CHECK(value.wrapped_vals.len == value.unwrapped_vals.len);
+        auto unwrapped_vals = reinterpret_cast<executorch::aten::optional<executorch::aten::Tensor> *>(value.unwrapped_vals.data);
+        executorch::runtime::BoxedEvalueList<executorch::aten::optional<executorch::aten::Tensor>> list(
+            const_cast<executorch::runtime::EValue **>(value.wrapped_vals.data),
+            unwrapped_vals,
+            (int)value.wrapped_vals.len);
+        new (self) executorch::runtime::EValue(list);
+    }
     int64_t EValue_as_i64(const executorch::runtime::EValue &self)
     {
         return self.payload.copyable_union.as_int;
+    }
+    ArrayRefI64 EValue_as_i64_list(const executorch::runtime::EValue &self)
+    {
+        auto list = self.payload.copyable_union.as_int_list.get();
+        return ArrayRefI64{
+            .data = list.data(),
+            .len = list.size(),
+        };
     }
     double EValue_as_f64(const executorch::runtime::EValue &self)
     {
         return self.payload.copyable_union.as_double;
     }
+    ArrayRefF64 EValue_as_f64_list(const executorch::runtime::EValue &self)
+    {
+        auto list = self.payload.copyable_union.as_double_list;
+        return ArrayRefF64{
+            .data = list.data(),
+            .len = list.size(),
+        };
+    }
     bool EValue_as_bool(const executorch::runtime::EValue &self)
     {
         return self.payload.copyable_union.as_bool;
+    }
+    ArrayRefBool EValue_as_bool_list(const executorch::runtime::EValue &self)
+    {
+        auto list = self.payload.copyable_union.as_bool_list;
+        return ArrayRefBool{
+            .data = list.data(),
+            .len = list.size(),
+        };
     }
     ArrayRefChar EValue_as_string(const executorch::runtime::EValue &self)
     {
@@ -336,20 +388,20 @@ namespace executorch_rs
             .len = str.size(),
         };
     }
-    ArrayRefBool EValue_as_bool_list(const executorch::runtime::EValue &self)
+    ArrayRefTensor EValue_as_tensor_list(const executorch::runtime::EValue &self)
     {
-        auto bool_list = self.payload.copyable_union.as_bool_list;
-        return ArrayRefBool{
-            .data = bool_list.data(),
-            .len = bool_list.size(),
+        auto list = self.payload.copyable_union.as_tensor_list.get();
+        return ArrayRefTensor{
+            .data = list.data(),
+            .len = list.size(),
         };
     }
-    ArrayRefF64 EValue_as_f64_list(const executorch::runtime::EValue &self)
+    ArrayRefOptionalTensor EValue_as_optional_tensor_list(const executorch::runtime::EValue &self)
     {
-        auto f64_list = self.payload.copyable_union.as_double_list;
-        return ArrayRefF64{
-            .data = f64_list.data(),
-            .len = f64_list.size(),
+        auto list = self.payload.copyable_union.as_list_optional_tensor.get();
+        return ArrayRefOptionalTensor{
+            .data = reinterpret_cast<const OptionalTensor *>(list.data()),
+            .len = list.size(),
         };
     }
     void EValue_copy(const executorch::runtime::EValue *src, executorch::runtime::EValue *dst)

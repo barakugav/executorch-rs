@@ -1,12 +1,12 @@
 fn main() {
-    println!("cargo::rustc-link-lib=static=optimized_native_cpu_ops_lib");
-    println!("cargo::rustc-link-lib=static:+whole-archive=portable_kernels");
-    println!("cargo::rustc-link-lib=static:+whole-archive=portable_ops_lib");
-
     println!("cargo::rerun-if-env-changed=EXECUTORCH_RS_EXECUTORCH_LIB_DIR");
     let libs_dir = std::env::var("EXECUTORCH_RS_EXECUTORCH_LIB_DIR")
         .expect("EXECUTORCH_RS_EXECUTORCH_LIB_DIR is not set, can't locate executorch static libs");
 
-    println!("cargo::rustc-link-search={}/kernels/portable/", libs_dir);
-    println!("cargo::rustc-link-search={}/configurations/", libs_dir);
+    println!("cargo::rustc-link-search=native={libs_dir}/kernels/portable/");
+    println!("cargo::rustc-link-lib=static:+whole-archive=portable_kernels");
+    println!("cargo::rustc-link-lib=static:+whole-archive=portable_ops_lib");
+
+    println!("cargo::rustc-link-search=native={libs_dir}/configurations/");
+    println!("cargo::rustc-link-lib=static=optimized_native_cpu_ops_lib");
 }
