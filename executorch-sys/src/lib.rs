@@ -146,8 +146,11 @@ pub mod executorch {
 pub mod executorch_rs {
     pub use super::c_link::root::executorch_rs::*;
 
-    #[cfg(feature = "tensor-ptr")]
-    pub use super::cxx_bridge::ffi::*;
+    /// cxx
+    pub mod cxx {
+        #[cfg(feature = "tensor-ptr")]
+        pub use super::super::cxx_bridge::ffi::*;
+    }
 }
 
 impl Copy for executorch::runtime::Tag {}

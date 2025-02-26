@@ -34,10 +34,7 @@ use super::*;
 /// let outputs = module.forward(&[tensor.into_evalue()]).unwrap();
 /// ```
 #[derive(Clone)]
-pub struct TensorPtr<'a, D: Data>(
-    SharedPtr<et_c::runtime::etensor::Tensor>,
-    PhantomData<(&'a (), D)>,
-);
+pub struct TensorPtr<'a, D: Data>(SharedPtr<et_rs_c::Tensor>, PhantomData<(&'a (), D)>);
 impl<S: Scalar> TensorPtr<'static, View<S>> {
     /// Create a new [`TensorPtr`] from an [`Array`](ndarray::Array).
     ///
@@ -322,7 +319,7 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
         // TODO: check sizes, dim_order and strides make sense with respect to the data_bound
 
         let tensor = unsafe {
-            executorch_sys::executorch_rs::TensorPtr_new(
+            executorch_sys::executorch_rs::cxx::TensorPtr_new(
                 self.sizes,
                 data_ptr as *const u8 as *mut u8,
                 dim_order,
@@ -376,7 +373,7 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
         // TODO: check sizes, dim_order and strides make sense with respect to the data_bound
 
         let tensor = unsafe {
-            executorch_sys::executorch_rs::TensorPtr_new(
+            executorch_sys::executorch_rs::cxx::TensorPtr_new(
                 self.sizes,
                 data_ptr as *const u8 as *mut u8,
                 dim_order,

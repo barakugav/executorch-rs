@@ -51,6 +51,11 @@ namespace executorch_rs
         size_t _blob[4];
     };
     static_assert(layout_of<EValue>() == layout_of<executorch::runtime::EValue>());
+    struct Tensor
+    {
+        size_t _blob[1];
+    };
+    static_assert(layout_of<Tensor>() == layout_of<executorch::aten::Tensor>());
 
     struct OptionalTensor
     {
@@ -64,7 +69,7 @@ namespace executorch_rs
             /// A small, trivially-constructable alternative to T.
             unsigned char dummy_;
             /// The constructed value itself, if optional::has_value_ is true.
-            executorch::aten::Tensor value_;
+            Tensor value_;
         };
         storage_t storage_;
         bool init_;
@@ -150,7 +155,7 @@ namespace executorch_rs
     };
     struct ArrayRefTensor
     {
-        const executorch::aten::Tensor *data;
+        const Tensor *data;
         size_t len;
     };
     struct ArrayRefOptionalTensor
@@ -190,7 +195,7 @@ namespace executorch_rs
     };
     struct SpanTensor
     {
-        executorch::aten::Tensor *data;
+        Tensor *data;
         size_t len;
     };
     struct SpanOptionalTensor
@@ -247,20 +252,20 @@ namespace executorch_rs
     ArrayRefU8 TensorInfo_dim_order(const executorch::runtime::TensorInfo &self);
 
     // Tensor
-    void Tensor_new(executorch::aten::Tensor *self, executorch::aten::TensorImpl *tensor_impl);
-    size_t Tensor_nbytes(const executorch::aten::Tensor &self);
-    ssize_t Tensor_size(const executorch::aten::Tensor &self, ssize_t dim);
-    ssize_t Tensor_dim(const executorch::aten::Tensor &self);
-    ssize_t Tensor_numel(const executorch::aten::Tensor &self);
-    executorch::aten::ScalarType Tensor_scalar_type(const executorch::aten::Tensor &self);
-    ssize_t Tensor_element_size(const executorch::aten::Tensor &self);
-    ArrayRefSizesType Tensor_sizes(const executorch::aten::Tensor &self);
-    ArrayRefDimOrderType Tensor_dim_order(const executorch::aten::Tensor &self);
-    ArrayRefStridesType Tensor_strides(const executorch::aten::Tensor &self);
-    const void *Tensor_const_data_ptr(const executorch::aten::Tensor &self);
-    void *Tensor_mutable_data_ptr(const executorch::aten::Tensor &self);
-    ssize_t Tensor_coordinate_to_index(const executorch::aten::Tensor &self, ArrayRefUsizeType coordinate);
-    void Tensor_destructor(executorch::aten::Tensor &self);
+    void Tensor_new(Tensor *self, executorch::aten::TensorImpl *tensor_impl);
+    size_t Tensor_nbytes(const Tensor *self);
+    ssize_t Tensor_size(const Tensor *self, ssize_t dim);
+    ssize_t Tensor_dim(const Tensor *self);
+    ssize_t Tensor_numel(const Tensor *self);
+    executorch::aten::ScalarType Tensor_scalar_type(const Tensor *self);
+    ssize_t Tensor_element_size(const Tensor *self);
+    ArrayRefSizesType Tensor_sizes(const Tensor *self);
+    ArrayRefDimOrderType Tensor_dim_order(const Tensor *self);
+    ArrayRefStridesType Tensor_strides(const Tensor *self);
+    const void *Tensor_const_data_ptr(const Tensor *self);
+    void *Tensor_mutable_data_ptr(const Tensor *self);
+    ssize_t Tensor_coordinate_to_index(const Tensor *self, ArrayRefUsizeType coordinate);
+    void Tensor_destructor(Tensor *self);
 
     // EValue EValue_shallow_clone(EValue *evalue);
     void executorch_EValue_new_none(EValue *self);
@@ -271,7 +276,7 @@ namespace executorch_rs
     void EValue_new_from_bool(EValue *self, bool value);
     void EValue_new_from_bool_list(EValue *self, ArrayRefBool value);
     void EValue_new_from_string(EValue *self, ArrayRefChar value);
-    void EValue_new_from_tensor(EValue *self, const executorch::aten::Tensor *value);
+    void EValue_new_from_tensor(EValue *self, const Tensor *value);
     void EValue_new_from_tensor_list(EValue *self, BoxedEvalueListTensor value);
     void EValue_new_from_optional_tensor_list(EValue *self, BoxedEvalueListOptionalTensor value);
     executorch::runtime::Tag executorch_EValue_tag(const EValue *self);
@@ -282,7 +287,7 @@ namespace executorch_rs
     bool EValue_as_bool(const EValue *self);
     ArrayRefBool EValue_as_bool_list(const EValue *self);
     ArrayRefChar EValue_as_string(const EValue *self);
-    const executorch::aten::Tensor *EValue_as_tensor(const EValue *self);
+    const Tensor *EValue_as_tensor(const EValue *self);
     ArrayRefTensor EValue_as_tensor_list(const EValue *self);
     ArrayRefOptionalTensor EValue_as_optional_tensor_list(const EValue *self);
     void EValue_copy(const EValue *src, EValue *dst);

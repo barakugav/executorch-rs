@@ -317,7 +317,7 @@ impl_array_ref!(i64, et_rs_c::ArrayRefI64);
 impl_array_ref!(f64, et_rs_c::ArrayRefF64);
 impl_array_ref!(usize, et_rs_c::ArrayRefUsizeType);
 impl_array_ref!(bool, et_rs_c::ArrayRefBool);
-// impl_array_ref!(et_c::aten::Tensor, et_rs_c::ArrayRefTensor);
+// impl_array_ref!(et_rs_c::Tensor, et_rs_c::ArrayRefTensor);
 impl_array_ref!(et_rs_c::EValue, et_rs_c::ArrayRefEValue);
 
 /// Represent a reference to an array (0 or more elements

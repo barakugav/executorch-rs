@@ -651,7 +651,7 @@ impl std::fmt::Debug for EValue<'_> {
 }
 
 /// A list of tensors.
-pub struct TensorList<'a>(&'a [et_c::aten::Tensor]);
+pub struct TensorList<'a>(&'a [et_rs_c::Tensor]);
 impl TensorList<'_> {
     /// Safety: the array must be valid for the lifetime of the returned list.
     unsafe fn from_array_ref(array: et_rs_c::ArrayRefTensor) -> Self {

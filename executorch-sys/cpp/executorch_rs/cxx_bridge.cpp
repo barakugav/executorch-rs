@@ -9,7 +9,7 @@
 namespace executorch_rs
 {
 #if defined(EXECUTORCH_RS_TESTOR_PTR)
-    std::shared_ptr<executorch::aten::Tensor> TensorPtr_new(
+    std::shared_ptr<executorch_rs::Tensor> TensorPtr_new(
         std::unique_ptr<std::vector<int32_t>> sizes,
         uint8_t *data,
         std::unique_ptr<std::vector<uint8_t>> dim_order,
@@ -22,7 +22,7 @@ namespace executorch_rs
         std::shared_ptr<rust::Box<executorch_rs::cxx_util::RustAny>> allocation_ptr =
             std::make_shared<rust::Box<executorch_rs::cxx_util::RustAny>>(std::move(allocation));
 
-        return executorch::extension::make_tensor_ptr(
+        auto tensor = executorch::extension::make_tensor_ptr(
             std::move(*sizes),
             data,
             std::move(*dim_order),
@@ -30,6 +30,7 @@ namespace executorch_rs
             scalar_type,
             dynamism,
             [allocation_ptr = allocation_ptr](void *) mutable {});
+        return std::reinterpret_pointer_cast<executorch_rs::Tensor>(tensor);
     }
 #endif
 }

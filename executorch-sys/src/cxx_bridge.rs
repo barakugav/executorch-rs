@@ -38,8 +38,8 @@ pub mod ffi {
         #[namespace = "executorch::aten"]
         type TensorShapeDynamism = crate::executorch::runtime::TensorShapeDynamism;
         /// Redifinition of the [`Tensor`](crate::executorch::runtime::etensor::Tensor).
-        #[namespace = "executorch::aten"]
-        type Tensor = crate::executorch::runtime::etensor::Tensor;
+        #[namespace = "executorch_rs"]
+        type Tensor = crate::executorch_rs::Tensor;
 
         /// Create a new tensor pointer.
         ///
@@ -84,7 +84,7 @@ unsafe impl ExternType for crate::executorch::runtime::TensorShapeDynamism {
     type Kind = cxx::kind::Trivial;
 }
 
-unsafe impl ExternType for crate::executorch::runtime::etensor::Tensor {
-    type Id = type_id!("executorch::aten::Tensor");
+unsafe impl ExternType for crate::executorch_rs::Tensor {
+    type Id = type_id!("executorch_rs::Tensor");
     type Kind = cxx::kind::Opaque;
 }

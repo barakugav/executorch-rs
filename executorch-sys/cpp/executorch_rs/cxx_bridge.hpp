@@ -1,6 +1,7 @@
 #pragma once
 
 #include "executorch_rs/defines.h"
+#include "executorch_rs/bridge.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -11,7 +12,7 @@
 namespace executorch_rs
 {
 #if defined(EXECUTORCH_RS_TESTOR_PTR)
-    std::shared_ptr<executorch::aten::Tensor> TensorPtr_new(
+    std::shared_ptr<executorch_rs::Tensor> TensorPtr_new(
         std::unique_ptr<std::vector<int32_t>> sizes,
         uint8_t *data,
         std::unique_ptr<std::vector<uint8_t>> dim_order,

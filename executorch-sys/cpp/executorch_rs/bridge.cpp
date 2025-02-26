@@ -202,78 +202,91 @@ namespace executorch_rs
     }
 
     // Tensor
-    void Tensor_new(executorch::aten::Tensor *self, executorch::aten::TensorImpl *tensor_impl)
+    void Tensor_new(Tensor *self, executorch::aten::TensorImpl *tensor_impl)
     {
-        new (self) executorch::aten::Tensor(tensor_impl);
+        auto self_ = reinterpret_cast<executorch::aten::Tensor *>(self);
+        new (self_) executorch::aten::Tensor(tensor_impl);
     }
-    size_t Tensor_nbytes(const executorch::aten::Tensor &self)
+    size_t Tensor_nbytes(const Tensor *self)
     {
-        return self.nbytes();
+        auto self_ = reinterpret_cast<const executorch::aten::Tensor *>(self);
+        return self_->nbytes();
     }
-    ssize_t Tensor_size(const executorch::aten::Tensor &self, ssize_t dim)
+    ssize_t Tensor_size(const Tensor *self, ssize_t dim)
     {
-        return self.size(dim);
+        auto self_ = reinterpret_cast<const executorch::aten::Tensor *>(self);
+        return self_->size(dim);
     }
-    ssize_t Tensor_dim(const executorch::aten::Tensor &self)
+    ssize_t Tensor_dim(const Tensor *self)
     {
-        return self.dim();
+        auto self_ = reinterpret_cast<const executorch::aten::Tensor *>(self);
+        return self_->dim();
     }
-    ssize_t Tensor_numel(const executorch::aten::Tensor &self)
+    ssize_t Tensor_numel(const Tensor *self)
     {
-        return self.numel();
+        auto self_ = reinterpret_cast<const executorch::aten::Tensor *>(self);
+        return self_->numel();
     }
-    executorch::aten::ScalarType Tensor_scalar_type(const executorch::aten::Tensor &self)
+    executorch::aten::ScalarType Tensor_scalar_type(const Tensor *self)
     {
-        return self.scalar_type();
+        auto self_ = reinterpret_cast<const executorch::aten::Tensor *>(self);
+        return self_->scalar_type();
     }
-    ssize_t Tensor_element_size(const executorch::aten::Tensor &self)
+    ssize_t Tensor_element_size(const Tensor *self)
     {
-        return self.element_size();
+        auto self_ = reinterpret_cast<const executorch::aten::Tensor *>(self);
+        return self_->element_size();
     }
-    ArrayRefSizesType Tensor_sizes(const executorch::aten::Tensor &self)
+    ArrayRefSizesType Tensor_sizes(const Tensor *self)
     {
-        auto sizes = self.sizes();
+        auto self_ = reinterpret_cast<const executorch::aten::Tensor *>(self);
+        auto sizes = self_->sizes();
         return ArrayRefSizesType{
             .data = sizes.data(),
             .len = sizes.size(),
         };
     }
-    ArrayRefDimOrderType Tensor_dim_order(const executorch::aten::Tensor &self)
+    ArrayRefDimOrderType Tensor_dim_order(const Tensor *self)
     {
-        auto dim_order = self.dim_order();
+        auto self_ = reinterpret_cast<const executorch::aten::Tensor *>(self);
+        auto dim_order = self_->dim_order();
         return ArrayRefDimOrderType{
             .data = dim_order.data(),
             .len = dim_order.size(),
         };
     }
-    ArrayRefStridesType Tensor_strides(const executorch::aten::Tensor &self)
+    ArrayRefStridesType Tensor_strides(const Tensor *self)
     {
-        auto strides = self.strides();
+        auto self_ = reinterpret_cast<const executorch::aten::Tensor *>(self);
+        auto strides = self_->strides();
         return ArrayRefStridesType{
             .data = strides.data(),
             .len = strides.size(),
         };
     }
-    const void *Tensor_const_data_ptr(const executorch::aten::Tensor &self)
+    const void *Tensor_const_data_ptr(const Tensor *self)
     {
-        return self.const_data_ptr();
+        auto self_ = reinterpret_cast<const executorch::aten::Tensor *>(self);
+        return self_->const_data_ptr();
     }
-    void *Tensor_mutable_data_ptr(const executorch::aten::Tensor &self)
+    void *Tensor_mutable_data_ptr(const Tensor *self)
     {
-        return self.mutable_data_ptr();
+        auto self_ = reinterpret_cast<const executorch::aten::Tensor *>(self);
+        return self_->mutable_data_ptr();
     }
 
-    ssize_t Tensor_coordinate_to_index(const executorch::aten::Tensor &self, ArrayRefUsizeType coordinate)
+    ssize_t Tensor_coordinate_to_index(const Tensor *self, ArrayRefUsizeType coordinate)
     {
-        auto ndim = (size_t)self.dim();
+        auto self_ = reinterpret_cast<const executorch::aten::Tensor *>(self);
+        auto ndim = (size_t)self_->dim();
         if (coordinate.len != ndim)
         {
             return -1;
         }
 
-        auto sizes = self.sizes();
-        auto strides = self.strides();
-        auto dim_order = self.dim_order();
+        auto sizes = self_->sizes();
+        auto strides = self_->strides();
+        auto dim_order = self_->dim_order();
         ET_CHECK_MSG(sizes.size() == ndim, "Sizes must have the same number of dimensions as the tensor");
         ET_CHECK_MSG(strides.size() == ndim, "Strides must have the same number of dimensions as the tensor");
         // TODO: support dim order
@@ -292,9 +305,10 @@ namespace executorch_rs
         }
         return index;
     }
-    void Tensor_destructor(executorch::aten::Tensor &self)
+    void Tensor_destructor(Tensor *self)
     {
-        self.~Tensor();
+        auto self_ = reinterpret_cast<executorch::aten::Tensor *>(self);
+        self_->~Tensor();
     }
 
     void executorch_EValue_new_none(EValue *self)
@@ -344,10 +358,11 @@ namespace executorch_rs
         auto self_ = reinterpret_cast<executorch::runtime::EValue *>(self);
         new (self_) executorch::runtime::EValue(value.data, value.len);
     }
-    void EValue_new_from_tensor(EValue *self, const executorch::aten::Tensor *value)
+    void EValue_new_from_tensor(EValue *self, const Tensor *value)
     {
         auto self_ = reinterpret_cast<executorch::runtime::EValue *>(self);
-        new (self_) executorch::runtime::EValue(*value);
+        auto value_ = reinterpret_cast<const executorch::aten::Tensor *>(value);
+        new (self_) executorch::runtime::EValue(*value_);
     }
     void EValue_new_from_tensor_list(EValue *self, BoxedEvalueListTensor value)
     {
@@ -355,7 +370,7 @@ namespace executorch_rs
         ET_CHECK(value.wrapped_vals.len == value.unwrapped_vals.len);
         executorch::runtime::BoxedEvalueList<executorch::aten::Tensor> list(
             reinterpret_cast<executorch::runtime::EValue **>(const_cast<EValue **>(value.wrapped_vals.data)),
-            value.unwrapped_vals.data,
+            reinterpret_cast<executorch::aten::Tensor *>(value.unwrapped_vals.data),
             (int)value.wrapped_vals.len);
         new (self_) executorch::runtime::EValue(list);
     }
@@ -426,17 +441,18 @@ namespace executorch_rs
             .len = str.size(),
         };
     }
-    const executorch::aten::Tensor *EValue_as_tensor(const EValue *self)
+    const Tensor *EValue_as_tensor(const EValue *self)
     {
         auto self_ = reinterpret_cast<const executorch::runtime::EValue *>(self);
-        return &self_->toTensor();
+        const executorch::aten::Tensor *tensor = &self_->toTensor();
+        return reinterpret_cast<const Tensor *>(tensor);
     }
     ArrayRefTensor EValue_as_tensor_list(const EValue *self)
     {
         auto self_ = reinterpret_cast<const executorch::runtime::EValue *>(self);
         auto list = self_->toTensorList();
         return ArrayRefTensor{
-            .data = list.data(),
+            .data = reinterpret_cast<const Tensor *>(list.data()),
             .len = list.size(),
         };
     }

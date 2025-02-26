@@ -236,7 +236,7 @@ impl_scalar!(u64, UInt64);
 /// Use the aliases such as [`Tensor`], [`TensorAny`] or [`TensorMut`] instead.
 /// It is used to provide a common API for all of them.
 pub struct TensorBase<'a, D: Data>(
-    NonTriviallyMovable<'a, et_c::runtime::etensor::Tensor>,
+    NonTriviallyMovable<'a, et_rs_c::Tensor>,
     PhantomData<(
         // phantom for the lifetime of the TensorImpl we depends on
         &'a (),
@@ -312,7 +312,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     }
 
     /// Get the underlying Cpp tensor.
-    pub(crate) fn as_cpp_tensor(&self) -> &et_c::runtime::etensor::Tensor {
+    pub(crate) fn as_cpp_tensor(&self) -> &et_rs_c::Tensor {
         self.0.as_ref()
     }
 
@@ -321,7 +321,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// # Safety
     ///
     /// The caller can not move out of the returned mut reference.
-    pub(crate) unsafe fn as_mut_cpp_tensor(&mut self) -> &mut et_c::runtime::etensor::Tensor
+    pub(crate) unsafe fn as_mut_cpp_tensor(&mut self) -> &mut et_rs_c::Tensor
     where
         D: DataMut,
     {
@@ -512,13 +512,13 @@ impl<'a, D: Data> TensorBase<'a, D> {
         }
     }
 }
-impl Destroy for et_c::runtime::etensor::Tensor {
+impl Destroy for et_rs_c::Tensor {
     unsafe fn destroy(&mut self) {
         unsafe { et_rs_c::Tensor_destructor(self) }
     }
 }
 impl<D: Data> Storable for TensorBase<'_, D> {
-    type __Storage = et_c::runtime::etensor::Tensor;
+    type __Storage = et_rs_c::Tensor;
 }
 
 #[cfg(feature = "ndarray")]
@@ -833,7 +833,7 @@ impl<'a, S: Scalar> TensorMut<'a, S> {
 /// A type-erased immutable tensor that does not own the underlying data.
 pub type TensorAny<'a> = TensorBase<'a, ViewAny>;
 impl<'a> TensorAny<'a> {
-    pub(crate) fn from_inner_ref(tensor: &'a et_c::runtime::etensor::Tensor) -> Self {
+    pub(crate) fn from_inner_ref(tensor: &'a et_rs_c::Tensor) -> Self {
         Self(NonTriviallyMovable::from_ref(tensor), PhantomData)
     }
 
