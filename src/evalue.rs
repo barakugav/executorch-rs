@@ -89,7 +89,7 @@ impl<'a> EValue<'a> {
     /// let evalue = EValue::new(value);
     ///
     /// // The value is allocated on the stack
-    /// let storage = pin::pin!(executorch::memory::Storage::<EValue>::default());
+    /// let storage = executorch::storage!(EValue);
     /// let evalue = EValue::new_in_storage(value, storage);
     ///
     /// // The value is allocated using a memory allocator
@@ -760,7 +760,7 @@ impl std::fmt::Debug for OptionalTensorList<'_> {
 /// ```rust,ignore
 /// let (evalue1, evalue2, evalue3) = (EValue::new(42), EValue::new(17), EValue::new(6));
 /// let wrapped_vals = EValuePtrList::new([&evalue1, &evalue2, &evalue3]);
-/// let unwrapped_vals = pin::pin!([0; 3].map(|_| Storage::<i64>::default()));
+/// let unwrapped_vals = executorch::storage!(i64, [3]);
 /// let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals).unwrap();
 ///
 /// let evalue = EValue::new(list);
@@ -916,7 +916,7 @@ enum EValuePtrListInner<'a> {
     #[cfg(feature = "alloc")]
     Vec(
         (
-            crate::et_alloc::Vec<*const et_c::runtime::EValue>,
+            crate::alloc::Vec<*const et_c::runtime::EValue>,
             // A lifetime for the `*const EValue` values
             PhantomData<&'a ()>,
         ),
@@ -932,7 +932,7 @@ enum EValuePtrListInner<'a> {
 impl<'a> EValuePtrList<'a> {
     #[cfg(feature = "alloc")]
     fn new_impl(values: impl IntoIterator<Item = Option<&'a EValue<'a>>>) -> Self {
-        let values: crate::et_alloc::Vec<*const et_c::runtime::EValue> = values
+        let values: crate::alloc::Vec<*const et_c::runtime::EValue> = values
             .into_iter()
             .map(|value| match value {
                 Some(value) => value.as_evalue() as *const _,
@@ -1061,7 +1061,7 @@ impl<'a> EValuePtrList<'a> {
 /// Used solely for the `Storable` implementation:
 /// ```rust,ignore
 /// let (evalue1, evalue2, evalue3) = (EValue::new(42), EValue::new(17), EValue::new(6));
-/// let wrapped_vals_storage = pin::pin!([0; 3].map(|_| Storage::<EValuePtrListElement>::default()));
+/// let wrapped_vals_storage = executorch::storage!(EValuePtrListElement, [3]);
 /// let wrapped_vals = EValuePtrList::new_in_storage([&evalue1, &evalue2, &evalue3], wrapped_vals_storage);
 /// ```
 pub struct EValuePtrListElem(#[allow(dead_code)] *const et_c::runtime::EValue);
@@ -1071,12 +1071,12 @@ impl Storable for EValuePtrListElem {
 
 #[cfg(test)]
 mod tests {
+    use crate::storage;
     #[cfg(feature = "tensor-ptr")]
     use crate::tensor::TensorPtr;
     use crate::tensor::{SizesType, Tensor, TensorImpl};
 
     use super::*;
-    use std::pin;
 
     #[test]
     fn none() {
@@ -1087,7 +1087,7 @@ mod tests {
             assert!(evalue.is_none());
         }
         {
-            let storage = pin::pin!(Storage::<EValue>::default());
+            let storage = storage!(EValue);
             let evalue = EValue::none_in_storage(storage);
             assert_eq!(evalue.tag(), Tag::None);
             assert!(evalue.is_none());
@@ -1103,7 +1103,7 @@ mod tests {
             assert_eq!(evalue.as_i64(), 42);
         }
         {
-            let storage = pin::pin!(Storage::<EValue>::default());
+            let storage = storage!(EValue);
             let evalue = EValue::new_in_storage(17, storage);
             assert_eq!(evalue.tag(), Tag::Int);
             assert_eq!(evalue.as_i64(), 17);
@@ -1116,29 +1116,28 @@ mod tests {
         {
             let (evalue1, evalue2, evalue3) = (EValue::new(42), EValue::new(17), EValue::new(6));
             let wrapped_vals = EValuePtrList::new([&evalue1, &evalue2, &evalue3]);
-            let unwrapped_vals = pin::pin!([0; 3].map(|_| Storage::<i64>::default()));
-            let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals).unwrap();
+            let mut unwrapped_vals = storage!(i64, (3));
+            let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals.as_mut()).unwrap();
 
             let evalue = EValue::new(list);
             assert_eq!(evalue.tag(), Tag::ListInt);
             assert_eq!(evalue.as_i64_list(), &[42, 17, 6]);
         }
         {
-            let evalue1_storage = pin::pin!(Storage::<EValue>::default());
-            let evalue2_storage = pin::pin!(Storage::<EValue>::default());
-            let evalue3_storage = pin::pin!(Storage::<EValue>::default());
+            let evalue1_storage = storage!(EValue);
+            let evalue2_storage = storage!(EValue);
+            let evalue3_storage = storage!(EValue);
             let evalue1 = EValue::new_in_storage(42, evalue1_storage);
             let evalue2 = EValue::new_in_storage(17, evalue2_storage);
             let evalue3 = EValue::new_in_storage(6, evalue3_storage);
 
-            let wrapped_vals_storage =
-                pin::pin!([0; 3].map(|_| Storage::<EValuePtrListElem>::default()));
+            let wrapped_vals_storage = storage!(EValuePtrListElem, [3]);
             let wrapped_vals =
                 EValuePtrList::new_in_storage([&evalue1, &evalue2, &evalue3], wrapped_vals_storage);
-            let unwrapped_vals = pin::pin!([0; 3].map(|_| Storage::<i64>::default()));
+            let unwrapped_vals = storage!(i64, [3]);
             let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals).unwrap();
 
-            let evalue_storage = pin::pin!(Storage::<EValue>::default());
+            let evalue_storage = storage!(EValue);
             let evalue = EValue::new_in_storage(list, evalue_storage);
             assert_eq!(evalue.tag(), Tag::ListInt);
             assert_eq!(evalue.as_i64_list(), &[42, 17, 6]);
@@ -1154,7 +1153,7 @@ mod tests {
             assert_eq!(evalue.as_f64(), 42.0);
         }
         {
-            let storage = pin::pin!(Storage::<EValue>::default());
+            let storage = storage!(EValue);
             let evalue = EValue::new_in_storage(17.0, storage);
             assert_eq!(evalue.tag(), Tag::Double);
             assert_eq!(evalue.as_f64(), 17.0);
@@ -1172,7 +1171,7 @@ mod tests {
             assert_eq!(evalue.as_f64_list(), [42.0, 17.0, 6.0]);
         }
         {
-            let storage = pin::pin!(Storage::<EValue>::default());
+            let storage = storage!(EValue);
             let evalue = EValue::new_in_storage(list.as_slice(), storage);
             assert_eq!(evalue.tag(), Tag::ListDouble);
             assert_eq!(evalue.as_f64_list(), [42.0, 17.0, 6.0]);
@@ -1188,7 +1187,7 @@ mod tests {
             assert!(evalue.as_bool());
         }
         {
-            let storage = pin::pin!(Storage::<EValue>::default());
+            let storage = storage!(EValue);
             let evalue = EValue::new_in_storage(false, storage);
             assert_eq!(evalue.tag(), Tag::Bool);
             assert!(!evalue.as_bool());
@@ -1206,7 +1205,7 @@ mod tests {
             assert_eq!(evalue.as_bool_list(), [true, false, true]);
         }
         {
-            let storage = pin::pin!(Storage::<EValue>::default());
+            let storage = storage!(EValue);
             let evalue = EValue::new_in_storage(list.as_slice(), storage);
             assert_eq!(evalue.tag(), Tag::ListBool);
             assert_eq!(evalue.as_bool_list(), [true, false, true]);
@@ -1226,7 +1225,7 @@ mod tests {
             assert_eq!(evalue.as_chars(), chars);
         }
         {
-            let storage = pin::pin!(Storage::<EValue>::default());
+            let storage = storage!(EValue);
             let evalue = EValue::new_in_storage(string, storage);
             assert_eq!(evalue.tag(), Tag::String);
             assert_eq!(evalue.as_cstr(), string);
@@ -1274,11 +1273,11 @@ mod tests {
             let dim_order = [0];
             let strides = [1];
             let tensor_impl = TensorImpl::from_slice(&sizes, &data, &dim_order, &strides);
-            let tensor_storage = pin::pin!(Storage::<Tensor<i32>>::default());
+            let tensor_storage = storage!(Tensor<i32>);
             let tensor = Tensor::new_in_storage(&tensor_impl, tensor_storage);
 
             // Borrow tensor by EValue
-            let evalue_storage = pin::pin!(Storage::<EValue>::default());
+            let evalue_storage = storage!(EValue);
             let evalue = EValue::new_in_storage(&tensor, evalue_storage);
             assert_eq!(evalue.tag(), Tag::Tensor);
             let tensor = evalue.as_tensor().into_typed::<i32>();
@@ -1286,7 +1285,7 @@ mod tests {
             assert_eq!(tensor_data, data);
 
             // Move tensor into evalue
-            let evalue_storage = pin::pin!(Storage::<EValue>::default());
+            let evalue_storage = storage!(EValue);
             let evalue = EValue::new_in_storage(tensor, evalue_storage);
             assert_eq!(evalue.tag(), Tag::Tensor);
             let tensor = evalue.as_tensor().into_typed::<i32>();
@@ -1325,7 +1324,7 @@ mod tests {
             let evalue2 = EValue::new(tensor2);
             let evalue3 = EValue::new(tensor3);
             let wrapped_vals = EValuePtrList::new([&evalue1, &evalue2, &evalue3]);
-            let unwrapped_vals = pin::pin!([0; 3].map(|_| Storage::<TensorAny>::default()));
+            let unwrapped_vals = storage!(TensorAny, [3]);
             let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals).unwrap();
 
             let evalue = EValue::new(list);
@@ -1349,7 +1348,7 @@ mod tests {
             let evalue2 = EValue::new(&tensor2);
             let evalue3 = EValue::new(&tensor3);
             let wrapped_vals = EValuePtrList::new([&evalue1, &evalue2, &evalue3]);
-            let unwrapped_vals = pin::pin!([0; 3].map(|_| Storage::<TensorAny>::default()));
+            let unwrapped_vals = storage!(TensorAny, [3]);
             let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals).unwrap();
 
             let evalue = EValue::new(list);
@@ -1369,38 +1368,37 @@ mod tests {
             let dim_order = [0];
             let strides = [1];
             let tensor_impl = TensorImpl::from_slice(&sizes, &data1, &dim_order, &strides);
-            let tensor_storage = pin::pin!(Storage::<Tensor<i32>>::default());
+            let tensor_storage = storage!(Tensor<i32>);
             let tensor1 = Tensor::new_in_storage(&tensor_impl, tensor_storage);
 
             let sizes = [data2.len() as SizesType];
             let dim_order = [0];
             let strides = [1];
             let tensor_impl = TensorImpl::from_slice(&sizes, &data2, &dim_order, &strides);
-            let tensor_storage = pin::pin!(Storage::<Tensor<i32>>::default());
+            let tensor_storage = storage!(Tensor<i32>);
             let tensor2 = Tensor::new_in_storage(&tensor_impl, tensor_storage);
 
             let sizes = [data3.len() as SizesType];
             let dim_order = [0];
             let strides = [1];
             let tensor_impl = TensorImpl::from_slice(&sizes, &data3, &dim_order, &strides);
-            let tensor_storage = pin::pin!(Storage::<Tensor<i32>>::default());
+            let tensor_storage = storage!(Tensor<i32>);
             let tensor3 = Tensor::new_in_storage(&tensor_impl, tensor_storage);
 
-            let evalue_storage = pin::pin!(Storage::<EValue>::default());
+            let evalue_storage = storage!(EValue);
             let evalue1 = EValue::new_in_storage(&tensor1, evalue_storage);
-            let evalue_storage = pin::pin!(Storage::<EValue>::default());
+            let evalue_storage = storage!(EValue);
             let evalue2 = EValue::new_in_storage(&tensor2, evalue_storage);
-            let evalue_storage = pin::pin!(Storage::<EValue>::default());
+            let evalue_storage = storage!(EValue);
             let evalue3 = EValue::new_in_storage(&tensor3, evalue_storage);
 
-            let wrapped_vals_storage =
-                pin::pin!([0; 3].map(|_| Storage::<EValuePtrListElem>::default()));
+            let wrapped_vals_storage = storage!(EValuePtrListElem, [3]);
             let wrapped_vals =
                 EValuePtrList::new_in_storage([&evalue1, &evalue2, &evalue3], wrapped_vals_storage);
-            let unwrapped_vals = pin::pin!([0; 3].map(|_| Storage::<TensorAny>::default()));
+            let unwrapped_vals = storage!(TensorAny, [3]);
             let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals).unwrap();
 
-            let evalue_storage = pin::pin!(Storage::<EValue>::default());
+            let evalue_storage = storage!(EValue);
             let evalue = EValue::new_in_storage(list, evalue_storage);
             assert_eq!(evalue.tag(), Tag::ListTensor);
             let tensor_list = evalue.as_tensor_list();
@@ -1453,7 +1451,7 @@ mod tests {
                 evalue3,
                 Some(&evalue4),
             ]);
-            let unwrapped_vals = pin::pin!([0; 4].map(|_| Storage::<Option<TensorAny>>::default()));
+            let unwrapped_vals = storage!(Option<TensorAny>, [4]);
             let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals).unwrap();
 
             let evalue = EValue::new(list);
@@ -1498,7 +1496,7 @@ mod tests {
                 evalue3,
                 Some(&evalue4),
             ]);
-            let unwrapped_vals = pin::pin!([0; 4].map(|_| Storage::<Option<TensorAny>>::default()));
+            let unwrapped_vals = storage!(Option<TensorAny>, [4]);
             let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals).unwrap();
 
             let evalue = EValue::new(list);
@@ -1532,14 +1530,14 @@ mod tests {
             let dim_order = [0];
             let strides = [1];
             let tensor_impl = TensorImpl::from_slice(&sizes, &data1, &dim_order, &strides);
-            let tensor_storage = pin::pin!(Storage::<Tensor<i32>>::default());
+            let tensor_storage = storage!(Tensor<i32>);
             let tensor1 = Tensor::new_in_storage(&tensor_impl, tensor_storage);
 
             let sizes = [data2.len() as SizesType];
             let dim_order = [0];
             let strides = [1];
             let tensor_impl = TensorImpl::from_slice(&sizes, &data2, &dim_order, &strides);
-            let tensor_storage = pin::pin!(Storage::<Tensor<i32>>::default());
+            let tensor_storage = storage!(Tensor<i32>);
             let tensor2 = Tensor::new_in_storage(&tensor_impl, tensor_storage);
 
             // let tensor3 = None;
@@ -1548,27 +1546,26 @@ mod tests {
             let dim_order = [0];
             let strides = [1];
             let tensor_impl = TensorImpl::from_slice(&sizes, &data4, &dim_order, &strides);
-            let tensor_storage = pin::pin!(Storage::<Tensor<i32>>::default());
+            let tensor_storage = storage!(Tensor<i32>);
             let tensor4 = Tensor::new_in_storage(&tensor_impl, tensor_storage);
 
-            let evalue_storage = pin::pin!(Storage::<EValue>::default());
+            let evalue_storage = storage!(EValue);
             let evalue1 = EValue::new_in_storage(&tensor1, evalue_storage);
-            let evalue_storage = pin::pin!(Storage::<EValue>::default());
+            let evalue_storage = storage!(EValue);
             let evalue2 = EValue::new_in_storage(&tensor2, evalue_storage);
             let evalue3 = None;
-            let evalue_storage = pin::pin!(Storage::<EValue>::default());
+            let evalue_storage = storage!(EValue);
             let evalue4 = EValue::new_in_storage(&tensor4, evalue_storage);
 
-            let wrapped_vals_storage =
-                pin::pin!([0; 4].map(|_| Storage::<EValuePtrListElem>::default()));
+            let wrapped_vals_storage = storage!(EValuePtrListElem, [4]);
             let wrapped_vals = EValuePtrList::new_optional_in_storage(
                 [Some(&evalue1), Some(&evalue2), evalue3, Some(&evalue4)],
                 wrapped_vals_storage,
             );
-            let unwrapped_vals = pin::pin!([0; 4].map(|_| Storage::<Option<TensorAny>>::default()));
+            let unwrapped_vals = storage!(Option<TensorAny>, [4]);
             let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals).unwrap();
 
-            let evalue_storage = pin::pin!(Storage::<EValue>::default());
+            let evalue_storage = storage!(EValue);
             let evalue = EValue::new_in_storage(list, evalue_storage);
             assert_eq!(evalue.tag(), Tag::ListOptionalTensor);
             let tensor_list = evalue.as_optional_tensor_list();

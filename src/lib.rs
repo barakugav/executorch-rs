@@ -118,18 +118,23 @@
 #[cfg(not(feature = "std"))]
 extern crate core as std;
 
-cfg_if::cfg_if! { if #[cfg(feature = "std")] {
-    mod et_alloc {
-        pub use std::vec::Vec;
+#[doc(hidden)]
+pub mod __private {
+    #[cfg(feature = "std")]
+    pub mod alloc {
         pub use std::boxed::Box;
+        pub use std::vec::Vec;
     }
-} else if #[cfg(feature = "alloc")] {
-    mod et_alloc {
+    #[cfg(not(feature = "std"))]
+    pub mod alloc {
         extern crate alloc;
-        pub use alloc::vec::Vec;
         pub use alloc::boxed::Box;
+        pub use alloc::vec::Vec;
     }
-} }
+}
+
+#[allow(unused_imports)]
+use crate::__private::alloc;
 
 use executorch_sys::executorch as et_c;
 use executorch_sys::executorch_rs as et_rs_c;

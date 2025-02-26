@@ -767,7 +767,7 @@ impl<'a, S: Scalar> Tensor<'a, S> {
     /// let tensor = Tensor::new(&tensor_impl);
     ///
     /// // The tensor is allocated on the stack
-    /// let storage = pin::pin!(executorch::memory::Storage::<Tensor<f32>>::default());
+    /// let storage = executorch::storage!(Tensor<f32>);
     /// let tensor = Tensor::new_in_storage(&tensor_impl, storage);
     ///
     /// // The tensor is allocated using a memory allocator
@@ -812,7 +812,7 @@ impl<'a, S: Scalar> TensorMut<'a, S> {
     /// let tensor = TensorMut::new(&tensor_impl);
     ///
     /// // The tensor is allocated on the stack
-    /// let storage = pin::pin!(executorch::memory::Storage::<TensorMut<f32>>::default());
+    /// let storage = executorch::storage!(TensorMut<f32>);
     /// let tensor = TensorMut::new_in_storage(&tensor_impl, storage);
     ///
     /// // The tensor is allocated using a memory allocator
@@ -1218,7 +1218,7 @@ impl<D: crate::util::FixedSizeDim> Dimension for D {
 #[cfg(feature = "ndarray")]
 #[cfg(feature = "alloc")]
 impl Dimension for ndarray::IxDyn {
-    type Arr<T: Clone + Copy + Default> = crate::et_alloc::Vec<T>;
+    type Arr<T: Clone + Copy + Default> = crate::alloc::Vec<T>;
 }
 
 #[cfg(feature = "tensor-ptr")]
@@ -1456,9 +1456,7 @@ mod tests {
     #[cfg(feature = "alloc")]
     #[test]
     fn tensor_with_scalar_type() {
-        fn test_scalar_type<S: Scalar>(
-            data_allocator: impl FnOnce(usize) -> crate::et_alloc::Vec<S>,
-        ) {
+        fn test_scalar_type<S: Scalar>(data_allocator: impl FnOnce(usize) -> crate::alloc::Vec<S>) {
             let sizes = [2, 4, 17];
             let data = data_allocator(2 * 4 * 17);
             let dim_order = [0, 1, 2];
