@@ -44,6 +44,8 @@ jobs:
             examples/hello_world
             examples/no_ndarray
             examples/no_std
+            examples/nano-gpt
+            examples/llama3
       - uses: taiki-e/install-action@cargo-hack
       - name: Install Python
         uses: actions/setup-python@v5
