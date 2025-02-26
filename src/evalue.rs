@@ -11,7 +11,7 @@ use std::pin::Pin;
 use crate::memory::{Storable, Storage};
 use crate::tensor::{self, TensorAny, TensorBase};
 use crate::util::{ArrayRef, Destroy, NonTriviallyMovable, __ArrayRefImpl};
-use crate::{et_c, et_rs_c, Error, ErrorKind, Result};
+use crate::{et_c, et_rs_c, CError, Error, Result};
 
 /// A tag indicating the type of the value stored in an [`EValue`].
 ///
@@ -515,7 +515,7 @@ impl TryFrom<&EValue<'_>> for i64 {
         if value.tag() == Tag::Int {
             Ok(unsafe { et_rs_c::EValue_as_i64(value.as_evalue()) })
         } else {
-            Err(Error::simple(ErrorKind::InvalidType))
+            Err(Error::CError(CError::InvalidType))
         }
     }
 }
@@ -525,7 +525,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for &'a [i64] {
         if value.tag() == Tag::ListInt {
             Ok(unsafe { et_rs_c::EValue_as_i64_list(value.as_evalue()).as_slice() })
         } else {
-            Err(Error::simple(ErrorKind::InvalidType))
+            Err(Error::CError(CError::InvalidType))
         }
     }
 }
@@ -535,7 +535,7 @@ impl TryFrom<&EValue<'_>> for f64 {
         if value.tag() == Tag::Double {
             Ok(unsafe { et_rs_c::EValue_as_f64(value.as_evalue()) })
         } else {
-            Err(Error::simple(ErrorKind::InvalidType))
+            Err(Error::CError(CError::InvalidType))
         }
     }
 }
@@ -545,7 +545,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for &'a [f64] {
         if value.tag() == Tag::ListDouble {
             Ok(unsafe { et_rs_c::EValue_as_f64_list(value.as_evalue()).as_slice() })
         } else {
-            Err(Error::simple(ErrorKind::InvalidType))
+            Err(Error::CError(CError::InvalidType))
         }
     }
 }
@@ -555,7 +555,7 @@ impl TryFrom<&EValue<'_>> for bool {
         if value.tag() == Tag::Bool {
             Ok(unsafe { et_rs_c::EValue_as_bool(value.as_evalue()) })
         } else {
-            Err(Error::simple(ErrorKind::InvalidType))
+            Err(Error::CError(CError::InvalidType))
         }
     }
 }
@@ -565,7 +565,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for &'a [bool] {
         if value.tag() == Tag::ListBool {
             Ok(unsafe { et_rs_c::EValue_as_bool_list(value.as_evalue()).as_slice() })
         } else {
-            Err(Error::simple(ErrorKind::InvalidType))
+            Err(Error::CError(CError::InvalidType))
         }
     }
 }
@@ -575,7 +575,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for &'a [std::ffi::c_char] {
         if value.tag() == Tag::String {
             Ok(unsafe { et_rs_c::EValue_as_string(value.as_evalue()).as_slice() })
         } else {
-            Err(Error::simple(ErrorKind::InvalidType))
+            Err(Error::CError(CError::InvalidType))
         }
     }
 }
@@ -592,7 +592,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for TensorAny<'a> {
         if value.tag() == Tag::Tensor {
             Ok(unsafe { TensorAny::from_inner_ref(&value.as_evalue().payload.as_tensor) })
         } else {
-            Err(Error::simple(ErrorKind::InvalidType))
+            Err(Error::CError(CError::InvalidType))
         }
     }
 }
@@ -605,7 +605,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for TensorAny<'a> {
 //                 let inner = ManuallyDrop::take(&mut value.0.payload.as_tensor);
 //                 Tensor::from_inner(inner)
 //             }),
-//             _ => Err(Error::simple(ErrorKind::InvalidType)),
+//             _ => Err(Error::CError(CError::InvalidType)),
 //         }
 //     }
 // }
@@ -616,7 +616,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for TensorList<'a> {
             let list = unsafe { et_rs_c::EValue_as_tensor_list(value.as_evalue()) };
             Ok(unsafe { Self::from_array_ref(list) })
         } else {
-            Err(Error::simple(ErrorKind::InvalidType))
+            Err(Error::CError(CError::InvalidType))
         }
     }
 }
@@ -627,7 +627,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for OptionalTensorList<'a> {
             let list = unsafe { et_rs_c::EValue_as_optional_tensor_list(value.as_evalue()) };
             Ok(unsafe { Self::from_array_ref(list) })
         } else {
-            Err(Error::simple(ErrorKind::InvalidType))
+            Err(Error::CError(CError::InvalidType))
         }
     }
 }
@@ -791,16 +791,16 @@ impl<'a, T: BoxedEvalueListElement<'a>> BoxedEvalueList<'a, T> {
     ) -> Result<Self> {
         let wrapped_vals_slice = wrapped_vals.as_slice();
         if wrapped_vals_slice.len() != unwrapped_vals.len() {
-            return Err(Error::simple(ErrorKind::InvalidArgument));
+            return Err(Error::CError(CError::InvalidArgument));
         }
         for i in 0..wrapped_vals_slice.len() {
             let elm = wrapped_vals.get(i).unwrap();
             if let Some(elm) = elm {
                 if elm.tag() != T::__ELEMENT_TAG {
-                    return Err(Error::simple(ErrorKind::InvalidType));
+                    return Err(Error::CError(CError::InvalidType));
                 }
             } else if !T::__ALLOW_NULL_ELEMENT {
-                return Err(Error::simple(ErrorKind::InvalidType));
+                return Err(Error::CError(CError::InvalidType));
             }
         }
 
