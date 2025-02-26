@@ -106,7 +106,7 @@ fn generate_bindings() {
             bridge_dir.to_str().unwrap(),
         ))
         .allowlist_item("et_pal_init")
-        .allowlist_item("executorch::runtime::EValue")
+        .blocklist_item("executorch::runtime::EValue")
         .allowlist_item("executorch::runtime::Program")
         .allowlist_item("executorch::runtime::DataLoader")
         .allowlist_item("executorch::runtime::MemoryManager")
@@ -126,6 +126,15 @@ fn generate_bindings() {
         .blocklist_item("executorch::runtime::BoxedEvalueList")
         .blocklist_item("executorch::runtime::Result_value_type")
         .blocklist_item("executorch::runtime::Result__bindgen_ty_1")
+        //
+        .blocklist_item("executorch::runtime::Method_set_input")
+        .blocklist_item("executorch::runtime::Method_mutable_input")
+        .blocklist_item("executorch::runtime::Method_mutable_output")
+        .blocklist_item("executorch::runtime::Method_get_input")
+        .blocklist_item("executorch::runtime::Method_get_output")
+        .blocklist_item("executorch::runtime::Method_get_outputs")
+        .blocklist_item("executorch::runtime::Method_get_inputs")
+        //
         // feature data-loader
         .allowlist_item("executorch::extension::FileDataLoader")
         .allowlist_item("executorch::extension::MmapDataLoader")

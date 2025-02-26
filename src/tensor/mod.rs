@@ -1232,7 +1232,7 @@ impl Storable for Option<TensorAny<'_>> {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "ndarray")]
+    #[cfg(all(feature = "std", feature = "ndarray"))]
     use ndarray::{arr1, arr2, Array3, Ix3};
 
     #[allow(unused_imports)]
@@ -1338,7 +1338,7 @@ mod tests {
         assert_eq!(tensor.as_ptr(), data_ptr);
     }
 
-    #[cfg(feature = "ndarray")]
+    #[cfg(all(feature = "std", feature = "ndarray"))]
     #[test]
     fn array_as_tensor() {
         // Create a 1D array and convert it to a tensor
@@ -1373,7 +1373,7 @@ mod tests {
         assert_eq!(tensor.as_ptr(), array.as_ref().as_ptr());
     }
 
-    #[cfg(feature = "ndarray")]
+    #[cfg(all(feature = "std", feature = "ndarray"))]
     #[test]
     fn array_as_tensor_mut() {
         // Create a 1D array and convert it to a tensor
@@ -1410,7 +1410,7 @@ mod tests {
         assert_eq!(tensor.as_ptr(), arr_ptr);
     }
 
-    #[cfg(feature = "ndarray")]
+    #[cfg(all(feature = "std", feature = "ndarray"))]
     #[test]
     fn tensor_as_array() {
         let arr1 = ArrayStorage::new(Array3::<f32>::zeros((3, 6, 4)));
@@ -1430,7 +1430,7 @@ mod tests {
         } }
     }
 
-    #[cfg(feature = "ndarray")]
+    #[cfg(all(feature = "std", feature = "ndarray"))]
     #[test]
     fn tensor_as_array_mut() {
         let mut arr1 = ArrayStorage::new(Array3::<f32>::zeros((3, 6, 4)));
@@ -1453,7 +1453,7 @@ mod tests {
         } }
     }
 
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     #[test]
     fn tensor_with_scalar_type() {
         fn test_scalar_type<S: Scalar>(data_allocator: impl FnOnce(usize) -> crate::alloc::Vec<S>) {
@@ -1477,7 +1477,7 @@ mod tests {
         test_scalar_type::<bool>(|size| vec![false; size]);
     }
 
-    #[cfg(feature = "ndarray")]
+    #[cfg(all(feature = "std", feature = "ndarray"))]
     #[test]
     fn tensor_index() {
         let arr = ArrayStorage::new(Array3::<i32>::from_shape_fn((4, 5, 3), |(x, y, z)| {
@@ -1494,7 +1494,7 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "ndarray")]
+    #[cfg(all(feature = "std", feature = "ndarray"))]
     #[test]
     fn tensor_index_mut() {
         let mut arr = ArrayStorage::new(Array3::<i32>::zeros((4, 5, 3)));
@@ -1510,14 +1510,17 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "alloc")]
-    fn indexed_iter<D: Data>(tensor: &TensorBase<D>) -> impl Iterator<Item = Vec<usize>> {
+    #[cfg(feature = "std")]
+    #[allow(dead_code)]
+    fn indexed_iter<D: Data>(
+        tensor: &TensorBase<D>,
+    ) -> impl Iterator<Item = crate::alloc::Vec<usize>> {
         let dim = tensor.dim();
         let sizes = tensor
             .sizes()
             .iter()
             .map(|&s| s as usize)
-            .collect::<Vec<_>>();
+            .collect::<crate::alloc::Vec<_>>();
         let mut coordinate = vec![0_usize; dim];
         let mut remaining_elms = tensor.numel();
         std::iter::from_fn(move || {

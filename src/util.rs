@@ -13,8 +13,8 @@ use std::pin::Pin;
 
 #[cfg(feature = "alloc")]
 use crate::alloc;
+use crate::et_rs_c;
 use crate::memory::{Storable, Storage};
-use crate::{et_c, et_rs_c};
 
 pub(crate) trait Destroy {
     /// Destroy the object without deallocating its memory.
@@ -318,7 +318,7 @@ impl_array_ref!(f64, et_rs_c::ArrayRefF64);
 impl_array_ref!(usize, et_rs_c::ArrayRefUsizeType);
 impl_array_ref!(bool, et_rs_c::ArrayRefBool);
 // impl_array_ref!(et_c::aten::Tensor, et_rs_c::ArrayRefTensor);
-impl_array_ref!(et_c::runtime::EValue, et_rs_c::ArrayRefEValue);
+impl_array_ref!(et_rs_c::EValue, et_rs_c::ArrayRefEValue);
 
 /// Represent a reference to an array (0 or more elements
 /// consecutively in memory), i.e. a start pointer and a length.  It allows
@@ -437,7 +437,7 @@ unsafe fn strlen(ptr: *const i8) -> usize {
 #[allow(dead_code)]
 pub(crate) mod cpp_vec {
     use super::IntoRust;
-    use crate::{et_c, et_rs_c};
+    use crate::et_rs_c;
 
     // pub(crate) fn vec_as_slice<T: CppVecElement>(vec: &T::VecImpl) -> &[T] {
     //     unsafe { std::slice::from_raw_parts(vec.data, vec.len) }
@@ -504,18 +504,18 @@ pub(crate) mod cpp_vec {
             unsafe { std::slice::from_raw_parts_mut(self.data, self.len) }
         }
     }
-    impl CppVecElement for et_c::runtime::EValue {
+    impl CppVecElement for et_rs_c::EValue {
         type VecImpl = et_rs_c::VecEValue;
         fn drop_vec(vec: &mut CppVec<Self>) {
             unsafe { et_rs_c::VecEValue_destructor(&mut vec.0) }
         }
     }
     impl CppVecImpl for et_rs_c::VecEValue {
-        type Element = et_c::runtime::EValue;
-        fn as_slice(&self) -> &[et_c::runtime::EValue] {
+        type Element = et_rs_c::EValue;
+        fn as_slice(&self) -> &[et_rs_c::EValue] {
             unsafe { std::slice::from_raw_parts(self.data, self.len) }
         }
-        fn as_mut_slice(&mut self) -> &mut [et_c::runtime::EValue] {
+        fn as_mut_slice(&mut self) -> &mut [et_rs_c::EValue] {
             unsafe { std::slice::from_raw_parts_mut(self.data, self.len) }
         }
     }

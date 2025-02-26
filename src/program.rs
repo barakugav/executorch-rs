@@ -330,7 +330,14 @@ impl<'a> Execution<'a> {
     ///     provided as inputs here rather then deepcopy the input into the memory planned arena.
     /// * `input_idx` - Zero-based index of the input to set. Must be less than the value returned by inputs_size().
     pub fn set_input(&mut self, input: &'a EValue, input_idx: usize) -> Result<()> {
-        unsafe { self.method.set_input(input.as_evalue(), input_idx) }.rs()?;
+        unsafe {
+            et_rs_c::executorch_Method_set_input(
+                self.method,
+                input.as_evalue() as *const _,
+                input_idx,
+            )
+        }
+        .rs()?;
         self.set_inputs |= 1 << input_idx;
         Ok(())
     }
@@ -374,7 +381,8 @@ impl<'a> Outputs<'a> {
     ///
     /// Panics if the index is out of bounds.
     pub fn get(&self, index: usize) -> EValue {
-        let value = unsafe { &*self.method.get_output(index) };
+        let value =
+            unsafe { &*et_rs_c::executorch_Method_get_output(self.method as *const _, index) };
         EValue::from_inner_ref(value)
     }
 }

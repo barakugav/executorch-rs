@@ -32,7 +32,7 @@ pub use et_c::runtime::Tag;
 /// Aggregate typing system similar to IValue only slimmed down with less
 /// functionality, no dependencies on atomic, and fewer supported types to better
 /// suit embedded systems (ie no intrusive ptr)
-pub struct EValue<'a>(NonTriviallyMovable<'a, et_c::runtime::EValue>);
+pub struct EValue<'a>(NonTriviallyMovable<'a, et_rs_c::EValue>);
 impl<'a> EValue<'a> {
     /// Create a new [`EValue`] on the heap.
     ///
@@ -45,7 +45,7 @@ impl<'a> EValue<'a> {
     ///
     /// The closure must initialize the value correctly, otherwise the value will be in an invalid state.
     #[cfg(feature = "alloc")]
-    unsafe fn new_impl(init: impl FnOnce(*mut et_c::runtime::EValue)) -> Self {
+    unsafe fn new_impl(init: impl FnOnce(*mut et_rs_c::EValue)) -> Self {
         Self(unsafe { NonTriviallyMovable::new_boxed(init) })
     }
 
@@ -73,7 +73,7 @@ impl<'a> EValue<'a> {
     ///
     /// The closure must initialize the value correctly, otherwise the value will be in an invalid state.
     unsafe fn new_in_storage_impl(
-        init: impl FnOnce(*mut et_c::runtime::EValue),
+        init: impl FnOnce(*mut et_rs_c::EValue),
         storage: Pin<&'a mut Storage<EValue>>,
     ) -> Self {
         Self(unsafe { NonTriviallyMovable::new_in_storage(init, storage) })
@@ -105,7 +105,7 @@ impl<'a> EValue<'a> {
         value.into_evalue_in_storage(storage)
     }
 
-    pub(crate) fn from_inner_ref(value: &'a et_c::runtime::EValue) -> Self {
+    pub(crate) fn from_inner_ref(value: &'a et_rs_c::EValue) -> Self {
         Self(NonTriviallyMovable::from_ref(value))
     }
 
@@ -116,11 +116,11 @@ impl<'a> EValue<'a> {
     /// The given value should not be used after this function is called, and its Cpp destructor should be called.
     #[cfg(feature = "alloc")]
     #[allow(dead_code)]
-    pub(crate) unsafe fn move_from(value: &mut et_c::runtime::EValue) -> Self {
+    pub(crate) unsafe fn move_from(value: &mut et_rs_c::EValue) -> Self {
         Self(unsafe { NonTriviallyMovable::new_boxed(|p| et_rs_c::EValue_move(value, p)) })
     }
 
-    pub(crate) fn as_evalue(&self) -> &et_c::runtime::EValue {
+    pub(crate) fn as_evalue(&self) -> &et_rs_c::EValue {
         self.0.as_ref()
     }
 
@@ -128,18 +128,13 @@ impl<'a> EValue<'a> {
     #[cfg(feature = "alloc")]
     pub fn none() -> Self {
         // Safety: the closure init the pointer
-        let mut none = unsafe { EValue::new_impl(|p| et_rs_c::EValue_new_from_i64(p, 0)) };
-        unsafe { none.0.as_mut().unwrap().tag = Tag::None };
-        none
+        unsafe { EValue::new_impl(|p| et_rs_c::executorch_EValue_new_none(p)) }
     }
 
     /// Create a new [`EValue`] with the no value (tag `None`) in the given storage.
     pub fn none_in_storage(storage: Pin<&'a mut Storage<EValue>>) -> Self {
         // Safety: the closure init the pointer
-        let mut none =
-            unsafe { EValue::new_in_storage_impl(|p| et_rs_c::EValue_new_from_i64(p, 0), storage) };
-        unsafe { none.0.as_mut().unwrap().tag = Tag::None };
-        none
+        unsafe { EValue::new_in_storage_impl(|p| et_rs_c::executorch_EValue_new_none(p), storage) }
     }
 
     /// Check if the value is of type `None`.
@@ -280,17 +275,17 @@ impl<'a> EValue<'a> {
     ///
     /// Returns `None` if the inner Cpp tag is `None`.
     pub fn tag(&self) -> Tag {
-        self.as_evalue().tag
+        unsafe { et_rs_c::executorch_EValue_tag(self.as_evalue()) }
     }
 }
-impl Destroy for et_c::runtime::EValue {
+impl Destroy for et_rs_c::EValue {
     unsafe fn destroy(&mut self) {
         unsafe { et_rs_c::EValue_destructor(self) }
     }
 }
 
 impl Storable for EValue<'_> {
-    type __Storage = et_c::runtime::EValue;
+    type __Storage = et_rs_c::EValue;
 }
 
 /// A type that can be converted into an [`EValue`].
@@ -590,7 +585,8 @@ impl<'a> TryFrom<&'a EValue<'_>> for TensorAny<'a> {
     type Error = Error;
     fn try_from(value: &'a EValue) -> Result<Self> {
         if value.tag() == Tag::Tensor {
-            Ok(unsafe { TensorAny::from_inner_ref(&value.as_evalue().payload.as_tensor) })
+            let tensor = unsafe { et_rs_c::EValue_as_tensor(value.as_evalue()) };
+            Ok(unsafe { TensorAny::from_inner_ref(&*tensor) })
         } else {
             Err(Error::CError(CError::InvalidType))
         }
@@ -916,14 +912,14 @@ enum EValuePtrListInner<'a> {
     #[cfg(feature = "alloc")]
     Vec(
         (
-            crate::alloc::Vec<*const et_c::runtime::EValue>,
+            crate::alloc::Vec<*const et_rs_c::EValue>,
             // A lifetime for the `*const EValue` values
             PhantomData<&'a ()>,
         ),
     ),
     Slice(
         (
-            &'a [*const et_c::runtime::EValue],
+            &'a [*const et_rs_c::EValue],
             // A lifetime for the `*const EValue` values
             PhantomData<&'a ()>,
         ),
@@ -932,7 +928,7 @@ enum EValuePtrListInner<'a> {
 impl<'a> EValuePtrList<'a> {
     #[cfg(feature = "alloc")]
     fn new_impl(values: impl IntoIterator<Item = Option<&'a EValue<'a>>>) -> Self {
-        let values: crate::alloc::Vec<*const et_c::runtime::EValue> = values
+        let values: crate::alloc::Vec<*const et_rs_c::EValue> = values
             .into_iter()
             .map(|value| match value {
                 Some(value) => value.as_evalue() as *const _,
@@ -1037,7 +1033,7 @@ impl<'a> EValuePtrList<'a> {
         Self::new_in_storage_impl(values, storage)
     }
 
-    fn as_slice(&self) -> &[*const et_c::runtime::EValue] {
+    fn as_slice(&self) -> &[*const et_rs_c::EValue] {
         match &self.0 {
             #[cfg(feature = "alloc")]
             EValuePtrListInner::Vec((values, _)) => values.as_slice(),
@@ -1064,9 +1060,9 @@ impl<'a> EValuePtrList<'a> {
 /// let wrapped_vals_storage = executorch::storage!(EValuePtrListElement, [3]);
 /// let wrapped_vals = EValuePtrList::new_in_storage([&evalue1, &evalue2, &evalue3], wrapped_vals_storage);
 /// ```
-pub struct EValuePtrListElem(#[allow(dead_code)] *const et_c::runtime::EValue);
+pub struct EValuePtrListElem(#[allow(dead_code)] *const et_rs_c::EValue);
 impl Storable for EValuePtrListElem {
-    type __Storage = *const et_c::runtime::EValue;
+    type __Storage = *const et_rs_c::EValue;
 }
 
 #[cfg(test)]

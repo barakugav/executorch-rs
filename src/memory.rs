@@ -453,8 +453,12 @@ mod tests {
         let s: std::pin::Pin<&mut [super::Storage<i32>; 3]> = storage!(i32, [3]);
         assert_eq!(s.len(), 3);
 
-        let dynamic_size = 2 + std::env::var("unknown-at-compile-time").is_ok() as usize;
-        let s: std::pin::Pin<Box<[super::Storage<i32>]>> = storage!(i32, (dynamic_size));
-        assert_eq!(s.len(), dynamic_size);
+        #[cfg(feature = "std")]
+        {
+            let dynamic_size = 2 + std::env::var("unknown-at-compile-time").is_ok() as usize;
+            let s: std::pin::Pin<crate::alloc::Box<[super::Storage<i32>]>> =
+                storage!(i32, (dynamic_size));
+            assert_eq!(s.len(), dynamic_size);
+        }
     }
 }
