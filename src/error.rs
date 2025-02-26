@@ -41,7 +41,7 @@ impl std::fmt::Display for Error {
         }
     }
 }
-#[cfg(feature = "std")]
+#[cfg(any(error_in_core, feature = "std"))]
 impl std::error::Error for Error {}
 
 /// Categories of errors that can occur in executorch.
