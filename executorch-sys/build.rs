@@ -128,7 +128,6 @@ fn generate_bindings() {
         .blocklist_item("executorch::runtime::BoxedEvalueList")
         .blocklist_item("executorch::runtime::Result_value_type")
         .blocklist_item("executorch::runtime::Result__bindgen_ty_1")
-        //
         .blocklist_item("executorch::runtime::Method_set_input")
         .blocklist_item("executorch::runtime::Method_mutable_input")
         .blocklist_item("executorch::runtime::Method_mutable_output")
@@ -136,7 +135,6 @@ fn generate_bindings() {
         .blocklist_item("executorch::runtime::Method_get_output")
         .blocklist_item("executorch::runtime::Method_get_outputs")
         .blocklist_item("executorch::runtime::Method_get_inputs")
-        //
         // feature data-loader
         .allowlist_item("executorch::extension::FileDataLoader")
         .allowlist_item("executorch::extension::MmapDataLoader")
@@ -162,7 +160,10 @@ fn generate_bindings() {
         .opaque_type("executorch::runtime::MethodMeta")
         .blocklist_item("executorch::aten::Tensor")
         .blocklist_item("executorch::runtime::etensor::Tensor")
-        .opaque_type("executorch::runtime::etensor::TensorImpl")
+        .blocklist_item("executorch::runtime::etensor::TensorImpl")
+        .blocklist_item("executorch::runtime::etensor::TensorImpl_TensorImpl")
+        .blocklist_item("executorch::runtime::etensor::TensorImpl_nbytes")
+        .blocklist_item("executorch::runtime::etensor::TensorImpl_element_size")
         .opaque_type("executorch::runtime::DataLoader")
         .opaque_type("executorch::extension::MallocMemoryAllocator")
         .opaque_type("executorch::runtime::Half")

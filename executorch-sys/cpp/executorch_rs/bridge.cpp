@@ -202,10 +202,31 @@ namespace executorch_rs
     }
 
     // Tensor
-    void Tensor_new(Tensor *self, executorch::aten::TensorImpl *tensor_impl)
+    void executorch_TensorImpl_new(
+        TensorImpl *self,
+        executorch::aten::ScalarType type,
+        ssize_t dim,
+        executorch::aten::SizesType *sizes,
+        void *data,
+        executorch::aten::DimOrderType *dim_order,
+        executorch::aten::StridesType *strides,
+        executorch::aten::TensorShapeDynamism dynamism)
+    {
+        auto self_ = reinterpret_cast<executorch::aten::TensorImpl *>(self);
+        new (self_) executorch::aten::TensorImpl(
+            type,
+            dim,
+            sizes,
+            data,
+            dim_order,
+            strides,
+            dynamism);
+    }
+    void Tensor_new(Tensor *self, TensorImpl *tensor_impl)
     {
         auto self_ = reinterpret_cast<executorch::aten::Tensor *>(self);
-        new (self_) executorch::aten::Tensor(tensor_impl);
+        auto tensor_impl_ = reinterpret_cast<executorch::aten::TensorImpl *>(tensor_impl);
+        new (self_) executorch::aten::Tensor(tensor_impl_);
     }
     size_t Tensor_nbytes(const Tensor *self)
     {

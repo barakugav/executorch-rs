@@ -34,6 +34,7 @@ use executorch_sys::executorch_rs::ArrayRefUsizeType;
 #[cfg(feature = "ndarray")]
 use ndarray::{ArrayBase, ArrayView, ArrayViewMut, ShapeBuilder};
 
+use crate::error::try_new;
 use crate::memory::{Storable, Storage};
 use crate::util::{Destroy, NonTriviallyMovable, __ArrayRefImpl};
 use crate::{et_c, et_rs_c, CError, Error, Result};
@@ -251,7 +252,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// The caller must obtain a mutable reference to `tensor_impl` if the tensor is mutable.
     #[cfg(feature = "alloc")]
     unsafe fn new_boxed(tensor_impl: &'a TensorImplBase<D>) -> Self {
-        let impl_ = &tensor_impl.0 as *const et_c::runtime::etensor::TensorImpl;
+        let impl_ = &tensor_impl.0 as *const et_rs_c::TensorImpl;
         let impl_ = impl_.cast_mut();
         // Safety: the closure init the pointer
         let tensor = unsafe { NonTriviallyMovable::new_boxed(|p| et_rs_c::Tensor_new(p, impl_)) };
@@ -267,7 +268,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
         tensor_impl: &'a TensorImplBase<D>,
         storage: Pin<&'a mut Storage<TensorBase<D>>>,
     ) -> Self {
-        let impl_ = &tensor_impl.0 as *const et_c::runtime::etensor::TensorImpl;
+        let impl_ = &tensor_impl.0 as *const et_rs_c::TensorImpl;
         let impl_ = impl_.cast_mut();
         // Safety: the closure init the pointer
         let tensor = unsafe {
@@ -867,10 +868,7 @@ impl TensorBase<'_, ViewMutAny> {
 ///
 /// This is a base class for [`TensorImpl`] and [`TensorImplMut`] and is not meant to be
 /// used directly. It is used to provide a common API for both of them.
-pub struct TensorImplBase<'a, D: Data>(
-    et_c::runtime::etensor::TensorImpl,
-    PhantomData<(&'a (), D)>,
-);
+pub struct TensorImplBase<'a, D: Data>(et_rs_c::TensorImpl, PhantomData<(&'a (), D)>);
 impl<'a, D: Data> TensorImplBase<'a, D> {
     unsafe fn new<S: Scalar>(
         dim: usize,
@@ -884,15 +882,20 @@ impl<'a, D: Data> TensorImplBase<'a, D> {
         debug_assert!(!dim_order.is_null());
         debug_assert!(!strides.is_null());
         let impl_ = unsafe {
-            et_c::runtime::etensor::TensorImpl::new(
-                S::TYPE.into_c_scalar_type(),
-                dim as isize,
-                sizes as *mut SizesType,
-                data as *mut _,
-                dim_order as *mut DimOrderType,
-                strides as *mut StridesType,
-                et_c::runtime::TensorShapeDynamism::STATIC,
-            )
+            try_new(|this| {
+                et_rs_c::executorch_TensorImpl_new(
+                    this,
+                    S::TYPE.into_c_scalar_type(),
+                    dim as isize,
+                    sizes as *mut SizesType,
+                    data as *mut _,
+                    dim_order as *mut DimOrderType,
+                    strides as *mut StridesType,
+                    et_c::runtime::TensorShapeDynamism::STATIC,
+                );
+                et_c::runtime::Error::Ok
+            })
+            .unwrap()
         };
         Self(impl_, PhantomData)
     }
@@ -1151,15 +1154,20 @@ impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> ArrayStorage<A, S, 
     /// must outlive the [`TensorImpl`] created from it.
     pub fn as_tensor_impl(&self) -> TensorImpl<A> {
         let impl_ = unsafe {
-            et_c::runtime::etensor::TensorImpl::new(
-                A::TYPE.into_c_scalar_type(),
-                self.sizes.as_ref().len() as isize,
-                self.sizes.as_ref().as_ptr() as *mut SizesType,
-                self.array.as_ptr() as *mut _,
-                self.dim_order.as_ref().as_ptr() as *mut DimOrderType,
-                self.strides.as_ref().as_ptr() as *mut StridesType,
-                et_c::runtime::TensorShapeDynamism::STATIC,
-            )
+            try_new(|this| {
+                et_rs_c::executorch_TensorImpl_new(
+                    this,
+                    A::TYPE.into_c_scalar_type(),
+                    self.sizes.as_ref().len() as isize,
+                    self.sizes.as_ref().as_ptr() as *mut SizesType,
+                    self.array.as_ptr() as *mut _,
+                    self.dim_order.as_ref().as_ptr() as *mut DimOrderType,
+                    self.strides.as_ref().as_ptr() as *mut StridesType,
+                    et_c::runtime::TensorShapeDynamism::STATIC,
+                );
+                et_c::runtime::Error::Ok
+            })
+            .unwrap()
         };
         TensorImplBase(impl_, PhantomData)
     }

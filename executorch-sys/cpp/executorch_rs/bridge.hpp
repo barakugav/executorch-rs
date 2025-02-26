@@ -55,7 +55,11 @@ namespace executorch_rs
     {
         size_t _blob[1];
     };
-    static_assert(layout_of<Tensor>() == layout_of<executorch::aten::Tensor>());
+    struct TensorImpl
+    {
+        size_t _blob[8];
+    };
+    static_assert(layout_of<TensorImpl>() == layout_of<executorch::aten::TensorImpl>());
 
     struct OptionalTensor
     {
@@ -252,7 +256,16 @@ namespace executorch_rs
     ArrayRefU8 TensorInfo_dim_order(const executorch::runtime::TensorInfo &self);
 
     // Tensor
-    void Tensor_new(Tensor *self, executorch::aten::TensorImpl *tensor_impl);
+    void executorch_TensorImpl_new(
+        TensorImpl *self,
+        executorch::aten::ScalarType type,
+        ssize_t dim,
+        executorch::aten::SizesType *sizes,
+        void *data,
+        executorch::aten::DimOrderType *dim_order,
+        executorch::aten::StridesType *strides,
+        executorch::aten::TensorShapeDynamism dynamism);
+    void Tensor_new(Tensor *self, TensorImpl *tensor_impl);
     size_t Tensor_nbytes(const Tensor *self);
     ssize_t Tensor_size(const Tensor *self, ssize_t dim);
     ssize_t Tensor_dim(const Tensor *self);
