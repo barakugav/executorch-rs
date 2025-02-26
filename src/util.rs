@@ -12,7 +12,7 @@ use std::mem::MaybeUninit;
 use std::pin::Pin;
 
 #[cfg(feature = "alloc")]
-use crate::et_alloc;
+use crate::alloc;
 use crate::memory::{Storable, Storage};
 use crate::{et_c, et_rs_c};
 
@@ -31,7 +31,7 @@ pub(crate) enum NonTriviallyMovable<'a, T: Destroy> {
     // We can mutate T freely.
     // Created via `new_boxed`.
     #[cfg(feature = "alloc")]
-    Boxed(Pin<et_alloc::Box<(T, PhantomPinned)>>),
+    Boxed(Pin<alloc::Box<(T, PhantomPinned)>>),
     // We own the reference. We called its constructor and we are responsible for calling its destructor.
     // We did not allocate its memory and we are not responsible for deallocating it.
     // We can mutate T freely.
@@ -58,15 +58,15 @@ impl<'a, T: Destroy> NonTriviallyMovable<'a, T> {
     /// The inner value must be initialized by the given closure.
     #[cfg(feature = "alloc")]
     pub(crate) unsafe fn new_boxed(init: impl FnOnce(*mut T)) -> Self {
-        let mut p = et_alloc::Box::pin(MaybeUninit::<T>::uninit());
+        let mut p = alloc::Box::pin(MaybeUninit::<T>::uninit());
         // Safety: we get a mut ref out of the pin, but we dont move out of it
         init(unsafe { p.as_mut().get_unchecked_mut().as_mut_ptr() });
         // Safety: MaybeUninit<T> and (T, PhantomPinned) have the same memory layout, and the `init` closure should have
         // initialized the value.
         let p = unsafe {
             std::mem::transmute::<
-                Pin<et_alloc::Box<MaybeUninit<T>>>,
-                Pin<et_alloc::Box<(T, PhantomPinned)>>,
+                Pin<alloc::Box<MaybeUninit<T>>>,
+                Pin<alloc::Box<(T, PhantomPinned)>>,
             >(p)
         };
         NonTriviallyMovable::Boxed(p)
@@ -166,14 +166,14 @@ impl<T: Destroy> NonTriviallyMovable<'_, T> {
 
 #[cfg(feature = "alloc")]
 #[allow(dead_code)]
-pub(crate) struct NonTriviallyMovableVec<T: Destroy>(Pin<et_alloc::Box<(PhantomPinned, [T])>>);
+pub(crate) struct NonTriviallyMovableVec<T: Destroy>(Pin<alloc::Box<(PhantomPinned, [T])>>);
 #[cfg(feature = "alloc")]
 #[allow(dead_code)]
 impl<T: Destroy> NonTriviallyMovableVec<T> {
     pub(crate) unsafe fn new(len: usize, init: impl Fn(usize, &mut MaybeUninit<T>)) -> Self {
         let vec = (0..len)
             .map(|_| MaybeUninit::<T>::uninit())
-            .collect::<et_alloc::Vec<_>>()
+            .collect::<alloc::Vec<_>>()
             .into_boxed_slice();
         let mut vec = unsafe { Pin::new_unchecked(vec) };
         // Safety: we dont move out of the vec
@@ -183,8 +183,8 @@ impl<T: Destroy> NonTriviallyMovableVec<T> {
         // Safety: [MaybeUninit<T>] and (PhantomPinned, [T]) have the same memory layout.
         let vec = unsafe {
             std::mem::transmute::<
-                Pin<et_alloc::Box<[MaybeUninit<T>]>>,
-                Pin<et_alloc::Box<(PhantomPinned, [T])>>,
+                Pin<alloc::Box<[MaybeUninit<T>]>>,
+                Pin<alloc::Box<(PhantomPinned, [T])>>,
             >(vec)
         };
         NonTriviallyMovableVec(vec)
@@ -617,8 +617,8 @@ impl_dim_arr!(5);
 impl_dim_arr!(6);
 
 #[cfg(feature = "alloc")]
-impl<T: Clone + Copy + Default> DimArr<T> for et_alloc::Vec<T> {
+impl<T: Clone + Copy + Default> DimArr<T> for alloc::Vec<T> {
     fn zeros(ndim: usize) -> Self {
-        et_alloc::Vec::from_iter(std::iter::repeat(T::default()).take(ndim))
+        alloc::Vec::from_iter(std::iter::repeat(T::default()).take(ndim))
     }
 }

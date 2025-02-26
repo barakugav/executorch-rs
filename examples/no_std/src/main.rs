@@ -54,13 +54,17 @@ fn real_main() {
     let input_tensor_impl1 = input_array1.as_tensor_impl();
     let input_tensor1 =
         Tensor::new_in_storage(&input_tensor_impl1, allocator.allocate_pinned().unwrap());
-    let input_evalue1 = EValue::new_in_storage(input_tensor1, allocator.allocate_pinned().unwrap());
+    // allocate storage for EValue in the allocator
+    let storage = allocator.allocate_pinned().unwrap();
+    let input_evalue1 = EValue::new_in_storage(input_tensor1, storage);
 
     let input_array2 = ArrayStorage::new(array!(1.0_f32));
     let input_tensor_impl2 = input_array2.as_tensor_impl();
     let input_tensor2 =
         Tensor::new_in_storage(&input_tensor_impl2, allocator.allocate_pinned().unwrap());
-    let input_evalue2 = EValue::new_in_storage(input_tensor2, allocator.allocate_pinned().unwrap());
+    // allocate storage for EValue on the local stack
+    let storage = executorch::storage!(EValue);
+    let input_evalue2 = EValue::new_in_storage(input_tensor2, storage);
 
     let mut method_exe = method.start_execution();
 

@@ -346,7 +346,9 @@ impl<'a> MemoryManager<'a> {
 ///     let tensor = Tensor::new(&tensor_impl);
 ///
 ///     // Create a Tensor on the stack
-///     let storage = pin::pin!(Storage::<Tensor<f32>>::default());
+///     let storage = executorch::storage!(Tensor<f32>);
+///     // macro expands to:
+///     // let storage = pin::pin!(Storage::<Tensor<f32>>::default());
 ///     let tensor = Tensor::new_in_storage(&tensor_impl, storage);
 ///     ```
 /// - Use a [`MemoryAllocator`] to allocate a [`Storage`] object, and use it to allocate the object in place:
@@ -377,6 +379,50 @@ impl<T: Storable> Storage<T> {
         self.0.as_mut_ptr()
     }
 }
+
+/// A macro to create a pinned [`Storage`] object(s).
+///
+/// Some types in the library required dedicated memory management, either to avoid heap allocations, to prevent moving
+/// the object, etc.
+/// The [`Storage`] struct helper function used to allocate memory for these types, see its description for more
+/// information.
+/// The macro is a convenient way to create a pinned [`Storage`] object(s):
+/// - `storage!(T)` creates a single storage for type `T`, `Pin<&mut Storage<T>>`.
+/// - `storage!(T, [N])` creates an array on the stack, `Pin<&mut [Storage<T>, N]>`.
+/// - `storage!(T, (N))` creates a vector in the heap, `Pin<Box<[Storage<T>]>>`. Usually converted to
+///     `Pin<&mut [Storage<T>, N]>` with [`as_mut()`](Pin::as_mut).
+///
+/// ```rust,ignore
+/// let tensor_impl: TensorImpl = ...;
+/// let storage: Pin<&mut Storage<Tensor<f32>>> = executorch::storage!(Tensor<f32>);
+/// let tensor = Tensor::new_in_storage(&tensor_impl, storage);
+///
+/// let (evalue1, evalue2, evalue3) = (EValue::new(42), EValue::new(17), EValue::new(6));
+/// let wrapped_vals = EValuePtrList::new([&evalue1, &evalue2, &evalue3]);
+/// let mut unwrapped_vals: Pin<&mut [Storage<i64>, 3]> = storage!(i64, [3]); // an array allocation on the stack
+/// let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals).unwrap();
+///
+/// let evalues = vec![EValue::new(42), EValue::new(17), EValue::new(6)];
+/// let wrapped_vals = EValuePtrList::new(evalues.iter());
+/// let mut unwrapped_vals: Pin<Box<[Storage<i64>]>> = storage!(i64, (evalues.len())); // a vector allocation on the heap
+/// let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals.as_mut()).unwrap(); // .as_mut()
+/// ```
+#[macro_export]
+macro_rules! storage {
+    ($t:ty) => {
+        core::pin::pin!($crate::memory::Storage::<$t>::default())
+    };
+    ($t:ty, [$n:expr]) => {
+        core::pin::pin!([0; $n].map(|_| $crate::memory::Storage::<$t>::default()))
+    };
+    ($t:ty, ($n:expr)) => {{
+        let n = $n;
+        let mut vec = $crate::__private::alloc::Vec::with_capacity(n);
+        vec.resize_with(n, || $crate::memory::Storage::<$t>::default());
+        std::pin::Pin::from(vec.into_boxed_slice())
+    }};
+}
+
 /// A marker trait for types that can be stored in a [`Storage`].
 ///
 /// Usually the type is a Cpp object that is not trivially movable. See the [`Storage`] struct for more information.
@@ -396,3 +442,19 @@ macro_rules! impl_default_storable {
     };
 }
 impl_default_storable!(i8, i16, i32, i64, u8, u16, u32, u64, f32, f64);
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn storage_macro() {
+        let _: std::pin::Pin<&mut super::Storage<i32>> = storage!(i32);
+
+        let s: std::pin::Pin<&mut [super::Storage<i32>; 3]> = storage!(i32, [3]);
+        assert_eq!(s.len(), 3);
+
+        let dynamic_size = 2 + std::env::var("unknown-at-compile-time").is_ok() as usize;
+        let s: std::pin::Pin<Box<[super::Storage<i32>]>> = storage!(i32, (dynamic_size));
+        assert_eq!(s.len(), dynamic_size);
+    }
+}
