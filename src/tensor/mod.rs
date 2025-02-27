@@ -255,7 +255,8 @@ impl<'a, D: Data> TensorBase<'a, D> {
         let impl_ = &tensor_impl.0 as *const et_rs_c::TensorImpl;
         let impl_ = impl_.cast_mut();
         // Safety: the closure init the pointer
-        let tensor = unsafe { NonTriviallyMovable::new_boxed(|p| et_rs_c::Tensor_new(p, impl_)) };
+        let tensor =
+            unsafe { NonTriviallyMovable::new_boxed(|p| et_rs_c::executorch_Tensor_new(p, impl_)) };
         Self(tensor, PhantomData)
     }
 
@@ -272,7 +273,10 @@ impl<'a, D: Data> TensorBase<'a, D> {
         let impl_ = impl_.cast_mut();
         // Safety: the closure init the pointer
         let tensor = unsafe {
-            NonTriviallyMovable::new_in_storage(|p| et_rs_c::Tensor_new(p, impl_), storage)
+            NonTriviallyMovable::new_in_storage(
+                |p| et_rs_c::executorch_Tensor_new(p, impl_),
+                storage,
+            )
         };
         Self(tensor, PhantomData)
     }
@@ -335,7 +339,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// NOTE: Only the alive space is returned not the total capacity of the
     /// underlying data blob.
     pub fn nbytes(&self) -> usize {
-        unsafe { et_rs_c::Tensor_nbytes(self.as_cpp_tensor()) }
+        unsafe { et_rs_c::executorch_Tensor_nbytes(self.as_cpp_tensor()) }
     }
 
     /// Returns the size of the tensor at the given dimension.
@@ -345,34 +349,34 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// this method more compatible with at::Tensor, and more consistent with the
     /// rest of the methods on this class and in ETensor.
     pub fn size(&self, dim: usize) -> usize {
-        unsafe { et_rs_c::Tensor_size(self.as_cpp_tensor(), dim as isize) as usize }
+        unsafe { et_rs_c::executorch_Tensor_size(self.as_cpp_tensor(), dim as isize) as usize }
     }
 
     /// Returns the tensor's number of dimensions.
     pub fn dim(&self) -> usize {
-        unsafe { et_rs_c::Tensor_dim(self.as_cpp_tensor()) as usize }
+        unsafe { et_rs_c::executorch_Tensor_dim(self.as_cpp_tensor()) as usize }
     }
 
     /// Returns the number of elements in the tensor.
     pub fn numel(&self) -> usize {
-        unsafe { et_rs_c::Tensor_numel(self.as_cpp_tensor()) as usize }
+        unsafe { et_rs_c::executorch_Tensor_numel(self.as_cpp_tensor()) as usize }
     }
 
     /// Returns the type of the elements in the tensor (int32, float, bool, etc).
     pub fn scalar_type(&self) -> Option<ScalarType> {
-        let scalar_type = unsafe { et_rs_c::Tensor_scalar_type(self.as_cpp_tensor()) };
+        let scalar_type = unsafe { et_rs_c::executorch_Tensor_scalar_type(self.as_cpp_tensor()) };
         ScalarType::from_c_scalar_type(scalar_type)
     }
 
     /// Returns the size in bytes of one element of the tensor.
     pub fn element_size(&self) -> usize {
-        unsafe { et_rs_c::Tensor_element_size(self.as_cpp_tensor()) as usize }
+        unsafe { et_rs_c::executorch_Tensor_element_size(self.as_cpp_tensor()) as usize }
     }
 
     /// Returns the sizes of the tensor at each dimension.
     pub fn sizes(&self) -> &[SizesType] {
         unsafe {
-            let arr = et_rs_c::Tensor_sizes(self.as_cpp_tensor());
+            let arr = et_rs_c::executorch_Tensor_sizes(self.as_cpp_tensor());
             debug_assert!(!arr.data.is_null());
             std::slice::from_raw_parts(arr.data, arr.len)
         }
@@ -381,7 +385,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// Returns the order the dimensions are laid out in memory.
     pub fn dim_order(&self) -> &[DimOrderType] {
         unsafe {
-            let arr = et_rs_c::Tensor_dim_order(self.as_cpp_tensor());
+            let arr = et_rs_c::executorch_Tensor_dim_order(self.as_cpp_tensor());
             debug_assert!(!arr.data.is_null());
             std::slice::from_raw_parts(arr.data, arr.len)
         }
@@ -390,7 +394,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// Returns the strides of the tensor at each dimension.
     pub fn strides(&self) -> &[StridesType] {
         unsafe {
-            let arr = et_rs_c::Tensor_strides(self.as_cpp_tensor());
+            let arr = et_rs_c::executorch_Tensor_strides(self.as_cpp_tensor());
             debug_assert!(!arr.data.is_null());
             std::slice::from_raw_parts(arr.data, arr.len)
         }
@@ -403,7 +407,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// The caller must access the values in the returned pointer according to the type, sizes, dim order and strides
     /// of the tensor.
     pub fn as_ptr_raw(&self) -> *const () {
-        let ptr = unsafe { et_rs_c::Tensor_const_data_ptr(self.as_cpp_tensor()) };
+        let ptr = unsafe { et_rs_c::executorch_Tensor_const_data_ptr(self.as_cpp_tensor()) };
         debug_assert!(!ptr.is_null());
         ptr as *const ()
     }
@@ -501,7 +505,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
 
     fn coordinate_to_index(&self, coordinate: &[usize]) -> Option<usize> {
         let index = unsafe {
-            et_rs_c::Tensor_coordinate_to_index(
+            et_rs_c::executorch_Tensor_coordinate_to_index(
                 self.as_cpp_tensor(),
                 ArrayRefUsizeType::from_slice(coordinate),
             )
@@ -515,7 +519,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
 }
 impl Destroy for et_rs_c::Tensor {
     unsafe fn destroy(&mut self) {
-        unsafe { et_rs_c::Tensor_destructor(self) }
+        unsafe { et_rs_c::executorch_Tensor_destructor(self) }
     }
 }
 impl<D: Data> Storable for TensorBase<'_, D> {
@@ -679,7 +683,7 @@ impl<D: DataMut> TensorBase<'_, D> {
     /// The caller must access the values in the returned pointer according to the type, sizes, dim order and strides
     /// of the tensor.
     pub fn as_mut_ptr_raw(&self) -> *mut () {
-        let ptr = unsafe { et_rs_c::Tensor_mutable_data_ptr(self.as_cpp_tensor()) };
+        let ptr = unsafe { et_rs_c::executorch_Tensor_mutable_data_ptr(self.as_cpp_tensor()) };
         debug_assert!(!ptr.is_null());
         ptr as *mut ()
     }

@@ -492,7 +492,7 @@ pub(crate) mod cpp_vec {
     impl CppVecElement for std::ffi::c_char {
         type VecImpl = et_rs_c::VecChar;
         fn drop_vec(vec: &mut CppVec<Self>) {
-            unsafe { et_rs_c::VecChar_destructor(&mut vec.0) }
+            unsafe { et_rs_c::executorch_VecChar_destructor(&mut vec.0) }
         }
     }
     impl CppVecImpl for et_rs_c::VecChar {
@@ -507,7 +507,7 @@ pub(crate) mod cpp_vec {
     impl CppVecElement for et_rs_c::EValue {
         type VecImpl = et_rs_c::VecEValue;
         fn drop_vec(vec: &mut CppVec<Self>) {
-            unsafe { et_rs_c::VecEValue_destructor(&mut vec.0) }
+            unsafe { et_rs_c::executorch_VecEValue_destructor(&mut vec.0) }
         }
     }
     impl CppVecImpl for et_rs_c::VecEValue {
@@ -522,7 +522,7 @@ pub(crate) mod cpp_vec {
     impl CppVecElement for et_rs_c::VecChar {
         type VecImpl = et_rs_c::VecVecChar;
         fn drop_vec(vec: &mut CppVec<Self>) {
-            unsafe { et_rs_c::VecVecChar_destructor(&mut vec.0) }
+            unsafe { et_rs_c::executorch_VecVecChar_destructor(&mut vec.0) }
         }
     }
     impl CppVecImpl for et_rs_c::VecVecChar {

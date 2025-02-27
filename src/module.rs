@@ -168,7 +168,7 @@ impl Module {
     ) -> Result<Vec<EValue<'a>>> {
         let inputs = unsafe {
             NonTriviallyMovableVec::new(inputs.len(), |i, p| {
-                et_rs_c::EValue_copy(inputs[i].as_evalue(), p.as_mut_ptr())
+                et_rs_c::executorch_EValue_copy(inputs[i].as_evalue(), p.as_mut_ptr())
             })
         };
         let inputs = ArrayRef::from_slice(inputs.as_slice());

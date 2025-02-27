@@ -40,7 +40,7 @@ impl<'a> MemoryAllocator<'a> {
     pub fn new(buffer: &'a mut [u8]) -> Self {
         let size = buffer.len().try_into().expect("usize -> u32");
         let base_addr = buffer.as_mut_ptr();
-        let allocator = unsafe { et_rs_c::MemoryAllocator_new(size, base_addr) };
+        let allocator = unsafe { et_rs_c::executorch_MemoryAllocator_new(size, base_addr) };
         Self(UnsafeCell::new(allocator), PhantomData)
     }
 
@@ -169,7 +169,7 @@ mod malloc_allocator {
         /// Construct a new Malloc memory allocator.
         pub fn new() -> Self {
             Self(UnsafeCell::new(unsafe {
-                et_rs_c::MallocMemoryAllocator_new()
+                et_rs_c::executorch_MallocMemoryAllocator_new()
             }))
         }
     }
@@ -188,7 +188,7 @@ mod malloc_allocator {
     }
     impl Drop for MallocMemoryAllocator {
         fn drop(&mut self) {
-            unsafe { et_rs_c::MallocMemoryAllocator_destructor(self.0.get()) };
+            unsafe { et_rs_c::executorch_MallocMemoryAllocator_destructor(self.0.get()) };
         }
     }
 }
@@ -211,14 +211,14 @@ impl<'a> HierarchicalAllocator<'a> {
             len: buffers.len(),
         };
         Self(
-            unsafe { et_rs_c::HierarchicalAllocator_new(buffers) },
+            unsafe { et_rs_c::executorch_HierarchicalAllocator_new(buffers) },
             PhantomData,
         )
     }
 }
 impl Drop for HierarchicalAllocator<'_> {
     fn drop(&mut self) {
-        unsafe { et_rs_c::HierarchicalAllocator_destructor(&mut self.0) };
+        unsafe { et_rs_c::executorch_HierarchicalAllocator_destructor(&mut self.0) };
     }
 }
 

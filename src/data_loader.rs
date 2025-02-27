@@ -32,7 +32,8 @@ impl<'a> BufferDataLoader<'a> {
     /// Creates a new BufferDataLoader that wraps the given data.
     pub fn new(data: &'a [u8]) -> Self {
         // Safety: the returned Self has a lifetime guaranteeing it will not outlive the buffer
-        let loader = unsafe { et_rs_c::BufferDataLoader_new(data.as_ptr().cast(), data.len()) };
+        let loader =
+            unsafe { et_rs_c::executorch_BufferDataLoader_new(data.as_ptr().cast(), data.len()) };
         Self(UnsafeCell::new(loader), PhantomData)
     }
 }
@@ -121,7 +122,7 @@ mod file_data_loader {
         pub fn from_path_cstr(file_name: &CStr, alignment: Option<usize>) -> Result<Self> {
             let alignment = alignment.unwrap_or(16);
             let loader = try_new(|loader| unsafe {
-                et_rs_c::FileDataLoader_new(file_name.as_ptr(), alignment, loader)
+                et_rs_c::executorch_FileDataLoader_new(file_name.as_ptr(), alignment, loader)
             })?;
             Ok(Self(UnsafeCell::new(loader)))
         }
@@ -194,7 +195,7 @@ mod file_data_loader {
         pub fn from_path_cstr(file_name: &CStr, mlock_config: Option<MlockConfig>) -> Result<Self> {
             let mlock_config = mlock_config.unwrap_or(MlockConfig::UseMlock);
             let loader = try_new(|loader| unsafe {
-                et_rs_c::MmapDataLoader_new(file_name.as_ptr(), mlock_config, loader)
+                et_rs_c::executorch_MmapDataLoader_new(file_name.as_ptr(), mlock_config, loader)
             })?;
             Ok(Self(UnsafeCell::new(loader)))
         }

@@ -117,7 +117,9 @@ impl<'a> EValue<'a> {
     #[cfg(feature = "alloc")]
     #[allow(dead_code)]
     pub(crate) unsafe fn move_from(value: &mut et_rs_c::EValue) -> Self {
-        Self(unsafe { NonTriviallyMovable::new_boxed(|p| et_rs_c::EValue_move(value, p)) })
+        Self(unsafe {
+            NonTriviallyMovable::new_boxed(|p| et_rs_c::executorch_EValue_move(value, p))
+        })
     }
 
     pub(crate) fn as_evalue(&self) -> &et_rs_c::EValue {
@@ -280,7 +282,7 @@ impl<'a> EValue<'a> {
 }
 impl Destroy for et_rs_c::EValue {
     unsafe fn destroy(&mut self) {
-        unsafe { et_rs_c::EValue_destructor(self) }
+        unsafe { et_rs_c::executorch_EValue_destructor(self) }
     }
 }
 
@@ -311,25 +313,33 @@ impl<'a> IntoEValue<'a> for i64 {
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a> {
         // Safety: the closure init the pointer
-        unsafe { EValue::new_impl(|p| et_rs_c::EValue_new_from_i64(p, self)) }
+        unsafe { EValue::new_impl(|p| et_rs_c::executorch_EValue_new_from_i64(p, self)) }
     }
 
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
         // Safety: the closure init the pointer
-        unsafe { EValue::new_in_storage_impl(|p| et_rs_c::EValue_new_from_i64(p, self), storage) }
+        unsafe {
+            EValue::new_in_storage_impl(
+                |p| et_rs_c::executorch_EValue_new_from_i64(p, self),
+                storage,
+            )
+        }
     }
 }
 impl<'a> IntoEValue<'a> for BoxedEvalueList<'a, i64> {
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a> {
         // Safety: the closure init the pointer
-        unsafe { EValue::new_impl(|p| et_rs_c::EValue_new_from_i64_list(p, self.0)) }
+        unsafe { EValue::new_impl(|p| et_rs_c::executorch_EValue_new_from_i64_list(p, self.0)) }
     }
 
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
         // Safety: the closure init the pointer
         unsafe {
-            EValue::new_in_storage_impl(|p| et_rs_c::EValue_new_from_i64_list(p, self.0), storage)
+            EValue::new_in_storage_impl(
+                |p| et_rs_c::executorch_EValue_new_from_i64_list(p, self.0),
+                storage,
+            )
         }
     }
 }
@@ -337,12 +347,17 @@ impl<'a> IntoEValue<'a> for f64 {
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a> {
         // Safety: the closure init the pointer
-        unsafe { EValue::new_impl(|p| et_rs_c::EValue_new_from_f64(p, self)) }
+        unsafe { EValue::new_impl(|p| et_rs_c::executorch_EValue_new_from_f64(p, self)) }
     }
 
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
         // Safety: the closure init the pointer
-        unsafe { EValue::new_in_storage_impl(|p| et_rs_c::EValue_new_from_f64(p, self), storage) }
+        unsafe {
+            EValue::new_in_storage_impl(
+                |p| et_rs_c::executorch_EValue_new_from_f64(p, self),
+                storage,
+            )
+        }
     }
 }
 impl<'a> IntoEValue<'a> for &'a [f64] {
@@ -350,14 +365,17 @@ impl<'a> IntoEValue<'a> for &'a [f64] {
     fn into_evalue(self) -> EValue<'a> {
         let arr = ArrayRef::from_slice(self);
         // Safety: the closure init the pointer
-        unsafe { EValue::new_impl(|p| et_rs_c::EValue_new_from_f64_list(p, arr.0)) }
+        unsafe { EValue::new_impl(|p| et_rs_c::executorch_EValue_new_from_f64_list(p, arr.0)) }
     }
 
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
         let arr = ArrayRef::from_slice(self);
         // Safety: the closure init the pointer
         unsafe {
-            EValue::new_in_storage_impl(|p| et_rs_c::EValue_new_from_f64_list(p, arr.0), storage)
+            EValue::new_in_storage_impl(
+                |p| et_rs_c::executorch_EValue_new_from_f64_list(p, arr.0),
+                storage,
+            )
         }
     }
 }
@@ -365,12 +383,17 @@ impl<'a> IntoEValue<'a> for bool {
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a> {
         // Safety: the closure init the pointer
-        unsafe { EValue::new_impl(|p| et_rs_c::EValue_new_from_bool(p, self)) }
+        unsafe { EValue::new_impl(|p| et_rs_c::executorch_EValue_new_from_bool(p, self)) }
     }
 
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
         // Safety: the closure init the pointer
-        unsafe { EValue::new_in_storage_impl(|p| et_rs_c::EValue_new_from_bool(p, self), storage) }
+        unsafe {
+            EValue::new_in_storage_impl(
+                |p| et_rs_c::executorch_EValue_new_from_bool(p, self),
+                storage,
+            )
+        }
     }
 }
 impl<'a> IntoEValue<'a> for &'a [bool] {
@@ -378,14 +401,17 @@ impl<'a> IntoEValue<'a> for &'a [bool] {
     fn into_evalue(self) -> EValue<'a> {
         let arr = ArrayRef::from_slice(self);
         // Safety: the closure init the pointer
-        unsafe { EValue::new_impl(|p| et_rs_c::EValue_new_from_bool_list(p, arr.0)) }
+        unsafe { EValue::new_impl(|p| et_rs_c::executorch_EValue_new_from_bool_list(p, arr.0)) }
     }
 
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
         let arr = ArrayRef::from_slice(self);
         // Safety: the closure init the pointer
         unsafe {
-            EValue::new_in_storage_impl(|p| et_rs_c::EValue_new_from_bool_list(p, arr.0), storage)
+            EValue::new_in_storage_impl(
+                |p| et_rs_c::executorch_EValue_new_from_bool_list(p, arr.0),
+                storage,
+            )
         }
     }
 }
@@ -394,14 +420,17 @@ impl<'a> IntoEValue<'a> for &'a [std::ffi::c_char] {
     fn into_evalue(self) -> EValue<'a> {
         let arr = ArrayRef::from_slice(self);
         // Safety: the closure init the pointer
-        unsafe { EValue::new_impl(|p| et_rs_c::EValue_new_from_string(p, arr.0)) }
+        unsafe { EValue::new_impl(|p| et_rs_c::executorch_EValue_new_from_string(p, arr.0)) }
     }
 
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
         let arr = ArrayRef::from_slice(self);
         // Safety: the closure init the pointer
         unsafe {
-            EValue::new_in_storage_impl(|p| et_rs_c::EValue_new_from_string(p, arr.0), storage)
+            EValue::new_in_storage_impl(
+                |p| et_rs_c::executorch_EValue_new_from_string(p, arr.0),
+                storage,
+            )
         }
     }
 }
@@ -419,14 +448,18 @@ impl<'a, D: tensor::Data> IntoEValue<'a> for TensorBase<'a, D> {
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a> {
         // Safety: the closure init the pointer
-        unsafe { EValue::new_impl(|p| et_rs_c::EValue_new_from_tensor(p, self.as_cpp_tensor())) }
+        unsafe {
+            EValue::new_impl(|p| {
+                et_rs_c::executorch_EValue_new_from_tensor(p, self.as_cpp_tensor())
+            })
+        }
     }
 
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
         // Safety: the closure init the pointer
         unsafe {
             EValue::new_in_storage_impl(
-                |p| et_rs_c::EValue_new_from_tensor(p, self.as_cpp_tensor()),
+                |p| et_rs_c::executorch_EValue_new_from_tensor(p, self.as_cpp_tensor()),
                 storage,
             )
         }
@@ -435,14 +468,18 @@ impl<'a, D: tensor::Data> IntoEValue<'a> for TensorBase<'a, D> {
 impl<'a, D: tensor::Data> IntoEValue<'a> for &'a TensorBase<'_, D> {
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a> {
-        unsafe { EValue::new_impl(|p| et_rs_c::EValue_new_from_tensor(p, self.as_cpp_tensor())) }
+        unsafe {
+            EValue::new_impl(|p| {
+                et_rs_c::executorch_EValue_new_from_tensor(p, self.as_cpp_tensor())
+            })
+        }
     }
 
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
         // Safety: the closure init the pointer
         unsafe {
             EValue::new_in_storage_impl(
-                |p| et_rs_c::EValue_new_from_tensor(p, self.as_cpp_tensor()),
+                |p| et_rs_c::executorch_EValue_new_from_tensor(p, self.as_cpp_tensor()),
                 storage,
             )
         }
@@ -463,14 +500,14 @@ impl<'a> IntoEValue<'a> for BoxedEvalueList<'a, TensorAny<'a>> {
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a> {
         // Safety: the closure init the pointer
-        unsafe { EValue::new_impl(|p| et_rs_c::EValue_new_from_tensor_list(p, self.0)) }
+        unsafe { EValue::new_impl(|p| et_rs_c::executorch_EValue_new_from_tensor_list(p, self.0)) }
     }
 
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
         // Safety: the closure init the pointer
         unsafe {
             EValue::new_in_storage_impl(
-                |p| et_rs_c::EValue_new_from_tensor_list(p, self.0),
+                |p| et_rs_c::executorch_EValue_new_from_tensor_list(p, self.0),
                 storage,
             )
         }
@@ -480,14 +517,18 @@ impl<'a> IntoEValue<'a> for BoxedEvalueList<'a, Option<TensorAny<'a>>> {
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a> {
         // Safety: the closure init the pointer
-        unsafe { EValue::new_impl(|p| et_rs_c::EValue_new_from_optional_tensor_list(p, self.0)) }
+        unsafe {
+            EValue::new_impl(|p| {
+                et_rs_c::executorch_EValue_new_from_optional_tensor_list(p, self.0)
+            })
+        }
     }
 
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
         // Safety: the closure init the pointer
         unsafe {
             EValue::new_in_storage_impl(
-                |p| et_rs_c::EValue_new_from_optional_tensor_list(p, self.0),
+                |p| et_rs_c::executorch_EValue_new_from_optional_tensor_list(p, self.0),
                 storage,
             )
         }
@@ -508,7 +549,7 @@ impl TryFrom<&EValue<'_>> for i64 {
     type Error = Error;
     fn try_from(value: &EValue) -> Result<Self> {
         if value.tag() == Tag::Int {
-            Ok(unsafe { et_rs_c::EValue_as_i64(value.as_evalue()) })
+            Ok(unsafe { et_rs_c::executorch_EValue_as_i64(value.as_evalue()) })
         } else {
             Err(Error::CError(CError::InvalidType))
         }
@@ -518,7 +559,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for &'a [i64] {
     type Error = Error;
     fn try_from(value: &'a EValue) -> Result<Self> {
         if value.tag() == Tag::ListInt {
-            Ok(unsafe { et_rs_c::EValue_as_i64_list(value.as_evalue()).as_slice() })
+            Ok(unsafe { et_rs_c::executorch_EValue_as_i64_list(value.as_evalue()).as_slice() })
         } else {
             Err(Error::CError(CError::InvalidType))
         }
@@ -528,7 +569,7 @@ impl TryFrom<&EValue<'_>> for f64 {
     type Error = Error;
     fn try_from(value: &EValue) -> Result<Self> {
         if value.tag() == Tag::Double {
-            Ok(unsafe { et_rs_c::EValue_as_f64(value.as_evalue()) })
+            Ok(unsafe { et_rs_c::executorch_EValue_as_f64(value.as_evalue()) })
         } else {
             Err(Error::CError(CError::InvalidType))
         }
@@ -538,7 +579,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for &'a [f64] {
     type Error = Error;
     fn try_from(value: &'a EValue) -> Result<Self> {
         if value.tag() == Tag::ListDouble {
-            Ok(unsafe { et_rs_c::EValue_as_f64_list(value.as_evalue()).as_slice() })
+            Ok(unsafe { et_rs_c::executorch_EValue_as_f64_list(value.as_evalue()).as_slice() })
         } else {
             Err(Error::CError(CError::InvalidType))
         }
@@ -548,7 +589,7 @@ impl TryFrom<&EValue<'_>> for bool {
     type Error = Error;
     fn try_from(value: &EValue) -> Result<Self> {
         if value.tag() == Tag::Bool {
-            Ok(unsafe { et_rs_c::EValue_as_bool(value.as_evalue()) })
+            Ok(unsafe { et_rs_c::executorch_EValue_as_bool(value.as_evalue()) })
         } else {
             Err(Error::CError(CError::InvalidType))
         }
@@ -558,7 +599,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for &'a [bool] {
     type Error = Error;
     fn try_from(value: &'a EValue) -> Result<Self> {
         if value.tag() == Tag::ListBool {
-            Ok(unsafe { et_rs_c::EValue_as_bool_list(value.as_evalue()).as_slice() })
+            Ok(unsafe { et_rs_c::executorch_EValue_as_bool_list(value.as_evalue()).as_slice() })
         } else {
             Err(Error::CError(CError::InvalidType))
         }
@@ -568,7 +609,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for &'a [std::ffi::c_char] {
     type Error = Error;
     fn try_from(value: &'a EValue) -> Result<Self> {
         if value.tag() == Tag::String {
-            Ok(unsafe { et_rs_c::EValue_as_string(value.as_evalue()).as_slice() })
+            Ok(unsafe { et_rs_c::executorch_EValue_as_string(value.as_evalue()).as_slice() })
         } else {
             Err(Error::CError(CError::InvalidType))
         }
@@ -585,7 +626,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for TensorAny<'a> {
     type Error = Error;
     fn try_from(value: &'a EValue) -> Result<Self> {
         if value.tag() == Tag::Tensor {
-            let tensor = unsafe { et_rs_c::EValue_as_tensor(value.as_evalue()) };
+            let tensor = unsafe { et_rs_c::executorch_EValue_as_tensor(value.as_evalue()) };
             Ok(unsafe { TensorAny::from_inner_ref(&*tensor) })
         } else {
             Err(Error::CError(CError::InvalidType))
@@ -609,7 +650,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for TensorList<'a> {
     type Error = Error;
     fn try_from(value: &'a EValue) -> Result<Self> {
         if value.tag() == Tag::ListTensor {
-            let list = unsafe { et_rs_c::EValue_as_tensor_list(value.as_evalue()) };
+            let list = unsafe { et_rs_c::executorch_EValue_as_tensor_list(value.as_evalue()) };
             Ok(unsafe { Self::from_array_ref(list) })
         } else {
             Err(Error::CError(CError::InvalidType))
@@ -620,7 +661,8 @@ impl<'a> TryFrom<&'a EValue<'_>> for OptionalTensorList<'a> {
     type Error = Error;
     fn try_from(value: &'a EValue) -> Result<Self> {
         if value.tag() == Tag::ListOptionalTensor {
-            let list = unsafe { et_rs_c::EValue_as_optional_tensor_list(value.as_evalue()) };
+            let list =
+                unsafe { et_rs_c::executorch_EValue_as_optional_tensor_list(value.as_evalue()) };
             Ok(unsafe { Self::from_array_ref(list) })
         } else {
             Err(Error::CError(CError::InvalidType))

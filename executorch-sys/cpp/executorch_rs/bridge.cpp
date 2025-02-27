@@ -9,17 +9,17 @@
 namespace executorch_rs
 {
 #if defined(EXECUTORCH_RS_STD)
-    void VecChar_destructor(VecChar *vec)
+    void executorch_VecChar_destructor(VecChar *vec)
     {
         delete[] vec->data;
     }
-    void VecVecChar_destructor(VecVecChar *vec)
+    void executorch_VecVecChar_destructor(VecVecChar *vec)
     {
         for (size_t i = 0; i < vec->len; i++)
-            VecChar_destructor(&vec->data[i]);
+            executorch_VecChar_destructor(&vec->data[i]);
         delete[] vec->data;
     }
-    void VecEValue_destructor(VecEValue *vec)
+    void executorch_VecEValue_destructor(VecEValue *vec)
     {
         // Its safe to call the destructor of elements in `vec->data[len..cap]` because we created them with `new T[len]`
         // aka default constructor
@@ -88,35 +88,35 @@ namespace executorch_rs
         auto self_ = reinterpret_cast<const executorch::runtime::MethodMeta *>(self);
         return self_->num_memory_planned_buffers();
     }
-    executorch::runtime::Error MethodMeta_input_tag(const MethodMeta *self, size_t index, executorch::runtime::Tag *tag_out)
+    executorch::runtime::Error executorch_MethodMeta_input_tag(const MethodMeta *self, size_t index, executorch::runtime::Tag *tag_out)
     {
         auto self_ = reinterpret_cast<const executorch::runtime::MethodMeta *>(self);
         return extract_result(self_->input_tag(index), tag_out);
     }
-    executorch::runtime::Error MethodMeta_output_tag(const MethodMeta *self, size_t index, executorch::runtime::Tag *tag_out)
+    executorch::runtime::Error executorch_MethodMeta_output_tag(const MethodMeta *self, size_t index, executorch::runtime::Tag *tag_out)
     {
         auto self_ = reinterpret_cast<const executorch::runtime::MethodMeta *>(self);
         return extract_result(self_->output_tag(index), tag_out);
     }
-    executorch::runtime::Error MethodMeta_input_tensor_meta(const MethodMeta *self, size_t index, TensorInfo *tensor_info_out)
+    executorch::runtime::Error executorch_MethodMeta_input_tensor_meta(const MethodMeta *self, size_t index, TensorInfo *tensor_info_out)
     {
         auto self_ = reinterpret_cast<const executorch::runtime::MethodMeta *>(self);
         auto tensor_info_out_ = reinterpret_cast<executorch::runtime::TensorInfo *>(tensor_info_out);
         return extract_result(self_->input_tensor_meta(index), tensor_info_out_);
     }
-    executorch::runtime::Error MethodMeta_output_tensor_meta(const MethodMeta *self, size_t index, TensorInfo *tensor_info_out)
+    executorch::runtime::Error executorch_MethodMeta_output_tensor_meta(const MethodMeta *self, size_t index, TensorInfo *tensor_info_out)
     {
         auto self_ = reinterpret_cast<const executorch::runtime::MethodMeta *>(self);
         auto tensor_info_out_ = reinterpret_cast<executorch::runtime::TensorInfo *>(tensor_info_out);
         return extract_result(self_->output_tensor_meta(index), tensor_info_out_);
     }
-    executorch::runtime::Error MethodMeta_memory_planned_buffer_size(const MethodMeta *self, size_t index, int64_t *size_out)
+    executorch::runtime::Error executorch_MethodMeta_memory_planned_buffer_size(const MethodMeta *self, size_t index, int64_t *size_out)
     {
         auto self_ = reinterpret_cast<const executorch::runtime::MethodMeta *>(self);
         return extract_result(self_->memory_planned_buffer_size(index), size_out);
     }
 
-    executorch_rs::MemoryAllocator MemoryAllocator_new(uint32_t size, uint8_t *base_address)
+    executorch_rs::MemoryAllocator executorch_MemoryAllocator_new(uint32_t size, uint8_t *base_address)
     {
         executorch_rs::MemoryAllocator self;
         auto self_ = reinterpret_cast<executorch::runtime::MemoryAllocator *>(&self);
@@ -130,14 +130,14 @@ namespace executorch_rs
     }
 #if defined(EXECUTORCH_RS_STD)
 
-    executorch_rs::MallocMemoryAllocator MallocMemoryAllocator_new()
+    executorch_rs::MallocMemoryAllocator executorch_MallocMemoryAllocator_new()
     {
         executorch_rs::MallocMemoryAllocator self;
         auto self_ = reinterpret_cast<executorch::extension::MallocMemoryAllocator *>(&self);
         new (self_) executorch::extension::MallocMemoryAllocator();
         return self;
     }
-    void MallocMemoryAllocator_destructor(executorch_rs::MallocMemoryAllocator &self)
+    void executorch_MallocMemoryAllocator_destructor(executorch_rs::MallocMemoryAllocator &self)
     {
         auto self_ = reinterpret_cast<executorch::extension::MallocMemoryAllocator *>(&self);
         self_->~MallocMemoryAllocator();
@@ -149,7 +149,7 @@ namespace executorch_rs
         return reinterpret_cast<const executorch_rs::MemoryAllocator *>(memory_allocator);
     }
 #endif
-    executorch_rs::HierarchicalAllocator HierarchicalAllocator_new(SpanSpanU8 buffers)
+    executorch_rs::HierarchicalAllocator executorch_HierarchicalAllocator_new(SpanSpanU8 buffers)
     {
         executorch::runtime::Span<executorch::runtime::Span<uint8_t>> buffers_ = *reinterpret_cast<executorch::runtime::Span<executorch::runtime::Span<uint8_t>> *>(&buffers);
         ET_CHECK((void *)buffers_.begin() == (void *)buffers.data);
@@ -159,7 +159,7 @@ namespace executorch_rs
         new (self_) executorch::runtime::HierarchicalAllocator(buffers_);
         return self;
     }
-    void HierarchicalAllocator_destructor(executorch_rs::HierarchicalAllocator &self)
+    void executorch_HierarchicalAllocator_destructor(executorch_rs::HierarchicalAllocator &self)
     {
         auto self_ = reinterpret_cast<executorch::runtime::HierarchicalAllocator *>(&self);
         self_->~HierarchicalAllocator();
@@ -180,7 +180,7 @@ namespace executorch_rs
     }
 
     // Loaders
-    executorch_rs::BufferDataLoader BufferDataLoader_new(const void *data, size_t size)
+    executorch_rs::BufferDataLoader executorch_BufferDataLoader_new(const void *data, size_t size)
     {
         executorch_rs::BufferDataLoader loader;
         auto loader_ = reinterpret_cast<executorch::extension::BufferDataLoader *>(&loader);
@@ -194,7 +194,7 @@ namespace executorch_rs
         return reinterpret_cast<const executorch_rs::DataLoader *>(loader);
     }
 #if defined(EXECUTORCH_RS_DATA_LOADER)
-    executorch::runtime::Error FileDataLoader_new(const char *file_path, size_t alignment, executorch_rs::FileDataLoader *out)
+    executorch::runtime::Error executorch_FileDataLoader_new(const char *file_path, size_t alignment, executorch_rs::FileDataLoader *out)
     {
         auto out_ = reinterpret_cast<executorch::extension::FileDataLoader *>(out);
         // return extract_result(std::move(executorch::extension::FileDataLoader::from(file_path, alignment)), out);
@@ -216,7 +216,7 @@ namespace executorch_rs
         auto loader = static_cast<const executorch::runtime::DataLoader *>(self_);
         return reinterpret_cast<const executorch_rs::DataLoader *>(loader);
     }
-    executorch::runtime::Error MmapDataLoader_new(const char *file_path, executorch::extension::MmapDataLoader::MlockConfig mlock_config, executorch_rs::MmapDataLoader *out)
+    executorch::runtime::Error executorch_MmapDataLoader_new(const char *file_path, executorch::extension::MmapDataLoader::MlockConfig mlock_config, executorch_rs::MmapDataLoader *out)
     {
         auto out_ = reinterpret_cast<executorch::extension::MmapDataLoader *>(out);
         // return extract_result(executorch::extension::MmapDataLoader::from(file_path, mlock_config), out);
@@ -245,7 +245,7 @@ namespace executorch_rs
     {
         return executorch::runtime::Program::check_header(data, size);
     }
-    executorch::runtime::Error Program_load(executorch_rs::DataLoader *loader, executorch::runtime::Program::Verification verification, Program *out)
+    executorch::runtime::Error executorch_Program_load(executorch_rs::DataLoader *loader, executorch::runtime::Program::Verification verification, Program *out)
     {
         auto loader_ = reinterpret_cast<executorch::runtime::DataLoader *>(loader);
         auto out_ = reinterpret_cast<executorch::runtime::Program *>(out);
@@ -257,7 +257,7 @@ namespace executorch_rs
         new (out_) executorch::runtime::Program(std::move(program));
         return executorch::runtime::Error::Ok;
     }
-    executorch::runtime::Error Program_load_method(const Program *self, const char *method_name, executorch_rs::MemoryManager *memory_manager, executorch::runtime::EventTracer *event_tracer, Method *out)
+    executorch::runtime::Error executorch_Program_load_method(const Program *self, const char *method_name, executorch_rs::MemoryManager *memory_manager, executorch::runtime::EventTracer *event_tracer, Method *out)
     {
         auto self_ = reinterpret_cast<const executorch::runtime::Program *>(self);
         auto memory_manager_ = reinterpret_cast<executorch::runtime::MemoryManager *>(memory_manager);
@@ -270,12 +270,12 @@ namespace executorch_rs
         new (out_) executorch::runtime::Method(std::move(method));
         return executorch::runtime::Error::Ok;
     }
-    executorch::runtime::Error Program_get_method_name(const Program *self, size_t method_index, const char **out)
+    executorch::runtime::Error executorch_Program_get_method_name(const Program *self, size_t method_index, const char **out)
     {
         auto self_ = reinterpret_cast<const executorch::runtime::Program *>(self);
         return extract_result(self_->get_method_name(method_index), out);
     }
-    executorch::runtime::Error Program_method_meta(const Program *self, const char *method_name, MethodMeta *method_meta_out)
+    executorch::runtime::Error executorch_Program_method_meta(const Program *self, const char *method_name, MethodMeta *method_meta_out)
     {
         auto self_ = reinterpret_cast<const executorch::runtime::Program *>(self);
         auto method_meta_out_ = reinterpret_cast<executorch::runtime::MethodMeta *>(method_meta_out);
@@ -286,14 +286,14 @@ namespace executorch_rs
         auto self_ = reinterpret_cast<const executorch::runtime::Program *>(self);
         return self_->num_methods();
     }
-    void Program_destructor(Program *self)
+    void executorch_Program_destructor(Program *self)
     {
         auto self_ = reinterpret_cast<executorch::runtime::Program *>(self);
         self_->~Program();
     }
 
     // TensorInfo
-    ArrayRefI32 TensorInfo_sizes(const TensorInfo *self)
+    ArrayRefI32 executorch_TensorInfo_sizes(const TensorInfo *self)
     {
         auto self_ = reinterpret_cast<const executorch::runtime::TensorInfo *>(self);
         auto sizes = self_->sizes();
@@ -302,7 +302,7 @@ namespace executorch_rs
             .len = sizes.size(),
         };
     }
-    ArrayRefU8 TensorInfo_dim_order(const TensorInfo *self)
+    ArrayRefU8 executorch_TensorInfo_dim_order(const TensorInfo *self)
     {
         auto self_ = reinterpret_cast<const executorch::runtime::TensorInfo *>(self);
         auto dim_order = self_->dim_order();
@@ -343,43 +343,43 @@ namespace executorch_rs
             strides,
             dynamism);
     }
-    void Tensor_new(Tensor *self, TensorImpl *tensor_impl)
+    void executorch_Tensor_new(Tensor *self, TensorImpl *tensor_impl)
     {
         auto self_ = reinterpret_cast<executorch::aten::Tensor *>(self);
         auto tensor_impl_ = reinterpret_cast<executorch::aten::TensorImpl *>(tensor_impl);
         new (self_) executorch::aten::Tensor(tensor_impl_);
     }
-    size_t Tensor_nbytes(const Tensor *self)
+    size_t executorch_Tensor_nbytes(const Tensor *self)
     {
         auto self_ = reinterpret_cast<const executorch::aten::Tensor *>(self);
         return self_->nbytes();
     }
-    ssize_t Tensor_size(const Tensor *self, ssize_t dim)
+    ssize_t executorch_Tensor_size(const Tensor *self, ssize_t dim)
     {
         auto self_ = reinterpret_cast<const executorch::aten::Tensor *>(self);
         return self_->size(dim);
     }
-    ssize_t Tensor_dim(const Tensor *self)
+    ssize_t executorch_Tensor_dim(const Tensor *self)
     {
         auto self_ = reinterpret_cast<const executorch::aten::Tensor *>(self);
         return self_->dim();
     }
-    ssize_t Tensor_numel(const Tensor *self)
+    ssize_t executorch_Tensor_numel(const Tensor *self)
     {
         auto self_ = reinterpret_cast<const executorch::aten::Tensor *>(self);
         return self_->numel();
     }
-    executorch::aten::ScalarType Tensor_scalar_type(const Tensor *self)
+    executorch::aten::ScalarType executorch_Tensor_scalar_type(const Tensor *self)
     {
         auto self_ = reinterpret_cast<const executorch::aten::Tensor *>(self);
         return self_->scalar_type();
     }
-    ssize_t Tensor_element_size(const Tensor *self)
+    ssize_t executorch_Tensor_element_size(const Tensor *self)
     {
         auto self_ = reinterpret_cast<const executorch::aten::Tensor *>(self);
         return self_->element_size();
     }
-    ArrayRefSizesType Tensor_sizes(const Tensor *self)
+    ArrayRefSizesType executorch_Tensor_sizes(const Tensor *self)
     {
         auto self_ = reinterpret_cast<const executorch::aten::Tensor *>(self);
         auto sizes = self_->sizes();
@@ -388,7 +388,7 @@ namespace executorch_rs
             .len = sizes.size(),
         };
     }
-    ArrayRefDimOrderType Tensor_dim_order(const Tensor *self)
+    ArrayRefDimOrderType executorch_Tensor_dim_order(const Tensor *self)
     {
         auto self_ = reinterpret_cast<const executorch::aten::Tensor *>(self);
         auto dim_order = self_->dim_order();
@@ -397,7 +397,7 @@ namespace executorch_rs
             .len = dim_order.size(),
         };
     }
-    ArrayRefStridesType Tensor_strides(const Tensor *self)
+    ArrayRefStridesType executorch_Tensor_strides(const Tensor *self)
     {
         auto self_ = reinterpret_cast<const executorch::aten::Tensor *>(self);
         auto strides = self_->strides();
@@ -406,18 +406,18 @@ namespace executorch_rs
             .len = strides.size(),
         };
     }
-    const void *Tensor_const_data_ptr(const Tensor *self)
+    const void *executorch_Tensor_const_data_ptr(const Tensor *self)
     {
         auto self_ = reinterpret_cast<const executorch::aten::Tensor *>(self);
         return self_->const_data_ptr();
     }
-    void *Tensor_mutable_data_ptr(const Tensor *self)
+    void *executorch_Tensor_mutable_data_ptr(const Tensor *self)
     {
         auto self_ = reinterpret_cast<const executorch::aten::Tensor *>(self);
         return self_->mutable_data_ptr();
     }
 
-    ssize_t Tensor_coordinate_to_index(const Tensor *self, ArrayRefUsizeType coordinate)
+    ssize_t executorch_Tensor_coordinate_to_index(const Tensor *self, ArrayRefUsizeType coordinate)
     {
         auto self_ = reinterpret_cast<const executorch::aten::Tensor *>(self);
         auto ndim = (size_t)self_->dim();
@@ -447,7 +447,7 @@ namespace executorch_rs
         }
         return index;
     }
-    void Tensor_destructor(Tensor *self)
+    void executorch_Tensor_destructor(Tensor *self)
     {
         auto self_ = reinterpret_cast<executorch::aten::Tensor *>(self);
         self_->~Tensor();
@@ -458,12 +458,12 @@ namespace executorch_rs
         auto self_ = reinterpret_cast<executorch::runtime::EValue *>(self);
         new (self_) executorch::runtime::EValue();
     }
-    void EValue_new_from_i64(EValue *self, int64_t value)
+    void executorch_EValue_new_from_i64(EValue *self, int64_t value)
     {
         auto self_ = reinterpret_cast<executorch::runtime::EValue *>(self);
         new (self_) executorch::runtime::EValue(value);
     }
-    void EValue_new_from_i64_list(EValue *self, BoxedEvalueListI64 value)
+    void executorch_EValue_new_from_i64_list(EValue *self, BoxedEvalueListI64 value)
     {
         auto self_ = reinterpret_cast<executorch::runtime::EValue *>(self);
         ET_CHECK(value.wrapped_vals.len == value.unwrapped_vals.len);
@@ -473,40 +473,40 @@ namespace executorch_rs
             (int)value.wrapped_vals.len);
         new (self_) executorch::runtime::EValue(list);
     }
-    void EValue_new_from_f64(EValue *self, double value)
+    void executorch_EValue_new_from_f64(EValue *self, double value)
     {
         auto self_ = reinterpret_cast<executorch::runtime::EValue *>(self);
         new (self_) executorch::runtime::EValue(value);
     }
-    void EValue_new_from_f64_list(EValue *self, ArrayRefF64 value)
+    void executorch_EValue_new_from_f64_list(EValue *self, ArrayRefF64 value)
     {
         auto self_ = reinterpret_cast<executorch::runtime::EValue *>(self);
         executorch::aten::ArrayRef<double> value_(value.data, value.len);
         new (self_) executorch::runtime::EValue(value_);
     }
-    void EValue_new_from_bool(EValue *self, bool value)
+    void executorch_EValue_new_from_bool(EValue *self, bool value)
     {
         auto self_ = reinterpret_cast<executorch::runtime::EValue *>(self);
         new (self_) executorch::runtime::EValue(value);
     }
-    void EValue_new_from_bool_list(EValue *self, ArrayRefBool value)
+    void executorch_EValue_new_from_bool_list(EValue *self, ArrayRefBool value)
     {
         auto self_ = reinterpret_cast<executorch::runtime::EValue *>(self);
         executorch::aten::ArrayRef<bool> value_(value.data, value.len);
         new (self_) executorch::runtime::EValue(value_);
     }
-    void EValue_new_from_string(EValue *self, ArrayRefChar value)
+    void executorch_EValue_new_from_string(EValue *self, ArrayRefChar value)
     {
         auto self_ = reinterpret_cast<executorch::runtime::EValue *>(self);
         new (self_) executorch::runtime::EValue(value.data, value.len);
     }
-    void EValue_new_from_tensor(EValue *self, const Tensor *value)
+    void executorch_EValue_new_from_tensor(EValue *self, const Tensor *value)
     {
         auto self_ = reinterpret_cast<executorch::runtime::EValue *>(self);
         auto value_ = reinterpret_cast<const executorch::aten::Tensor *>(value);
         new (self_) executorch::runtime::EValue(*value_);
     }
-    void EValue_new_from_tensor_list(EValue *self, BoxedEvalueListTensor value)
+    void executorch_EValue_new_from_tensor_list(EValue *self, BoxedEvalueListTensor value)
     {
         auto self_ = reinterpret_cast<executorch::runtime::EValue *>(self);
         ET_CHECK(value.wrapped_vals.len == value.unwrapped_vals.len);
@@ -516,7 +516,7 @@ namespace executorch_rs
             (int)value.wrapped_vals.len);
         new (self_) executorch::runtime::EValue(list);
     }
-    void EValue_new_from_optional_tensor_list(EValue *self, BoxedEvalueListOptionalTensor value)
+    void executorch_EValue_new_from_optional_tensor_list(EValue *self, BoxedEvalueListOptionalTensor value)
     {
         auto self_ = reinterpret_cast<executorch::runtime::EValue *>(self);
         ET_CHECK(value.wrapped_vals.len == value.unwrapped_vals.len);
@@ -532,12 +532,12 @@ namespace executorch_rs
         auto self_ = reinterpret_cast<const executorch::runtime::EValue *>(self);
         return self_->tag;
     }
-    int64_t EValue_as_i64(const EValue *self)
+    int64_t executorch_EValue_as_i64(const EValue *self)
     {
         auto self_ = reinterpret_cast<const executorch::runtime::EValue *>(self);
         return self_->toInt();
     }
-    ArrayRefI64 EValue_as_i64_list(const EValue *self)
+    ArrayRefI64 executorch_EValue_as_i64_list(const EValue *self)
     {
         auto self_ = reinterpret_cast<const executorch::runtime::EValue *>(self);
         auto list = self_->toIntList();
@@ -546,12 +546,12 @@ namespace executorch_rs
             .len = list.size(),
         };
     }
-    double EValue_as_f64(const EValue *self)
+    double executorch_EValue_as_f64(const EValue *self)
     {
         auto self_ = reinterpret_cast<const executorch::runtime::EValue *>(self);
         return self_->toDouble();
     }
-    ArrayRefF64 EValue_as_f64_list(const EValue *self)
+    ArrayRefF64 executorch_EValue_as_f64_list(const EValue *self)
     {
         auto self_ = reinterpret_cast<const executorch::runtime::EValue *>(self);
         auto list = self_->toDoubleList();
@@ -560,12 +560,12 @@ namespace executorch_rs
             .len = list.size(),
         };
     }
-    bool EValue_as_bool(const EValue *self)
+    bool executorch_EValue_as_bool(const EValue *self)
     {
         auto self_ = reinterpret_cast<const executorch::runtime::EValue *>(self);
         return self_->toBool();
     }
-    ArrayRefBool EValue_as_bool_list(const EValue *self)
+    ArrayRefBool executorch_EValue_as_bool_list(const EValue *self)
     {
         auto self_ = reinterpret_cast<const executorch::runtime::EValue *>(self);
         auto list = self_->toBoolList();
@@ -574,7 +574,7 @@ namespace executorch_rs
             .len = list.size(),
         };
     }
-    ArrayRefChar EValue_as_string(const EValue *self)
+    ArrayRefChar executorch_EValue_as_string(const EValue *self)
     {
         auto self_ = reinterpret_cast<const executorch::runtime::EValue *>(self);
         auto str = self_->toString();
@@ -583,13 +583,13 @@ namespace executorch_rs
             .len = str.size(),
         };
     }
-    const Tensor *EValue_as_tensor(const EValue *self)
+    const Tensor *executorch_EValue_as_tensor(const EValue *self)
     {
         auto self_ = reinterpret_cast<const executorch::runtime::EValue *>(self);
         const executorch::aten::Tensor *tensor = &self_->toTensor();
         return reinterpret_cast<const Tensor *>(tensor);
     }
-    ArrayRefTensor EValue_as_tensor_list(const EValue *self)
+    ArrayRefTensor executorch_EValue_as_tensor_list(const EValue *self)
     {
         auto self_ = reinterpret_cast<const executorch::runtime::EValue *>(self);
         auto list = self_->toTensorList();
@@ -598,7 +598,7 @@ namespace executorch_rs
             .len = list.size(),
         };
     }
-    ArrayRefOptionalTensor EValue_as_optional_tensor_list(const EValue *self)
+    ArrayRefOptionalTensor executorch_EValue_as_optional_tensor_list(const EValue *self)
     {
         auto self_ = reinterpret_cast<const executorch::runtime::EValue *>(self);
         auto list = self_->toListOptionalTensor();
@@ -607,18 +607,18 @@ namespace executorch_rs
             .len = list.size(),
         };
     }
-    void EValue_copy(const EValue *src, EValue *dst)
+    void executorch_EValue_copy(const EValue *src, EValue *dst)
     {
         auto src_ = reinterpret_cast<const executorch::runtime::EValue *>(src);
         auto dst_ = reinterpret_cast<executorch::runtime::EValue *>(dst);
         new (dst_) executorch::runtime::EValue(*src_);
     }
-    void EValue_destructor(EValue *self)
+    void executorch_EValue_destructor(EValue *self)
     {
         auto self_ = reinterpret_cast<executorch::runtime::EValue *>(self);
         self_->~EValue();
     }
-    void EValue_move(EValue *src, EValue *dst)
+    void executorch_EValue_move(EValue *src, EValue *dst)
     {
         auto src_ = reinterpret_cast<executorch::runtime::EValue *>(src);
         auto dst_ = reinterpret_cast<executorch::runtime::EValue *>(dst);
