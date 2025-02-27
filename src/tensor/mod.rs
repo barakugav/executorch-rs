@@ -30,23 +30,21 @@ use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
 use std::pin::Pin;
 
-use executorch_sys::executorch_rs::ArrayRefUsizeType;
 #[cfg(feature = "ndarray")]
 use ndarray::{ArrayBase, ArrayView, ArrayViewMut, ShapeBuilder};
 
 use crate::error::try_new;
 use crate::memory::{Storable, Storage};
-use crate::util::{Destroy, NonTriviallyMovable, __ArrayRefImpl};
-use crate::{et_c, et_rs_c, CError, Error, Result};
+use crate::util::{Destroy, IntoCpp, IntoRust, NonTriviallyMovable, __ArrayRefImpl};
+use crate::{CError, Error, Result};
+use executorch_sys::{self as et_c, ScalarType as CScalarType};
 
 /// A type that represents the sizes (dimensions) of a tensor.
-pub type SizesType = et_c::aten::SizesType;
+pub type SizesType = et_c::SizesType;
 /// A type that represents the order of the dimensions of a tensor.
-pub type DimOrderType = et_c::aten::DimOrderType;
+pub type DimOrderType = et_c::DimOrderType;
 /// A type that represents the strides of a tensor.
-pub type StridesType = et_c::aten::StridesType;
-
-use et_c::runtime::etensor::ScalarType as CScalarType;
+pub type StridesType = et_c::StridesType;
 
 /// Data types (dtypes) that can be used as element types in Tensors.
 ///
@@ -56,140 +54,142 @@ use et_c::runtime::etensor::ScalarType as CScalarType;
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum ScalarType {
     /// 8-bit unsigned integer, `u8`
-    Byte = CScalarType::Byte as u8,
+    Byte = CScalarType::ScalarType_Byte as u8,
     /// 8-bit signed, integer, `i8`
-    Char = CScalarType::Char as u8,
+    Char = CScalarType::ScalarType_Char as u8,
     /// 16-bit signed integer, `i16`
-    Short = CScalarType::Short as u8,
+    Short = CScalarType::ScalarType_Short as u8,
     /// 32-bit signed integer, `i32`
-    Int = CScalarType::Int as u8,
+    Int = CScalarType::ScalarType_Int as u8,
     /// 64-bit signed integer, `i64`
-    Long = CScalarType::Long as u8,
+    Long = CScalarType::ScalarType_Long as u8,
     /// 16-bit floating point, `half::f16`, enabled by the `f16` feature
-    Half = CScalarType::Half as u8,
+    Half = CScalarType::ScalarType_Half as u8,
     /// 32-bit floating point, `f32`
-    Float = CScalarType::Float as u8,
+    Float = CScalarType::ScalarType_Float as u8,
     /// 64-bit floating point, `f64`
-    Double = CScalarType::Double as u8,
+    Double = CScalarType::ScalarType_Double as u8,
     /// 16-bit complex floating point, `num_complex::Complex<half::f16>`, enabled by the `complex` and `f16` features
-    ComplexHalf = CScalarType::ComplexHalf as u8,
+    ComplexHalf = CScalarType::ScalarType_ComplexHalf as u8,
     /// 32-bit complex floating point, `num_complex::Complex32`, enabled by the `complex` feature
-    ComplexFloat = CScalarType::ComplexFloat as u8,
+    ComplexFloat = CScalarType::ScalarType_ComplexFloat as u8,
     /// 64-bit complex floating point, `num_complex::Complex64`, enabled by the `complex` feature
-    ComplexDouble = CScalarType::ComplexDouble as u8,
+    ComplexDouble = CScalarType::ScalarType_ComplexDouble as u8,
     /// Boolean, `bool`
-    Bool = CScalarType::Bool as u8,
+    Bool = CScalarType::ScalarType_Bool as u8,
     /// **\[Unsupported\]** 8-bit quantized integer
-    QInt8 = CScalarType::QInt8 as u8,
+    QInt8 = CScalarType::ScalarType_QInt8 as u8,
     /// **\[Unsupported\]** 8-bit quantized unsigned integer
-    QUInt8 = CScalarType::QUInt8 as u8,
+    QUInt8 = CScalarType::ScalarType_QUInt8 as u8,
     /// **\[Unsupported\]** 32-bit quantized integer
-    QInt32 = CScalarType::QInt32 as u8,
+    QInt32 = CScalarType::ScalarType_QInt32 as u8,
     /// 16-bit floating point using the bfloat16 format, `half::bf16`, enabled by the `f16` feature
-    BFloat16 = CScalarType::BFloat16 as u8,
+    BFloat16 = CScalarType::ScalarType_BFloat16 as u8,
     /// **\[Unsupported\]**
-    QUInt4x2 = CScalarType::QUInt4x2 as u8,
+    QUInt4x2 = CScalarType::ScalarType_QUInt4x2 as u8,
     /// **\[Unsupported\]**
-    QUInt2x4 = CScalarType::QUInt2x4 as u8,
+    QUInt2x4 = CScalarType::ScalarType_QUInt2x4 as u8,
     /// **\[Unsupported\]**
-    Bits1x8 = CScalarType::Bits1x8 as u8,
+    Bits1x8 = CScalarType::ScalarType_Bits1x8 as u8,
     /// **\[Unsupported\]**
-    Bits2x4 = CScalarType::Bits2x4 as u8,
+    Bits2x4 = CScalarType::ScalarType_Bits2x4 as u8,
     /// **\[Unsupported\]**
-    Bits4x2 = CScalarType::Bits4x2 as u8,
+    Bits4x2 = CScalarType::ScalarType_Bits4x2 as u8,
     /// **\[Unsupported\]**
-    Bits8 = CScalarType::Bits8 as u8,
+    Bits8 = CScalarType::ScalarType_Bits8 as u8,
     /// **\[Unsupported\]**
-    Bits16 = CScalarType::Bits16 as u8,
-    /// **\[Unsupported\]**
-    #[allow(non_camel_case_types)]
-    Float8_e5m2 = CScalarType::Float8_e5m2 as u8,
+    Bits16 = CScalarType::ScalarType_Bits16 as u8,
     /// **\[Unsupported\]**
     #[allow(non_camel_case_types)]
-    Float8_e4m3fn = CScalarType::Float8_e4m3fn as u8,
+    Float8_e5m2 = CScalarType::ScalarType_Float8_e5m2 as u8,
     /// **\[Unsupported\]**
     #[allow(non_camel_case_types)]
-    Float8_e5m2fnuz = CScalarType::Float8_e5m2fnuz as u8,
+    Float8_e4m3fn = CScalarType::ScalarType_Float8_e4m3fn as u8,
     /// **\[Unsupported\]**
     #[allow(non_camel_case_types)]
-    Float8_e4m3fnuz = CScalarType::Float8_e4m3fnuz as u8,
+    Float8_e5m2fnuz = CScalarType::ScalarType_Float8_e5m2fnuz as u8,
+    /// **\[Unsupported\]**
+    #[allow(non_camel_case_types)]
+    Float8_e4m3fnuz = CScalarType::ScalarType_Float8_e4m3fnuz as u8,
     /// 16-bit unsigned integer, `u16`
-    UInt16 = CScalarType::UInt16 as u8,
+    UInt16 = CScalarType::ScalarType_UInt16 as u8,
     /// 32-bit unsigned integer, `u32`
-    UInt32 = CScalarType::UInt32 as u8,
+    UInt32 = CScalarType::ScalarType_UInt32 as u8,
     /// 64-bit unsigned integer, `u64`
-    UInt64 = CScalarType::UInt64 as u8,
+    UInt64 = CScalarType::ScalarType_UInt64 as u8,
 }
-impl ScalarType {
-    pub(crate) fn from_c_scalar_type(scalar_type: CScalarType) -> Option<Self> {
-        Some(match scalar_type {
-            CScalarType::Byte => ScalarType::Byte,
-            CScalarType::Char => ScalarType::Char,
-            CScalarType::Short => ScalarType::Short,
-            CScalarType::Int => ScalarType::Int,
-            CScalarType::Long => ScalarType::Long,
-            CScalarType::Half => ScalarType::Half,
-            CScalarType::Float => ScalarType::Float,
-            CScalarType::Double => ScalarType::Double,
-            CScalarType::ComplexHalf => ScalarType::ComplexHalf,
-            CScalarType::ComplexFloat => ScalarType::ComplexFloat,
-            CScalarType::ComplexDouble => ScalarType::ComplexDouble,
-            CScalarType::Bool => ScalarType::Bool,
-            CScalarType::QInt8 => ScalarType::QInt8,
-            CScalarType::QUInt8 => ScalarType::QUInt8,
-            CScalarType::QInt32 => ScalarType::QInt32,
-            CScalarType::BFloat16 => ScalarType::BFloat16,
-            CScalarType::QUInt4x2 => ScalarType::QUInt4x2,
-            CScalarType::QUInt2x4 => ScalarType::QUInt2x4,
-            CScalarType::Bits1x8 => ScalarType::Bits1x8,
-            CScalarType::Bits2x4 => ScalarType::Bits2x4,
-            CScalarType::Bits4x2 => ScalarType::Bits4x2,
-            CScalarType::Bits8 => ScalarType::Bits8,
-            CScalarType::Bits16 => ScalarType::Bits16,
-            CScalarType::Float8_e5m2 => ScalarType::Float8_e5m2,
-            CScalarType::Float8_e4m3fn => ScalarType::Float8_e4m3fn,
-            CScalarType::Float8_e5m2fnuz => ScalarType::Float8_e5m2fnuz,
-            CScalarType::Float8_e4m3fnuz => ScalarType::Float8_e4m3fnuz,
-            CScalarType::UInt16 => ScalarType::UInt16,
-            CScalarType::UInt32 => ScalarType::UInt32,
-            CScalarType::UInt64 => ScalarType::UInt64,
-            CScalarType::Undefined => return None,
-            CScalarType::NumOptions => panic!("Invalid scalar type"),
-        })
-    }
-
-    pub(crate) fn into_c_scalar_type(self) -> CScalarType {
+impl IntoRust for CScalarType {
+    type RsType = ScalarType;
+    fn rs(self) -> Self::RsType {
         match self {
-            ScalarType::Byte => CScalarType::Byte,
-            ScalarType::Char => CScalarType::Char,
-            ScalarType::Short => CScalarType::Short,
-            ScalarType::Int => CScalarType::Int,
-            ScalarType::Long => CScalarType::Long,
-            ScalarType::Half => CScalarType::Half,
-            ScalarType::Float => CScalarType::Float,
-            ScalarType::Double => CScalarType::Double,
-            ScalarType::ComplexHalf => CScalarType::ComplexHalf,
-            ScalarType::ComplexFloat => CScalarType::ComplexFloat,
-            ScalarType::ComplexDouble => CScalarType::ComplexDouble,
-            ScalarType::Bool => CScalarType::Bool,
-            ScalarType::QInt8 => CScalarType::QInt8,
-            ScalarType::QUInt8 => CScalarType::QUInt8,
-            ScalarType::QInt32 => CScalarType::QInt32,
-            ScalarType::BFloat16 => CScalarType::BFloat16,
-            ScalarType::QUInt4x2 => CScalarType::QUInt4x2,
-            ScalarType::QUInt2x4 => CScalarType::QUInt2x4,
-            ScalarType::Bits1x8 => CScalarType::Bits1x8,
-            ScalarType::Bits2x4 => CScalarType::Bits2x4,
-            ScalarType::Bits4x2 => CScalarType::Bits4x2,
-            ScalarType::Bits8 => CScalarType::Bits8,
-            ScalarType::Bits16 => CScalarType::Bits16,
-            ScalarType::Float8_e5m2 => CScalarType::Float8_e5m2,
-            ScalarType::Float8_e4m3fn => CScalarType::Float8_e4m3fn,
-            ScalarType::Float8_e5m2fnuz => CScalarType::Float8_e5m2fnuz,
-            ScalarType::Float8_e4m3fnuz => CScalarType::Float8_e4m3fnuz,
-            ScalarType::UInt16 => CScalarType::UInt16,
-            ScalarType::UInt32 => CScalarType::UInt32,
-            ScalarType::UInt64 => CScalarType::UInt64,
+            CScalarType::ScalarType_Byte => ScalarType::Byte,
+            CScalarType::ScalarType_Char => ScalarType::Char,
+            CScalarType::ScalarType_Short => ScalarType::Short,
+            CScalarType::ScalarType_Int => ScalarType::Int,
+            CScalarType::ScalarType_Long => ScalarType::Long,
+            CScalarType::ScalarType_Half => ScalarType::Half,
+            CScalarType::ScalarType_Float => ScalarType::Float,
+            CScalarType::ScalarType_Double => ScalarType::Double,
+            CScalarType::ScalarType_ComplexHalf => ScalarType::ComplexHalf,
+            CScalarType::ScalarType_ComplexFloat => ScalarType::ComplexFloat,
+            CScalarType::ScalarType_ComplexDouble => ScalarType::ComplexDouble,
+            CScalarType::ScalarType_Bool => ScalarType::Bool,
+            CScalarType::ScalarType_QInt8 => ScalarType::QInt8,
+            CScalarType::ScalarType_QUInt8 => ScalarType::QUInt8,
+            CScalarType::ScalarType_QInt32 => ScalarType::QInt32,
+            CScalarType::ScalarType_BFloat16 => ScalarType::BFloat16,
+            CScalarType::ScalarType_QUInt4x2 => ScalarType::QUInt4x2,
+            CScalarType::ScalarType_QUInt2x4 => ScalarType::QUInt2x4,
+            CScalarType::ScalarType_Bits1x8 => ScalarType::Bits1x8,
+            CScalarType::ScalarType_Bits2x4 => ScalarType::Bits2x4,
+            CScalarType::ScalarType_Bits4x2 => ScalarType::Bits4x2,
+            CScalarType::ScalarType_Bits8 => ScalarType::Bits8,
+            CScalarType::ScalarType_Bits16 => ScalarType::Bits16,
+            CScalarType::ScalarType_Float8_e5m2 => ScalarType::Float8_e5m2,
+            CScalarType::ScalarType_Float8_e4m3fn => ScalarType::Float8_e4m3fn,
+            CScalarType::ScalarType_Float8_e5m2fnuz => ScalarType::Float8_e5m2fnuz,
+            CScalarType::ScalarType_Float8_e4m3fnuz => ScalarType::Float8_e4m3fnuz,
+            CScalarType::ScalarType_UInt16 => ScalarType::UInt16,
+            CScalarType::ScalarType_UInt32 => ScalarType::UInt32,
+            CScalarType::ScalarType_UInt64 => ScalarType::UInt64,
+        }
+    }
+}
+impl IntoCpp for ScalarType {
+    type CppType = CScalarType;
+
+    fn cpp(self) -> Self::CppType {
+        match self {
+            ScalarType::Byte => CScalarType::ScalarType_Byte,
+            ScalarType::Char => CScalarType::ScalarType_Char,
+            ScalarType::Short => CScalarType::ScalarType_Short,
+            ScalarType::Int => CScalarType::ScalarType_Int,
+            ScalarType::Long => CScalarType::ScalarType_Long,
+            ScalarType::Half => CScalarType::ScalarType_Half,
+            ScalarType::Float => CScalarType::ScalarType_Float,
+            ScalarType::Double => CScalarType::ScalarType_Double,
+            ScalarType::ComplexHalf => CScalarType::ScalarType_ComplexHalf,
+            ScalarType::ComplexFloat => CScalarType::ScalarType_ComplexFloat,
+            ScalarType::ComplexDouble => CScalarType::ScalarType_ComplexDouble,
+            ScalarType::Bool => CScalarType::ScalarType_Bool,
+            ScalarType::QInt8 => CScalarType::ScalarType_QInt8,
+            ScalarType::QUInt8 => CScalarType::ScalarType_QUInt8,
+            ScalarType::QInt32 => CScalarType::ScalarType_QInt32,
+            ScalarType::BFloat16 => CScalarType::ScalarType_BFloat16,
+            ScalarType::QUInt4x2 => CScalarType::ScalarType_QUInt4x2,
+            ScalarType::QUInt2x4 => CScalarType::ScalarType_QUInt2x4,
+            ScalarType::Bits1x8 => CScalarType::ScalarType_Bits1x8,
+            ScalarType::Bits2x4 => CScalarType::ScalarType_Bits2x4,
+            ScalarType::Bits4x2 => CScalarType::ScalarType_Bits4x2,
+            ScalarType::Bits8 => CScalarType::ScalarType_Bits8,
+            ScalarType::Bits16 => CScalarType::ScalarType_Bits16,
+            ScalarType::Float8_e5m2 => CScalarType::ScalarType_Float8_e5m2,
+            ScalarType::Float8_e4m3fn => CScalarType::ScalarType_Float8_e4m3fn,
+            ScalarType::Float8_e5m2fnuz => CScalarType::ScalarType_Float8_e5m2fnuz,
+            ScalarType::Float8_e4m3fnuz => CScalarType::ScalarType_Float8_e4m3fnuz,
+            ScalarType::UInt16 => CScalarType::ScalarType_UInt16,
+            ScalarType::UInt32 => CScalarType::ScalarType_UInt32,
+            ScalarType::UInt64 => CScalarType::ScalarType_UInt64,
         }
     }
 }
@@ -237,7 +237,7 @@ impl_scalar!(u64, UInt64);
 /// Use the aliases such as [`Tensor`], [`TensorAny`] or [`TensorMut`] instead.
 /// It is used to provide a common API for all of them.
 pub struct TensorBase<'a, D: Data>(
-    NonTriviallyMovable<'a, et_rs_c::Tensor>,
+    NonTriviallyMovable<'a, et_c::Tensor>,
     PhantomData<(
         // phantom for the lifetime of the TensorImpl we depends on
         &'a (),
@@ -252,11 +252,11 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// The caller must obtain a mutable reference to `tensor_impl` if the tensor is mutable.
     #[cfg(feature = "alloc")]
     unsafe fn new_boxed(tensor_impl: &'a TensorImplBase<D>) -> Self {
-        let impl_ = &tensor_impl.0 as *const et_rs_c::TensorImpl;
+        let impl_ = &tensor_impl.0 as *const et_c::TensorImpl;
         let impl_ = impl_.cast_mut();
         // Safety: the closure init the pointer
         let tensor =
-            unsafe { NonTriviallyMovable::new_boxed(|p| et_rs_c::executorch_Tensor_new(p, impl_)) };
+            unsafe { NonTriviallyMovable::new_boxed(|p| et_c::executorch_Tensor_new(p, impl_)) };
         Self(tensor, PhantomData)
     }
 
@@ -269,14 +269,11 @@ impl<'a, D: Data> TensorBase<'a, D> {
         tensor_impl: &'a TensorImplBase<D>,
         storage: Pin<&'a mut Storage<TensorBase<D>>>,
     ) -> Self {
-        let impl_ = &tensor_impl.0 as *const et_rs_c::TensorImpl;
+        let impl_ = &tensor_impl.0 as *const et_c::TensorImpl;
         let impl_ = impl_.cast_mut();
         // Safety: the closure init the pointer
         let tensor = unsafe {
-            NonTriviallyMovable::new_in_storage(
-                |p| et_rs_c::executorch_Tensor_new(p, impl_),
-                storage,
-            )
+            NonTriviallyMovable::new_in_storage(|p| et_c::executorch_Tensor_new(p, impl_), storage)
         };
         Self(tensor, PhantomData)
     }
@@ -317,7 +314,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     }
 
     /// Get the underlying Cpp tensor.
-    pub(crate) fn as_cpp_tensor(&self) -> &et_rs_c::Tensor {
+    pub(crate) fn as_cpp_tensor(&self) -> &et_c::Tensor {
         self.0.as_ref()
     }
 
@@ -326,7 +323,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// # Safety
     ///
     /// The caller can not move out of the returned mut reference.
-    pub(crate) unsafe fn as_mut_cpp_tensor(&mut self) -> &mut et_rs_c::Tensor
+    pub(crate) unsafe fn as_mut_cpp_tensor(&mut self) -> &mut et_c::Tensor
     where
         D: DataMut,
     {
@@ -339,7 +336,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// NOTE: Only the alive space is returned not the total capacity of the
     /// underlying data blob.
     pub fn nbytes(&self) -> usize {
-        unsafe { et_rs_c::executorch_Tensor_nbytes(self.as_cpp_tensor()) }
+        unsafe { et_c::executorch_Tensor_nbytes(self.as_cpp_tensor()) }
     }
 
     /// Returns the size of the tensor at the given dimension.
@@ -349,34 +346,33 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// this method more compatible with at::Tensor, and more consistent with the
     /// rest of the methods on this class and in ETensor.
     pub fn size(&self, dim: usize) -> usize {
-        unsafe { et_rs_c::executorch_Tensor_size(self.as_cpp_tensor(), dim as isize) as usize }
+        unsafe { et_c::executorch_Tensor_size(self.as_cpp_tensor(), dim) }
     }
 
     /// Returns the tensor's number of dimensions.
     pub fn dim(&self) -> usize {
-        unsafe { et_rs_c::executorch_Tensor_dim(self.as_cpp_tensor()) as usize }
+        unsafe { et_c::executorch_Tensor_dim(self.as_cpp_tensor()) }
     }
 
     /// Returns the number of elements in the tensor.
     pub fn numel(&self) -> usize {
-        unsafe { et_rs_c::executorch_Tensor_numel(self.as_cpp_tensor()) as usize }
+        unsafe { et_c::executorch_Tensor_numel(self.as_cpp_tensor()) }
     }
 
     /// Returns the type of the elements in the tensor (int32, float, bool, etc).
-    pub fn scalar_type(&self) -> Option<ScalarType> {
-        let scalar_type = unsafe { et_rs_c::executorch_Tensor_scalar_type(self.as_cpp_tensor()) };
-        ScalarType::from_c_scalar_type(scalar_type)
+    pub fn scalar_type(&self) -> ScalarType {
+        unsafe { et_c::executorch_Tensor_scalar_type(self.as_cpp_tensor()) }.rs()
     }
 
     /// Returns the size in bytes of one element of the tensor.
     pub fn element_size(&self) -> usize {
-        unsafe { et_rs_c::executorch_Tensor_element_size(self.as_cpp_tensor()) as usize }
+        unsafe { et_c::executorch_Tensor_element_size(self.as_cpp_tensor()) }
     }
 
     /// Returns the sizes of the tensor at each dimension.
     pub fn sizes(&self) -> &[SizesType] {
         unsafe {
-            let arr = et_rs_c::executorch_Tensor_sizes(self.as_cpp_tensor());
+            let arr = et_c::executorch_Tensor_sizes(self.as_cpp_tensor());
             debug_assert!(!arr.data.is_null());
             std::slice::from_raw_parts(arr.data, arr.len)
         }
@@ -385,7 +381,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// Returns the order the dimensions are laid out in memory.
     pub fn dim_order(&self) -> &[DimOrderType] {
         unsafe {
-            let arr = et_rs_c::executorch_Tensor_dim_order(self.as_cpp_tensor());
+            let arr = et_c::executorch_Tensor_dim_order(self.as_cpp_tensor());
             debug_assert!(!arr.data.is_null());
             std::slice::from_raw_parts(arr.data, arr.len)
         }
@@ -394,7 +390,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// Returns the strides of the tensor at each dimension.
     pub fn strides(&self) -> &[StridesType] {
         unsafe {
-            let arr = et_rs_c::executorch_Tensor_strides(self.as_cpp_tensor());
+            let arr = et_c::executorch_Tensor_strides(self.as_cpp_tensor());
             debug_assert!(!arr.data.is_null());
             std::slice::from_raw_parts(arr.data, arr.len)
         }
@@ -407,7 +403,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// The caller must access the values in the returned pointer according to the type, sizes, dim order and strides
     /// of the tensor.
     pub fn as_ptr_raw(&self) -> *const () {
-        let ptr = unsafe { et_rs_c::executorch_Tensor_const_data_ptr(self.as_cpp_tensor()) };
+        let ptr = unsafe { et_c::executorch_Tensor_const_data_ptr(self.as_cpp_tensor()) };
         debug_assert!(!ptr.is_null());
         ptr as *const ()
     }
@@ -437,7 +433,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     ///
     /// Fails if the scalar type of the tensor does not match the required one.
     pub fn try_into_typed<S: Scalar>(self) -> Result<TensorBase<'a, D::Typed<S>>> {
-        if self.scalar_type() != Some(S::TYPE) {
+        if self.scalar_type() != S::TYPE {
             return Err(Error::CError(CError::InvalidType));
         }
         // Safety: the scalar type is checked, D::Typed is compatible with D
@@ -458,7 +454,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     ///
     /// Fails if the scalar type of the tensor does not match the required one.
     pub fn try_as_typed<S: Scalar>(&self) -> Result<TensorBase<<D::Immutable as Data>::Typed<S>>> {
-        if self.scalar_type() != Some(S::TYPE) {
+        if self.scalar_type() != S::TYPE {
             return Err(Error::CError(CError::InvalidType));
         }
         // Safety: the scalar type is checked, <D::Immutable as Data>::Typed<S> is compatible with D and its
@@ -483,7 +479,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     where
         D: DataMut,
     {
-        if self.scalar_type() != Some(S::TYPE) {
+        if self.scalar_type() != S::TYPE {
             return Err(Error::CError(CError::InvalidType));
         }
         // Safety: the scalar type is checked, D::Typed<S> is compatible with D
@@ -505,9 +501,9 @@ impl<'a, D: Data> TensorBase<'a, D> {
 
     fn coordinate_to_index(&self, coordinate: &[usize]) -> Option<usize> {
         let index = unsafe {
-            et_rs_c::executorch_Tensor_coordinate_to_index(
+            et_c::executorch_Tensor_coordinate_to_index(
                 self.as_cpp_tensor(),
-                ArrayRefUsizeType::from_slice(coordinate),
+                et_c::ArrayRefUsizeType::from_slice(coordinate),
             )
         };
         if index < 0 {
@@ -517,23 +513,20 @@ impl<'a, D: Data> TensorBase<'a, D> {
         }
     }
 }
-impl Destroy for et_rs_c::Tensor {
+impl Destroy for et_c::Tensor {
     unsafe fn destroy(&mut self) {
-        unsafe { et_rs_c::executorch_Tensor_destructor(self) }
+        unsafe { et_c::executorch_Tensor_destructor(self) }
     }
 }
 impl<D: Data> Storable for TensorBase<'_, D> {
-    type __Storage = et_rs_c::Tensor;
+    type __Storage = et_c::Tensor;
 }
 
 #[cfg(feature = "ndarray")]
 impl<D: Data> Debug for TensorBase<'_, D> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let mut st = f.debug_struct("Tensor");
-        match self.scalar_type() {
-            Some(s) => st.field("scalar_type", &s),
-            None => st.field("scalar_type", &"None"),
-        };
+        st.field("scalar_type", &self.scalar_type());
 
         fn add_data_field<S: Scalar + Debug, D: DataTyped<Scalar = S>>(
             this: TensorBase<D>,
@@ -561,69 +554,66 @@ impl<D: Data> Debug for TensorBase<'_, D> {
         }
 
         match self.scalar_type() {
-            Some(ScalarType::Byte) => add_data_field(self.as_typed::<u8>(), &mut st),
-            Some(ScalarType::Char) => add_data_field(self.as_typed::<i8>(), &mut st),
-            Some(ScalarType::Short) => add_data_field(self.as_typed::<i16>(), &mut st),
-            Some(ScalarType::Int) => add_data_field(self.as_typed::<i32>(), &mut st),
-            Some(ScalarType::Long) => add_data_field(self.as_typed::<i64>(), &mut st),
-            Some(ScalarType::Half) => {
+            ScalarType::Byte => add_data_field(self.as_typed::<u8>(), &mut st),
+            ScalarType::Char => add_data_field(self.as_typed::<i8>(), &mut st),
+            ScalarType::Short => add_data_field(self.as_typed::<i16>(), &mut st),
+            ScalarType::Int => add_data_field(self.as_typed::<i32>(), &mut st),
+            ScalarType::Long => add_data_field(self.as_typed::<i64>(), &mut st),
+            ScalarType::Half => {
                 cfg_if::cfg_if! { if #[cfg(feature = "f16")] {
                     add_data_field(self.as_typed::<half::f16>(), &mut st);
                 } else {
                     add_data_field_unsupported(&mut st);
                 } }
             }
-            Some(ScalarType::Float) => add_data_field(self.as_typed::<f32>(), &mut st),
-            Some(ScalarType::Double) => add_data_field(self.as_typed::<f64>(), &mut st),
-            Some(ScalarType::ComplexHalf) => {
+            ScalarType::Float => add_data_field(self.as_typed::<f32>(), &mut st),
+            ScalarType::Double => add_data_field(self.as_typed::<f64>(), &mut st),
+            ScalarType::ComplexHalf => {
                 cfg_if::cfg_if! { if #[cfg(all(feature = "complex", feature = "f16"))] {
                     add_data_field(self.as_typed::<num_complex::Complex<half::f16>>(), &mut st);
                 } else {
                     add_data_field_unsupported(&mut st);
                 } }
             }
-            Some(ScalarType::ComplexFloat) => {
+            ScalarType::ComplexFloat => {
                 cfg_if::cfg_if! { if #[cfg(feature = "complex")] {
                     add_data_field(self.as_typed::<num_complex::Complex32>(), &mut st);
                 } else {
                     add_data_field_unsupported(&mut st);
                 } }
             }
-            Some(ScalarType::ComplexDouble) => {
+            ScalarType::ComplexDouble => {
                 cfg_if::cfg_if! { if #[cfg(feature = "complex")] {
                     add_data_field(self.as_typed::<num_complex::Complex64>(), &mut st);
                 } else {
                     add_data_field_unsupported(&mut st);
                 } }
             }
-            Some(ScalarType::Bool) => add_data_field(self.as_typed::<bool>(), &mut st),
-            Some(ScalarType::QInt8) => add_data_field_unsupported(&mut st),
-            Some(ScalarType::QUInt8) => add_data_field_unsupported(&mut st),
-            Some(ScalarType::QInt32) => add_data_field_unsupported(&mut st),
-            Some(ScalarType::BFloat16) => {
+            ScalarType::Bool => add_data_field(self.as_typed::<bool>(), &mut st),
+            ScalarType::QInt8 => add_data_field_unsupported(&mut st),
+            ScalarType::QUInt8 => add_data_field_unsupported(&mut st),
+            ScalarType::QInt32 => add_data_field_unsupported(&mut st),
+            ScalarType::BFloat16 => {
                 cfg_if::cfg_if! { if #[cfg(feature = "f16")] {
                     add_data_field(self.as_typed::<half::bf16>(), &mut st);
                 } else {
                     add_data_field_unsupported(&mut st);
                 } }
             }
-            Some(ScalarType::QUInt4x2) => add_data_field_unsupported(&mut st),
-            Some(ScalarType::QUInt2x4) => add_data_field_unsupported(&mut st),
-            Some(ScalarType::Bits1x8) => add_data_field_unsupported(&mut st),
-            Some(ScalarType::Bits2x4) => add_data_field_unsupported(&mut st),
-            Some(ScalarType::Bits4x2) => add_data_field_unsupported(&mut st),
-            Some(ScalarType::Bits8) => add_data_field_unsupported(&mut st),
-            Some(ScalarType::Bits16) => add_data_field_unsupported(&mut st),
-            Some(ScalarType::Float8_e5m2) => add_data_field_unsupported(&mut st),
-            Some(ScalarType::Float8_e4m3fn) => add_data_field_unsupported(&mut st),
-            Some(ScalarType::Float8_e5m2fnuz) => add_data_field_unsupported(&mut st),
-            Some(ScalarType::Float8_e4m3fnuz) => add_data_field_unsupported(&mut st),
-            Some(ScalarType::UInt16) => add_data_field(self.as_typed::<u16>(), &mut st),
-            Some(ScalarType::UInt32) => add_data_field(self.as_typed::<u32>(), &mut st),
-            Some(ScalarType::UInt64) => add_data_field(self.as_typed::<u64>(), &mut st),
-            None => {
-                st.field("data", &"None");
-            }
+            ScalarType::QUInt4x2 => add_data_field_unsupported(&mut st),
+            ScalarType::QUInt2x4 => add_data_field_unsupported(&mut st),
+            ScalarType::Bits1x8 => add_data_field_unsupported(&mut st),
+            ScalarType::Bits2x4 => add_data_field_unsupported(&mut st),
+            ScalarType::Bits4x2 => add_data_field_unsupported(&mut st),
+            ScalarType::Bits8 => add_data_field_unsupported(&mut st),
+            ScalarType::Bits16 => add_data_field_unsupported(&mut st),
+            ScalarType::Float8_e5m2 => add_data_field_unsupported(&mut st),
+            ScalarType::Float8_e4m3fn => add_data_field_unsupported(&mut st),
+            ScalarType::Float8_e5m2fnuz => add_data_field_unsupported(&mut st),
+            ScalarType::Float8_e4m3fnuz => add_data_field_unsupported(&mut st),
+            ScalarType::UInt16 => add_data_field(self.as_typed::<u16>(), &mut st),
+            ScalarType::UInt32 => add_data_field(self.as_typed::<u32>(), &mut st),
+            ScalarType::UInt64 => add_data_field(self.as_typed::<u64>(), &mut st),
         };
         st.finish()
     }
@@ -632,7 +622,7 @@ impl<D: Data> Debug for TensorBase<'_, D> {
 impl<D: DataTyped> TensorBase<'_, D> {
     /// Returns a pointer to the constant underlying data blob.
     pub fn as_ptr(&self) -> *const D::Scalar {
-        debug_assert_eq!(self.scalar_type(), Some(D::Scalar::TYPE), "Invalid type");
+        debug_assert_eq!(self.scalar_type(), D::Scalar::TYPE, "Invalid type");
         self.as_ptr_raw() as *const D::Scalar
     }
 
@@ -683,7 +673,7 @@ impl<D: DataMut> TensorBase<'_, D> {
     /// The caller must access the values in the returned pointer according to the type, sizes, dim order and strides
     /// of the tensor.
     pub fn as_mut_ptr_raw(&self) -> *mut () {
-        let ptr = unsafe { et_rs_c::executorch_Tensor_mutable_data_ptr(self.as_cpp_tensor()) };
+        let ptr = unsafe { et_c::executorch_Tensor_mutable_data_ptr(self.as_cpp_tensor()) };
         debug_assert!(!ptr.is_null());
         ptr as *mut ()
     }
@@ -691,7 +681,7 @@ impl<D: DataMut> TensorBase<'_, D> {
 impl<'a, D: DataTyped + DataMut> TensorBase<'a, D> {
     /// Returns a mutable pointer of type S to the underlying data blob.
     pub fn as_mut_ptr(&self) -> *mut D::Scalar {
-        debug_assert_eq!(self.scalar_type(), Some(D::Scalar::TYPE), "Invalid type");
+        debug_assert_eq!(self.scalar_type(), D::Scalar::TYPE, "Invalid type");
         self.as_mut_ptr_raw().cast()
     }
 
@@ -838,14 +828,14 @@ impl<'a, S: Scalar> TensorMut<'a, S> {
 /// A type-erased immutable tensor that does not own the underlying data.
 pub type TensorAny<'a> = TensorBase<'a, ViewAny>;
 impl<'a> TensorAny<'a> {
-    pub(crate) fn from_inner_ref(tensor: &'a et_rs_c::Tensor) -> Self {
+    pub(crate) fn from_inner_ref(tensor: &'a et_c::Tensor) -> Self {
         Self(NonTriviallyMovable::from_ref(tensor), PhantomData)
     }
 
     /// Get a reference to the element at `index`, or return `None` if the scalar type of the tensor does not
     /// match `S` or the index is out of bounds.
     pub fn get<S: Scalar>(&self, index: &[usize]) -> Option<&S> {
-        if self.scalar_type() != Some(S::TYPE) {
+        if self.scalar_type() != S::TYPE {
             return None;
         }
         let index = self.coordinate_to_index(index)?;
@@ -858,7 +848,7 @@ impl TensorBase<'_, ViewMutAny> {
     /// Get a mutable reference to the element at `index`, or return `None` if the scalar type of the tensor does not
     /// match `S` or the index is out of bounds.
     pub fn get_mut<S: Scalar>(&mut self, index: &[usize]) -> Option<&mut S> {
-        if self.scalar_type() != Some(S::TYPE) {
+        if self.scalar_type() != S::TYPE {
             return None;
         }
         let index = self.coordinate_to_index(index)?;
@@ -872,7 +862,7 @@ impl TensorBase<'_, ViewMutAny> {
 ///
 /// This is a base class for [`TensorImpl`] and [`TensorImplMut`] and is not meant to be
 /// used directly. It is used to provide a common API for both of them.
-pub struct TensorImplBase<'a, D: Data>(et_rs_c::TensorImpl, PhantomData<(&'a (), D)>);
+pub struct TensorImplBase<'a, D: Data>(et_c::TensorImpl, PhantomData<(&'a (), D)>);
 impl<'a, D: Data> TensorImplBase<'a, D> {
     unsafe fn new<S: Scalar>(
         dim: usize,
@@ -887,17 +877,17 @@ impl<'a, D: Data> TensorImplBase<'a, D> {
         debug_assert!(!strides.is_null());
         let impl_ = unsafe {
             try_new(|this| {
-                et_rs_c::executorch_TensorImpl_new(
+                et_c::executorch_TensorImpl_new(
                     this,
-                    S::TYPE.into_c_scalar_type(),
-                    dim as isize,
+                    S::TYPE.cpp(),
+                    dim,
                     sizes as *mut SizesType,
                     data as *mut _,
                     dim_order as *mut DimOrderType,
                     strides as *mut StridesType,
-                    et_c::runtime::TensorShapeDynamism::STATIC,
+                    et_c::TensorShapeDynamism::TensorShapeDynamism_STATIC,
                 );
-                et_c::runtime::Error::Ok
+                et_c::Error::Error_Ok
             })
             .unwrap()
         };
@@ -1159,17 +1149,17 @@ impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> ArrayStorage<A, S, 
     pub fn as_tensor_impl(&self) -> TensorImpl<A> {
         let impl_ = unsafe {
             try_new(|this| {
-                et_rs_c::executorch_TensorImpl_new(
+                et_c::executorch_TensorImpl_new(
                     this,
-                    A::TYPE.into_c_scalar_type(),
-                    self.sizes.as_ref().len() as isize,
+                    A::TYPE.cpp(),
+                    self.sizes.as_ref().len(),
                     self.sizes.as_ref().as_ptr() as *mut SizesType,
                     self.array.as_ptr() as *mut _,
                     self.dim_order.as_ref().as_ptr() as *mut DimOrderType,
                     self.strides.as_ref().as_ptr() as *mut StridesType,
-                    et_c::runtime::TensorShapeDynamism::STATIC,
+                    et_c::TensorShapeDynamism::TensorShapeDynamism_STATIC,
                 );
-                et_c::runtime::Error::Ok
+                et_c::Error::Error_Ok
             })
             .unwrap()
         };
@@ -1239,7 +1229,7 @@ mod ptr;
 pub use ptr::*;
 
 impl Storable for Option<TensorAny<'_>> {
-    type __Storage = et_rs_c::OptionalTensor;
+    type __Storage = et_c::OptionalTensor;
 }
 
 #[cfg(test)]
@@ -1267,7 +1257,7 @@ mod tests {
         assert_eq!(tensor.size(1), 3);
         assert_eq!(tensor.dim(), 2);
         assert_eq!(tensor.numel(), 6);
-        assert_eq!(tensor.scalar_type(), Some(ScalarType::Int));
+        assert_eq!(tensor.scalar_type(), ScalarType::Int);
         assert_eq!(tensor.element_size(), 4);
         assert_eq!(tensor.sizes(), &[2, 3]);
         assert_eq!(tensor.dim_order(), &[0, 1]);
@@ -1291,7 +1281,7 @@ mod tests {
         assert_eq!(tensor.size(1), 3);
         assert_eq!(tensor.dim(), 2);
         assert_eq!(tensor.numel(), 6);
-        assert_eq!(tensor.scalar_type(), Some(ScalarType::Int));
+        assert_eq!(tensor.scalar_type(), ScalarType::Int);
         assert_eq!(tensor.element_size(), 4);
         assert_eq!(tensor.sizes(), &[2, 3]);
         assert_eq!(tensor.dim_order(), &[0, 1]);
@@ -1317,7 +1307,7 @@ mod tests {
         assert_eq!(tensor.size(1), 3);
         assert_eq!(tensor.dim(), 2);
         assert_eq!(tensor.numel(), 6);
-        assert_eq!(tensor.scalar_type(), Some(ScalarType::Int));
+        assert_eq!(tensor.scalar_type(), ScalarType::Int);
         assert_eq!(tensor.element_size(), 4);
         assert_eq!(tensor.sizes(), &[2, 3]);
         assert_eq!(tensor.dim_order(), &[0, 1]);
@@ -1342,7 +1332,7 @@ mod tests {
         assert_eq!(tensor.size(1), 3);
         assert_eq!(tensor.dim(), 2);
         assert_eq!(tensor.numel(), 6);
-        assert_eq!(tensor.scalar_type(), Some(ScalarType::Int));
+        assert_eq!(tensor.scalar_type(), ScalarType::Int);
         assert_eq!(tensor.element_size(), 4);
         assert_eq!(tensor.sizes(), &[2, 3]);
         assert_eq!(tensor.dim_order(), &[0, 1]);
@@ -1361,7 +1351,7 @@ mod tests {
         assert_eq!(tensor.size(0), 3);
         assert_eq!(tensor.dim(), 1);
         assert_eq!(tensor.numel(), 3);
-        assert_eq!(tensor.scalar_type(), Some(ScalarType::Int));
+        assert_eq!(tensor.scalar_type(), ScalarType::Int);
         assert_eq!(tensor.element_size(), 4);
         assert_eq!(tensor.sizes(), &[3]);
         assert_eq!(tensor.dim_order(), &[0]);
@@ -1377,7 +1367,7 @@ mod tests {
         assert_eq!(tensor.size(1), 3);
         assert_eq!(tensor.dim(), 2);
         assert_eq!(tensor.numel(), 6);
-        assert_eq!(tensor.scalar_type(), Some(ScalarType::Double));
+        assert_eq!(tensor.scalar_type(), ScalarType::Double);
         assert_eq!(tensor.element_size(), 8);
         assert_eq!(tensor.sizes(), &[2, 3]);
         assert_eq!(tensor.dim_order(), &[0, 1]);
@@ -1397,7 +1387,7 @@ mod tests {
         assert_eq!(tensor.size(0), 3);
         assert_eq!(tensor.dim(), 1);
         assert_eq!(tensor.numel(), 3);
-        assert_eq!(tensor.scalar_type(), Some(ScalarType::Int));
+        assert_eq!(tensor.scalar_type(), ScalarType::Int);
         assert_eq!(tensor.element_size(), 4);
         assert_eq!(tensor.sizes(), &[3]);
         assert_eq!(tensor.dim_order(), &[0]);
@@ -1414,7 +1404,7 @@ mod tests {
         assert_eq!(tensor.size(1), 3);
         assert_eq!(tensor.dim(), 2);
         assert_eq!(tensor.numel(), 6);
-        assert_eq!(tensor.scalar_type(), Some(ScalarType::Double));
+        assert_eq!(tensor.scalar_type(), ScalarType::Double);
         assert_eq!(tensor.element_size(), 8);
         assert_eq!(tensor.sizes(), &[2, 3]);
         assert_eq!(tensor.dim_order(), &[0, 1]);
@@ -1476,7 +1466,7 @@ mod tests {
             let tensor_impl =
                 unsafe { TensorImpl::from_ptr(&sizes, data.as_ptr(), &dim_order, &strides) };
             let tensor = Tensor::new(&tensor_impl);
-            assert_eq!(tensor.scalar_type(), Some(S::TYPE));
+            assert_eq!(tensor.scalar_type(), S::TYPE);
         }
 
         test_scalar_type::<u8>(|size| vec![0; size]);

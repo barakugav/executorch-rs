@@ -1,41 +1,41 @@
 use cxx::{type_id, ExternType};
 
-unsafe impl ExternType for crate::executorch::runtime::etensor::ScalarType {
-    type Id = type_id!("executorch::aten::ScalarType");
+unsafe impl ExternType for crate::ScalarType {
+    type Id = type_id!("ScalarType");
     type Kind = cxx::kind::Trivial;
 }
 
-unsafe impl ExternType for crate::executorch::runtime::TensorShapeDynamism {
-    type Id = type_id!("executorch::aten::TensorShapeDynamism");
+unsafe impl ExternType for crate::TensorShapeDynamism {
+    type Id = type_id!("TensorShapeDynamism");
     type Kind = cxx::kind::Trivial;
 }
 
-unsafe impl ExternType for crate::executorch_rs::Tensor {
-    type Id = type_id!("executorch_rs::Tensor");
+unsafe impl ExternType for crate::Tensor {
+    type Id = type_id!("Tensor");
     type Kind = cxx::kind::Opaque;
 }
 
-unsafe impl ExternType for crate::executorch::runtime::Error {
-    type Id = type_id!("executorch::runtime::Error");
+unsafe impl ExternType for crate::Error {
+    type Id = type_id!("Error");
     type Kind = cxx::kind::Trivial;
 }
 
-unsafe impl ExternType for crate::executorch_rs::MethodMeta {
-    type Id = type_id!("executorch_rs::MethodMeta");
+unsafe impl ExternType for crate::MethodMeta {
+    type Id = type_id!("MethodMeta");
     type Kind = cxx::kind::Trivial;
 }
 
-unsafe impl ExternType for crate::executorch_rs::ArrayRefEValue {
-    type Id = type_id!("executorch_rs::ArrayRefEValue");
+unsafe impl ExternType for crate::ArrayRefEValue {
+    type Id = type_id!("ArrayRefEValue");
     type Kind = cxx::kind::Trivial;
 }
 
-unsafe impl ExternType for crate::executorch_rs::VecEValue {
-    type Id = type_id!("executorch_rs::VecEValue");
+unsafe impl ExternType for crate::VecEValue {
+    type Id = type_id!("VecEValue");
     type Kind = cxx::kind::Trivial;
 }
 
-unsafe impl ExternType for crate::executorch::runtime::Program_Verification {
-    type Id = type_id!("executorch::runtime::Program::Verification");
+unsafe impl ExternType for crate::ProgramVerification {
+    type Id = type_id!("ProgramVerification");
     type Kind = cxx::kind::Trivial;
 }

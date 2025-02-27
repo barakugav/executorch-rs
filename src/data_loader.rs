@@ -6,7 +6,7 @@
 use std::cell::UnsafeCell;
 use std::marker::PhantomData;
 
-use crate::et_rs_c;
+use executorch_sys as et_c;
 
 /// Loads from a data source.
 ///
@@ -14,9 +14,9 @@ use crate::et_rs_c;
 /// structs, such as [`Program`], take a reference to [`DataLoader`] instead of the concrete data loader type.
 ///
 /// [`Program`]: crate::program::Program
-pub struct DataLoader(pub(crate) UnsafeCell<et_rs_c::DataLoader>);
+pub struct DataLoader(pub(crate) UnsafeCell<et_c::DataLoader>);
 impl DataLoader {
-    pub(crate) fn from_inner_ref(loader: &et_rs_c::DataLoader) -> &Self {
+    pub(crate) fn from_inner_ref(loader: &et_c::DataLoader) -> &Self {
         // Safety: Self has a single field of (UnsafeCell of) et_c::DataLoader
         unsafe { std::mem::transmute(loader) }
     }
@@ -27,20 +27,20 @@ impl DataLoader {
 ///
 /// This can be used to wrap data that is directly embedded into the firmware
 /// image, or to wrap data that was allocated elsewhere.
-pub struct BufferDataLoader<'a>(UnsafeCell<et_rs_c::BufferDataLoader>, PhantomData<&'a ()>);
+pub struct BufferDataLoader<'a>(UnsafeCell<et_c::BufferDataLoader>, PhantomData<&'a ()>);
 impl<'a> BufferDataLoader<'a> {
     /// Creates a new BufferDataLoader that wraps the given data.
     pub fn new(data: &'a [u8]) -> Self {
         // Safety: the returned Self has a lifetime guaranteeing it will not outlive the buffer
         let loader =
-            unsafe { et_rs_c::executorch_BufferDataLoader_new(data.as_ptr().cast(), data.len()) };
+            unsafe { et_c::executorch_BufferDataLoader_new(data.as_ptr().cast(), data.len()) };
         Self(UnsafeCell::new(loader), PhantomData)
     }
 }
 impl AsRef<DataLoader> for BufferDataLoader<'_> {
     fn as_ref(&self) -> &DataLoader {
         let self_ = unsafe { &*self.0.get() };
-        let loader = unsafe { &*et_rs_c::executorch_BufferDataLoader_as_data_loader(self_) };
+        let loader = unsafe { &*et_c::executorch_BufferDataLoader_as_data_loader(self_) };
         DataLoader::from_inner_ref(loader)
     }
 }
@@ -54,7 +54,9 @@ mod file_data_loader {
     use std::ffi::CStr;
 
     use crate::error::try_new;
-    use crate::{et_c, et_rs_c, Result};
+    use crate::util::IntoCpp;
+    use crate::Result;
+    use executorch_sys as et_c;
 
     use super::DataLoader;
 
@@ -63,7 +65,7 @@ mod file_data_loader {
     ///
     /// Note that this will keep the file open for the duration of its lifetime, to
     /// avoid the overhead of opening it again for every load() call.
-    pub struct FileDataLoader(UnsafeCell<et_rs_c::FileDataLoader>);
+    pub struct FileDataLoader(UnsafeCell<et_c::FileDataLoader>);
     impl FileDataLoader {
         /// Creates a new FileDataLoader given a [`Path`](std::path::Path).
         ///
@@ -122,7 +124,7 @@ mod file_data_loader {
         pub fn from_path_cstr(file_name: &CStr, alignment: Option<usize>) -> Result<Self> {
             let alignment = alignment.unwrap_or(16);
             let loader = try_new(|loader| unsafe {
-                et_rs_c::executorch_FileDataLoader_new(file_name.as_ptr(), alignment, loader)
+                et_c::executorch_FileDataLoader_new(file_name.as_ptr(), alignment, loader)
             })?;
             Ok(Self(UnsafeCell::new(loader)))
         }
@@ -130,13 +132,13 @@ mod file_data_loader {
     impl AsRef<DataLoader> for FileDataLoader {
         fn as_ref(&self) -> &DataLoader {
             let self_ = unsafe { &*self.0.get() };
-            let loader = unsafe { &*et_rs_c::executorch_FileDataLoader_as_data_loader(self_) };
+            let loader = unsafe { &*et_c::executorch_FileDataLoader_as_data_loader(self_) };
             DataLoader::from_inner_ref(loader)
         }
     }
     impl Drop for FileDataLoader {
         fn drop(&mut self) {
-            unsafe { et_rs_c::executorch_FileDataLoader_destructor(self.0.get_mut()) };
+            unsafe { et_c::executorch_FileDataLoader_destructor(self.0.get_mut()) };
         }
     }
 
@@ -145,7 +147,7 @@ mod file_data_loader {
     ///
     /// Note that this will keep the file open for the duration of its lifetime, to
     /// avoid the overhead of opening it again for every load() call.
-    pub struct MmapDataLoader(UnsafeCell<et_rs_c::MmapDataLoader>);
+    pub struct MmapDataLoader(UnsafeCell<et_c::MmapDataLoader>);
     impl MmapDataLoader {
         /// Creates a new MmapDataLoader from a [`Path`](std::path::Path).
         ///
@@ -193,9 +195,9 @@ mod file_data_loader {
         ///
         /// The `file_name` should be a valid UTF-8 string and not contains a null byte other than the one at the end.
         pub fn from_path_cstr(file_name: &CStr, mlock_config: Option<MlockConfig>) -> Result<Self> {
-            let mlock_config = mlock_config.unwrap_or(MlockConfig::UseMlock);
+            let mlock_config = mlock_config.unwrap_or(MlockConfig::UseMlock).cpp();
             let loader = try_new(|loader| unsafe {
-                et_rs_c::executorch_MmapDataLoader_new(file_name.as_ptr(), mlock_config, loader)
+                et_c::executorch_MmapDataLoader_new(file_name.as_ptr(), mlock_config, loader)
             })?;
             Ok(Self(UnsafeCell::new(loader)))
         }
@@ -203,13 +205,13 @@ mod file_data_loader {
     impl AsRef<DataLoader> for MmapDataLoader {
         fn as_ref(&self) -> &DataLoader {
             let self_ = unsafe { &*self.0.get() };
-            let loader = unsafe { &*et_rs_c::executorch_MmapDataLoader_as_data_loader(self_) };
+            let loader = unsafe { &*et_c::executorch_MmapDataLoader_as_data_loader(self_) };
             DataLoader::from_inner_ref(loader)
         }
     }
     impl Drop for MmapDataLoader {
         fn drop(&mut self) {
-            unsafe { et_rs_c::executorch_MmapDataLoader_destructor(self.0.get_mut()) };
+            unsafe { et_c::executorch_MmapDataLoader_destructor(self.0.get_mut()) };
         }
     }
 
@@ -218,5 +220,25 @@ mod file_data_loader {
     /// Using `mlock()` typically loads all of the pages immediately, and will
     /// typically ensure that they are not swapped out. The actual behavior
     /// will depend on the host system.
-    pub type MlockConfig = et_c::extension::MmapDataLoader_MlockConfig;
+    #[derive(Debug, Clone, Hash, PartialEq, Eq)]
+    pub enum MlockConfig {
+        #[doc = " Do not call `mlock()` on loaded pages."]
+        NoMlock = 0,
+        #[doc = " Call `mlock()` on loaded pages, failing if it fails."]
+        UseMlock = 1,
+        #[doc = " Call `mlock()` on loaded pages, ignoring errors if it fails."]
+        UseMlockIgnoreErrors = 2,
+    }
+    impl IntoCpp for MlockConfig {
+        type CppType = et_c::MmapDataLoaderMlockConfig;
+        fn cpp(self) -> Self::CppType {
+            match self {
+                MlockConfig::NoMlock => et_c::MmapDataLoaderMlockConfig::ModuleLoadMode_NoMlock,
+                MlockConfig::UseMlock => et_c::MmapDataLoaderMlockConfig::ModuleLoadMode_UseMlock,
+                MlockConfig::UseMlockIgnoreErrors => {
+                    et_c::MmapDataLoaderMlockConfig::ModuleLoadMode_UseMlockIgnoreErrors
+                }
+            }
+        }
+    }
 }

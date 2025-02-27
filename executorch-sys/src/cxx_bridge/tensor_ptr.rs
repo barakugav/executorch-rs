@@ -19,7 +19,7 @@ pub mod cxx_util {
 use cxx_util::RustAny;
 
 #[cxx::bridge]
-pub mod ffi {
+pub(crate) mod ffi {
 
     extern "Rust" {
         #[namespace = "executorch_rs::cxx_util"]
@@ -30,14 +30,11 @@ pub mod ffi {
         include!("executorch-sys/cpp/executorch_rs/cxx_bridge.hpp");
 
         /// Redifinition of the [`ScalarType`](crate::executorch::runtime::etensor::ScalarType).
-        #[namespace = "executorch::aten"]
-        type ScalarType = crate::executorch::runtime::etensor::ScalarType;
+        type ScalarType = crate::ScalarType;
         /// Redifinition of the [`TensorShapeDynamism`](crate::executorch::runtime::TensorShapeDynamism).
-        #[namespace = "executorch::aten"]
-        type TensorShapeDynamism = crate::executorch::runtime::TensorShapeDynamism;
+        type TensorShapeDynamism = crate::TensorShapeDynamism;
         /// Redifinition of the [`Tensor`](crate::executorch::runtime::etensor::Tensor).
-        #[namespace = "executorch_rs"]
-        type Tensor = crate::executorch_rs::Tensor;
+        type Tensor = crate::Tensor;
 
         /// Create a new tensor pointer.
         ///

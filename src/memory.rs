@@ -10,20 +10,20 @@ use std::mem::MaybeUninit;
 use std::pin::Pin;
 use std::ptr;
 
-use crate::et_rs_c;
 use crate::util::Span;
+use executorch_sys as et_c;
 
 /// A class that does simple allocation based on a size and returns the pointer
 /// to the memory address. It bookmarks a buffer with certain size. The
 /// allocation is simply checking space and growing the cur_ pointer with each
 /// allocation request.
 pub struct MemoryAllocator<'a>(
-    pub(crate) UnsafeCell<et_rs_c::MemoryAllocator>,
+    pub(crate) UnsafeCell<et_c::MemoryAllocator>,
     PhantomData<&'a ()>,
 );
 impl<'a> MemoryAllocator<'a> {
     #[cfg(feature = "std")]
-    unsafe fn from_inner_ref(allocator: &et_rs_c::MemoryAllocator) -> &Self {
+    unsafe fn from_inner_ref(allocator: &et_c::MemoryAllocator) -> &Self {
         // Safety: Self has a single field of (UnsafeCell of) et_c::MemoryAllocator
         unsafe { std::mem::transmute(allocator) }
     }
@@ -40,7 +40,7 @@ impl<'a> MemoryAllocator<'a> {
     pub fn new(buffer: &'a mut [u8]) -> Self {
         let size = buffer.len().try_into().expect("usize -> u32");
         let base_addr = buffer.as_mut_ptr();
-        let allocator = unsafe { et_rs_c::executorch_MemoryAllocator_new(size, base_addr) };
+        let allocator = unsafe { et_c::executorch_MemoryAllocator_new(size, base_addr) };
         Self(UnsafeCell::new(allocator), PhantomData)
     }
 
@@ -55,7 +55,8 @@ impl<'a> MemoryAllocator<'a> {
     ///
     /// A mutable reference to the allocated memory, or [`None`] if allocation failed.
     pub fn allocate_raw(&self, size: usize, alignment: usize) -> Option<&mut [u8]> {
-        let ptr = unsafe { et_rs_c::MemoryAllocator_allocate(self.0.get(), size, alignment) };
+        let ptr =
+            unsafe { et_c::executorch_MemoryAllocator_allocate(self.0.get(), size, alignment) };
         if ptr.is_null() {
             None
         } else {
@@ -159,7 +160,7 @@ mod malloc_allocator {
     ///
     /// For systems with malloc(), this can be easier than using a fixed-sized
     /// MemoryAllocator.
-    pub struct MallocMemoryAllocator(UnsafeCell<et_rs_c::MallocMemoryAllocator>);
+    pub struct MallocMemoryAllocator(UnsafeCell<et_c::MallocMemoryAllocator>);
     impl Default for MallocMemoryAllocator {
         fn default() -> Self {
             Self::new()
@@ -169,7 +170,7 @@ mod malloc_allocator {
         /// Construct a new Malloc memory allocator.
         pub fn new() -> Self {
             Self(UnsafeCell::new(unsafe {
-                et_rs_c::executorch_MallocMemoryAllocator_new()
+                et_c::executorch_MallocMemoryAllocator_new()
             }))
         }
     }
@@ -182,19 +183,19 @@ mod malloc_allocator {
             // objects are alive until the program ends.
             let self_ = unsafe { &*self.0.get() };
             let allocator =
-                unsafe { &*et_rs_c::executorch_MallocMemoryAllocator_as_memory_allocator(self_) };
+                unsafe { &*et_c::executorch_MallocMemoryAllocator_as_memory_allocator(self_) };
             unsafe { MemoryAllocator::from_inner_ref(allocator) }
         }
     }
     impl Drop for MallocMemoryAllocator {
         fn drop(&mut self) {
-            unsafe { et_rs_c::executorch_MallocMemoryAllocator_destructor(self.0.get()) };
+            unsafe { et_c::executorch_MallocMemoryAllocator_destructor(self.0.get()) };
         }
     }
 }
 
 /// A group of buffers that can be used to represent a device's memory hierarchy.
-pub struct HierarchicalAllocator<'a>(et_rs_c::HierarchicalAllocator, PhantomData<&'a ()>);
+pub struct HierarchicalAllocator<'a>(et_c::HierarchicalAllocator, PhantomData<&'a ()>);
 impl<'a> HierarchicalAllocator<'a> {
     /// Constructs a new HierarchicalAllocator.
     ///
@@ -204,21 +205,21 @@ impl<'a> HierarchicalAllocator<'a> {
     ///     `buffers.size()` must be >= `MethodMeta::num_non_const_buffers()`.
     ///     `buffers[N].size()` must be >= `MethodMeta::non_const_buffer_size(N)`.
     pub fn new(buffers: &'a mut [Span<'a, u8>]) -> Self {
-        // Safety: safe because the memory layout of [Span<u8>] and [et_rs_c::SpanU8] is the same.
-        let buffers: &'a mut [et_rs_c::SpanU8] = unsafe { std::mem::transmute(buffers) };
-        let buffers = et_rs_c::SpanSpanU8 {
+        // Safety: safe because the memory layout of [Span<u8>] and [et_c::SpanU8] is the same.
+        let buffers: &'a mut [et_c::SpanU8] = unsafe { std::mem::transmute(buffers) };
+        let buffers = et_c::SpanSpanU8 {
             data: buffers.as_mut_ptr(),
             len: buffers.len(),
         };
         Self(
-            unsafe { et_rs_c::executorch_HierarchicalAllocator_new(buffers) },
+            unsafe { et_c::executorch_HierarchicalAllocator_new(buffers) },
             PhantomData,
         )
     }
 }
 impl Drop for HierarchicalAllocator<'_> {
     fn drop(&mut self) {
-        unsafe { et_rs_c::executorch_HierarchicalAllocator_destructor(&mut self.0) };
+        unsafe { et_c::executorch_HierarchicalAllocator_destructor(&mut self.0) };
     }
 }
 
@@ -234,7 +235,7 @@ impl Drop for HierarchicalAllocator<'_> {
 /// memory (e.g., for things like scratch space). But we do suggest that backends
 /// and kernels use these provided allocators whenever possible.
 pub struct MemoryManager<'a>(
-    pub(crate) UnsafeCell<et_rs_c::MemoryManager>,
+    pub(crate) UnsafeCell<et_c::MemoryManager>,
     PhantomData<&'a ()>,
 );
 impl<'a> MemoryManager<'a> {
@@ -265,7 +266,7 @@ impl<'a> MemoryManager<'a> {
             .unwrap_or(ptr::null_mut());
         Self(
             UnsafeCell::new(unsafe {
-                et_rs_c::executorch_MemoryManager_new(
+                et_c::executorch_MemoryManager_new(
                     method_allocator.as_ref().0.get(),
                     planned_memory,
                     temp_allocator,
