@@ -105,6 +105,31 @@ namespace executorch_rs
     static_assert(layout_of<MmapDataLoader>() == layout_of<executorch::extension::MmapDataLoader>());
 #endif
 
+    struct MemoryAllocator
+    {
+        size_t _blob_1[4];
+        uint32_t _blob_2[2];
+    };
+    static_assert(layout_of<MemoryAllocator>() == layout_of<executorch::runtime::MemoryAllocator>());
+#if defined(EXECUTORCH_RS_STD)
+    struct MallocMemoryAllocator
+    {
+        size_t _blob_1[7];
+        uint32_t _blob_2[2];
+    };
+    static_assert(layout_of<MallocMemoryAllocator>() == layout_of<executorch::extension::MallocMemoryAllocator>());
+#endif
+    struct HierarchicalAllocator
+    {
+        size_t _blob[34];
+    };
+    static_assert(layout_of<HierarchicalAllocator>() == layout_of<executorch::runtime::HierarchicalAllocator>());
+    struct MemoryManager
+    {
+        size_t _blob[3];
+    };
+    static_assert(layout_of<MemoryManager>() == layout_of<executorch::runtime::MemoryManager>());
+
     struct OptionalTensor
     {
         // Why is this not static?
@@ -267,14 +292,20 @@ namespace executorch_rs
         SpanOptionalTensor unwrapped_vals;
     };
 
-    executorch::runtime::MemoryAllocator MemoryAllocator_new(uint32_t size, uint8_t *base_address);
-    void *MemoryAllocator_allocate(executorch::runtime::MemoryAllocator &self, size_t size, size_t alignment);
+    executorch_rs::MemoryAllocator MemoryAllocator_new(uint32_t size, uint8_t *base_address);
+    void *MemoryAllocator_allocate(executorch_rs::MemoryAllocator &self, size_t size, size_t alignment);
 #if defined(EXECUTORCH_RS_STD)
-    executorch::extension::MallocMemoryAllocator MallocMemoryAllocator_new();
-    void MallocMemoryAllocator_destructor(executorch::extension::MallocMemoryAllocator &self);
+    executorch_rs::MallocMemoryAllocator MallocMemoryAllocator_new();
+    void MallocMemoryAllocator_destructor(executorch_rs::MallocMemoryAllocator &self);
+    const executorch_rs::MemoryAllocator *executorch_MallocMemoryAllocator_as_memory_allocator(const executorch_rs::MallocMemoryAllocator *self);
 #endif
-    executorch::runtime::HierarchicalAllocator HierarchicalAllocator_new(SpanSpanU8 buffers);
-    void HierarchicalAllocator_destructor(executorch::runtime::HierarchicalAllocator &self);
+    executorch_rs::HierarchicalAllocator HierarchicalAllocator_new(SpanSpanU8 buffers);
+    void HierarchicalAllocator_destructor(executorch_rs::HierarchicalAllocator &self);
+    executorch_rs::MemoryManager executorch_MemoryManager_new(
+        executorch_rs::MemoryAllocator *method_allocator,
+        executorch_rs::HierarchicalAllocator *planned_memory,
+        executorch_rs::MemoryAllocator *temp_allocator);
+    executorch_rs::MemoryManager MemoryManager_new();
 
     // Loaders
     executorch_rs::BufferDataLoader BufferDataLoader_new(const void *data, size_t size);
@@ -292,7 +323,7 @@ namespace executorch_rs
     // Program
     executorch::runtime::Program::HeaderStatus executorch_Program_check_header(const void *data, size_t size);
     executorch::runtime::Error Program_load(executorch_rs::DataLoader *loader, executorch::runtime::Program::Verification verification, Program *out);
-    executorch::runtime::Error Program_load_method(const Program *self, const char *method_name, executorch::runtime::MemoryManager *memory_manager, executorch::runtime::EventTracer *event_tracer, Method *out);
+    executorch::runtime::Error Program_load_method(const Program *self, const char *method_name, executorch_rs::MemoryManager *memory_manager, executorch::runtime::EventTracer *event_tracer, Method *out);
     executorch::runtime::Error Program_get_method_name(const Program *self, size_t method_index, const char **out);
     executorch::runtime::Error Program_method_meta(const Program *self, const char *method_name, MethodMeta *method_meta_out);
     size_t executorch_Program_num_methods(const Program *self);

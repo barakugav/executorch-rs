@@ -116,34 +116,67 @@ namespace executorch_rs
         return extract_result(self_->memory_planned_buffer_size(index), size_out);
     }
 
-    executorch::runtime::MemoryAllocator MemoryAllocator_new(uint32_t size, uint8_t *base_address)
+    executorch_rs::MemoryAllocator MemoryAllocator_new(uint32_t size, uint8_t *base_address)
     {
-        return executorch::runtime::MemoryAllocator(size, base_address);
+        executorch_rs::MemoryAllocator self;
+        auto self_ = reinterpret_cast<executorch::runtime::MemoryAllocator *>(&self);
+        new (self_) executorch::runtime::MemoryAllocator(size, base_address);
+        return self;
     }
-    void *MemoryAllocator_allocate(executorch::runtime::MemoryAllocator &self, size_t size, size_t alignment)
+    void *MemoryAllocator_allocate(executorch_rs::MemoryAllocator &self, size_t size, size_t alignment)
     {
-        return self.allocate(size, alignment);
+        auto self_ = reinterpret_cast<executorch::runtime::MemoryAllocator *>(&self);
+        return self_->allocate(size, alignment);
     }
 #if defined(EXECUTORCH_RS_STD)
-    executorch::extension::MallocMemoryAllocator MallocMemoryAllocator_new()
+
+    executorch_rs::MallocMemoryAllocator MallocMemoryAllocator_new()
     {
-        return executorch::extension::MallocMemoryAllocator();
+        executorch_rs::MallocMemoryAllocator self;
+        auto self_ = reinterpret_cast<executorch::extension::MallocMemoryAllocator *>(&self);
+        new (self_) executorch::extension::MallocMemoryAllocator();
+        return self;
     }
-    void MallocMemoryAllocator_destructor(executorch::extension::MallocMemoryAllocator &self)
+    void MallocMemoryAllocator_destructor(executorch_rs::MallocMemoryAllocator &self)
     {
-        self.~MallocMemoryAllocator();
+        auto self_ = reinterpret_cast<executorch::extension::MallocMemoryAllocator *>(&self);
+        self_->~MallocMemoryAllocator();
+    }
+    const executorch_rs::MemoryAllocator *executorch_MallocMemoryAllocator_as_memory_allocator(const executorch_rs::MallocMemoryAllocator *self)
+    {
+        auto self_ = reinterpret_cast<const executorch::extension::MallocMemoryAllocator *>(self);
+        auto memory_allocator = static_cast<const executorch::runtime::MemoryAllocator *>(self_);
+        return reinterpret_cast<const executorch_rs::MemoryAllocator *>(memory_allocator);
     }
 #endif
-    executorch::runtime::HierarchicalAllocator HierarchicalAllocator_new(SpanSpanU8 buffers)
+    executorch_rs::HierarchicalAllocator HierarchicalAllocator_new(SpanSpanU8 buffers)
     {
         executorch::runtime::Span<executorch::runtime::Span<uint8_t>> buffers_ = *reinterpret_cast<executorch::runtime::Span<executorch::runtime::Span<uint8_t>> *>(&buffers);
         ET_CHECK((void *)buffers_.begin() == (void *)buffers.data);
         ET_CHECK(buffers_.size() == buffers.len);
-        return executorch::runtime::HierarchicalAllocator(buffers_);
+        executorch_rs::HierarchicalAllocator self;
+        auto self_ = reinterpret_cast<executorch::runtime::HierarchicalAllocator *>(&self);
+        new (self_) executorch::runtime::HierarchicalAllocator(buffers_);
+        return self;
     }
-    void HierarchicalAllocator_destructor(executorch::runtime::HierarchicalAllocator &self)
+    void HierarchicalAllocator_destructor(executorch_rs::HierarchicalAllocator &self)
     {
-        self.~HierarchicalAllocator();
+        auto self_ = reinterpret_cast<executorch::runtime::HierarchicalAllocator *>(&self);
+        self_->~HierarchicalAllocator();
+    }
+    executorch_rs::MemoryManager executorch_MemoryManager_new(
+        executorch_rs::MemoryAllocator *method_allocator,
+        executorch_rs::HierarchicalAllocator *planned_memory,
+        executorch_rs::MemoryAllocator *temp_allocator)
+    {
+        auto method_allocator_ = reinterpret_cast<executorch::runtime::MemoryAllocator *>(method_allocator);
+        auto planned_memory_ = reinterpret_cast<executorch::runtime::HierarchicalAllocator *>(planned_memory);
+        auto temp_allocator_ = reinterpret_cast<executorch::runtime::MemoryAllocator *>(temp_allocator);
+
+        executorch_rs::MemoryManager self;
+        auto self_ = reinterpret_cast<executorch::runtime::MemoryManager *>(&self);
+        new (self_) executorch::runtime::MemoryManager(method_allocator_, planned_memory_, temp_allocator_);
+        return self;
     }
 
     // Loaders
@@ -224,12 +257,13 @@ namespace executorch_rs
         new (out_) executorch::runtime::Program(std::move(program));
         return executorch::runtime::Error::Ok;
     }
-    executorch::runtime::Error Program_load_method(const Program *self, const char *method_name, executorch::runtime::MemoryManager *memory_manager, executorch::runtime::EventTracer *event_tracer, Method *out)
+    executorch::runtime::Error Program_load_method(const Program *self, const char *method_name, executorch_rs::MemoryManager *memory_manager, executorch::runtime::EventTracer *event_tracer, Method *out)
     {
         auto self_ = reinterpret_cast<const executorch::runtime::Program *>(self);
+        auto memory_manager_ = reinterpret_cast<executorch::runtime::MemoryManager *>(memory_manager);
         auto out_ = reinterpret_cast<executorch::runtime::Method *>(out);
         // return extract_result(std::move(self.load_method(method_name, memory_manager, event_tracer)), out);
-        auto res = self_->load_method(method_name, memory_manager, event_tracer);
+        auto res = self_->load_method(method_name, memory_manager_, event_tracer);
         if (!res.ok())
             return res.error();
         auto &method = res.get();
