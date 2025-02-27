@@ -145,37 +145,79 @@ namespace executorch_rs
     {
         self.~HierarchicalAllocator();
     }
-    executorch::runtime::Error FileDataLoader_new(const char *file_path, size_t alignment, executorch::extension::FileDataLoader *out)
+
+    // Loaders
+    executorch_rs::BufferDataLoader BufferDataLoader_new(const void *data, size_t size)
     {
+        executorch_rs::BufferDataLoader loader;
+        auto loader_ = reinterpret_cast<executorch::extension::BufferDataLoader *>(&loader);
+        new (loader_) executorch::extension::BufferDataLoader(data, size);
+        return loader;
+    }
+    const executorch_rs::DataLoader *executorch_BufferDataLoader_as_data_loader(const executorch_rs::BufferDataLoader *self)
+    {
+        auto self_ = reinterpret_cast<const executorch::extension::BufferDataLoader *>(self);
+        auto loader = static_cast<const executorch::runtime::DataLoader *>(self_);
+        return reinterpret_cast<const executorch_rs::DataLoader *>(loader);
+    }
+#if defined(EXECUTORCH_RS_DATA_LOADER)
+    executorch::runtime::Error FileDataLoader_new(const char *file_path, size_t alignment, executorch_rs::FileDataLoader *out)
+    {
+        auto out_ = reinterpret_cast<executorch::extension::FileDataLoader *>(out);
         // return extract_result(std::move(executorch::extension::FileDataLoader::from(file_path, alignment)), out);
         auto res = executorch::extension::FileDataLoader::from(file_path, alignment);
         if (!res.ok())
             return res.error();
         auto &loader = res.get();
-        new (out) executorch::extension::FileDataLoader(std::move(loader));
+        new (out_) executorch::extension::FileDataLoader(std::move(loader));
         return executorch::runtime::Error::Ok;
     }
-    executorch::runtime::Error MmapDataLoader_new(const char *file_path, executorch::extension::MmapDataLoader::MlockConfig mlock_config, executorch::extension::MmapDataLoader *out)
+    void executorch_FileDataLoader_destructor(executorch_rs::FileDataLoader *self)
     {
+        auto self_ = reinterpret_cast<executorch::extension::FileDataLoader *>(self);
+        self_->~FileDataLoader();
+    }
+    const executorch_rs::DataLoader *executorch_FileDataLoader_as_data_loader(const executorch_rs::FileDataLoader *self)
+    {
+        auto self_ = reinterpret_cast<const executorch::extension::FileDataLoader *>(self);
+        auto loader = static_cast<const executorch::runtime::DataLoader *>(self_);
+        return reinterpret_cast<const executorch_rs::DataLoader *>(loader);
+    }
+    executorch::runtime::Error MmapDataLoader_new(const char *file_path, executorch::extension::MmapDataLoader::MlockConfig mlock_config, executorch_rs::MmapDataLoader *out)
+    {
+        auto out_ = reinterpret_cast<executorch::extension::MmapDataLoader *>(out);
         // return extract_result(executorch::extension::MmapDataLoader::from(file_path, mlock_config), out);
         auto res = executorch::extension::MmapDataLoader::from(file_path, mlock_config);
         if (!res.ok())
             return res.error();
         auto &loader = res.get();
-        new (out) executorch::extension::MmapDataLoader(std::move(loader));
+        new (out_) executorch::extension::MmapDataLoader(std::move(loader));
         return executorch::runtime::Error::Ok;
     }
+    void executorch_MmapDataLoader_destructor(executorch_rs::MmapDataLoader *self)
+    {
+        auto self_ = reinterpret_cast<executorch::extension::MmapDataLoader *>(self);
+        self_->~MmapDataLoader();
+    }
+    const executorch_rs::DataLoader *executorch_MmapDataLoader_as_data_loader(const executorch_rs::MmapDataLoader *self)
+    {
+        auto self_ = reinterpret_cast<const executorch::extension::MmapDataLoader *>(self);
+        auto loader = static_cast<const executorch::runtime::DataLoader *>(self_);
+        return reinterpret_cast<const executorch_rs::DataLoader *>(loader);
+    }
+#endif
 
     // Program
     executorch::runtime::Program::HeaderStatus executorch_Program_check_header(const void *data, size_t size)
     {
         return executorch::runtime::Program::check_header(data, size);
     }
-    executorch::runtime::Error Program_load(executorch::runtime::DataLoader *loader, executorch::runtime::Program::Verification verification, Program *out)
+    executorch::runtime::Error Program_load(executorch_rs::DataLoader *loader, executorch::runtime::Program::Verification verification, Program *out)
     {
+        auto loader_ = reinterpret_cast<executorch::runtime::DataLoader *>(loader);
         auto out_ = reinterpret_cast<executorch::runtime::Program *>(out);
         // return extract_result(executorch::runtime::Program::load(loader, verification), out);
-        auto res = executorch::runtime::Program::load(loader, verification);
+        auto res = executorch::runtime::Program::load(loader_, verification);
         if (!res.ok())
             return res.error();
         auto &program = res.get();
@@ -549,8 +591,4 @@ namespace executorch_rs
         new (dst_) executorch::runtime::EValue(std::move(*src_));
     }
 
-    executorch::extension::BufferDataLoader BufferDataLoader_new(const void *data, size_t size)
-    {
-        return executorch::extension::BufferDataLoader(data, size);
-    }
 }

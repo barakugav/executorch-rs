@@ -81,6 +81,30 @@ namespace executorch_rs
     };
     static_assert(layout_of<Method>() == layout_of<executorch::runtime::Method>());
 
+    struct DataLoader
+    {
+        size_t _blob[1];
+    };
+    static_assert(layout_of<DataLoader>() == layout_of<executorch::runtime::DataLoader>());
+    struct BufferDataLoader
+    {
+        size_t _blob[3];
+    };
+    static_assert(layout_of<BufferDataLoader>() == layout_of<executorch::extension::BufferDataLoader>());
+#if defined(EXECUTORCH_RS_DATA_LOADER)
+    struct FileDataLoader
+    {
+        size_t _blob[5];
+    };
+    static_assert(layout_of<FileDataLoader>() == layout_of<executorch::extension::FileDataLoader>());
+    struct MmapDataLoader
+    {
+        size_t _blob_1[4];
+        int _blob_2[2];
+    };
+    static_assert(layout_of<MmapDataLoader>() == layout_of<executorch::extension::MmapDataLoader>());
+#endif
+
     struct OptionalTensor
     {
         // Why is this not static?
@@ -251,13 +275,23 @@ namespace executorch_rs
 #endif
     executorch::runtime::HierarchicalAllocator HierarchicalAllocator_new(SpanSpanU8 buffers);
     void HierarchicalAllocator_destructor(executorch::runtime::HierarchicalAllocator &self);
-    executorch::runtime::Error FileDataLoader_new(const char *file_path, size_t alignment, executorch::extension::FileDataLoader *out);
-    executorch::extension::FileDataLoader FileDataLoader_new(const char *file_path, size_t alignment);
-    executorch::runtime::Error MmapDataLoader_new(const char *file_path, executorch::extension::MmapDataLoader::MlockConfig mlock_config, executorch::extension::MmapDataLoader *out);
+
+    // Loaders
+    executorch_rs::BufferDataLoader BufferDataLoader_new(const void *data, size_t size);
+    const executorch_rs::DataLoader *executorch_BufferDataLoader_as_data_loader(const executorch_rs::BufferDataLoader *self);
+#if defined(EXECUTORCH_RS_DATA_LOADER)
+    executorch::runtime::Error FileDataLoader_new(const char *file_path, size_t alignment, executorch_rs::FileDataLoader *out);
+    void executorch_FileDataLoader_destructor(executorch_rs::FileDataLoader *self);
+    const executorch_rs::DataLoader *executorch_FileDataLoader_as_data_loader(const executorch_rs::FileDataLoader *self);
+    executorch::runtime::Error MmapDataLoader_new(const char *file_path, executorch::extension::MmapDataLoader::MlockConfig mlock_config, executorch_rs::MmapDataLoader *out);
+    void executorch_MmapDataLoader_destructor(executorch_rs::MmapDataLoader *self);
+    const executorch_rs::DataLoader *executorch_MmapDataLoader_as_data_loader(const executorch_rs::MmapDataLoader *self);
+
+#endif
 
     // Program
     executorch::runtime::Program::HeaderStatus executorch_Program_check_header(const void *data, size_t size);
-    executorch::runtime::Error Program_load(executorch::runtime::DataLoader *loader, executorch::runtime::Program::Verification verification, Program *out);
+    executorch::runtime::Error Program_load(executorch_rs::DataLoader *loader, executorch::runtime::Program::Verification verification, Program *out);
     executorch::runtime::Error Program_load_method(const Program *self, const char *method_name, executorch::runtime::MemoryManager *memory_manager, executorch::runtime::EventTracer *event_tracer, Method *out);
     executorch::runtime::Error Program_get_method_name(const Program *self, size_t method_index, const char **out);
     executorch::runtime::Error Program_method_meta(const Program *self, const char *method_name, MethodMeta *method_meta_out);
@@ -338,6 +372,4 @@ namespace executorch_rs
     void EValue_copy(const EValue *src, EValue *dst);
     void EValue_destructor(EValue *self);
     void EValue_move(EValue *src, EValue *dst);
-
-    executorch::extension::BufferDataLoader BufferDataLoader_new(const void *data, size_t size);
 }

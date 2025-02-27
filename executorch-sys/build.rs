@@ -117,7 +117,7 @@ fn generate_bindings() {
         .blocklist_item("executorch::runtime::EValue_Payload")
         .blocklist_item("executorch::runtime::EValue_Payload_TriviallyCopyablePayload")
         .allowlist_item("executorch::runtime::Program")
-        .allowlist_item("executorch::runtime::DataLoader")
+        .blocklist_item("executorch::runtime::DataLoader")
         .allowlist_item("executorch::runtime::MemoryManager")
         .allowlist_item("executorch::runtime::MethodMeta")
         .allowlist_item("executorch::extension::MallocMemoryAllocator")
@@ -143,9 +143,10 @@ fn generate_bindings() {
         .blocklist_item("executorch::runtime::Method_get_outputs")
         .blocklist_item("executorch::runtime::Method_get_inputs")
         // feature data-loader
-        .allowlist_item("executorch::extension::FileDataLoader")
-        .allowlist_item("executorch::extension::MmapDataLoader")
-        .allowlist_item("executorch::extension::BufferDataLoader")
+        .blocklist_item("executorch::extension::FileDataLoader")
+        .blocklist_item("executorch::extension::MmapDataLoader")
+        .blocklist_item("executorch::extension::BufferDataLoader")
+        .blocklist_item("executorch::extension::.*DataLoader_[a-z].*")
         // feature module
         .allowlist_item("executorch::extension::Module")
         .blocklist_item("std::.*")
@@ -231,6 +232,7 @@ fn generate_bindings() {
             non_exhaustive: false,
         })
         // feature data-loader
+        .allowlist_item("executorch::extension::MmapDataLoader_MlockConfig")
         .rustified_enum("executorch::extension::MmapDataLoader_MlockConfig")
         // feature module
         .rustified_enum("executorch::extension::Module_MlockConfig")
