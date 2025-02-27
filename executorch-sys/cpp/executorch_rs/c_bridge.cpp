@@ -2,7 +2,7 @@
 #include <cstddef>
 #include <vector>
 
-#include "executorch_rs/bridge.hpp"
+#include "executorch_rs/c_bridge.h"
 #include "executorch_rs/layout.hpp"
 
 #include "executorch/runtime/platform/platform.h"

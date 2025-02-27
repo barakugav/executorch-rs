@@ -1,7 +1,7 @@
 #pragma once
 
 #include "executorch_rs/defines.h"
-#include "executorch_rs/bridge.hpp"
+#include "executorch_rs/c_bridge.h"
 
 #include <cstddef>
 #include <cstdint>

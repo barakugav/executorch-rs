@@ -26,7 +26,7 @@ fn build_c_bridge() {
     //     builder.flag("-nostdlib");
     // }
     builder
-        .files([bridge_dir.join("bridge.cpp")])
+        .files([bridge_dir.join("c_bridge.cpp")])
         .include(bridge_dir.parent().unwrap())
         .include(executorch_headers().parent().unwrap());
     for define in cpp_defines() {
@@ -73,7 +73,7 @@ fn generate_bindings() {
     let cpp_dir = Path::new(&env!("CARGO_MANIFEST_DIR")).join("cpp");
     println!("cargo::rerun-if-changed={}", cpp_dir.to_str().unwrap());
 
-    let bindings_h = cpp_dir.join("bindings.hpp");
+    let bindings_h = cpp_dir.join("bindings.h");
     let bindings_defines_h = bridge_dir.join("defines.h");
     let mut bindings_defines = String::from("#pragma once\n");
     for define in cpp_defines() {
@@ -99,7 +99,7 @@ fn generate_bindings() {
         .use_core()
         .header_contents(bindings_defines_h.to_str().unwrap(), &bindings_defines)
         .header(bindings_h.as_os_str().to_str().unwrap())
-        .allowlist_file(format!("{}/bridge.hpp", bridge_dir.to_str().unwrap(),))
+        .allowlist_file(format!("{}/c_bridge.h", bridge_dir.to_str().unwrap(),))
         .default_enum_style(bindgen::EnumVariation::Rust {
             non_exhaustive: false,
         })
