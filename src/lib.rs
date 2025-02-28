@@ -136,9 +136,6 @@ pub mod __private {
 #[allow(unused_imports)]
 use crate::__private::alloc;
 
-use executorch_sys::executorch as et_c;
-use executorch_sys::executorch_rs as et_rs_c;
-
 #[macro_use]
 mod private;
 pub mod data_loader;

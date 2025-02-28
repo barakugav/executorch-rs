@@ -1,5 +1,3 @@
-use cxx::{type_id, ExternType};
-
 /// Utility functions and structs used by the cxx bridge.
 pub mod cxx_util {
     /// A wrapper around `std::any::Any` that can be used in the cxx bridge.
@@ -21,7 +19,7 @@ pub mod cxx_util {
 use cxx_util::RustAny;
 
 #[cxx::bridge]
-pub mod ffi {
+pub(crate) mod ffi {
 
     extern "Rust" {
         #[namespace = "executorch_rs::cxx_util"]
@@ -32,14 +30,12 @@ pub mod ffi {
         include!("executorch-sys/cpp/executorch_rs/cxx_bridge.hpp");
 
         /// Redifinition of the [`ScalarType`](crate::executorch::runtime::etensor::ScalarType).
-        #[namespace = "executorch::aten"]
-        type ScalarType = crate::executorch::runtime::etensor::ScalarType;
+        type ScalarType = crate::ScalarType;
         /// Redifinition of the [`TensorShapeDynamism`](crate::executorch::runtime::TensorShapeDynamism).
-        #[namespace = "executorch::aten"]
-        type TensorShapeDynamism = crate::executorch::runtime::TensorShapeDynamism;
+        type TensorShapeDynamism = crate::TensorShapeDynamism;
         /// Redifinition of the [`Tensor`](crate::executorch::runtime::etensor::Tensor).
         #[namespace = "executorch::aten"]
-        type Tensor = crate::executorch::runtime::etensor::Tensor;
+        type Tensor;
 
         /// Create a new tensor pointer.
         ///
@@ -72,19 +68,4 @@ pub mod ffi {
     }
 
     impl SharedPtr<Tensor> {}
-}
-
-unsafe impl ExternType for crate::executorch::runtime::etensor::ScalarType {
-    type Id = type_id!("executorch::aten::ScalarType");
-    type Kind = cxx::kind::Trivial;
-}
-
-unsafe impl ExternType for crate::executorch::runtime::TensorShapeDynamism {
-    type Id = type_id!("executorch::aten::TensorShapeDynamism");
-    type Kind = cxx::kind::Trivial;
-}
-
-unsafe impl ExternType for crate::executorch::runtime::etensor::Tensor {
-    type Id = type_id!("executorch::aten::Tensor");
-    type Kind = cxx::kind::Opaque;
 }

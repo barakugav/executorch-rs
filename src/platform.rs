@@ -8,5 +8,5 @@
 /// This function should be called before any other function provided by the PAL
 /// to initialize any global state. Typically overridden by PAL implementer.
 pub fn pal_init() {
-    unsafe { executorch_sys::executorch::et_pal_init() };
+    unsafe { executorch_sys::executorch_pal_init() };
 }

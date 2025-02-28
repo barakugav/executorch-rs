@@ -124,30 +124,35 @@ mod c_link {
     #![allow(rustdoc::invalid_html_tags)]
     #![allow(rustdoc::broken_intra_doc_links)]
     #![allow(missing_docs)]
+    #![allow(non_snake_case, non_camel_case_types, non_upper_case_globals)]
 
     include!(concat!(env!("OUT_DIR"), "/executorch_bindings.rs"));
 }
+pub use c_link::*;
 
-#[cfg(feature = "tensor-ptr")]
+#[cfg(any(feature = "tensor-ptr", feature = "module"))]
 mod cxx_bridge;
-#[cfg(feature = "tensor-ptr")]
-pub use cxx;
-
-#[cfg(feature = "tensor-ptr")]
-pub use cxx_bridge::cxx_util;
-
-#[allow(missing_docs)]
-pub mod executorch {
-    pub use super::c_link::root::et_pal_init;
-    pub use super::c_link::root::executorch::*;
-}
 
 /// Bindings to C/C++ wrapper functions and structs written by this crate around the Cpp `executorch` library.
-pub mod executorch_rs {
-    pub use super::c_link::root::executorch_rs::*;
+pub mod cpp {
+
+    /// Cpp bindings to the `Module` extension.
+    #[cfg(feature = "module")]
+    pub mod module {
+        pub use crate::cxx_bridge::module::ffi::*;
+    }
+
+    /// Cpp bindings to the `TensorPtr` extension.
+    #[cfg(feature = "tensor-ptr")]
+    pub mod tensor_ptr {
+        pub use crate::cxx_bridge::tensor_ptr::ffi::*;
+    }
 
     #[cfg(feature = "tensor-ptr")]
-    pub use super::cxx_bridge::ffi::*;
+    pub use super::cxx_bridge::tensor_ptr::cxx_util as util;
 }
 
-impl Copy for executorch::runtime::Tag {}
+impl Copy for crate::Tag {}
+
+#[cfg(any(feature = "tensor-ptr", feature = "module"))]
+pub use cxx;

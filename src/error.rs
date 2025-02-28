@@ -2,9 +2,10 @@
 
 use std::mem::MaybeUninit;
 
-use crate::{et_c, util::IntoRust};
+use crate::util::IntoRust;
+use executorch_sys as et_c;
 
-use et_c::runtime::Error as RawCError;
+use et_c::Error as RawCError;
 
 /// ExecuTorch Error type.
 #[derive(Debug)]
@@ -80,22 +81,24 @@ impl IntoRust for RawCError {
     type RsType = Result<()>;
     fn rs(self) -> Self::RsType {
         Err(Error::CError(match self {
-            RawCError::Ok => return Ok(()),
-            RawCError::Internal => CError::Internal,
-            RawCError::InvalidState => CError::InvalidState,
-            RawCError::EndOfMethod => CError::EndOfMethod,
-            RawCError::NotSupported => CError::NotSupported,
-            RawCError::NotImplemented => CError::NotImplemented,
-            RawCError::InvalidArgument => CError::InvalidArgument,
-            RawCError::InvalidType => CError::InvalidType,
-            RawCError::OperatorMissing => CError::OperatorMissing,
-            RawCError::NotFound => CError::NotFound,
-            RawCError::MemoryAllocationFailed => CError::MemoryAllocationFailed,
-            RawCError::AccessFailed => CError::AccessFailed,
-            RawCError::InvalidProgram => CError::InvalidProgram,
-            RawCError::DelegateInvalidCompatibility => CError::DelegateInvalidCompatibility,
-            RawCError::DelegateMemoryAllocationFailed => CError::DelegateMemoryAllocationFailed,
-            RawCError::DelegateInvalidHandle => CError::DelegateInvalidHandle,
+            RawCError::Error_Ok => return Ok(()),
+            RawCError::Error_Internal => CError::Internal,
+            RawCError::Error_InvalidState => CError::InvalidState,
+            RawCError::Error_EndOfMethod => CError::EndOfMethod,
+            RawCError::Error_NotSupported => CError::NotSupported,
+            RawCError::Error_NotImplemented => CError::NotImplemented,
+            RawCError::Error_InvalidArgument => CError::InvalidArgument,
+            RawCError::Error_InvalidType => CError::InvalidType,
+            RawCError::Error_OperatorMissing => CError::OperatorMissing,
+            RawCError::Error_NotFound => CError::NotFound,
+            RawCError::Error_MemoryAllocationFailed => CError::MemoryAllocationFailed,
+            RawCError::Error_AccessFailed => CError::AccessFailed,
+            RawCError::Error_InvalidProgram => CError::InvalidProgram,
+            RawCError::Error_DelegateInvalidCompatibility => CError::DelegateInvalidCompatibility,
+            RawCError::Error_DelegateMemoryAllocationFailed => {
+                CError::DelegateMemoryAllocationFailed
+            }
+            RawCError::Error_DelegateInvalidHandle => CError::DelegateInvalidHandle,
         }))
     }
 }
