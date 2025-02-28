@@ -10,11 +10,6 @@ unsafe impl ExternType for crate::TensorShapeDynamism {
     type Kind = cxx::kind::Trivial;
 }
 
-unsafe impl ExternType for crate::Tensor {
-    type Id = type_id!("Tensor");
-    type Kind = cxx::kind::Opaque;
-}
-
 unsafe impl ExternType for crate::Error {
     type Id = type_id!("Error");
     type Kind = cxx::kind::Trivial;

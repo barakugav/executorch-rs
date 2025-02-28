@@ -36,7 +36,8 @@ namespace
 {
     using executorch_rs::is_equal_layout;
 
-    static_assert(is_equal_layout<EValue, executorch::runtime::EValue>());
+    static_assert(is_equal_layout<EValueStorage, executorch::runtime::EValue>());
+    static_assert(is_equal_layout<TensorStorage, executorch::aten::Tensor>());
     static_assert(is_equal_layout<TensorImpl, executorch::aten::TensorImpl>());
     static_assert(is_equal_layout<Program, executorch::runtime::Program>());
     static_assert(is_equal_layout<TensorInfo, executorch::runtime::TensorInfo>());
@@ -61,6 +62,39 @@ namespace
 
 using executorch_rs::checked_reinterpret_cast;
 
+static const executorch::runtime::EValue *cast_evalue(EValue evalue)
+{
+    return reinterpret_cast<const executorch::runtime::EValue *>(evalue);
+}
+static EValue cast_evalue(const executorch::runtime::EValue *evalue)
+{
+    return evalue;
+}
+static executorch::runtime::EValue *cast_evalue_mut(EValueMut evalue)
+{
+    return reinterpret_cast<executorch::runtime::EValue *>(evalue);
+}
+// static EValueMut cast_evalue_mut(executorch::runtime::EValue *evalue)
+// {
+//     return evalue;
+// }
+static const executorch::aten::Tensor *cast_tensor(Tensor tensor)
+{
+    return reinterpret_cast<const executorch::aten::Tensor *>(tensor);
+}
+static Tensor cast_tensor(const executorch::aten::Tensor *tensor)
+{
+    return reinterpret_cast<Tensor>(tensor);
+}
+static executorch::aten::Tensor *cast_tensor_mut(TensorMut tensor)
+{
+    return reinterpret_cast<executorch::aten::Tensor *>(tensor);
+}
+// static TensorMut cast_tensor_mut(executorch::aten::Tensor *tensor)
+// {
+//     return reinterpret_cast<TensorMut>(tensor);
+// }
+
 #if defined(EXECUTORCH_RS_STD)
 void executorch_VecChar_destructor(struct VecChar *vec)
 {
@@ -78,7 +112,8 @@ void executorch_VecEValue_destructor(struct VecEValue *vec)
 {
     // Its safe to call the destructor of elements in `vec->data[len..cap]` because we created them with `new T[len]`
     // aka default constructor
-    delete[] vec->data;
+    auto data = reinterpret_cast<executorch::runtime::EValue *>(vec->data);
+    delete[] data;
 }
 #endif
 
@@ -288,18 +323,18 @@ size_t executorch_Method_outputs_size(const struct Method *self)
     auto self_ = checked_reinterpret_cast<executorch::runtime::Method>(self);
     return self_->outputs_size();
 }
-enum Error executorch_Method_set_input(struct Method *self, const struct EValue *input_evalue, size_t input_idx)
+enum Error executorch_Method_set_input(struct Method *self, EValue input_evalue, size_t input_idx)
 {
     auto self_ = checked_reinterpret_cast<executorch::runtime::Method>(self);
-    auto input_evalue_ = checked_reinterpret_cast<executorch::runtime::EValue>(input_evalue);
+    auto input_evalue_ = cast_evalue(input_evalue);
     executorch::runtime::Error ret = self_->set_input(*input_evalue_, input_idx);
     return static_cast<Error>(ret);
 }
-const struct EValue *executorch_Method_get_output(const struct Method *self, size_t i)
+EValue executorch_Method_get_output(const struct Method *self, size_t i)
 {
     auto self_ = checked_reinterpret_cast<executorch::runtime::Method>(self);
     const executorch::runtime::EValue *output = &self_->get_output(i);
-    return checked_reinterpret_cast<EValue>(output);
+    return cast_evalue(output);
 }
 enum Error executorch_Method_execute(struct Method *self)
 {
@@ -415,84 +450,84 @@ void executorch_TensorImpl_new(
         static_cast<executorch::aten::StridesType *>(strides),
         static_cast<executorch::aten::TensorShapeDynamism>(dynamism));
 }
-void executorch_Tensor_new(struct Tensor *self, struct TensorImpl *tensor_impl)
+void executorch_Tensor_new(TensorMut self, struct TensorImpl *tensor_impl)
 {
-    auto self_ = checked_reinterpret_cast<executorch::aten::Tensor>(self);
+    auto self_ = cast_tensor_mut(self);
     auto tensor_impl_ = checked_reinterpret_cast<executorch::aten::TensorImpl>(tensor_impl);
     new (self_) executorch::aten::Tensor(tensor_impl_);
 }
-size_t executorch_Tensor_nbytes(const struct Tensor *self)
+size_t executorch_Tensor_nbytes(Tensor self)
 {
-    auto self_ = checked_reinterpret_cast<executorch::aten::Tensor>(self);
+    auto self_ = cast_tensor(self);
     return self_->nbytes();
 }
-size_t executorch_Tensor_size(const struct Tensor *self, size_t dim)
+size_t executorch_Tensor_size(Tensor self, size_t dim)
 {
-    auto self_ = checked_reinterpret_cast<executorch::aten::Tensor>(self);
+    auto self_ = cast_tensor(self);
     return self_->size(dim);
 }
-size_t executorch_Tensor_dim(const struct Tensor *self)
+size_t executorch_Tensor_dim(Tensor self)
 {
-    auto self_ = checked_reinterpret_cast<executorch::aten::Tensor>(self);
+    auto self_ = cast_tensor(self);
     return self_->dim();
 }
-size_t executorch_Tensor_numel(const struct Tensor *self)
+size_t executorch_Tensor_numel(Tensor self)
 {
-    auto self_ = checked_reinterpret_cast<executorch::aten::Tensor>(self);
+    auto self_ = cast_tensor(self);
     return self_->numel();
 }
-enum ScalarType executorch_Tensor_scalar_type(const struct Tensor *self)
+enum ScalarType executorch_Tensor_scalar_type(Tensor self)
 {
-    auto self_ = checked_reinterpret_cast<executorch::aten::Tensor>(self);
+    auto self_ = cast_tensor(self);
     auto ret = self_->scalar_type();
     return static_cast<ScalarType>(ret);
 }
-size_t executorch_Tensor_element_size(const struct Tensor *self)
+size_t executorch_Tensor_element_size(Tensor self)
 {
-    auto self_ = checked_reinterpret_cast<executorch::aten::Tensor>(self);
+    auto self_ = cast_tensor(self);
     return self_->element_size();
 }
-struct ArrayRefSizesType executorch_Tensor_sizes(const struct Tensor *self)
+struct ArrayRefSizesType executorch_Tensor_sizes(Tensor self)
 {
-    auto self_ = checked_reinterpret_cast<executorch::aten::Tensor>(self);
+    auto self_ = cast_tensor(self);
     auto sizes = self_->sizes();
     return ArrayRefSizesType{
         .data = sizes.data(),
         .len = sizes.size(),
     };
 }
-struct ArrayRefDimOrderType executorch_Tensor_dim_order(const struct Tensor *self)
+struct ArrayRefDimOrderType executorch_Tensor_dim_order(Tensor self)
 {
-    auto self_ = checked_reinterpret_cast<executorch::aten::Tensor>(self);
+    auto self_ = cast_tensor(self);
     auto dim_order = self_->dim_order();
     return ArrayRefDimOrderType{
         .data = dim_order.data(),
         .len = dim_order.size(),
     };
 }
-struct ArrayRefStridesType executorch_Tensor_strides(const struct Tensor *self)
+struct ArrayRefStridesType executorch_Tensor_strides(Tensor self)
 {
-    auto self_ = checked_reinterpret_cast<executorch::aten::Tensor>(self);
+    auto self_ = cast_tensor(self);
     auto strides = self_->strides();
     return ArrayRefStridesType{
         .data = strides.data(),
         .len = strides.size(),
     };
 }
-const void *executorch_Tensor_const_data_ptr(const struct Tensor *self)
+const void *executorch_Tensor_const_data_ptr(Tensor self)
 {
-    auto self_ = checked_reinterpret_cast<executorch::aten::Tensor>(self);
+    auto self_ = cast_tensor(self);
     return self_->const_data_ptr();
 }
-void *executorch_Tensor_mutable_data_ptr(const struct Tensor *self)
+void *executorch_Tensor_mutable_data_ptr(Tensor self)
 {
-    auto self_ = checked_reinterpret_cast<executorch::aten::Tensor>(self);
+    auto self_ = cast_tensor(self);
     return self_->mutable_data_ptr();
 }
 
-int64_t executorch_Tensor_coordinate_to_index(const struct Tensor *self, struct ArrayRefUsizeType coordinate)
+int64_t executorch_Tensor_coordinate_to_index(Tensor self, struct ArrayRefUsizeType coordinate)
 {
-    auto self_ = checked_reinterpret_cast<executorch::aten::Tensor>(self);
+    auto self_ = cast_tensor(self);
     auto ndim = (size_t)self_->dim();
     if (coordinate.len != ndim)
     {
@@ -520,180 +555,180 @@ int64_t executorch_Tensor_coordinate_to_index(const struct Tensor *self, struct 
     }
     return index;
 }
-void executorch_Tensor_destructor(struct Tensor *self)
+void executorch_Tensor_destructor(TensorMut self)
 {
-    auto self_ = checked_reinterpret_cast<executorch::aten::Tensor>(self);
+    auto self_ = cast_tensor_mut(self);
     self_->~Tensor();
 }
 
-void executorch_EValue_new_none(struct EValue *self)
+void executorch_EValue_new_none(EValueMut self)
 {
-    auto self_ = checked_reinterpret_cast<executorch::runtime::EValue>(self);
+    auto self_ = cast_evalue_mut(self);
     new (self_) executorch::runtime::EValue();
 }
-void executorch_EValue_new_from_i64(struct EValue *self, int64_t value)
+void executorch_EValue_new_from_i64(EValueMut self, int64_t value)
 {
-    auto self_ = checked_reinterpret_cast<executorch::runtime::EValue>(self);
+    auto self_ = cast_evalue_mut(self);
     new (self_) executorch::runtime::EValue(value);
 }
-void executorch_EValue_new_from_i64_list(struct EValue *self, struct BoxedEvalueListI64 value)
+void executorch_EValue_new_from_i64_list(EValueMut self, struct BoxedEvalueListI64 value)
 {
-    auto self_ = checked_reinterpret_cast<executorch::runtime::EValue>(self);
+    auto self_ = cast_evalue_mut(self);
     ET_CHECK(value.wrapped_vals.len == value.unwrapped_vals.len);
     executorch::runtime::BoxedEvalueList<int64_t> list(
-        checked_reinterpret_cast<executorch::runtime::EValue>(const_cast<EValue **>(value.wrapped_vals.data)),
+        reinterpret_cast<executorch::runtime::EValue **>(const_cast<void **>(value.wrapped_vals.data)),
         value.unwrapped_vals.data,
         (int)value.wrapped_vals.len);
     new (self_) executorch::runtime::EValue(list);
 }
-void executorch_EValue_new_from_f64(struct EValue *self, double value)
+void executorch_EValue_new_from_f64(EValueMut self, double value)
 {
-    auto self_ = checked_reinterpret_cast<executorch::runtime::EValue>(self);
+    auto self_ = cast_evalue_mut(self);
     new (self_) executorch::runtime::EValue(value);
 }
-void executorch_EValue_new_from_f64_list(struct EValue *self, struct ArrayRefF64 value)
+void executorch_EValue_new_from_f64_list(EValueMut self, struct ArrayRefF64 value)
 {
-    auto self_ = checked_reinterpret_cast<executorch::runtime::EValue>(self);
+    auto self_ = cast_evalue_mut(self);
     executorch::aten::ArrayRef<double> value_(value.data, value.len);
     new (self_) executorch::runtime::EValue(value_);
 }
-void executorch_EValue_new_from_bool(struct EValue *self, bool value)
+void executorch_EValue_new_from_bool(EValueMut self, bool value)
 {
-    auto self_ = checked_reinterpret_cast<executorch::runtime::EValue>(self);
+    auto self_ = cast_evalue_mut(self);
     new (self_) executorch::runtime::EValue(value);
 }
-void executorch_EValue_new_from_bool_list(struct EValue *self, struct ArrayRefBool value)
+void executorch_EValue_new_from_bool_list(EValueMut self, struct ArrayRefBool value)
 {
-    auto self_ = checked_reinterpret_cast<executorch::runtime::EValue>(self);
+    auto self_ = cast_evalue_mut(self);
     executorch::aten::ArrayRef<bool> value_(value.data, value.len);
     new (self_) executorch::runtime::EValue(value_);
 }
-void executorch_EValue_new_from_string(struct EValue *self, struct ArrayRefChar value)
+void executorch_EValue_new_from_string(EValueMut self, struct ArrayRefChar value)
 {
-    auto self_ = checked_reinterpret_cast<executorch::runtime::EValue>(self);
+    auto self_ = cast_evalue_mut(self);
     new (self_) executorch::runtime::EValue(value.data, value.len);
 }
-void executorch_EValue_new_from_tensor(struct EValue *self, const struct Tensor *value)
+void executorch_EValue_new_from_tensor(EValueMut self, Tensor value)
 {
-    auto self_ = checked_reinterpret_cast<executorch::runtime::EValue>(self);
-    auto value_ = checked_reinterpret_cast<executorch::aten::Tensor>(value);
+    auto self_ = cast_evalue_mut(self);
+    auto value_ = cast_tensor(value);
     new (self_) executorch::runtime::EValue(*value_);
 }
-void executorch_EValue_new_from_tensor_list(struct EValue *self, struct BoxedEvalueListTensor value)
+void executorch_EValue_new_from_tensor_list(EValueMut self, struct BoxedEvalueListTensor value)
 {
-    auto self_ = checked_reinterpret_cast<executorch::runtime::EValue>(self);
+    auto self_ = cast_evalue_mut(self);
     ET_CHECK(value.wrapped_vals.len == value.unwrapped_vals.len);
     executorch::runtime::BoxedEvalueList<executorch::aten::Tensor> list(
-        checked_reinterpret_cast<executorch::runtime::EValue>(const_cast<EValue **>(value.wrapped_vals.data)),
-        checked_reinterpret_cast<executorch::aten::Tensor>(value.unwrapped_vals.data),
+        reinterpret_cast<executorch::runtime::EValue **>(const_cast<void **>(value.wrapped_vals.data)),
+        cast_tensor_mut(value.unwrapped_vals.data),
         (int)value.wrapped_vals.len);
     new (self_) executorch::runtime::EValue(list);
 }
-void executorch_EValue_new_from_optional_tensor_list(struct EValue *self, struct BoxedEvalueListOptionalTensor value)
+void executorch_EValue_new_from_optional_tensor_list(EValueMut self, struct BoxedEvalueListOptionalTensor value)
 {
-    auto self_ = checked_reinterpret_cast<executorch::runtime::EValue>(self);
+    auto self_ = cast_evalue_mut(self);
     ET_CHECK(value.wrapped_vals.len == value.unwrapped_vals.len);
     auto unwrapped_vals = checked_reinterpret_cast<executorch::aten::optional<executorch::aten::Tensor>>(value.unwrapped_vals.data);
     executorch::runtime::BoxedEvalueList<executorch::aten::optional<executorch::aten::Tensor>> list(
-        checked_reinterpret_cast<executorch::runtime::EValue>(const_cast<EValue **>(value.wrapped_vals.data)),
+        reinterpret_cast<executorch::runtime::EValue **>(const_cast<void **>(value.wrapped_vals.data)),
         unwrapped_vals,
         (int)value.wrapped_vals.len);
     new (self_) executorch::runtime::EValue(list);
 }
-enum Tag executorch_EValue_tag(const struct EValue *self)
+enum Tag executorch_EValue_tag(EValue self)
 {
-    auto self_ = checked_reinterpret_cast<executorch::runtime::EValue>(self);
+    auto self_ = cast_evalue(self);
     return static_cast<Tag>(self_->tag);
 }
-int64_t executorch_EValue_as_i64(const struct EValue *self)
+int64_t executorch_EValue_as_i64(EValue self)
 {
-    auto self_ = checked_reinterpret_cast<executorch::runtime::EValue>(self);
+    auto self_ = cast_evalue(self);
     return self_->toInt();
 }
-struct ArrayRefI64 executorch_EValue_as_i64_list(const struct EValue *self)
+struct ArrayRefI64 executorch_EValue_as_i64_list(EValue self)
 {
-    auto self_ = checked_reinterpret_cast<executorch::runtime::EValue>(self);
+    auto self_ = cast_evalue(self);
     auto list = self_->toIntList();
     return ArrayRefI64{
         .data = list.data(),
         .len = list.size(),
     };
 }
-double executorch_EValue_as_f64(const struct EValue *self)
+double executorch_EValue_as_f64(EValue self)
 {
-    auto self_ = checked_reinterpret_cast<executorch::runtime::EValue>(self);
+    auto self_ = cast_evalue(self);
     return self_->toDouble();
 }
-struct ArrayRefF64 executorch_EValue_as_f64_list(const struct EValue *self)
+struct ArrayRefF64 executorch_EValue_as_f64_list(EValue self)
 {
-    auto self_ = checked_reinterpret_cast<executorch::runtime::EValue>(self);
+    auto self_ = cast_evalue(self);
     auto list = self_->toDoubleList();
     return ArrayRefF64{
         .data = list.data(),
         .len = list.size(),
     };
 }
-bool executorch_EValue_as_bool(const struct EValue *self)
+bool executorch_EValue_as_bool(EValue self)
 {
-    auto self_ = checked_reinterpret_cast<executorch::runtime::EValue>(self);
+    auto self_ = cast_evalue(self);
     return self_->toBool();
 }
-struct ArrayRefBool executorch_EValue_as_bool_list(const struct EValue *self)
+struct ArrayRefBool executorch_EValue_as_bool_list(EValue self)
 {
-    auto self_ = checked_reinterpret_cast<executorch::runtime::EValue>(self);
+    auto self_ = cast_evalue(self);
     auto list = self_->toBoolList();
     return ArrayRefBool{
         .data = list.data(),
         .len = list.size(),
     };
 }
-struct ArrayRefChar executorch_EValue_as_string(const struct EValue *self)
+struct ArrayRefChar executorch_EValue_as_string(EValue self)
 {
-    auto self_ = checked_reinterpret_cast<executorch::runtime::EValue>(self);
+    auto self_ = cast_evalue(self);
     auto str = self_->toString();
     return ArrayRefChar{
         .data = str.data(),
         .len = str.size(),
     };
 }
-const struct Tensor *executorch_EValue_as_tensor(const struct EValue *self)
+Tensor executorch_EValue_as_tensor(EValue self)
 {
-    auto self_ = checked_reinterpret_cast<executorch::runtime::EValue>(self);
+    auto self_ = cast_evalue(self);
     const executorch::aten::Tensor *tensor = &self_->toTensor();
-    return checked_reinterpret_cast<Tensor>(tensor);
+    return cast_tensor(tensor);
 }
-struct ArrayRefTensor executorch_EValue_as_tensor_list(const struct EValue *self)
+struct ArrayRefTensor executorch_EValue_as_tensor_list(EValue self)
 {
-    auto self_ = checked_reinterpret_cast<executorch::runtime::EValue>(self);
+    auto self_ = cast_evalue(self);
     auto list = self_->toTensorList();
     return ArrayRefTensor{
-        .data = checked_reinterpret_cast<Tensor>(list.data()),
+        .data = cast_tensor(list.data()),
         .len = list.size(),
     };
 }
-struct ArrayRefOptionalTensor executorch_EValue_as_optional_tensor_list(const struct EValue *self)
+struct ArrayRefOptionalTensor executorch_EValue_as_optional_tensor_list(EValue self)
 {
-    auto self_ = checked_reinterpret_cast<executorch::runtime::EValue>(self);
+    auto self_ = cast_evalue(self);
     auto list = self_->toListOptionalTensor();
     return ArrayRefOptionalTensor{
         .data = checked_reinterpret_cast<OptionalTensor>(list.data()),
         .len = list.size(),
     };
 }
-void executorch_EValue_copy(const struct EValue *src, struct EValue *dst)
+void executorch_EValue_copy(EValue src, EValueMut dst)
 {
-    auto src_ = checked_reinterpret_cast<executorch::runtime::EValue>(src);
-    auto dst_ = checked_reinterpret_cast<executorch::runtime::EValue>(dst);
+    auto src_ = cast_evalue(src);
+    auto dst_ = cast_evalue_mut(dst);
     new (dst_) executorch::runtime::EValue(*src_);
 }
-void executorch_EValue_destructor(struct EValue *self)
+void executorch_EValue_destructor(EValueMut self)
 {
-    auto self_ = checked_reinterpret_cast<executorch::runtime::EValue>(self);
+    auto self_ = cast_evalue(self);
     self_->~EValue();
 }
-void executorch_EValue_move(struct EValue *src, struct EValue *dst)
+void executorch_EValue_move(EValueMut src, EValueMut dst)
 {
-    auto src_ = checked_reinterpret_cast<executorch::runtime::EValue>(src);
-    auto dst_ = checked_reinterpret_cast<executorch::runtime::EValue>(dst);
+    auto src_ = cast_evalue_mut(src);
+    auto dst_ = cast_evalue_mut(dst);
     new (dst_) executorch::runtime::EValue(std::move(*src_));
 }

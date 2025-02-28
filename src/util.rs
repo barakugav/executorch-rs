@@ -322,7 +322,25 @@ impl_array_ref!(f64, et_c::ArrayRefF64);
 impl_array_ref!(usize, et_c::ArrayRefUsizeType);
 impl_array_ref!(bool, et_c::ArrayRefBool);
 // impl_array_ref!(et_c::Tensor, et_c::ArrayRefTensor);
-impl_array_ref!(et_c::EValue, et_c::ArrayRefEValue);
+// impl_array_ref!(et_c::EValue, et_c::ArrayRefEValue);
+impl ArrayRefElement for et_c::EValueStorage {
+    type __ArrayRefImpl = et_c::ArrayRefEValue;
+    private_impl! {}
+}
+impl __ArrayRefImpl for et_c::ArrayRefEValue {
+    type Element = et_c::EValueStorage;
+    unsafe fn from_slice(slice: &[et_c::EValueStorage]) -> Self {
+        Self {
+            data: slice.as_ptr() as et_c::EValue,
+            len: slice.len(),
+        }
+    }
+    unsafe fn as_slice(&self) -> &'static [et_c::EValueStorage] {
+        let data = self.data as *const et_c::EValueStorage;
+        unsafe { std::slice::from_raw_parts(data, self.len) }
+    }
+    private_impl! {}
+}
 
 /// Represent a reference to an array (0 or more elements
 /// consecutively in memory), i.e. a start pointer and a length.  It allows
@@ -508,19 +526,21 @@ pub(crate) mod cpp_vec {
             unsafe { std::slice::from_raw_parts_mut(self.data, self.len) }
         }
     }
-    impl CppVecElement for et_c::EValue {
+    impl CppVecElement for et_c::EValueStorage {
         type VecImpl = et_c::VecEValue;
         fn drop_vec(vec: &mut CppVec<Self>) {
             unsafe { et_c::executorch_VecEValue_destructor(&mut vec.0) }
         }
     }
     impl CppVecImpl for et_c::VecEValue {
-        type Element = et_c::EValue;
-        fn as_slice(&self) -> &[et_c::EValue] {
-            unsafe { std::slice::from_raw_parts(self.data, self.len) }
+        type Element = et_c::EValueStorage;
+        fn as_slice(&self) -> &[et_c::EValueStorage] {
+            let data = self.data as *const et_c::EValueStorage;
+            unsafe { std::slice::from_raw_parts(data, self.len) }
         }
-        fn as_mut_slice(&mut self) -> &mut [et_c::EValue] {
-            unsafe { std::slice::from_raw_parts_mut(self.data, self.len) }
+        fn as_mut_slice(&mut self) -> &mut [et_c::EValueStorage] {
+            let data = self.data as *mut et_c::EValueStorage;
+            unsafe { std::slice::from_raw_parts_mut(data, self.len) }
         }
     }
     impl CppVecElement for et_c::VecChar {

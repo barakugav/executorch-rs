@@ -67,7 +67,7 @@ impl IntoRust for et_c::Tag {
 /// Aggregate typing system similar to IValue only slimmed down with less
 /// functionality, no dependencies on atomic, and fewer supported types to better
 /// suit embedded systems (ie no intrusive ptr)
-pub struct EValue<'a>(NonTriviallyMovable<'a, et_c::EValue>);
+pub struct EValue<'a>(NonTriviallyMovable<'a, et_c::EValueStorage>);
 impl<'a> EValue<'a> {
     /// Create a new [`EValue`] on the heap.
     ///
@@ -80,7 +80,8 @@ impl<'a> EValue<'a> {
     ///
     /// The closure must initialize the value correctly, otherwise the value will be in an invalid state.
     #[cfg(feature = "alloc")]
-    unsafe fn new_impl(init: impl FnOnce(*mut et_c::EValue)) -> Self {
+    unsafe fn new_impl(init: impl FnOnce(et_c::EValueMut)) -> Self {
+        let init = |p: *mut et_c::EValueStorage| init(p as et_c::EValueMut);
         Self(unsafe { NonTriviallyMovable::new_boxed(init) })
     }
 
@@ -108,9 +109,10 @@ impl<'a> EValue<'a> {
     ///
     /// The closure must initialize the value correctly, otherwise the value will be in an invalid state.
     unsafe fn new_in_storage_impl(
-        init: impl FnOnce(*mut et_c::EValue),
+        init: impl FnOnce(et_c::EValueMut),
         storage: Pin<&'a mut Storage<EValue>>,
     ) -> Self {
+        let init = |p: *mut et_c::EValueStorage| init(p as et_c::EValueMut);
         Self(unsafe { NonTriviallyMovable::new_in_storage(init, storage) })
     }
 
@@ -140,7 +142,10 @@ impl<'a> EValue<'a> {
         value.into_evalue_in_storage(storage)
     }
 
-    pub(crate) fn from_inner_ref(value: &'a et_c::EValue) -> Self {
+    pub(crate) unsafe fn from_inner_ref(value: et_c::EValue) -> Self {
+        let value = value as *const et_c::EValueStorage;
+        assert!(!value.is_null());
+        let value = unsafe { &*value };
         Self(NonTriviallyMovable::from_ref(value))
     }
 
@@ -151,12 +156,16 @@ impl<'a> EValue<'a> {
     /// The given value should not be used after this function is called, and its Cpp destructor should be called.
     #[cfg(feature = "alloc")]
     #[allow(dead_code)]
-    pub(crate) unsafe fn move_from(value: &mut et_c::EValue) -> Self {
-        Self(unsafe { NonTriviallyMovable::new_boxed(|p| et_c::executorch_EValue_move(value, p)) })
+    pub(crate) unsafe fn move_from(value: et_c::EValueMut) -> Self {
+        Self(unsafe {
+            NonTriviallyMovable::new_boxed(|p: *mut et_c::EValueStorage| {
+                et_c::executorch_EValue_move(value, p as et_c::EValueMut)
+            })
+        })
     }
 
-    pub(crate) fn as_evalue(&self) -> &et_c::EValue {
-        self.0.as_ref()
+    pub(crate) fn as_evalue(&self) -> et_c::EValue {
+        self.0.as_ref() as *const et_c::EValueStorage as et_c::EValue
     }
 
     /// Create a new [`EValue`] with the no value (tag `None`).
@@ -313,14 +322,14 @@ impl<'a> EValue<'a> {
         unsafe { et_c::executorch_EValue_tag(self.as_evalue()) }.rs()
     }
 }
-impl Destroy for et_c::EValue {
+impl Destroy for et_c::EValueStorage {
     unsafe fn destroy(&mut self) {
-        unsafe { et_c::executorch_EValue_destructor(self) }
+        unsafe { et_c::executorch_EValue_destructor(self as *mut Self as et_c::EValueMut) }
     }
 }
 
 impl Storable for EValue<'_> {
-    type __Storage = et_c::EValue;
+    type __Storage = et_c::EValueStorage;
 }
 
 /// A type that can be converted into an [`EValue`].
@@ -711,11 +720,12 @@ impl std::fmt::Debug for EValue<'_> {
 }
 
 /// A list of tensors.
-pub struct TensorList<'a>(&'a [et_c::Tensor]);
+pub struct TensorList<'a>(&'a [et_c::TensorStorage]);
 impl TensorList<'_> {
     /// Safety: the array must be valid for the lifetime of the returned list.
     unsafe fn from_array_ref(array: et_c::ArrayRefTensor) -> Self {
-        Self(unsafe { std::slice::from_raw_parts(array.data, array.len) })
+        let data = array.data as *const et_c::TensorStorage;
+        Self(unsafe { std::slice::from_raw_parts(data, array.len) })
     }
 
     /// Get the length of the list.
@@ -730,7 +740,9 @@ impl TensorList<'_> {
 
     /// Get the tensor at the given index.
     pub fn get(&self, index: usize) -> Option<TensorAny> {
-        self.0.get(index).map(TensorAny::from_inner_ref)
+        self.0.get(index).map(|t| unsafe {
+            TensorAny::from_inner_ref(t as *const et_c::TensorStorage as et_c::Tensor)
+        })
     }
 }
 #[cfg(feature = "ndarray")]
@@ -771,8 +783,10 @@ impl OptionalTensorList<'_> {
     /// - `Some(Some(tensor))` if the tensor at the index is not `None`.
     pub fn get(&self, index: usize) -> Option<Option<TensorAny>> {
         self.0.get(index).map(|opt| {
-            opt.init_
-                .then(|| TensorAny::from_inner_ref(unsafe { &opt.storage_.value_ }))
+            opt.init_.then(|| unsafe {
+                let tensor: &et_c::TensorStorage = &opt.storage_.value_;
+                TensorAny::from_inner_ref(tensor as *const et_c::TensorStorage as et_c::Tensor)
+            })
         })
     }
 }
@@ -944,19 +958,49 @@ macro_rules! impl_boxed_evalue_list {
 }
 impl_boxed_evalue_list!(i64, et_c::BoxedEvalueListI64, et_c::SpanI64, Int, false);
 impl_boxed_evalue_list!(
-    TensorAny<'a>,
-    et_c::BoxedEvalueListTensor,
-    et_c::SpanTensor,
-    Tensor,
-    false
-);
-impl_boxed_evalue_list!(
     Option<TensorAny<'a>>,
     et_c::BoxedEvalueListOptionalTensor,
     et_c::SpanOptionalTensor,
     Tensor,
     true
 );
+// impl_boxed_evalue_list!(
+//     TensorAny<'a>,
+//     et_c::BoxedEvalueListTensor,
+//     et_c::SpanTensor,
+//     Tensor,
+//     false
+// );
+impl<'a> BoxedEvalueListElement<'a> for TensorAny<'a> {
+    const __ELEMENT_TAG: Tag = Tag::Tensor;
+    const __ALLOW_NULL_ELEMENT: bool = false;
+    type __ListImpl = et_c::BoxedEvalueListTensor;
+    private_impl! {}
+}
+impl __BoxedEvalueListImpl for et_c::BoxedEvalueListTensor {
+    type Element<'a> = TensorAny<'a>;
+
+    unsafe fn __new(
+        wrapped_vals: et_c::ArrayRefEValuePtr,
+        unwrapped_vals: Pin<&mut [Storage<Self::Element<'_>>]>,
+    ) -> Result<Self> {
+        // Safety: we dont move out of the pinned slice.
+        let unwrapped_vals = unsafe { unwrapped_vals.get_unchecked_mut() };
+        Ok(Self {
+            wrapped_vals,
+            unwrapped_vals: {
+                et_c::SpanTensor {
+                    data: unwrapped_vals.as_mut_ptr()
+                        as *mut <Self::Element<'_> as Storable>::__Storage
+                        as et_c::TensorMut,
+                    len: unwrapped_vals.len(),
+                }
+            },
+        })
+    }
+
+    private_impl! {}
+}
 
 /// A list of pointers to `EValue`.
 ///
@@ -966,14 +1010,14 @@ enum EValuePtrListInner<'a> {
     #[cfg(feature = "alloc")]
     Vec(
         (
-            crate::alloc::Vec<*const et_c::EValue>,
+            crate::alloc::Vec<et_c::EValue>,
             // A lifetime for the `*const EValue` values
             PhantomData<&'a ()>,
         ),
     ),
     Slice(
         (
-            &'a [*const et_c::EValue],
+            &'a [et_c::EValue],
             // A lifetime for the `*const EValue` values
             PhantomData<&'a ()>,
         ),
@@ -982,7 +1026,7 @@ enum EValuePtrListInner<'a> {
 impl<'a> EValuePtrList<'a> {
     #[cfg(feature = "alloc")]
     fn new_impl(values: impl IntoIterator<Item = Option<&'a EValue<'a>>>) -> Self {
-        let values: crate::alloc::Vec<*const et_c::EValue> = values
+        let values: crate::alloc::Vec<et_c::EValue> = values
             .into_iter()
             .map(|value| match value {
                 Some(value) => value.as_evalue() as *const _,
@@ -1087,7 +1131,7 @@ impl<'a> EValuePtrList<'a> {
         Self::new_in_storage_impl(values, storage)
     }
 
-    fn as_slice(&self) -> &[*const et_c::EValue] {
+    fn as_slice(&self) -> &[et_c::EValue] {
         match &self.0 {
             #[cfg(feature = "alloc")]
             EValuePtrListInner::Vec((values, _)) => values.as_slice(),
@@ -1114,9 +1158,9 @@ impl<'a> EValuePtrList<'a> {
 /// let wrapped_vals_storage = executorch::storage!(EValuePtrListElement, [3]);
 /// let wrapped_vals = EValuePtrList::new_in_storage([&evalue1, &evalue2, &evalue3], wrapped_vals_storage);
 /// ```
-pub struct EValuePtrListElem(#[allow(dead_code)] *const et_c::EValue);
+pub struct EValuePtrListElem(#[allow(dead_code)] et_c::EValue);
 impl Storable for EValuePtrListElem {
-    type __Storage = *const et_c::EValue;
+    type __Storage = et_c::EValue;
 }
 
 #[cfg(test)]

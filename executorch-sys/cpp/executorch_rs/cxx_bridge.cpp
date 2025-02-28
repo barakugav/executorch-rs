@@ -22,7 +22,7 @@ namespace executorch_rs
     {
         executorch::runtime::EValue *arr = vec_to_array(std::move(vec));
         return VecEValue{
-            .data = checked_reinterpret_cast<EValue>(arr),
+            .data = reinterpret_cast<EValueMut>(arr),
             .len = vec.size(),
             .cap = vec.size(),
         };
@@ -38,7 +38,7 @@ namespace executorch_rs
     }
 
 #if defined(EXECUTORCH_RS_TENSOR_PTR)
-    std::shared_ptr<Tensor> TensorPtr_new(
+    std::shared_ptr<executorch::aten::Tensor> TensorPtr_new(
         std::unique_ptr<std::vector<int32_t>> sizes,
         uint8_t *data,
         std::unique_ptr<std::vector<uint8_t>> dim_order,
@@ -51,7 +51,7 @@ namespace executorch_rs
         std::shared_ptr<rust::Box<executorch_rs::cxx_util::RustAny>> allocation_ptr =
             std::make_shared<rust::Box<executorch_rs::cxx_util::RustAny>>(std::move(allocation));
 
-        auto tensor = executorch::extension::make_tensor_ptr(
+        return executorch::extension::make_tensor_ptr(
             std::move(*sizes),
             data,
             std::move(*dim_order),
@@ -59,7 +59,6 @@ namespace executorch_rs
             static_cast<executorch::aten::ScalarType>(scalar_type),
             static_cast<executorch::aten::TensorShapeDynamism>(dynamism),
             [allocation_ptr = allocation_ptr](void *) mutable {});
-        return std::reinterpret_pointer_cast<Tensor>(tensor);
     }
 #endif
 
@@ -109,7 +108,7 @@ namespace executorch_rs
     }
     static executorch::runtime::Error Module_execute_(executorch::extension::Module &self, rust::Str method_name, ArrayRefEValue inputs, VecEValue *outputs)
     {
-        auto inputs_data = checked_reinterpret_cast<executorch::runtime::EValue>(inputs.data);
+        auto inputs_data = reinterpret_cast<const executorch::runtime::EValue *>(inputs.data);
         std::vector<executorch::runtime::EValue> inputs_vec(inputs_data, inputs_data + inputs.len);
         std::vector<executorch::runtime::EValue> outputs_ = ET_UNWRAP(self.execute((std::string)method_name, inputs_vec));
         *outputs = VecEValue_new(std::move(outputs_));

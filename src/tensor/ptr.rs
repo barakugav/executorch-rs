@@ -34,7 +34,10 @@ use super::*;
 /// let outputs = module.forward(&[tensor.into_evalue()]).unwrap();
 /// ```
 #[derive(Clone)]
-pub struct TensorPtr<'a, D: Data>(SharedPtr<et_c::Tensor>, PhantomData<(&'a (), D)>);
+pub struct TensorPtr<'a, D: Data>(
+    SharedPtr<et_c::cpp::tensor_ptr::Tensor>,
+    PhantomData<(&'a (), D)>,
+);
 impl<S: Scalar> TensorPtr<'static, View<S>> {
     /// Create a new [`TensorPtr`] from an [`Array`](ndarray::Array).
     ///
@@ -71,6 +74,12 @@ impl<'a, D: Data> TensorPtr<'a, D> {
     /// Get an immutable tensor that points to the underlying data.
     pub fn as_tensor(&self) -> TensorBase<D::Immutable> {
         let tensor = self.0.as_ref().expect("Null tensor");
+        // Safety: *et_c::cpp::tensor_ptr::Tensor and et_c::Tensor is the same.
+        let tensor = unsafe {
+            std::mem::transmute::<*const et_c::cpp::tensor_ptr::Tensor, et_c::Tensor>(
+                tensor as *const _,
+            )
+        };
         // Safety: the tensor is valid and the data is immutable.
         unsafe { TensorBase::convert_from(TensorBase::from_inner_ref(tensor)) }
     }
@@ -81,6 +90,12 @@ impl<'a, D: Data> TensorPtr<'a, D> {
         D: DataMut,
     {
         let tensor = self.0.as_ref().expect("Null tensor");
+        // Safety: *et_c::cpp::tensor_ptr::Tensor and et_c::Tensor is the same.
+        let tensor = unsafe {
+            std::mem::transmute::<*const et_c::cpp::tensor_ptr::Tensor, et_c::Tensor>(
+                tensor as *const _,
+            )
+        };
         // Safety: the tensor is mutable, and we are the sole borrower.
         unsafe { TensorBase::convert_from(TensorBase::from_inner_ref(tensor)) }
     }

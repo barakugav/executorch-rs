@@ -427,7 +427,7 @@ impl<'a> Outputs<'a> {
     ///
     /// Panics if the index is out of bounds.
     pub fn get(&self, index: usize) -> EValue {
-        let value = unsafe { &*et_c::executorch_Method_get_output(self.method as *const _, index) };
-        EValue::from_inner_ref(value)
+        let value = unsafe { et_c::executorch_Method_get_output(self.method as *const _, index) };
+        unsafe { EValue::from_inner_ref(value) }
     }
 }

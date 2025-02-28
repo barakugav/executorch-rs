@@ -34,7 +34,8 @@ pub(crate) mod ffi {
         /// Redifinition of the [`TensorShapeDynamism`](crate::executorch::runtime::TensorShapeDynamism).
         type TensorShapeDynamism = crate::TensorShapeDynamism;
         /// Redifinition of the [`Tensor`](crate::executorch::runtime::etensor::Tensor).
-        type Tensor = crate::Tensor;
+        #[namespace = "executorch::aten"]
+        type Tensor;
 
         /// Create a new tensor pointer.
         ///
