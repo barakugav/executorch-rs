@@ -1,3 +1,6 @@
+// Clippy doesnt detect the 'Safety' comments in the cxx bridge.
+#![allow(clippy::missing_safety_doc)]
+
 use cxx::{type_id, ExternType};
 
 #[cxx::bridge]

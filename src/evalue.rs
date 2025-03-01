@@ -758,11 +758,12 @@ impl std::fmt::Debug for TensorList<'_> {
 }
 
 /// A list of optional tensors.
-pub struct OptionalTensorList<'a>(&'a [et_c::OptionalTensor]);
+pub struct OptionalTensorList<'a>(&'a [et_c::OptionalTensorStorage]);
 impl OptionalTensorList<'_> {
     /// Safety: the array must be valid for the lifetime of the returned list.
     unsafe fn from_array_ref(array: et_c::ArrayRefOptionalTensor) -> Self {
-        Self(unsafe { std::slice::from_raw_parts(array.data, array.len) })
+        let data = array.data as *const et_c::OptionalTensorStorage;
+        Self(unsafe { std::slice::from_raw_parts(data, array.len) })
     }
 
     /// Get the length of the list.
@@ -783,11 +784,14 @@ impl OptionalTensorList<'_> {
     /// - `Some(None)` if the tensor at the index is `None`.
     /// - `Some(Some(tensor))` if the tensor at the index is not `None`.
     pub fn get(&self, index: usize) -> Option<Option<TensorAny>> {
-        self.0.get(index).map(|opt| {
-            opt.init_.then(|| unsafe {
-                let tensor: &et_c::TensorStorage = &opt.storage_.value_;
-                TensorAny::from_inner_ref(tensor as *const et_c::TensorStorage as et_c::Tensor)
-            })
+        self.0.get(index).map(|tensor| {
+            let tensor = tensor as *const et_c::OptionalTensorStorage as et_c::OptionalTensor;
+            let tensor = unsafe { et_c::executorch_OptionalTensor_get(tensor) };
+            if tensor.is_null() {
+                return None;
+            }
+            let tensor = tensor as *const et_c::TensorStorage as et_c::Tensor;
+            Some(unsafe { TensorAny::from_inner_ref(tensor) })
         })
     }
 }
@@ -925,7 +929,7 @@ pub trait __BoxedEvalueListImpl {
 }
 
 macro_rules! impl_boxed_evalue_list {
-    ($element:path, $list_impl:path, $unwrapped_span_type:path, $element_tag:ident, $allow_null_element:expr) => {
+    ($element:path, $list_impl:path, $unwrapped_span_type:path, $element_tag:ident, $allow_null_element:expr $(, $unwrapped_type:ty)?) => {
         impl<'a> BoxedEvalueListElement<'a> for $element {
             const __ELEMENT_TAG: Tag = Tag::$element_tag;
             const __ALLOW_NULL_ELEMENT: bool = $allow_null_element;
@@ -946,7 +950,7 @@ macro_rules! impl_boxed_evalue_list {
                     unwrapped_vals: {
                         $unwrapped_span_type {
                             data: unwrapped_vals.as_mut_ptr()
-                                as *mut <Self::Element<'_> as Storable>::__Storage,
+                                as *mut <Self::Element<'_> as Storable>::__Storage $(as $unwrapped_type)?,
                             len: unwrapped_vals.len(),
                         }
                     },
@@ -963,45 +967,17 @@ impl_boxed_evalue_list!(
     et_c::BoxedEvalueListOptionalTensor,
     et_c::SpanOptionalTensor,
     Tensor,
-    true
+    true,
+    et_c::OptionalTensorMut
 );
-// impl_boxed_evalue_list!(
-//     TensorAny<'a>,
-//     et_c::BoxedEvalueListTensor,
-//     et_c::SpanTensor,
-//     Tensor,
-//     false
-// );
-impl<'a> BoxedEvalueListElement<'a> for TensorAny<'a> {
-    const __ELEMENT_TAG: Tag = Tag::Tensor;
-    const __ALLOW_NULL_ELEMENT: bool = false;
-    type __ListImpl = et_c::BoxedEvalueListTensor;
-    private_impl! {}
-}
-impl __BoxedEvalueListImpl for et_c::BoxedEvalueListTensor {
-    type Element<'a> = TensorAny<'a>;
-
-    unsafe fn __new(
-        wrapped_vals: et_c::ArrayRefEValuePtr,
-        unwrapped_vals: Pin<&mut [Storage<Self::Element<'_>>]>,
-    ) -> Result<Self> {
-        // Safety: we dont move out of the pinned slice.
-        let unwrapped_vals = unsafe { unwrapped_vals.get_unchecked_mut() };
-        Ok(Self {
-            wrapped_vals,
-            unwrapped_vals: {
-                et_c::SpanTensor {
-                    data: unwrapped_vals.as_mut_ptr()
-                        as *mut <Self::Element<'_> as Storable>::__Storage
-                        as et_c::TensorMut,
-                    len: unwrapped_vals.len(),
-                }
-            },
-        })
-    }
-
-    private_impl! {}
-}
+impl_boxed_evalue_list!(
+    TensorAny<'a>,
+    et_c::BoxedEvalueListTensor,
+    et_c::SpanTensor,
+    Tensor,
+    false,
+    et_c::TensorMut
+);
 
 /// A list of pointers to `EValue`.
 ///

@@ -70,7 +70,7 @@ impl<'a, S: Scalar> TensorPtr<'a, View<S>> {
         TensorPtrBuilder::<View<S>>::from_slice(data).build()
     }
 }
-impl<'a, D: Data> TensorPtr<'a, D> {
+impl<D: Data> TensorPtr<'_, D> {
     /// Get an immutable tensor that points to the underlying data.
     pub fn as_tensor(&self) -> TensorBase<D::Immutable> {
         let tensor = self.0.as_ref().expect("Null tensor");

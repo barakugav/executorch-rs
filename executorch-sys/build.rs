@@ -114,8 +114,16 @@ fn generate_bindings() {
 }
 
 fn link_executorch() {
-    if std::env::var("DOCS_RS").is_ok() || std::env::var("EXECUTORCH_RS_LINK").as_deref() == Ok("0")
-    {
+    let link_enabled = std::env::var("EXECUTORCH_RS_LINK").as_deref() != Ok("0");
+
+    if rustc_version().map(|v| v.minor >= 80).unwrap_or(false) {
+        println!("cargo::rustc-check-cfg=cfg(link_cxx)");
+    }
+    if link_enabled {
+        println!("cargo::rustc-cfg=link_cxx");
+    }
+
+    if std::env::var("DOCS_RS").is_ok() || !link_enabled {
         // Skip linking to the static library when building documentation
         return;
     }
@@ -181,4 +189,27 @@ fn cpp_defines() -> Vec<&'static str> {
         defines.push("EXECUTORCH_RS_STD");
     }
     defines
+}
+
+struct RustVersion {
+    #[allow(dead_code)]
+    version: String,
+    minor: u32,
+}
+
+fn rustc_version() -> Option<RustVersion> {
+    // Code copied from cxx crate
+
+    let rustc = std::env::var_os("RUSTC")?;
+    let output = std::process::Command::new(rustc)
+        .arg("--version")
+        .output()
+        .ok()?;
+    let version = String::from_utf8(output.stdout).ok()?;
+    let mut pieces = version.split('.');
+    if pieces.next() != Some("rustc 1") {
+        return None;
+    }
+    let minor = pieces.next()?.parse().ok()?;
+    Some(RustVersion { version, minor })
 }
