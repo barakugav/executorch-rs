@@ -2,6 +2,9 @@
 // #![no_std]
 // #![no_main]
 
+// Unfortunately, no_std is still WIP, see https://github.com/pytorch/executorch/issues/4561
+extern crate link_cplusplus;
+
 use executorch::data_loader::FileDataLoader;
 use executorch::evalue::EValue;
 use executorch::memory::{HierarchicalAllocator, MemoryAllocator, MemoryManager};

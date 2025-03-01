@@ -19,21 +19,15 @@ fn main() {
 fn build_c_bridge() {
     let bridge_dir = cpp_bridge_dir();
     let mut builder = cc::Build::new();
-    builder.cpp(true).std("c++17");
-    // TODO: cpp executorch doesnt support nostd yet
-    // if !cfg!(feature = "std") {
-    //     builder.cpp_set_stdlib(None);
-    //     builder.flag("-nostdlib");
-    // }
+    common_cc(&mut builder);
     builder
         .files([bridge_dir.join("c_bridge.cpp")])
         .include(bridge_dir.parent().unwrap())
         .include(executorch_headers().parent().unwrap());
-    for define in cpp_defines() {
-        builder.define(define, None);
-    }
-    let c_bridge_lib_name = format!("executorch_rs_c_bridge_{}", env!("CARGO_PKG_VERSION"));
-    builder.compile(&c_bridge_lib_name);
+    builder.compile(&format!(
+        "executorch_rs_c_bridge_{}",
+        env!("CARGO_PKG_VERSION")
+    ));
 
     println!("cargo::rerun-if-changed={}", bridge_dir.to_str().unwrap());
 }
@@ -49,23 +43,28 @@ fn build_cxx_bridge() {
         bridges.push("src/cxx_bridge/tensor_ptr.rs");
     }
     let mut builder = cxx_build::bridges(bridges);
-    builder.cpp(true).std("c++17");
-    // TODO: cpp executorch doesnt support nostd yet
-    // if !cfg!(feature = "std") {
-    //     builder.cpp_set_stdlib(None);
-    //     builder.flag("-nostdlib");
-    // }
+    common_cc(&mut builder);
     builder
         .files([bridge_dir.join("cxx_bridge.cpp")])
         .include(bridge_dir.parent().unwrap())
         .include(executorch_headers().parent().unwrap());
+    builder.compile(&format!(
+        "executorch_rs_cxx_bridge_{}",
+        env!("CARGO_PKG_VERSION")
+    ));
+
+    println!("cargo::rerun-if-changed={}", bridge_dir.to_str().unwrap());
+}
+
+fn common_cc(builder: &mut cc::Build) {
+    builder.cpp(true).std("c++17").cpp_link_stdlib(None); // linked via link-cplusplus crate
+    if !cfg!(feature = "std") {
+        // TODO: cpp executorch doesnt support nostd yet
+        // builder.flag("-nostdlib");
+    }
     for define in cpp_defines() {
         builder.define(define, None);
     }
-    let cxx_bridge_lib_name = format!("executorch_rs_cxx_bridge_{}", env!("CARGO_PKG_VERSION"));
-    builder.compile(&cxx_bridge_lib_name);
-
-    println!("cargo::rerun-if-changed={}", bridge_dir.to_str().unwrap());
 }
 
 fn generate_bindings() {
@@ -125,10 +124,6 @@ fn link_executorch() {
     let libs_dir = std::env::var("EXECUTORCH_RS_EXECUTORCH_LIB_DIR").ok();
     if libs_dir.is_none() {
         println!("cargo::warning=EXECUTORCH_RS_EXECUTORCH_LIB_DIR is not set, can't locate executorch static libs");
-    }
-
-    if cfg!(feature = "std") {
-        println!("cargo::rustc-link-lib=c++");
     }
 
     if let Some(libs_dir) = &libs_dir {
