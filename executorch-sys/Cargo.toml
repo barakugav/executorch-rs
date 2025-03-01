@@ -22,6 +22,15 @@ categories = [
     "no-std",
     "no-std::no-alloc",
 ]
+include = [
+    "Cargo.toml",
+    "build.rs",
+    "src/",
+    "include/",
+    "third-party/",
+    "README.md",
+    "LICENSE",
+]
 links = "executorch"
 
 [dependencies]

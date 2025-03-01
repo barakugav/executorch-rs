@@ -1,2 +1,2 @@
 [env]
-EXECUTORCH_RS_EXECUTORCH_LIB_DIR = { value = "executorch-sys/third-party/executorch/cmake-out", relative = true }
+EXECUTORCH_RS_EXECUTORCH_LIB_DIR = { value = "etc/.dev-env/executorch/cmake-out", relative = true }

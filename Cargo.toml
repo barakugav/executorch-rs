@@ -22,7 +22,7 @@ categories = [
     "no-std",
     "no-std::no-alloc",
 ]
-include = ["Cargo.toml", "src/", "README.md", "LICENSE"]
+include = ["Cargo.toml", "build.rs", "src/", "README.md", "LICENSE"]
 
 [dependencies]
 executorch-sys = { path = "executorch-sys", version = "0.4.0", default-features = false }
