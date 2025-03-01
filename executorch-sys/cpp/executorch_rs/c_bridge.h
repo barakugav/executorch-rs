@@ -323,19 +323,14 @@ extern "C"
         size_t _blob[3];
     };
 
-    struct OptionalTensor
+    struct OptionalTensorStorage
     {
-        char trivial_init;
-
-        union
-        {
-            /// A small, trivially-constructable alternative to T.
-            unsigned char dummy_;
-            /// The constructed value itself, if optional::has_value_ is true.
-            struct TensorStorage value_;
-        } storage_;
-        bool init_;
+        char _blob1[1];
+        size_t _blob2[1];
+        bool _blob3[1];
     };
+    typedef const void *OptionalTensor;
+    typedef void *OptionalTensorMut;
 
 #if defined(EXECUTORCH_RS_STD)
     struct VecChar
@@ -420,7 +415,7 @@ extern "C"
     };
     struct ArrayRefOptionalTensor
     {
-        const struct OptionalTensor *data;
+        OptionalTensor data;
         size_t len;
     };
     struct ArrayRefEValue
@@ -460,7 +455,7 @@ extern "C"
     };
     struct SpanOptionalTensor
     {
-        struct OptionalTensor *data;
+        OptionalTensorMut data;
         size_t len;
     };
     struct BoxedEvalueListI64
@@ -508,6 +503,61 @@ extern "C"
 
 #endif
 
+    // Tensor
+    void executorch_TensorImpl_new(
+        struct TensorImpl *self,
+        enum ScalarType type,
+        size_t dim,
+        SizesType *sizes,
+        void *data,
+        DimOrderType *dim_order,
+        StridesType *strides,
+        enum TensorShapeDynamism dynamism);
+    void executorch_Tensor_new(TensorMut self, struct TensorImpl *tensor_impl);
+    size_t executorch_Tensor_nbytes(Tensor self);
+    size_t executorch_Tensor_size(Tensor self, size_t dim);
+    size_t executorch_Tensor_dim(Tensor self);
+    size_t executorch_Tensor_numel(Tensor self);
+    enum ScalarType executorch_Tensor_scalar_type(Tensor self);
+    size_t executorch_Tensor_element_size(Tensor self);
+    struct ArrayRefSizesType executorch_Tensor_sizes(Tensor self);
+    struct ArrayRefDimOrderType executorch_Tensor_dim_order(Tensor self);
+    struct ArrayRefStridesType executorch_Tensor_strides(Tensor self);
+    const void *executorch_Tensor_const_data_ptr(Tensor self);
+    void *executorch_Tensor_mutable_data_ptr(Tensor self);
+    int64_t executorch_Tensor_coordinate_to_index(Tensor self, struct ArrayRefUsizeType coordinate);
+    void executorch_Tensor_destructor(TensorMut self);
+
+    // OptionalTensor
+    Tensor executorch_OptionalTensor_get(OptionalTensor self);
+
+    // EValue
+    void executorch_EValue_new_none(EValueMut self);
+    void executorch_EValue_new_from_i64(EValueMut self, int64_t value);
+    void executorch_EValue_new_from_i64_list(EValueMut self, struct BoxedEvalueListI64 value);
+    void executorch_EValue_new_from_f64(EValueMut self, double value);
+    void executorch_EValue_new_from_f64_list(EValueMut self, struct ArrayRefF64 value);
+    void executorch_EValue_new_from_bool(EValueMut self, bool value);
+    void executorch_EValue_new_from_bool_list(EValueMut self, struct ArrayRefBool value);
+    void executorch_EValue_new_from_string(EValueMut self, struct ArrayRefChar value);
+    void executorch_EValue_new_from_tensor(EValueMut self, Tensor value);
+    void executorch_EValue_new_from_tensor_list(EValueMut self, struct BoxedEvalueListTensor value);
+    void executorch_EValue_new_from_optional_tensor_list(EValueMut self, struct BoxedEvalueListOptionalTensor value);
+    enum Tag executorch_EValue_tag(EValue self);
+    int64_t executorch_EValue_as_i64(EValue self);
+    struct ArrayRefI64 executorch_EValue_as_i64_list(EValue self);
+    double executorch_EValue_as_f64(EValue self);
+    struct ArrayRefF64 executorch_EValue_as_f64_list(EValue self);
+    bool executorch_EValue_as_bool(EValue self);
+    struct ArrayRefBool executorch_EValue_as_bool_list(EValue self);
+    struct ArrayRefChar executorch_EValue_as_string(EValue self);
+    Tensor executorch_EValue_as_tensor(EValue self);
+    struct ArrayRefTensor executorch_EValue_as_tensor_list(EValue self);
+    struct ArrayRefOptionalTensor executorch_EValue_as_optional_tensor_list(EValue self);
+    void executorch_EValue_copy(EValue src, EValueMut dst);
+    void executorch_EValue_destructor(EValueMut self);
+    void executorch_EValue_move(EValueMut src, EValueMut dst);
+
     // Program
     enum ProgramHeaderStatus executorch_Program_check_header(const void *data, size_t size);
     enum Error executorch_Program_load(struct DataLoader *loader, enum ProgramVerification verification, struct Program *out);
@@ -539,57 +589,6 @@ extern "C"
     struct ArrayRefU8 executorch_TensorInfo_dim_order(const struct TensorInfo *self);
     enum ScalarType executorch_TensorInfo_scalar_type(const struct TensorInfo *self);
     size_t executorch_TensorInfo_nbytes(const struct TensorInfo *self);
-
-    // Tensor
-    void executorch_TensorImpl_new(
-        struct TensorImpl *self,
-        enum ScalarType type,
-        size_t dim,
-        SizesType *sizes,
-        void *data,
-        DimOrderType *dim_order,
-        StridesType *strides,
-        enum TensorShapeDynamism dynamism);
-    void executorch_Tensor_new(TensorMut self, struct TensorImpl *tensor_impl);
-    size_t executorch_Tensor_nbytes(Tensor self);
-    size_t executorch_Tensor_size(Tensor self, size_t dim);
-    size_t executorch_Tensor_dim(Tensor self);
-    size_t executorch_Tensor_numel(Tensor self);
-    enum ScalarType executorch_Tensor_scalar_type(Tensor self);
-    size_t executorch_Tensor_element_size(Tensor self);
-    struct ArrayRefSizesType executorch_Tensor_sizes(Tensor self);
-    struct ArrayRefDimOrderType executorch_Tensor_dim_order(Tensor self);
-    struct ArrayRefStridesType executorch_Tensor_strides(Tensor self);
-    const void *executorch_Tensor_const_data_ptr(Tensor self);
-    void *executorch_Tensor_mutable_data_ptr(Tensor self);
-    int64_t executorch_Tensor_coordinate_to_index(Tensor self, struct ArrayRefUsizeType coordinate);
-    void executorch_Tensor_destructor(TensorMut self);
-
-    void executorch_EValue_new_none(EValueMut self);
-    void executorch_EValue_new_from_i64(EValueMut self, int64_t value);
-    void executorch_EValue_new_from_i64_list(EValueMut self, struct BoxedEvalueListI64 value);
-    void executorch_EValue_new_from_f64(EValueMut self, double value);
-    void executorch_EValue_new_from_f64_list(EValueMut self, struct ArrayRefF64 value);
-    void executorch_EValue_new_from_bool(EValueMut self, bool value);
-    void executorch_EValue_new_from_bool_list(EValueMut self, struct ArrayRefBool value);
-    void executorch_EValue_new_from_string(EValueMut self, struct ArrayRefChar value);
-    void executorch_EValue_new_from_tensor(EValueMut self, Tensor value);
-    void executorch_EValue_new_from_tensor_list(EValueMut self, struct BoxedEvalueListTensor value);
-    void executorch_EValue_new_from_optional_tensor_list(EValueMut self, struct BoxedEvalueListOptionalTensor value);
-    enum Tag executorch_EValue_tag(EValue self);
-    int64_t executorch_EValue_as_i64(EValue self);
-    struct ArrayRefI64 executorch_EValue_as_i64_list(EValue self);
-    double executorch_EValue_as_f64(EValue self);
-    struct ArrayRefF64 executorch_EValue_as_f64_list(EValue self);
-    bool executorch_EValue_as_bool(EValue self);
-    struct ArrayRefBool executorch_EValue_as_bool_list(EValue self);
-    struct ArrayRefChar executorch_EValue_as_string(EValue self);
-    Tensor executorch_EValue_as_tensor(EValue self);
-    struct ArrayRefTensor executorch_EValue_as_tensor_list(EValue self);
-    struct ArrayRefOptionalTensor executorch_EValue_as_optional_tensor_list(EValue self);
-    void executorch_EValue_copy(EValue src, EValueMut dst);
-    void executorch_EValue_destructor(EValueMut self);
-    void executorch_EValue_move(EValueMut src, EValueMut dst);
 
 #ifdef __cplusplus
 } // end of extern "C" block
