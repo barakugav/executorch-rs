@@ -6,10 +6,7 @@ import sys
 from pathlib import Path
 
 DEV_EXECUTORCH_DIR = (
-    Path(__file__).parent.parent.resolve()
-    / "executorch-sys"
-    / "third-party"
-    / "executorch"
+    Path(__file__).parent.parent.resolve() / "etc" / ".dev-env" / "executorch"
 )
 
 

@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-HEADERS_DIR = Path(__file__).parent.parent / "executorch-sys" / "cpp" / "executorch"
+HEADERS_DIR = Path(__file__).parent.parent / "executorch-sys" / "third-party" / "executorch"
 
 
 def main():

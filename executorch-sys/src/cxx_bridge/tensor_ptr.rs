@@ -30,7 +30,7 @@ pub(crate) mod ffi {
     }
 
     unsafe extern "C++" {
-        include!("executorch-sys/cpp/executorch_rs/cxx_bridge.hpp");
+        include!("executorch-sys/include/executorch_rs/cxx_bridge.hpp");
 
         /// Redifinition of the [`ScalarType`](crate::executorch::runtime::etensor::ScalarType).
         type ScalarType = crate::ScalarType;

@@ -54,18 +54,18 @@ jobs:
           cache: pip
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Install Python requirements
-        run: pip install -r scripts/requirements.txt
+        run: pip install -r etc/requirements.txt
 
       ############ Install executorch deps ############
       - name: Cache Cpp ExecuTorch compiled libraries
         id: cache-executorch-cpp-libs
         uses: actions/cache@v4
         with:
-          path: executorch-sys/third-party/executorch/cmake-out
-          key: cache-executorch-cpp-libs-${{ runner.OS }}-${{ hashFiles('scripts/setup_dev.py') }}
+          path: etc/.dev-env/executorch/cmake-out
+          key: cache-executorch-cpp-libs-${{ runner.OS }}-${{ hashFiles('etc/setup_dev_env.py') }}
       - name: Setup dev env, install executorch and its deps
         if: steps.cache-executorch-cpp-libs.outputs.cache-hit != 'true'
-        run: python scripts/setup_dev.py --skip-executorch-python
+        run: python etc/setup_dev_env.py --skip-executorch-python
 
       ############ Build ############
       - name: Build executorch-sys

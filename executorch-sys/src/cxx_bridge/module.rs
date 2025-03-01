@@ -7,7 +7,7 @@ use cxx::{type_id, ExternType};
 pub(crate) mod ffi {
 
     unsafe extern "C++" {
-        include!("executorch-sys/cpp/executorch_rs/cxx_bridge.hpp");
+        include!("executorch-sys/include/executorch_rs/cxx_bridge.hpp");
 
         /// Cpp executorch error type.
         type Error = crate::Error;

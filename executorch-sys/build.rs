@@ -14,27 +14,38 @@ fn main() {
     build_cxx_bridge();
     generate_bindings();
     link_executorch();
+
+    println!(
+        "cargo::rerun-if-changed={}",
+        include_dir().to_str().unwrap()
+    );
+    println!(
+        "cargo::rerun-if-changed={}",
+        third_party_include_dir().to_str().unwrap()
+    );
 }
 
 fn build_c_bridge() {
-    let bridge_dir = cpp_bridge_dir();
+    let c_bridge_dir = Path::new(&env!("CARGO_MANIFEST_DIR"))
+        .join("src")
+        .join("c_bridge");
     let mut builder = cc::Build::new();
     common_cc(&mut builder);
     builder
-        .files([bridge_dir.join("c_bridge.cpp")])
-        .include(bridge_dir.parent().unwrap())
-        .include(executorch_headers().parent().unwrap());
+        .files([c_bridge_dir.join("c_bridge.cpp")])
+        .include(include_dir())
+        .include(third_party_include_dir());
     builder.compile(&format!(
         "executorch_rs_c_bridge_{}",
         env!("CARGO_PKG_VERSION")
     ));
-
-    println!("cargo::rerun-if-changed={}", bridge_dir.to_str().unwrap());
 }
 
 #[cfg(any(feature = "tensor-ptr", feature = "module"))]
 fn build_cxx_bridge() {
-    let bridge_dir = cpp_bridge_dir();
+    let cxx_bridge_dir = Path::new(&env!("CARGO_MANIFEST_DIR"))
+        .join("src")
+        .join("cxx_bridge");
     let mut bridges = Vec::new();
     if cfg!(feature = "module") {
         bridges.push("src/cxx_bridge/module.rs");
@@ -45,15 +56,13 @@ fn build_cxx_bridge() {
     let mut builder = cxx_build::bridges(bridges);
     common_cc(&mut builder);
     builder
-        .files([bridge_dir.join("cxx_bridge.cpp")])
-        .include(bridge_dir.parent().unwrap())
-        .include(executorch_headers().parent().unwrap());
+        .files([cxx_bridge_dir.join("cxx_bridge.cpp")])
+        .include(include_dir())
+        .include(third_party_include_dir());
     builder.compile(&format!(
         "executorch_rs_cxx_bridge_{}",
         env!("CARGO_PKG_VERSION")
     ));
-
-    println!("cargo::rerun-if-changed={}", bridge_dir.to_str().unwrap());
 }
 
 fn common_cc(builder: &mut cc::Build) {
@@ -68,16 +77,13 @@ fn common_cc(builder: &mut cc::Build) {
 }
 
 fn generate_bindings() {
-    let bridge_dir = cpp_bridge_dir();
-    let cpp_dir = Path::new(&env!("CARGO_MANIFEST_DIR")).join("cpp");
-    println!("cargo::rerun-if-changed={}", cpp_dir.to_str().unwrap());
-
-    let bindings_h = cpp_dir.join("bindings.h");
-    let bindings_defines_h = bridge_dir.join("defines.h");
-    let mut bindings_defines = String::from("#pragma once\n");
+    let bindings_h = PathBuf::from(std::env::var("OUT_DIR").unwrap()).join("c_bindings.h");
+    let mut bindings_h_content = String::from("#pragma once\n");
     for define in cpp_defines() {
-        bindings_defines.push_str(&format!("#define {}\n", define));
+        bindings_h_content.push_str(&format!("#define {}\n", define));
     }
+    bindings_h_content.push_str("#include \"executorch_rs/c_bridge.h\"\n");
+    std::fs::write(&bindings_h, bindings_h_content).expect("Unable to write bindings.h");
 
     let [_, minor, patch]: [u64; 3] = env!("CARGO_PKG_RUST_VERSION")
         .split('.')
@@ -91,14 +97,13 @@ fn generate_bindings() {
 
     let builder = bindgen::Builder::default()
         .rust_target(rust_version)
-        .clang_arg(format!(
-            "-I{}",
-            bridge_dir.parent().unwrap().to_str().unwrap()
-        ))
+        .clang_arg(format!("-I{}", include_dir().to_str().unwrap()))
         .use_core()
-        .header_contents(bindings_defines_h.to_str().unwrap(), &bindings_defines)
         .header(bindings_h.as_os_str().to_str().unwrap())
-        .allowlist_file(format!("{}/c_bridge.h", bridge_dir.to_str().unwrap(),))
+        .allowlist_file(format!(
+            "{}/executorch_rs/c_bridge.h",
+            include_dir().to_str().unwrap()
+        ))
         .default_enum_style(bindgen::EnumVariation::Rust {
             non_exhaustive: false,
         })
@@ -114,6 +119,9 @@ fn generate_bindings() {
 }
 
 fn link_executorch() {
+    println!("cargo::rerun-if-env-changed=EXECUTORCH_RS_EXECUTORCH_LIB_DIR");
+    println!("cargo::rerun-if-env-changed=EXECUTORCH_RS_LINK");
+
     let link_enabled = std::env::var("EXECUTORCH_RS_LINK").as_deref() != Ok("0");
 
     if rustc_version().map(|v| v.minor >= 80).unwrap_or(false) {
@@ -128,7 +136,6 @@ fn link_executorch() {
         return;
     }
 
-    println!("cargo::rerun-if-env-changed=EXECUTORCH_RS_EXECUTORCH_LIB_DIR");
     let libs_dir = std::env::var("EXECUTORCH_RS_EXECUTORCH_LIB_DIR").ok();
     if libs_dir.is_none() {
         println!("cargo::warning=EXECUTORCH_RS_EXECUTORCH_LIB_DIR is not set, can't locate executorch static libs");
@@ -162,16 +169,12 @@ fn link_executorch() {
     }
 }
 
-fn executorch_headers() -> PathBuf {
-    Path::new(&env!("CARGO_MANIFEST_DIR"))
-        .join("cpp")
-        .join("executorch")
+fn include_dir() -> PathBuf {
+    Path::new(&env!("CARGO_MANIFEST_DIR")).join("include")
 }
 
-fn cpp_bridge_dir() -> PathBuf {
-    Path::new(&env!("CARGO_MANIFEST_DIR"))
-        .join("cpp")
-        .join("executorch_rs")
+fn third_party_include_dir() -> PathBuf {
+    Path::new(&env!("CARGO_MANIFEST_DIR")).join("third-party")
 }
 
 fn cpp_defines() -> Vec<&'static str> {
