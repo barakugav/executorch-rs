@@ -9,9 +9,8 @@ Multiple static libraries are built, and the Rust library links to them.
 In the following example we build the C++ library with the necessary flags to run example `hello_world`:
 ```bash
 # Clone the C++ library
-cd ${TEMP_DIR}
-git clone --depth 1 --branch v0.5.0 https://github.com/pytorch/executorch.git
-cd executorch
+cd ${EXECUTORCH_CPP_DIR}
+git clone --depth 1 --branch v0.5.0 https://github.com/pytorch/executorch.git .
 git submodule sync --recursive
 git submodule update --init --recursive
 
@@ -51,7 +50,7 @@ make -j
 # We set EXECUTORCH_RS_EXECUTORCH_LIB_DIR to the path of the C++ build output
 cd ${EXECUTORCH_RS_DIR}/examples/hello_world
 python export_model.py
-EXECUTORCH_RS_EXECUTORCH_LIB_DIR=${TEMP_DIR}/executorch/cmake-out cargo run
+EXECUTORCH_RS_EXECUTORCH_LIB_DIR=${EXECUTORCH_CPP_DIR}/cmake-out cargo run
 ```
 
 The `executorch` crate will always look for the following static libraries:

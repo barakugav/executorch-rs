@@ -12,7 +12,7 @@
 //!
 //! The following example create a simple model in Python, exports it, and then executes it in Rust:
 //!
-//! Create a model in `Python` and export it:
+//! Create a model in Python and export it:
 //! ```ignore
 //! import torch
 //! from executorch.exir import to_edge

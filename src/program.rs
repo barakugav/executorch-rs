@@ -381,7 +381,7 @@ impl<'a> Execution<'a> {
     /// * `input_idx` - Zero-based index of the input to set. Must be less than the value returned by inputs_size().
     pub fn set_input(&mut self, input: &'a EValue, input_idx: usize) -> Result<()> {
         unsafe {
-            et_c::executorch_Method_set_input(self.method, input.as_evalue() as *const _, input_idx)
+            et_c::executorch_Method_set_input(self.method, input.cpp() as *const _, input_idx)
         }
         .rs()?;
         self.set_inputs |= 1 << input_idx;

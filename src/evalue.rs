@@ -10,7 +10,7 @@ use std::pin::Pin;
 
 use crate::memory::{Storable, Storage};
 use crate::tensor::{self, TensorAny, TensorBase};
-use crate::util::{ArrayRef, Destroy, IntoRust, NonTriviallyMovable, __ArrayRefImpl};
+use crate::util::{ArrayRef, Destroy, IntoCpp, IntoRust, NonTriviallyMovable, __ArrayRefImpl};
 use crate::{CError, Error, Result};
 use executorch_sys as et_c;
 
@@ -164,10 +164,6 @@ impl<'a> EValue<'a> {
         })
     }
 
-    pub(crate) fn as_evalue(&self) -> et_c::EValue {
-        self.0.as_ref() as *const et_c::EValueStorage as et_c::EValue
-    }
-
     /// Create a new [`EValue`] with the no value (tag `None`).
     #[cfg(feature = "alloc")]
     pub fn none() -> Self {
@@ -319,12 +315,18 @@ impl<'a> EValue<'a> {
     ///
     /// Returns `None` if the inner Cpp tag is `None`.
     pub fn tag(&self) -> Tag {
-        unsafe { et_c::executorch_EValue_tag(self.as_evalue()) }.rs()
+        unsafe { et_c::executorch_EValue_tag(self.cpp()) }.rs()
     }
 }
 impl Destroy for et_c::EValueStorage {
     unsafe fn destroy(&mut self) {
         unsafe { et_c::executorch_EValue_destructor(self as *mut Self as et_c::EValueMut) }
+    }
+}
+impl IntoCpp for &EValue<'_> {
+    type CppType = et_c::EValue;
+    fn cpp(self) -> Self::CppType {
+        self.0.as_ref() as *const et_c::EValueStorage as et_c::EValue
     }
 }
 
@@ -576,7 +578,7 @@ impl TryFrom<&EValue<'_>> for i64 {
     type Error = Error;
     fn try_from(value: &EValue) -> Result<Self> {
         if value.tag() == Tag::Int {
-            Ok(unsafe { et_c::executorch_EValue_as_i64(value.as_evalue()) })
+            Ok(unsafe { et_c::executorch_EValue_as_i64(value.cpp()) })
         } else {
             Err(Error::CError(CError::InvalidType))
         }
@@ -586,7 +588,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for &'a [i64] {
     type Error = Error;
     fn try_from(value: &'a EValue) -> Result<Self> {
         if value.tag() == Tag::ListInt {
-            Ok(unsafe { et_c::executorch_EValue_as_i64_list(value.as_evalue()).as_slice() })
+            Ok(unsafe { et_c::executorch_EValue_as_i64_list(value.cpp()).as_slice() })
         } else {
             Err(Error::CError(CError::InvalidType))
         }
@@ -596,7 +598,7 @@ impl TryFrom<&EValue<'_>> for f64 {
     type Error = Error;
     fn try_from(value: &EValue) -> Result<Self> {
         if value.tag() == Tag::Double {
-            Ok(unsafe { et_c::executorch_EValue_as_f64(value.as_evalue()) })
+            Ok(unsafe { et_c::executorch_EValue_as_f64(value.cpp()) })
         } else {
             Err(Error::CError(CError::InvalidType))
         }
@@ -606,7 +608,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for &'a [f64] {
     type Error = Error;
     fn try_from(value: &'a EValue) -> Result<Self> {
         if value.tag() == Tag::ListDouble {
-            Ok(unsafe { et_c::executorch_EValue_as_f64_list(value.as_evalue()).as_slice() })
+            Ok(unsafe { et_c::executorch_EValue_as_f64_list(value.cpp()).as_slice() })
         } else {
             Err(Error::CError(CError::InvalidType))
         }
@@ -616,7 +618,7 @@ impl TryFrom<&EValue<'_>> for bool {
     type Error = Error;
     fn try_from(value: &EValue) -> Result<Self> {
         if value.tag() == Tag::Bool {
-            Ok(unsafe { et_c::executorch_EValue_as_bool(value.as_evalue()) })
+            Ok(unsafe { et_c::executorch_EValue_as_bool(value.cpp()) })
         } else {
             Err(Error::CError(CError::InvalidType))
         }
@@ -626,7 +628,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for &'a [bool] {
     type Error = Error;
     fn try_from(value: &'a EValue) -> Result<Self> {
         if value.tag() == Tag::ListBool {
-            Ok(unsafe { et_c::executorch_EValue_as_bool_list(value.as_evalue()).as_slice() })
+            Ok(unsafe { et_c::executorch_EValue_as_bool_list(value.cpp()).as_slice() })
         } else {
             Err(Error::CError(CError::InvalidType))
         }
@@ -636,7 +638,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for &'a [std::ffi::c_char] {
     type Error = Error;
     fn try_from(value: &'a EValue) -> Result<Self> {
         if value.tag() == Tag::String {
-            Ok(unsafe { et_c::executorch_EValue_as_string(value.as_evalue()).as_slice() })
+            Ok(unsafe { et_c::executorch_EValue_as_string(value.cpp()).as_slice() })
         } else {
             Err(Error::CError(CError::InvalidType))
         }
@@ -653,7 +655,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for TensorAny<'a> {
     type Error = Error;
     fn try_from(value: &'a EValue) -> Result<Self> {
         if value.tag() == Tag::Tensor {
-            let tensor = unsafe { et_c::executorch_EValue_as_tensor(value.as_evalue()) };
+            let tensor = unsafe { et_c::executorch_EValue_as_tensor(value.cpp()) };
             Ok(unsafe { TensorAny::from_inner_ref(&*tensor) })
         } else {
             Err(Error::CError(CError::InvalidType))
@@ -677,7 +679,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for TensorList<'a> {
     type Error = Error;
     fn try_from(value: &'a EValue) -> Result<Self> {
         if value.tag() == Tag::ListTensor {
-            let list = unsafe { et_c::executorch_EValue_as_tensor_list(value.as_evalue()) };
+            let list = unsafe { et_c::executorch_EValue_as_tensor_list(value.cpp()) };
             Ok(unsafe { Self::from_array_ref(list) })
         } else {
             Err(Error::CError(CError::InvalidType))
@@ -688,8 +690,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for OptionalTensorList<'a> {
     type Error = Error;
     fn try_from(value: &'a EValue) -> Result<Self> {
         if value.tag() == Tag::ListOptionalTensor {
-            let list =
-                unsafe { et_c::executorch_EValue_as_optional_tensor_list(value.as_evalue()) };
+            let list = unsafe { et_c::executorch_EValue_as_optional_tensor_list(value.cpp()) };
             Ok(unsafe { Self::from_array_ref(list) })
         } else {
             Err(Error::CError(CError::InvalidType))
@@ -1029,7 +1030,7 @@ impl<'a> EValuePtrList<'a> {
         let values: crate::alloc::Vec<et_c::EValue> = values
             .into_iter()
             .map(|value| match value {
-                Some(value) => value.as_evalue() as *const _,
+                Some(value) => value.cpp() as *const _,
                 None => std::ptr::null(),
             })
             .collect();
@@ -1079,7 +1080,7 @@ impl<'a> EValuePtrList<'a> {
             match (values.next(), storage_iter.next()) {
                 (Some(value), Some(storage)) => {
                     storage.write(match value {
-                        Some(value) => value.as_evalue() as *const _,
+                        Some(value) => value.cpp() as *const _,
                         None => std::ptr::null(),
                     });
                 }
