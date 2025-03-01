@@ -1,5 +1,5 @@
-#![deny(warnings)]
-#![deny(missing_docs)]
+#![cfg_attr(deny_warnings, deny(warnings))]
+#![cfg_attr(deny_warnings, deny(missing_docs))]
 
 //! Unsafe bindings for ExecuTorch - On-device AI across mobile, embedded and edge for PyTorch.
 //!

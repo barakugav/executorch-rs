@@ -23,6 +23,16 @@ fn main() {
         "cargo::rerun-if-changed={}",
         third_party_include_dir().to_str().unwrap()
     );
+
+    let check_cfg = rustc_version().map(|v| v >= 80).unwrap_or(false);
+    println!("cargo::rerun-if-env-changed=EXECUTORCH_RS_DENY_WARNINGS");
+    let deny_warnings = std::env::var("EXECUTORCH_RS_DENY_WARNINGS").as_deref() == Ok("1");
+    if check_cfg {
+        println!("cargo:rustc-check-cfg=cfg(deny_warnings)");
+    }
+    if deny_warnings {
+        println!("cargo:rustc-cfg=deny_warnings");
+    }
 }
 
 fn build_c_bridge() {
@@ -124,7 +134,9 @@ fn link_executorch() {
 
     let link_enabled = std::env::var("EXECUTORCH_RS_LINK").as_deref() != Ok("0");
 
-    if rustc_version().map(|v| v.minor >= 80).unwrap_or(false) {
+    let check_cfg = rustc_version().map(|v| v >= 80).unwrap_or(false);
+
+    if check_cfg {
         println!("cargo::rustc-check-cfg=cfg(link_cxx)");
     }
     if link_enabled {
@@ -194,13 +206,7 @@ fn cpp_defines() -> Vec<&'static str> {
     defines
 }
 
-struct RustVersion {
-    #[allow(dead_code)]
-    version: String,
-    minor: u32,
-}
-
-fn rustc_version() -> Option<RustVersion> {
+fn rustc_version() -> Option<u32> {
     // Code copied from cxx crate
 
     let rustc = std::env::var_os("RUSTC")?;
@@ -214,5 +220,5 @@ fn rustc_version() -> Option<RustVersion> {
         return None;
     }
     let minor = pieces.next()?.parse().ok()?;
-    Some(RustVersion { version, minor })
+    Some(minor)
 }
