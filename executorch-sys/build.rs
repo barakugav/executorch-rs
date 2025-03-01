@@ -15,13 +15,10 @@ fn main() {
     generate_bindings();
     link_executorch();
 
+    println!("cargo::rerun-if-changed={}", cpp_dir().to_str().unwrap());
     println!(
         "cargo::rerun-if-changed={}",
-        include_dir().to_str().unwrap()
-    );
-    println!(
-        "cargo::rerun-if-changed={}",
-        third_party_include_dir().to_str().unwrap()
+        third_party_dir().to_str().unwrap()
     );
 
     let check_cfg = rustc_version().map(|v| v >= 80).unwrap_or(false);
@@ -36,15 +33,13 @@ fn main() {
 }
 
 fn build_c_bridge() {
-    let c_bridge_dir = Path::new(&env!("CARGO_MANIFEST_DIR"))
-        .join("src")
-        .join("c_bridge");
+    let sources_dir = cpp_dir().join("executorch_rs");
     let mut builder = cc::Build::new();
     common_cc(&mut builder);
     builder
-        .files([c_bridge_dir.join("c_bridge.cpp")])
-        .include(include_dir())
-        .include(third_party_include_dir());
+        .files([sources_dir.join("c_bridge.cpp")])
+        .include(cpp_dir())
+        .include(third_party_dir());
     builder.compile(&format!(
         "executorch_rs_c_bridge_{}",
         env!("CARGO_PKG_VERSION")
@@ -53,9 +48,7 @@ fn build_c_bridge() {
 
 #[cfg(any(feature = "tensor-ptr", feature = "module"))]
 fn build_cxx_bridge() {
-    let cxx_bridge_dir = Path::new(&env!("CARGO_MANIFEST_DIR"))
-        .join("src")
-        .join("cxx_bridge");
+    let sources_dir = cpp_dir().join("executorch_rs");
     let mut bridges = Vec::new();
     if cfg!(feature = "module") {
         bridges.push("src/cxx_bridge/module.rs");
@@ -66,9 +59,9 @@ fn build_cxx_bridge() {
     let mut builder = cxx_build::bridges(bridges);
     common_cc(&mut builder);
     builder
-        .files([cxx_bridge_dir.join("cxx_bridge.cpp")])
-        .include(include_dir())
-        .include(third_party_include_dir());
+        .files([sources_dir.join("cxx_bridge.cpp")])
+        .include(cpp_dir())
+        .include(third_party_dir());
     builder.compile(&format!(
         "executorch_rs_cxx_bridge_{}",
         env!("CARGO_PKG_VERSION")
@@ -107,12 +100,12 @@ fn generate_bindings() {
 
     let builder = bindgen::Builder::default()
         .rust_target(rust_version)
-        .clang_arg(format!("-I{}", include_dir().to_str().unwrap()))
+        .clang_arg(format!("-I{}", cpp_dir().to_str().unwrap()))
         .use_core()
         .header(bindings_h.as_os_str().to_str().unwrap())
         .allowlist_file(format!(
             "{}/executorch_rs/c_bridge.h",
-            include_dir().to_str().unwrap()
+            cpp_dir().to_str().unwrap()
         ))
         .default_enum_style(bindgen::EnumVariation::Rust {
             non_exhaustive: false,
@@ -181,11 +174,11 @@ fn link_executorch() {
     }
 }
 
-fn include_dir() -> PathBuf {
-    Path::new(&env!("CARGO_MANIFEST_DIR")).join("include")
+fn cpp_dir() -> PathBuf {
+    Path::new(&env!("CARGO_MANIFEST_DIR")).join("cpp")
 }
 
-fn third_party_include_dir() -> PathBuf {
+fn third_party_dir() -> PathBuf {
     Path::new(&env!("CARGO_MANIFEST_DIR")).join("third-party")
 }
 

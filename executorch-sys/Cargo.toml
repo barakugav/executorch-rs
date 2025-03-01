@@ -26,7 +26,7 @@ include = [
     "Cargo.toml",
     "build.rs",
     "src/",
-    "include/",
+    "cpp/",
     "third-party/",
     "README.md",
     "LICENSE",
