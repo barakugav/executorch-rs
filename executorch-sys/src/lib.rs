@@ -115,7 +115,7 @@
 #[cfg(not(feature = "std"))]
 extern crate core as std;
 
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", link_cxx))]
 extern crate link_cplusplus;
 
 mod c_link {
