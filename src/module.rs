@@ -52,7 +52,7 @@ impl Module {
     /// # Arguments
     ///
     /// * `verification` - The type of verification to do before returning success.
-    /// Defaults to `ProgramVerification::Minimal`.
+    ///     Defaults to `ProgramVerification::Minimal`.
     ///
     /// # Returns
     ///

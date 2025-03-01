@@ -73,7 +73,7 @@ mod file_data_loader {
         ///
         /// * `file_name` - Path to the file to read from.
         /// * `alignment` - Alignment in bytes of pointers returned by this instance. Must be a power of two.
-        /// Defaults to 16.
+        ///     Defaults to 16.
         ///
         /// # Returns
         ///
@@ -106,7 +106,7 @@ mod file_data_loader {
         ///
         /// * `file_name` - Path to the file to read from.
         /// * `alignment` - Alignment in bytes of pointers returned by this instance. Must be a power of two.
-        /// Defaults to 16.
+        ///     Defaults to 16.
         ///
         /// # Returns
         ///
@@ -156,7 +156,7 @@ mod file_data_loader {
         /// # Arguments
         ///
         /// * `file_name` - Path to the file to read from. The file will be kept open until the MmapDataLoader is
-        /// destroyed, to avoid the overhead of opening it again for every load() call.
+        ///     destroyed, to avoid the overhead of opening it again for every load() call.
         /// * `mlock_config` - How and whether to lock loaded pages with `mlock()`. Defaults to `MlockConfig::UseMlock`.
         ///
         /// # Returns
@@ -184,7 +184,7 @@ mod file_data_loader {
         /// # Arguments
         ///
         /// * `file_name` - Path to the file to read from. The file will be kept open until the MmapDataLoader is
-        /// destroyed, to avoid the overhead of opening it again for every load() call.
+        ///     destroyed, to avoid the overhead of opening it again for every load() call.
         /// * `mlock_config` - How and whether to lock loaded pages with `mlock()`. Defaults to `MlockConfig::UseMlock`.
         ///
         /// # Returns

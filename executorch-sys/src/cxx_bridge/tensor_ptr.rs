@@ -1,3 +1,6 @@
+// Clippy doesnt detect the 'Safety' comments in the cxx bridge.
+#![allow(clippy::missing_safety_doc)]
+
 /// Utility functions and structs used by the cxx bridge.
 pub mod cxx_util {
     /// A wrapper around `std::any::Any` that can be used in the cxx bridge.

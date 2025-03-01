@@ -89,11 +89,13 @@ jobs:
         uses: auguwu/clippy-action@1.4.0
         with:
           working-directory: executorch-sys
+          check-args: --all-features
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Clippy executorch
         uses: auguwu/clippy-action@1.4.0
         with:
           working-directory: .
+          check-args: --all-features
           token: ${{ secrets.GITHUB_TOKEN }}
 
       ############ Tests ############
@@ -159,7 +161,7 @@ jobs:
             executorch-sys
 
       - name: cargo check executorch
-        run: cargo check
+        run: cargo check --all-features
         working-directory: .
         env:
           EXECUTORCH_RS_LINK: "0"
@@ -167,12 +169,13 @@ jobs:
         uses: auguwu/clippy-action@1.4.0
         with:
           working-directory: .
+          check-args: --all-features
           token: ${{ secrets.GITHUB_TOKEN }}
         env:
           EXECUTORCH_RS_LINK: "0"
 
       - name: cargo check executorch-sys
-        run: cargo check
+        run: cargo check --all-features
         working-directory: executorch-sys
         env:
           EXECUTORCH_RS_LINK: "0"
@@ -180,6 +183,7 @@ jobs:
         uses: auguwu/clippy-action@1.4.0
         with:
           working-directory: executorch-sys
+          check-args: --all-features
           token: ${{ secrets.GITHUB_TOKEN }}
         env:
           EXECUTORCH_RS_LINK: "0"
