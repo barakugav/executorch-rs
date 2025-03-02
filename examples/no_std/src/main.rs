@@ -7,7 +7,7 @@ extern crate link_cplusplus;
 
 use executorch::data_loader::FileDataLoader;
 use executorch::evalue::EValue;
-use executorch::memory::{HierarchicalAllocator, MemoryAllocator, MemoryManager};
+use executorch::memory::{BufferMemoryAllocator, HierarchicalAllocator, MemoryManager};
 use executorch::ndarray::array;
 use executorch::program::{Program, ProgramVerification};
 use executorch::tensor::{ArrayStorage, Tensor};
@@ -22,7 +22,7 @@ fn real_main() {
 
     // Safety: We are the main function, no other function access the buffer
     let buffer = unsafe { &mut *core::ptr::addr_of_mut!(MEMORY_ALLOCATOR_BUF) };
-    let allocator = MemoryAllocator::new(buffer);
+    let allocator = BufferMemoryAllocator::new(buffer);
 
     let file_data_loader = FileDataLoader::from_path_cstr(cstr::cstr!(b"model.pte"), None).unwrap();
 

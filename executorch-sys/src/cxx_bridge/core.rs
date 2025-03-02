@@ -28,7 +28,7 @@ pub(crate) mod ffi {
         /// Safety: The caller must ensure that the pointer is valid for the lifetime of the `MemoryAllocator`.
         unsafe fn MallocMemoryAllocator_as_memory_allocator(
             self_: Pin<&mut MallocMemoryAllocator>,
-        ) -> *const MemoryAllocator;
+        ) -> *mut MemoryAllocator;
     }
 }
 

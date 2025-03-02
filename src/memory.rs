@@ -4,6 +4,7 @@
 //! This enable using the library in embedded systems where dynamic memory allocation is not allowed, or when allocation
 //! is a performance bottleneck.
 
+use core::ops::Deref;
 use std::cell::UnsafeCell;
 use std::marker::{PhantomData, PhantomPinned};
 use std::mem::MaybeUninit;
@@ -13,35 +14,12 @@ use std::ptr;
 use crate::util::Span;
 use executorch_sys as et_c;
 
-/// A class that does simple allocation based on a size and returns the pointer
-/// to the memory address. It bookmarks a buffer with certain size. The
-/// allocation is simply checking space and growing the cur_ pointer with each
-/// allocation request.
-pub struct MemoryAllocator<'a>(
-    pub(crate) UnsafeCell<et_c::MemoryAllocator>,
-    PhantomData<&'a ()>,
-);
-impl<'a> MemoryAllocator<'a> {
-    #[cfg(feature = "std")]
+/// An allocator used to allocate objects for the runtime.
+pub struct MemoryAllocator<'a>(UnsafeCell<et_c::MemoryAllocator>, PhantomData<&'a ()>);
+impl MemoryAllocator<'_> {
     unsafe fn from_inner_ref(allocator: &et_c::MemoryAllocator) -> &Self {
         // Safety: Self has a single field of (UnsafeCell of) et_c::MemoryAllocator
         unsafe { std::mem::transmute(allocator) }
-    }
-
-    /// Constructs a new memory allocator using a fixed-size buffer.
-    ///
-    /// # Arguments
-    ///
-    /// * `buffer` - The buffer to use for memory allocation.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the buffer is larger than `u32::MAX` bytes.
-    pub fn new(buffer: &'a mut [u8]) -> Self {
-        let size = buffer.len().try_into().expect("usize -> u32");
-        let base_addr = buffer.as_mut_ptr();
-        let allocator = unsafe { et_c::executorch_MemoryAllocator_new(size, base_addr) };
-        Self(UnsafeCell::new(allocator), PhantomData)
     }
 
     /// Allocates memory of a certain size and alignment.
@@ -143,9 +121,41 @@ impl<'a> MemoryAllocator<'a> {
         Some(slice)
     }
 }
-impl<'a> AsRef<MemoryAllocator<'a>> for MemoryAllocator<'a> {
+
+/// A class that does simple allocation based on a size and returns the pointer
+/// to the memory address. It bookmarks a buffer with certain size. The
+/// allocation is simply checking space and growing the cur_ pointer with each
+/// allocation request.
+pub struct BufferMemoryAllocator<'a>(
+    pub(crate) UnsafeCell<et_c::MemoryAllocator>,
+    PhantomData<&'a ()>,
+);
+impl<'a> BufferMemoryAllocator<'a> {
+    /// Constructs a new memory allocator using a fixed-size buffer.
+    ///
+    /// # Arguments
+    ///
+    /// * `buffer` - The buffer to use for memory allocation.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the buffer is larger than `u32::MAX` bytes.
+    pub fn new(buffer: &'a mut [u8]) -> Self {
+        let size = buffer.len().try_into().expect("usize -> u32");
+        let base_addr = buffer.as_mut_ptr();
+        let allocator = unsafe { et_c::executorch_MemoryAllocator_new(size, base_addr) };
+        Self(UnsafeCell::new(allocator), PhantomData)
+    }
+}
+impl<'a> AsRef<MemoryAllocator<'a>> for BufferMemoryAllocator<'a> {
     fn as_ref(&self) -> &MemoryAllocator<'a> {
-        self
+        unsafe { MemoryAllocator::from_inner_ref(&*self.0.get()) }
+    }
+}
+impl<'a> Deref for BufferMemoryAllocator<'a> {
+    type Target = MemoryAllocator<'a>;
+    fn deref(&self) -> &Self::Target {
+        self.as_ref()
     }
 }
 
@@ -181,11 +191,15 @@ mod malloc_allocator {
             // et_c::MemoryAllocator.
             // The returned allocator have a lifetime of 'static because it does not depend on any external buffer, malloc
             // objects are alive until the program ends.
-
             let self_ = unsafe { &mut *self.0.get() }.as_mut().unwrap();
-            let allocator =
-                unsafe { &*et_c::cpp::MallocMemoryAllocator_as_memory_allocator(self_) };
-            unsafe { MemoryAllocator::from_inner_ref(allocator) }
+            let allocator = unsafe { et_c::cpp::MallocMemoryAllocator_as_memory_allocator(self_) };
+            unsafe { MemoryAllocator::from_inner_ref(&*allocator) }
+        }
+    }
+    impl Deref for MallocMemoryAllocator {
+        type Target = MemoryAllocator<'static>;
+        fn deref(&self) -> &Self::Target {
+            self.as_ref()
         }
     }
 }
@@ -250,20 +264,18 @@ impl<'a> MemoryManager<'a> {
     ///     Must outlive the Method that uses it. May be [`None`] if the Method does not use kernels or delegates that
     ///     allocate temporary data. This allocator will be reset after every kernel or delegate call during execution.
     pub fn new(
-        method_allocator: &'a impl AsRef<MemoryAllocator<'a>>,
+        method_allocator: &'a MemoryAllocator<'a>,
         planned_memory: Option<&'a mut HierarchicalAllocator>,
-        temp_allocator: Option<&'a mut MemoryAllocator>,
+        temp_allocator: Option<&'a MemoryAllocator<'a>>,
     ) -> Self {
         let planned_memory = planned_memory
             .map(|x| &mut x.0 as *mut _)
             .unwrap_or(ptr::null_mut());
-        let temp_allocator = temp_allocator
-            .map(|x| x.0.get() as *mut _)
-            .unwrap_or(ptr::null_mut());
+        let temp_allocator = temp_allocator.map(|x| x.0.get()).unwrap_or(ptr::null_mut());
         Self(
             UnsafeCell::new(unsafe {
                 et_c::executorch_MemoryManager_new(
-                    method_allocator.as_ref().0.get(),
+                    method_allocator.0.get(),
                     planned_memory,
                     temp_allocator,
                 )
