@@ -38,26 +38,68 @@ namespace
 
     static_assert(is_equal_layout<EValueStorage, executorch::runtime::EValue>());
     static_assert(is_equal_layout<TensorStorage, executorch::aten::Tensor>());
-    static_assert(is_equal_layout<TensorImpl, executorch::aten::TensorImpl>());
-    static_assert(is_equal_layout<Program, executorch::runtime::Program>());
-    static_assert(is_equal_layout<TensorInfo, executorch::runtime::TensorInfo>());
-    static_assert(is_equal_layout<MethodMeta, executorch::runtime::MethodMeta>());
-    static_assert(is_equal_layout<Method, executorch::runtime::Method>());
+    static_assert(is_equal_layout<OptionalTensorStorage, executorch::aten::optional<executorch::aten::Tensor>>());
 
-    static_assert(is_equal_layout<DataLoader, executorch::runtime::DataLoader>());
+    static_assert(is_equal_layout<TensorImpl, executorch::aten::TensorImpl>());
+    static_assert(std::is_trivially_move_constructible_v<executorch::aten::TensorImpl>);
+
+    static_assert(is_equal_layout<Program, executorch::runtime::Program>());
+    // Program is not trivially move constructible because it has a FreeableBuffer field that
+    // has a custom move constructor.
+    // FreeableBuffer has a custom move constructor and a destructor, but the move is trivial +cleaning
+    // of the old object, which behave great with Rust move semantics as long as we only call the
+    // destructor on the final object.
+    //
+    // static_assert(std::is_trivially_move_constructible_v<executorch::runtime::Program>);
+
+    static_assert(is_equal_layout<TensorInfo, executorch::runtime::TensorInfo>());
+    static_assert(std::is_trivially_move_constructible_v<executorch::runtime::TensorInfo>);
+
+    static_assert(is_equal_layout<MethodMeta, executorch::runtime::MethodMeta>());
+    static_assert(std::is_trivially_move_constructible_v<executorch::runtime::MethodMeta>);
+
+    static_assert(is_equal_layout<Method, executorch::runtime::Method>());
+    // Method has a move constructor that just clean the old object to avoid double free.
+    // Its OK to move it in Rust because the old object is forgotten.
+    //
+    // static_assert(std::is_trivially_move_constructible_v<executorch::runtime::Method>);
+
     static_assert(is_equal_layout<BufferDataLoader, executorch::extension::BufferDataLoader>());
+    // BufferDataLoader is not trivially move constructible because it has a vtable with virtual
+    // destructor inherited from DataLoader, but it has an empty implementation for it therefore
+    // it is safe.
+    //
+    // static_assert(std::is_trivially_move_constructible_v<executorch::extension::BufferDataLoader>);
+
 #if defined(EXECUTORCH_RS_DATA_LOADER)
     static_assert(is_equal_layout<FileDataLoader, executorch::extension::FileDataLoader>());
+    // FileDataLoader has a custom move constructor and a destructor, but the move is trivial +cleaning
+    // of the old object, which behave great with Rust move semantics as long as we only call the
+    // destructor on the final object.
+    //
+    // static_assert(std::is_trivially_move_constructible_v<executorch::extension::FileDataLoader>);
+
     static_assert(is_equal_layout<MmapDataLoader, executorch::extension::MmapDataLoader>());
+    // MmapDataLoader has a custom move constructor and a destructor, but the move is trivial +cleaning
+    // of the old object, which behave great with Rust move semantics as long as we only call the
+    // destructor on the final object.
+    //
+    // static_assert(std::is_trivially_move_constructible_v<executorch::extension::MmapDataLoader>);
 #endif
 
     static_assert(is_equal_layout<MemoryAllocator, executorch::runtime::MemoryAllocator>());
-#if defined(EXECUTORCH_RS_STD)
-    static_assert(is_equal_layout<MallocMemoryAllocator, executorch::extension::MallocMemoryAllocator>());
-#endif
+    // MemoryAllocator is not trivially move constructible because it has a vtable with virtual
+    // destructor, but when we have a concrete instance of it there is nothing virtual and no move
+    // constructor, so it is safe to move it in Rust.
+
+    // static_assert(std::is_trivially_move_constructible_v<executorch::runtime::MemoryAllocator>);
+
     static_assert(is_equal_layout<HierarchicalAllocator, executorch::runtime::HierarchicalAllocator>());
+    static_assert(std::is_trivially_move_constructible_v<executorch::runtime::HierarchicalAllocator>);
+
     static_assert(is_equal_layout<MemoryManager, executorch::runtime::MemoryManager>());
-    static_assert(is_equal_layout<OptionalTensorStorage, executorch::aten::optional<executorch::aten::Tensor>>());
+    static_assert(std::is_trivially_move_constructible_v<executorch::runtime::MemoryManager>);
+
 }
 
 using executorch_rs::checked_reinterpret_cast;
