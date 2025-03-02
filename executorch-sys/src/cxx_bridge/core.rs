@@ -17,18 +17,20 @@ pub(crate) mod ffi {
         ///
         /// For systems with malloc(), this can be easier than using a fixed-sized
         /// MemoryAllocator.
-        #[namespace = "executorch::aten"]
+        #[namespace = "executorch::extension"]
         type MallocMemoryAllocator;
 
         /// Construct a new Malloc memory allocator.
+        #[namespace = "executorch_rs"]
         fn MallocMemoryAllocator_new() -> UniquePtr<MallocMemoryAllocator>;
 
         /// Get a pointer to the base class `MemoryAllocator`.
         ///
         /// Safety: The caller must ensure that the pointer is valid for the lifetime of the `MemoryAllocator`.
+        #[namespace = "executorch_rs"]
         unsafe fn MallocMemoryAllocator_as_memory_allocator(
             self_: Pin<&mut MallocMemoryAllocator>,
-        ) -> *const MemoryAllocator;
+        ) -> *mut MemoryAllocator;
     }
 }
 

@@ -34,7 +34,7 @@ use std::pin::Pin;
 use ndarray::{ArrayBase, ArrayView, ArrayViewMut, ShapeBuilder};
 
 use crate::error::try_new;
-use crate::memory::{Storable, Storage};
+use crate::memory::{MemoryAllocator, Storable, Storage};
 use crate::util::{Destroy, IntoCpp, IntoRust, NonTriviallyMovable, __ArrayRefImpl};
 use crate::{CError, Error, Result};
 use executorch_sys::{self as et_c, ScalarType as CScalarType};
@@ -789,6 +789,22 @@ impl<'a, S: Scalar> Tensor<'a, S> {
     ) -> Self {
         // Safety: both Self and TensorImpl are immutable
         unsafe { Self::new_in_storage_impl(tensor_impl, storage) }
+    }
+
+    /// Create a new [`Tensor`] from a [`TensorImpl`] in the given memory allocator.
+    ///
+    /// This function is identical to [`Tensor::new_in_storage`][Tensor::new_in_storage], but it allocates the storage
+    /// using the given memory allocator.
+    ///
+    /// # Panics
+    ///
+    /// If the allocation fails.
+    pub fn new_in_allocator(
+        tensor_impl: &'a TensorImpl<S>,
+        allocator: &'a MemoryAllocator<'a>,
+    ) -> Self {
+        let storage = allocator.allocate_pinned().expect("Allocation failed");
+        Self::new_in_storage(tensor_impl, storage)
     }
 }
 

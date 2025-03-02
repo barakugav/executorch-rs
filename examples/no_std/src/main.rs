@@ -7,7 +7,7 @@ extern crate link_cplusplus;
 
 use executorch::data_loader::FileDataLoader;
 use executorch::evalue::EValue;
-use executorch::memory::{HierarchicalAllocator, MemoryAllocator, MemoryManager};
+use executorch::memory::{BufferMemoryAllocator, HierarchicalAllocator, MemoryManager};
 use executorch::ndarray::array;
 use executorch::program::{Program, ProgramVerification};
 use executorch::tensor::{ArrayStorage, Tensor};
@@ -22,7 +22,7 @@ fn real_main() {
 
     // Safety: We are the main function, no other function access the buffer
     let buffer = unsafe { &mut *core::ptr::addr_of_mut!(MEMORY_ALLOCATOR_BUF) };
-    let allocator = MemoryAllocator::new(buffer);
+    let allocator = BufferMemoryAllocator::new(buffer);
 
     let file_data_loader = FileDataLoader::from_path_cstr(cstr::cstr!(b"model.pte"), None).unwrap();
 
@@ -55,16 +55,12 @@ fn real_main() {
 
     let input_array1 = ArrayStorage::new(array!(1.0_f32));
     let input_tensor_impl1 = input_array1.as_tensor_impl();
-    let input_tensor1 =
-        Tensor::new_in_storage(&input_tensor_impl1, allocator.allocate_pinned().unwrap());
-    // allocate storage for EValue in the allocator
-    let storage = allocator.allocate_pinned().unwrap();
-    let input_evalue1 = EValue::new_in_storage(input_tensor1, storage);
+    let input_tensor1 = Tensor::new_in_allocator(&input_tensor_impl1, &allocator);
+    let input_evalue1 = EValue::new_in_allocator(input_tensor1, &allocator);
 
     let input_array2 = ArrayStorage::new(array!(1.0_f32));
     let input_tensor_impl2 = input_array2.as_tensor_impl();
-    let input_tensor2 =
-        Tensor::new_in_storage(&input_tensor_impl2, allocator.allocate_pinned().unwrap());
+    let input_tensor2 = Tensor::new_in_allocator(&input_tensor_impl2, &allocator);
     // allocate storage for EValue on the local stack
     let storage = executorch::storage!(EValue);
     let input_evalue2 = EValue::new_in_storage(input_tensor2, storage);

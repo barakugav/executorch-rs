@@ -6,9 +6,7 @@
 #include <cstdint>
 #include "executorch/runtime/core/exec_aten/exec_aten.h"
 
-#if defined(EXECUTORCH_RS_STD)
 #include "executorch/extension/memory_allocator/malloc_memory_allocator.h"
-#endif
 
 #include "executorch/extension/module/module.h"
 #if defined(EXECUTORCH_RS_MODULE)
