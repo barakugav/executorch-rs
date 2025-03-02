@@ -10,16 +10,13 @@ use executorch_sys as et_c;
 
 /// Loads from a data source.
 ///
-/// This struct is like a base class for data loaders. All other data loaders implement `AsRef<DataLoader>` and other
+/// This struct is like a base class for data loaders. All other data loaders implement this trait and other
 /// structs, such as [`Program`], take a reference to [`DataLoader`] instead of the concrete data loader type.
 ///
 /// [`Program`]: crate::program::Program
-pub struct DataLoader(pub(crate) UnsafeCell<et_c::DataLoader>);
-impl DataLoader {
-    pub(crate) fn from_inner_ref(loader: &et_c::DataLoader) -> &Self {
-        // Safety: Self has a single field of (UnsafeCell of) et_c::DataLoader
-        unsafe { std::mem::transmute(loader) }
-    }
+pub trait DataLoader {
+    #[doc(hidden)]
+    fn __data_loader_ptr(&self) -> et_c::DataLoaderMut;
 }
 
 /// A DataLoader that wraps a pre-allocated buffer. The FreeableBuffers
@@ -37,11 +34,9 @@ impl<'a> BufferDataLoader<'a> {
         Self(UnsafeCell::new(loader), PhantomData)
     }
 }
-impl AsRef<DataLoader> for BufferDataLoader<'_> {
-    fn as_ref(&self) -> &DataLoader {
-        let self_ = unsafe { &*self.0.get() };
-        let loader = unsafe { &*et_c::executorch_BufferDataLoader_as_data_loader(self_) };
-        DataLoader::from_inner_ref(loader)
+impl DataLoader for BufferDataLoader<'_> {
+    fn __data_loader_ptr(&self) -> et_c::DataLoaderMut {
+        unsafe { et_c::executorch_BufferDataLoader_as_data_loader(self.0.get()) }
     }
 }
 
@@ -129,11 +124,9 @@ mod file_data_loader {
             Ok(Self(UnsafeCell::new(loader)))
         }
     }
-    impl AsRef<DataLoader> for FileDataLoader {
-        fn as_ref(&self) -> &DataLoader {
-            let self_ = unsafe { &*self.0.get() };
-            let loader = unsafe { &*et_c::executorch_FileDataLoader_as_data_loader(self_) };
-            DataLoader::from_inner_ref(loader)
+    impl DataLoader for FileDataLoader {
+        fn __data_loader_ptr(&self) -> et_c::DataLoaderMut {
+            unsafe { et_c::executorch_FileDataLoader_as_data_loader(self.0.get()) }
         }
     }
     impl Drop for FileDataLoader {
@@ -202,11 +195,9 @@ mod file_data_loader {
             Ok(Self(UnsafeCell::new(loader)))
         }
     }
-    impl AsRef<DataLoader> for MmapDataLoader {
-        fn as_ref(&self) -> &DataLoader {
-            let self_ = unsafe { &*self.0.get() };
-            let loader = unsafe { &*et_c::executorch_MmapDataLoader_as_data_loader(self_) };
-            DataLoader::from_inner_ref(loader)
+    impl DataLoader for MmapDataLoader {
+        fn __data_loader_ptr(&self) -> et_c::DataLoaderMut {
+            unsafe { et_c::executorch_MmapDataLoader_as_data_loader(self.0.get()) }
         }
     }
     impl Drop for MmapDataLoader {

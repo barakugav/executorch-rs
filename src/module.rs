@@ -21,7 +21,7 @@ use executorch_sys as et_c;
 /// A facade class for loading programs and executing methods within them.
 ///
 /// See the `hello_world` example for how to load and execute a module.
-pub struct Module(executorch_sys::cxx::UniquePtr<et_c::cpp::module::Module>);
+pub struct Module(executorch_sys::cxx::UniquePtr<et_c::cpp::Module>);
 impl Module {
     /// Constructs an instance by loading a program from a file with specified
     /// memory locking behavior.
@@ -41,7 +41,7 @@ impl Module {
     pub fn new(file_path: impl AsRef<Path>, load_mode: Option<LoadMode>) -> Self {
         let load_mode = load_mode.unwrap_or(LoadMode::MmapUseMlock).cpp();
         // let event_tracer = ptr::null_mut(); // TODO: support event tracer
-        Self(et_c::cpp::module::Module_new(
+        Self(et_c::cpp::Module_new(
             file_path.as_ref().to_str().unwrap(),
             load_mode,
         ))
@@ -59,7 +59,7 @@ impl Module {
     /// An Error to indicate success or failure of the loading process.
     pub fn load(&mut self, verification: Option<ProgramVerification>) -> Result<()> {
         let verification = verification.unwrap_or(ProgramVerification::Minimal).cpp();
-        et_c::cpp::module::Module_load(self.0.as_mut().unwrap(), verification).rs()
+        et_c::cpp::Module_load(self.0.as_mut().unwrap(), verification).rs()
     }
 
     // /// Checks if the program is loaded.
@@ -80,7 +80,7 @@ impl Module {
     pub fn method_names(&mut self) -> Result<HashSet<String>> {
         let mut names = Vec::new();
         let self_ = self.0.as_mut().unwrap();
-        unsafe { et_c::cpp::module::Module_method_names(self_, &mut names).rs()? };
+        unsafe { et_c::cpp::Module_method_names(self_, &mut names).rs()? };
         Ok(names.into_iter().map(|s| s.to_string()).collect())
     }
 
@@ -99,7 +99,7 @@ impl Module {
     ///
     /// If the method name is not a valid UTF-8 string or contains a null character.
     pub fn load_method(&mut self, method_name: impl AsRef<str>) -> Result<()> {
-        et_c::cpp::module::Module_load_method(self.0.as_mut().unwrap(), method_name.as_ref()).rs()
+        et_c::cpp::Module_load_method(self.0.as_mut().unwrap(), method_name.as_ref()).rs()
     }
 
     /// Checks if a specific method is loaded.
@@ -116,7 +116,7 @@ impl Module {
     ///
     /// If the method name is not a valid UTF-8 string or contains a null character.
     pub fn is_method_loaded(&self, method_name: impl AsRef<str>) -> bool {
-        et_c::cpp::module::Module_is_method_loaded(self.0.as_ref().unwrap(), method_name.as_ref())
+        et_c::cpp::Module_is_method_loaded(self.0.as_ref().unwrap(), method_name.as_ref())
     }
 
     /// Get a method metadata struct by method name.
@@ -135,11 +135,7 @@ impl Module {
     /// If the method name is not a valid UTF-8 string or contains a null character.
     pub fn method_meta(&mut self, method_name: impl AsRef<str>) -> Result<MethodMeta> {
         let meta = try_new(|meta| unsafe {
-            et_c::cpp::module::Module_method_meta(
-                self.0.as_mut().unwrap(),
-                method_name.as_ref(),
-                meta,
-            )
+            et_c::cpp::Module_method_meta(self.0.as_mut().unwrap(), method_name.as_ref(), meta)
         })?;
         Ok(unsafe { MethodMeta::new(meta) })
     }
@@ -171,7 +167,7 @@ impl Module {
         };
         let inputs = ArrayRef::from_slice(inputs.as_slice());
         let mut outputs = try_new(|outputs| unsafe {
-            et_c::cpp::module::Module_execute(
+            et_c::cpp::Module_execute(
                 self.0.as_mut().unwrap(),
                 method_name.as_ref(),
                 inputs.0,

@@ -37,6 +37,18 @@ namespace executorch_rs
         return static_cast<Error>(result.error());
     }
 
+#if defined(EXECUTORCH_RS_STD)
+    std::unique_ptr<executorch::extension::MallocMemoryAllocator> MallocMemoryAllocator_new()
+    {
+        return std::make_unique<executorch::extension::MallocMemoryAllocator>();
+    }
+    struct MemoryAllocator *MallocMemoryAllocator_as_memory_allocator(executorch::extension::MallocMemoryAllocator &self)
+    {
+        auto allocator = static_cast<executorch::runtime::MemoryAllocator *>(&self);
+        return reinterpret_cast<struct MemoryAllocator *>(allocator);
+    }
+#endif
+
 #if defined(EXECUTORCH_RS_TENSOR_PTR)
     std::shared_ptr<executorch::aten::Tensor> TensorPtr_new(
         std::unique_ptr<std::vector<int32_t>> sizes,

@@ -38,26 +38,68 @@ namespace
 
     static_assert(is_equal_layout<EValueStorage, executorch::runtime::EValue>());
     static_assert(is_equal_layout<TensorStorage, executorch::aten::Tensor>());
-    static_assert(is_equal_layout<TensorImpl, executorch::aten::TensorImpl>());
-    static_assert(is_equal_layout<Program, executorch::runtime::Program>());
-    static_assert(is_equal_layout<TensorInfo, executorch::runtime::TensorInfo>());
-    static_assert(is_equal_layout<MethodMeta, executorch::runtime::MethodMeta>());
-    static_assert(is_equal_layout<Method, executorch::runtime::Method>());
+    static_assert(is_equal_layout<OptionalTensorStorage, executorch::aten::optional<executorch::aten::Tensor>>());
 
-    static_assert(is_equal_layout<DataLoader, executorch::runtime::DataLoader>());
+    static_assert(is_equal_layout<TensorImpl, executorch::aten::TensorImpl>());
+    static_assert(std::is_trivially_move_constructible_v<executorch::aten::TensorImpl>);
+
+    static_assert(is_equal_layout<Program, executorch::runtime::Program>());
+    // Program is not trivially move constructible because it has a FreeableBuffer field that
+    // has a custom move constructor.
+    // FreeableBuffer has a custom move constructor and a destructor, but the move is trivial +cleaning
+    // of the old object, which behave great with Rust move semantics as long as we only call the
+    // destructor on the final object.
+    //
+    // static_assert(std::is_trivially_move_constructible_v<executorch::runtime::Program>);
+
+    static_assert(is_equal_layout<TensorInfo, executorch::runtime::TensorInfo>());
+    static_assert(std::is_trivially_move_constructible_v<executorch::runtime::TensorInfo>);
+
+    static_assert(is_equal_layout<MethodMeta, executorch::runtime::MethodMeta>());
+    static_assert(std::is_trivially_move_constructible_v<executorch::runtime::MethodMeta>);
+
+    static_assert(is_equal_layout<Method, executorch::runtime::Method>());
+    // Method has a move constructor that just clean the old object to avoid double free.
+    // Its OK to move it in Rust because the old object is forgotten.
+    //
+    // static_assert(std::is_trivially_move_constructible_v<executorch::runtime::Method>);
+
     static_assert(is_equal_layout<BufferDataLoader, executorch::extension::BufferDataLoader>());
+    // BufferDataLoader is not trivially move constructible because it has a vtable with virtual
+    // destructor inherited from DataLoader, but it has an empty implementation for it therefore
+    // it is safe.
+    //
+    // static_assert(std::is_trivially_move_constructible_v<executorch::extension::BufferDataLoader>);
+
 #if defined(EXECUTORCH_RS_DATA_LOADER)
     static_assert(is_equal_layout<FileDataLoader, executorch::extension::FileDataLoader>());
+    // FileDataLoader has a custom move constructor and a destructor, but the move is trivial +cleaning
+    // of the old object, which behave great with Rust move semantics as long as we only call the
+    // destructor on the final object.
+    //
+    // static_assert(std::is_trivially_move_constructible_v<executorch::extension::FileDataLoader>);
+
     static_assert(is_equal_layout<MmapDataLoader, executorch::extension::MmapDataLoader>());
+    // MmapDataLoader has a custom move constructor and a destructor, but the move is trivial +cleaning
+    // of the old object, which behave great with Rust move semantics as long as we only call the
+    // destructor on the final object.
+    //
+    // static_assert(std::is_trivially_move_constructible_v<executorch::extension::MmapDataLoader>);
 #endif
 
     static_assert(is_equal_layout<MemoryAllocator, executorch::runtime::MemoryAllocator>());
-#if defined(EXECUTORCH_RS_STD)
-    static_assert(is_equal_layout<MallocMemoryAllocator, executorch::extension::MallocMemoryAllocator>());
-#endif
+    // MemoryAllocator is not trivially move constructible because it has a vtable with virtual
+    // destructor, but when we have a concrete instance of it there is nothing virtual and no move
+    // constructor, so it is safe to move it in Rust.
+
+    // static_assert(std::is_trivially_move_constructible_v<executorch::runtime::MemoryAllocator>);
+
     static_assert(is_equal_layout<HierarchicalAllocator, executorch::runtime::HierarchicalAllocator>());
+    static_assert(std::is_trivially_move_constructible_v<executorch::runtime::HierarchicalAllocator>);
+
     static_assert(is_equal_layout<MemoryManager, executorch::runtime::MemoryManager>());
-    static_assert(is_equal_layout<OptionalTensorStorage, executorch::aten::optional<executorch::aten::Tensor>>());
+    static_assert(std::is_trivially_move_constructible_v<executorch::runtime::MemoryManager>);
+
 }
 
 using executorch_rs::checked_reinterpret_cast;
@@ -109,27 +151,6 @@ void *executorch_MemoryAllocator_allocate(struct MemoryAllocator *self, size_t s
     auto self_ = checked_reinterpret_cast<executorch::runtime::MemoryAllocator>(self);
     return self_->allocate(size, alignment);
 }
-#if defined(EXECUTORCH_RS_STD)
-
-struct MallocMemoryAllocator executorch_MallocMemoryAllocator_new()
-{
-    struct MallocMemoryAllocator self;
-    auto self_ = checked_reinterpret_cast<executorch::extension::MallocMemoryAllocator>(&self);
-    new (self_) executorch::extension::MallocMemoryAllocator();
-    return self;
-}
-void executorch_MallocMemoryAllocator_destructor(struct MallocMemoryAllocator *self)
-{
-    auto self_ = checked_reinterpret_cast<executorch::extension::MallocMemoryAllocator>(self);
-    self_->~MallocMemoryAllocator();
-}
-const struct MemoryAllocator *executorch_MallocMemoryAllocator_as_memory_allocator(const struct MallocMemoryAllocator *self)
-{
-    auto self_ = checked_reinterpret_cast<executorch::extension::MallocMemoryAllocator>(self);
-    auto memory_allocator = static_cast<const executorch::runtime::MemoryAllocator *>(self_);
-    return checked_reinterpret_cast<MemoryAllocator>(memory_allocator);
-}
-#endif
 struct HierarchicalAllocator executorch_HierarchicalAllocator_new(struct SpanSpanU8 buffers)
 {
     auto buffers_ = *checked_reinterpret_cast<executorch::runtime::Span<executorch::runtime::Span<uint8_t>>>(&buffers);
@@ -161,6 +182,14 @@ struct MemoryManager executorch_MemoryManager_new(
 }
 
 // Loaders
+static executorch::runtime::DataLoader *cast_data_loader_mut(DataLoaderMut loader)
+{
+    return reinterpret_cast<executorch::runtime::DataLoader *>(loader);
+}
+static DataLoaderMut cast_data_loader_mut(executorch::runtime::DataLoader *loader)
+{
+    return reinterpret_cast<DataLoaderMut>(loader);
+}
 struct BufferDataLoader executorch_BufferDataLoader_new(const void *data, size_t size)
 {
     struct BufferDataLoader loader;
@@ -168,11 +197,11 @@ struct BufferDataLoader executorch_BufferDataLoader_new(const void *data, size_t
     new (loader_) executorch::extension::BufferDataLoader(data, size);
     return loader;
 }
-const struct DataLoader *executorch_BufferDataLoader_as_data_loader(const struct BufferDataLoader *self)
+DataLoaderMut executorch_BufferDataLoader_as_data_loader(struct BufferDataLoader *self)
 {
     auto self_ = checked_reinterpret_cast<executorch::extension::BufferDataLoader>(self);
-    auto loader = static_cast<const executorch::runtime::DataLoader *>(self_);
-    return checked_reinterpret_cast<DataLoader>(loader);
+    auto loader = static_cast<executorch::runtime::DataLoader *>(self_);
+    return cast_data_loader_mut(loader);
 }
 #if defined(EXECUTORCH_RS_DATA_LOADER)
 enum Error executorch_FileDataLoader_new(const char *file_path, size_t alignment, struct FileDataLoader *out)
@@ -191,11 +220,11 @@ void executorch_FileDataLoader_destructor(struct FileDataLoader *self)
     auto self_ = checked_reinterpret_cast<executorch::extension::FileDataLoader>(self);
     self_->~FileDataLoader();
 }
-const struct DataLoader *executorch_FileDataLoader_as_data_loader(const struct FileDataLoader *self)
+DataLoaderMut executorch_FileDataLoader_as_data_loader(struct FileDataLoader *self)
 {
     auto self_ = checked_reinterpret_cast<executorch::extension::FileDataLoader>(self);
-    auto loader = static_cast<const executorch::runtime::DataLoader *>(self_);
-    return checked_reinterpret_cast<DataLoader>(loader);
+    auto loader = static_cast<executorch::runtime::DataLoader *>(self_);
+    return cast_data_loader_mut(loader);
 }
 enum Error executorch_MmapDataLoader_new(const char *file_path, enum MmapDataLoaderMlockConfig mlock_config, struct MmapDataLoader *out)
 {
@@ -214,11 +243,11 @@ void executorch_MmapDataLoader_destructor(struct MmapDataLoader *self)
     auto self_ = checked_reinterpret_cast<executorch::extension::MmapDataLoader>(self);
     self_->~MmapDataLoader();
 }
-const struct DataLoader *executorch_MmapDataLoader_as_data_loader(const struct MmapDataLoader *self)
+DataLoaderMut executorch_MmapDataLoader_as_data_loader(struct MmapDataLoader *self)
 {
     auto self_ = checked_reinterpret_cast<executorch::extension::MmapDataLoader>(self);
-    auto loader = static_cast<const executorch::runtime::DataLoader *>(self_);
-    return checked_reinterpret_cast<DataLoader>(loader);
+    auto loader = static_cast<executorch::runtime::DataLoader *>(self_);
+    return cast_data_loader_mut(loader);
 }
 #endif
 
@@ -590,9 +619,9 @@ enum ProgramHeaderStatus executorch_Program_check_header(const void *data, size_
     auto status = executorch::runtime::Program::check_header(data, size);
     return static_cast<ProgramHeaderStatus>(status);
 }
-enum Error executorch_Program_load(struct DataLoader *loader, enum ProgramVerification verification, struct Program *out)
+enum Error executorch_Program_load(DataLoaderMut loader, enum ProgramVerification verification, struct Program *out)
 {
-    auto loader_ = checked_reinterpret_cast<executorch::runtime::DataLoader>(loader);
+    auto loader_ = cast_data_loader_mut(loader);
     auto verification_ = static_cast<executorch::runtime::Program::Verification>(verification);
     auto out_ = checked_reinterpret_cast<executorch::runtime::Program>(out);
     // return extract_result(executorch::runtime::Program::load(loader, verification), out);

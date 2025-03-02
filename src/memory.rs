@@ -160,7 +160,9 @@ mod malloc_allocator {
     ///
     /// For systems with malloc(), this can be easier than using a fixed-sized
     /// MemoryAllocator.
-    pub struct MallocMemoryAllocator(UnsafeCell<et_c::MallocMemoryAllocator>);
+    pub struct MallocMemoryAllocator(
+        UnsafeCell<et_c::cxx::UniquePtr<et_c::cpp::MallocMemoryAllocator>>,
+    );
     impl Default for MallocMemoryAllocator {
         fn default() -> Self {
             Self::new()
@@ -169,9 +171,7 @@ mod malloc_allocator {
     impl MallocMemoryAllocator {
         /// Construct a new Malloc memory allocator.
         pub fn new() -> Self {
-            Self(UnsafeCell::new(unsafe {
-                et_c::executorch_MallocMemoryAllocator_new()
-            }))
+            Self(UnsafeCell::new(et_c::cpp::MallocMemoryAllocator_new()))
         }
     }
     impl AsRef<MemoryAllocator<'static>> for MallocMemoryAllocator {
@@ -181,15 +181,11 @@ mod malloc_allocator {
             // et_c::MemoryAllocator.
             // The returned allocator have a lifetime of 'static because it does not depend on any external buffer, malloc
             // objects are alive until the program ends.
-            let self_ = unsafe { &*self.0.get() };
+
+            let self_ = unsafe { &mut *self.0.get() }.as_mut().unwrap();
             let allocator =
-                unsafe { &*et_c::executorch_MallocMemoryAllocator_as_memory_allocator(self_) };
+                unsafe { &*et_c::cpp::MallocMemoryAllocator_as_memory_allocator(self_) };
             unsafe { MemoryAllocator::from_inner_ref(allocator) }
-        }
-    }
-    impl Drop for MallocMemoryAllocator {
-        fn drop(&mut self) {
-            unsafe { et_c::executorch_MallocMemoryAllocator_destructor(self.0.get()) };
         }
     }
 }
