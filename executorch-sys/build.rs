@@ -10,7 +10,7 @@ fn main() {
     // );
 
     build_c_bridge();
-    #[cfg(any(feature = "tensor-ptr", feature = "module"))]
+    #[cfg(feature = "std")]
     build_cxx_bridge();
     generate_bindings();
     link_executorch();
@@ -46,10 +46,11 @@ fn build_c_bridge() {
     ));
 }
 
-#[cfg(any(feature = "tensor-ptr", feature = "module"))]
+#[cfg(feature = "std")]
 fn build_cxx_bridge() {
     let sources_dir = cpp_dir().join("executorch_rs");
     let mut bridges = Vec::new();
+    bridges.push("src/cxx_bridge/core.rs");
     if cfg!(feature = "module") {
         bridges.push("src/cxx_bridge/module.rs");
     }

@@ -8,7 +8,7 @@ use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 use std::pin::Pin;
 
-use crate::memory::{Storable, Storage};
+use crate::memory::{MemoryAllocator, Storable, Storage};
 use crate::tensor::{self, TensorAny, TensorBase};
 use crate::util::{ArrayRef, Destroy, IntoCpp, IntoRust, NonTriviallyMovable, __ArrayRefImpl};
 use crate::{CError, Error, Result};
@@ -140,6 +140,22 @@ impl<'a> EValue<'a> {
         storage: Pin<&'a mut Storage<EValue>>,
     ) -> Self {
         value.into_evalue_in_storage(storage)
+    }
+
+    /// Create a new [`EValue`] from a value that can be converted into one in the given memory allocator.
+    ///
+    /// This function is identical to [`EValue::new_in_storage`][EValue::new_in_storage], but it allocates the storage
+    /// using the given memory allocator.
+    ///
+    /// # Panics
+    ///
+    /// If the allocation fails.
+    pub fn new_in_allocator(
+        value: impl IntoEValue<'a>,
+        allocator: &'a MemoryAllocator<'a>,
+    ) -> Self {
+        let storage = allocator.allocate_pinned().expect("Allocation failed");
+        Self::new_in_storage(value, storage)
     }
 
     pub(crate) unsafe fn from_inner_ref(value: et_c::EValue) -> Self {
@@ -1142,6 +1158,7 @@ impl Storable for EValuePtrListElem {
 
 #[cfg(test)]
 mod tests {
+    use crate::memory::BufferMemoryAllocator;
     use crate::storage;
     #[cfg(feature = "tensor-ptr")]
     use crate::tensor::TensorPtr;
@@ -1663,5 +1680,16 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn new_in_allocator() {
+        let mut allocator_buf = [0_u8; 512];
+        let allocator = BufferMemoryAllocator::new(&mut allocator_buf);
+
+        let evalue_int = EValue::new_in_allocator(17, &allocator);
+        let evalue_float = EValue::new_in_allocator(42.6, &allocator);
+        assert_eq!(evalue_int.as_i64(), 17);
+        assert_eq!(evalue_float.as_f64(), 42.6);
     }
 }
