@@ -632,16 +632,14 @@ enum Error executorch_Program_load(DataLoaderMut loader, enum ProgramVerificatio
     new (out_) executorch::runtime::Program(std::move(program));
     return Error::Error_Ok;
 }
-enum Error executorch_Program_load_method(const struct Program *self, const char *method_name, struct MemoryManager *memory_manager, void *event_tracer, struct Method *out)
+enum Error executorch_Program_load_method(const struct Program *self, const char *method_name, struct MemoryManager *memory_manager, EventTracer event_tracer, struct Method *out)
 {
-    // TODO: support executorch::runtime::EventTracer
-    (void)event_tracer;
-
     auto self_ = checked_reinterpret_cast<executorch::runtime::Program>(self);
     auto memory_manager_ = checked_reinterpret_cast<executorch::runtime::MemoryManager>(memory_manager);
+    auto event_tracer_ = reinterpret_cast<executorch::runtime::EventTracer *>(event_tracer);
     auto out_ = checked_reinterpret_cast<executorch::runtime::Method>(out);
-    // return extract_result(std::move(self.load_method(method_name, memory_manager, event_tracer)), out);
-    auto res = self_->load_method(method_name, memory_manager_, nullptr);
+
+    auto res = self_->load_method(method_name, memory_manager_, event_tracer_);
     if (!res.ok())
         return static_cast<Error>(res.error());
     auto &method = res.get();

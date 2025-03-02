@@ -141,6 +141,7 @@ mod private;
 pub mod data_loader;
 mod error;
 pub mod evalue;
+pub mod event_tracer;
 pub mod memory;
 #[cfg(feature = "module")]
 pub mod module;

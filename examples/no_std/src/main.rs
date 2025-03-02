@@ -50,7 +50,7 @@ fn real_main() {
     let memory_manager = MemoryManager::new(&allocator, Some(&mut planned_memory), None);
 
     let mut method = program
-        .load_method(cstr::cstr!(b"forward"), &memory_manager)
+        .load_method(cstr::cstr!(b"forward"), &memory_manager, None)
         .unwrap();
 
     let input_array1 = ArrayStorage::new(array!(1.0_f32));

@@ -39,9 +39,8 @@ namespace executorch_rs
 #if defined(EXECUTORCH_RS_MODULE)
     std::unique_ptr<executorch::extension::Module> Module_new(
         rust::Str file_path,
-        const ModuleLoadMode load_mode
-        // executorch::runtime::EventTracer *event_tracer
-    );
+        const ModuleLoadMode load_mode,
+        std::unique_ptr<executorch::runtime::EventTracer> event_tracer);
 
     Error Module_load(executorch::extension::Module &self, ProgramVerification verification);
     Error Module_method_names(executorch::extension::Module &self, rust::Vec<rust::String> &method_names_out);

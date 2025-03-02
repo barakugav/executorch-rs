@@ -461,6 +461,7 @@ extern "C"
         struct ArrayRefEValuePtr wrapped_vals;
         struct SpanOptionalTensor unwrapped_vals;
     };
+    typedef void *EventTracer;
 
     void executorch_pal_init();
 
@@ -544,7 +545,7 @@ extern "C"
     // Program
     enum ProgramHeaderStatus executorch_Program_check_header(const void *data, size_t size);
     enum Error executorch_Program_load(DataLoaderMut loader, enum ProgramVerification verification, struct Program *out);
-    enum Error executorch_Program_load_method(const struct Program *self, const char *method_name, struct MemoryManager *memory_manager, /* TODO */ void *event_tracer, struct Method *out);
+    enum Error executorch_Program_load_method(const struct Program *self, const char *method_name, struct MemoryManager *memory_manager, EventTracer event_tracer, struct Method *out);
     enum Error executorch_Program_get_method_name(const struct Program *self, size_t method_index, const char **out);
     enum Error executorch_Program_method_meta(const struct Program *self, const char *method_name, struct MethodMeta *method_meta_out);
     size_t executorch_Program_num_methods(const struct Program *self);

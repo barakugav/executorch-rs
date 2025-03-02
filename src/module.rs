@@ -8,11 +8,13 @@
 //!
 //! See the `hello_world` example for how to load and execute a module.
 
+use core::marker::PhantomData;
 use std::collections::HashSet;
 use std::path::Path;
 
 use crate::error::try_new;
 use crate::evalue::EValue;
+use crate::event_tracer::EventTracerPtr;
 use crate::program::{MethodMeta, ProgramVerification};
 use crate::util::{ArrayRef, IntoCpp, IntoRust, NonTriviallyMovableVec};
 use crate::Result;
@@ -21,8 +23,11 @@ use executorch_sys as et_c;
 /// A facade class for loading programs and executing methods within them.
 ///
 /// See the `hello_world` example for how to load and execute a module.
-pub struct Module(executorch_sys::cxx::UniquePtr<et_c::cpp::Module>);
-impl Module {
+pub struct Module<'a>(
+    executorch_sys::cxx::UniquePtr<et_c::cpp::Module>,
+    PhantomData<&'a ()>,
+);
+impl<'a> Module<'a> {
     /// Constructs an instance by loading a program from a file with specified
     /// memory locking behavior.
     ///
@@ -30,6 +35,7 @@ impl Module {
     ///
     /// * `file_path` - The path to the ExecuTorch program file to load.
     /// * `load_mode` - The loading mode to use. Defaults to `LoadMode::MmapUseMlock`.
+    /// * `event_tracer` - A EventTracer used for tracking and logging events.
     ///
     /// # Returns
     ///
@@ -38,13 +44,21 @@ impl Module {
     /// # Panics
     ///
     /// If the file path is not a valid UTF-8 string or contains a null character.
-    pub fn new(file_path: impl AsRef<Path>, load_mode: Option<LoadMode>) -> Self {
+    pub fn new(
+        file_path: impl AsRef<Path>,
+        load_mode: Option<LoadMode>,
+        event_tracer: Option<EventTracerPtr<'a>>,
+    ) -> Self {
         let load_mode = load_mode.unwrap_or(LoadMode::MmapUseMlock).cpp();
-        // let event_tracer = ptr::null_mut(); // TODO: support event tracer
-        Self(et_c::cpp::Module_new(
+        let event_tracer = event_tracer
+            .map(|tracer| tracer.0)
+            .unwrap_or(et_c::cxx::UniquePtr::null());
+        let module = et_c::cpp::Module_new(
             file_path.as_ref().to_str().unwrap(),
             load_mode,
-        ))
+            event_tracer,
+        );
+        Self(module, PhantomData)
     }
 
     /// Loads the program using the specified data loader and memory allocator.
@@ -155,11 +169,11 @@ impl Module {
     /// # Panics
     ///
     /// If the method name is not a valid UTF-8 string or contains a null character.
-    pub fn execute<'a>(
-        &'a mut self,
+    pub fn execute<'b>(
+        &'b mut self,
         method_name: impl AsRef<str>,
         inputs: &[EValue],
-    ) -> Result<Vec<EValue<'a>>> {
+    ) -> Result<Vec<EValue<'b>>> {
         let inputs = unsafe {
             NonTriviallyMovableVec::<et_c::EValueStorage>::new(inputs.len(), |i, p| {
                 et_c::executorch_EValue_copy(inputs[i].cpp(), p.as_mut_ptr() as et_c::EValueMut)
@@ -194,7 +208,7 @@ impl Module {
     /// # Returns
     ///
     /// A result object containing either a vector of output values from the 'forward' method or an error to indicate failure.
-    pub fn forward<'a>(&'a mut self, inputs: &[EValue]) -> Result<Vec<EValue<'a>>> {
+    pub fn forward<'b>(&'b mut self, inputs: &[EValue]) -> Result<Vec<EValue<'b>>> {
         self.execute("forward", inputs)
     }
 }

@@ -35,6 +35,10 @@ pub(crate) mod ffi {
         /// A vector of `EValue`.
         type VecEValue = crate::VecEValue;
 
+        /// EventTracer is a class that users can inherit and implement to log/serialize/stream etc.
+        #[namespace = "executorch::runtime"]
+        type EventTracer;
+
         /// Constructs an instance by loading a program from a file with specified
         /// memory locking behavior.
         ///
@@ -45,7 +49,7 @@ pub(crate) mod ffi {
         fn Module_new(
             file_path: &str,
             load_mode: ModuleLoadMode,
-            // event_tracer: *mut cxx::UniquePtr<crate::executorch::runtime::EventTracer>,
+            event_tracer: UniquePtr<EventTracer>,
         ) -> UniquePtr<Module>;
 
         /// Load the program if needed.
