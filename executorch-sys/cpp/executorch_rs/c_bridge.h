@@ -302,13 +302,6 @@ extern "C"
         size_t _blob_1[4];
         uint32_t _blob_2[2];
     };
-#if defined(EXECUTORCH_RS_STD)
-    struct MallocMemoryAllocator
-    {
-        size_t _blob_1[7];
-        uint32_t _blob_2[2];
-    };
-#endif
     struct HierarchicalAllocator
     {
         size_t _blob[34];
@@ -473,11 +466,6 @@ extern "C"
 
     struct MemoryAllocator executorch_MemoryAllocator_new(uint32_t size, uint8_t *base_address);
     void *executorch_MemoryAllocator_allocate(struct MemoryAllocator *self, size_t size, size_t alignment);
-#if defined(EXECUTORCH_RS_STD)
-    struct MallocMemoryAllocator executorch_MallocMemoryAllocator_new();
-    void executorch_MallocMemoryAllocator_destructor(struct MallocMemoryAllocator *self);
-    const struct MemoryAllocator *executorch_MallocMemoryAllocator_as_memory_allocator(const struct MallocMemoryAllocator *self);
-#endif
     struct HierarchicalAllocator executorch_HierarchicalAllocator_new(struct SpanSpanU8 buffers);
     void executorch_HierarchicalAllocator_destructor(struct HierarchicalAllocator *self);
     struct MemoryManager executorch_MemoryManager_new(

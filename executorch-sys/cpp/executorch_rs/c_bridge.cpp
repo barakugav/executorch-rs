@@ -109,27 +109,6 @@ void *executorch_MemoryAllocator_allocate(struct MemoryAllocator *self, size_t s
     auto self_ = checked_reinterpret_cast<executorch::runtime::MemoryAllocator>(self);
     return self_->allocate(size, alignment);
 }
-#if defined(EXECUTORCH_RS_STD)
-
-struct MallocMemoryAllocator executorch_MallocMemoryAllocator_new()
-{
-    struct MallocMemoryAllocator self;
-    auto self_ = checked_reinterpret_cast<executorch::extension::MallocMemoryAllocator>(&self);
-    new (self_) executorch::extension::MallocMemoryAllocator();
-    return self;
-}
-void executorch_MallocMemoryAllocator_destructor(struct MallocMemoryAllocator *self)
-{
-    auto self_ = checked_reinterpret_cast<executorch::extension::MallocMemoryAllocator>(self);
-    self_->~MallocMemoryAllocator();
-}
-const struct MemoryAllocator *executorch_MallocMemoryAllocator_as_memory_allocator(const struct MallocMemoryAllocator *self)
-{
-    auto self_ = checked_reinterpret_cast<executorch::extension::MallocMemoryAllocator>(self);
-    auto memory_allocator = static_cast<const executorch::runtime::MemoryAllocator *>(self_);
-    return checked_reinterpret_cast<MemoryAllocator>(memory_allocator);
-}
-#endif
 struct HierarchicalAllocator executorch_HierarchicalAllocator_new(struct SpanSpanU8 buffers)
 {
     auto buffers_ = *checked_reinterpret_cast<executorch::runtime::Span<executorch::runtime::Span<uint8_t>>>(&buffers);

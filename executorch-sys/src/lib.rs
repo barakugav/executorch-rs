@@ -121,28 +121,26 @@ extern crate link_cplusplus;
 mod c_bridge;
 pub use c_bridge::*;
 
-#[cfg(any(feature = "tensor-ptr", feature = "module"))]
+#[cfg(feature = "std")]
 mod cxx_bridge;
 
 /// Bindings to C/C++ wrapper functions and structs written by this crate around the Cpp `executorch` library.
+#[cfg(feature = "std")]
 pub mod cpp {
+    pub use crate::cxx_bridge::core::ffi::*;
 
     /// Cpp bindings to the `Module` extension.
     #[cfg(feature = "module")]
-    pub mod module {
-        pub use crate::cxx_bridge::module::ffi::*;
-    }
+    pub use crate::cxx_bridge::module::ffi::*;
 
     /// Cpp bindings to the `TensorPtr` extension.
     #[cfg(feature = "tensor-ptr")]
-    pub mod tensor_ptr {
-        pub use crate::cxx_bridge::tensor_ptr::ffi::*;
-    }
+    pub use crate::cxx_bridge::tensor_ptr::ffi::*;
 
     #[cfg(feature = "tensor-ptr")]
     pub use super::cxx_bridge::tensor_ptr::cxx_util as util;
 }
 
 // Re-export cxx
-#[cfg(any(feature = "tensor-ptr", feature = "module"))]
+#[cfg(feature = "std")]
 pub use cxx;

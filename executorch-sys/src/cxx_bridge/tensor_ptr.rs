@@ -32,11 +32,11 @@ pub(crate) mod ffi {
     unsafe extern "C++" {
         include!("executorch-sys/cpp/executorch_rs/cxx_bridge.hpp");
 
-        /// Redifinition of the [`ScalarType`](crate::executorch::runtime::etensor::ScalarType).
+        /// Redefinition of the [`ScalarType`](crate::ScalarType).
         type ScalarType = crate::ScalarType;
-        /// Redifinition of the [`TensorShapeDynamism`](crate::executorch::runtime::TensorShapeDynamism).
+        /// Redefinition of the [`TensorShapeDynamism`](crate::TensorShapeDynamism).
         type TensorShapeDynamism = crate::TensorShapeDynamism;
-        /// Redifinition of the [`Tensor`](crate::executorch::runtime::etensor::Tensor).
+        /// Redefinition of the [`Tensor`](crate::Tensor).
         #[namespace = "executorch::aten"]
         type Tensor;
 

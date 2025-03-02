@@ -34,10 +34,7 @@ use super::*;
 /// let outputs = module.forward(&[tensor.into_evalue()]).unwrap();
 /// ```
 #[derive(Clone)]
-pub struct TensorPtr<'a, D: Data>(
-    SharedPtr<et_c::cpp::tensor_ptr::Tensor>,
-    PhantomData<(&'a (), D)>,
-);
+pub struct TensorPtr<'a, D: Data>(SharedPtr<et_c::cpp::Tensor>, PhantomData<(&'a (), D)>);
 impl<S: Scalar> TensorPtr<'static, View<S>> {
     /// Create a new [`TensorPtr`] from an [`Array`](ndarray::Array).
     ///
@@ -74,11 +71,9 @@ impl<D: Data> TensorPtr<'_, D> {
     /// Get an immutable tensor that points to the underlying data.
     pub fn as_tensor(&self) -> TensorBase<D::Immutable> {
         let tensor = self.0.as_ref().expect("Null tensor");
-        // Safety: *et_c::cpp::tensor_ptr::Tensor and et_c::Tensor is the same.
+        // Safety: *et_c::cpp::Tensor and et_c::Tensor is the same.
         let tensor = unsafe {
-            std::mem::transmute::<*const et_c::cpp::tensor_ptr::Tensor, et_c::Tensor>(
-                tensor as *const _,
-            )
+            std::mem::transmute::<*const et_c::cpp::Tensor, et_c::Tensor>(tensor as *const _)
         };
         // Safety: the tensor is valid and the data is immutable.
         unsafe { TensorBase::convert_from(TensorBase::from_inner_ref(tensor)) }
@@ -90,11 +85,9 @@ impl<D: Data> TensorPtr<'_, D> {
         D: DataMut,
     {
         let tensor = self.0.as_ref().expect("Null tensor");
-        // Safety: *et_c::cpp::tensor_ptr::Tensor and et_c::Tensor is the same.
+        // Safety: *et_c::cpp::Tensor and et_c::Tensor is the same.
         let tensor = unsafe {
-            std::mem::transmute::<*const et_c::cpp::tensor_ptr::Tensor, et_c::Tensor>(
-                tensor as *const _,
-            )
+            std::mem::transmute::<*const et_c::cpp::Tensor, et_c::Tensor>(tensor as *const _)
         };
         // Safety: the tensor is mutable, and we are the sole borrower.
         unsafe { TensorBase::convert_from(TensorBase::from_inner_ref(tensor)) }
@@ -334,7 +327,7 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
         // TODO: check sizes, dim_order and strides make sense with respect to the data_bound
 
         let tensor = unsafe {
-            executorch_sys::cpp::tensor_ptr::TensorPtr_new(
+            executorch_sys::cpp::TensorPtr_new(
                 self.sizes,
                 data_ptr as *const u8 as *mut u8,
                 dim_order,
@@ -388,7 +381,7 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
         // TODO: check sizes, dim_order and strides make sense with respect to the data_bound
 
         let tensor = unsafe {
-            executorch_sys::cpp::tensor_ptr::TensorPtr_new(
+            executorch_sys::cpp::TensorPtr_new(
                 self.sizes,
                 data_ptr as *const u8 as *mut u8,
                 dim_order,

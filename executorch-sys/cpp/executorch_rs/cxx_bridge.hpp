@@ -6,6 +6,10 @@
 #include <cstdint>
 #include "executorch/runtime/core/exec_aten/exec_aten.h"
 
+#if defined(EXECUTORCH_RS_STD)
+#include "executorch/extension/memory_allocator/malloc_memory_allocator.h"
+#endif
+
 #include "executorch/extension/module/module.h"
 #if defined(EXECUTORCH_RS_MODULE)
 #include "executorch-sys/src/cxx_bridge/module.rs.h"
@@ -18,6 +22,11 @@
 
 namespace executorch_rs
 {
+#if defined(EXECUTORCH_RS_STD)
+    std::unique_ptr<executorch::extension::MallocMemoryAllocator> MallocMemoryAllocator_new();
+    struct MemoryAllocator *MallocMemoryAllocator_as_memory_allocator(executorch::extension::MallocMemoryAllocator &self);
+#endif
+
 #if defined(EXECUTORCH_RS_TENSOR_PTR)
     std::shared_ptr<executorch::aten::Tensor> TensorPtr_new(
         std::unique_ptr<std::vector<int32_t>> sizes,
