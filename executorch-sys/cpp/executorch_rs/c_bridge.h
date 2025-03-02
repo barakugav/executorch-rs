@@ -280,10 +280,7 @@ extern "C"
         size_t _blob[14];
     };
 
-    struct DataLoader
-    {
-        size_t _blob[1];
-    };
+    typedef void *DataLoaderMut;
     struct BufferDataLoader
     {
         size_t _blob[3];
@@ -490,14 +487,14 @@ extern "C"
 
     // Loaders
     struct BufferDataLoader executorch_BufferDataLoader_new(const void *data, size_t size);
-    const struct DataLoader *executorch_BufferDataLoader_as_data_loader(const struct BufferDataLoader *self);
+    DataLoaderMut executorch_BufferDataLoader_as_data_loader(struct BufferDataLoader *self);
 #if defined(EXECUTORCH_RS_DATA_LOADER)
     enum Error executorch_FileDataLoader_new(const char *file_path, size_t alignment, struct FileDataLoader *out);
     void executorch_FileDataLoader_destructor(struct FileDataLoader *self);
-    const struct DataLoader *executorch_FileDataLoader_as_data_loader(const struct FileDataLoader *self);
+    DataLoaderMut executorch_FileDataLoader_as_data_loader(struct FileDataLoader *self);
     enum Error executorch_MmapDataLoader_new(const char *file_path, enum MmapDataLoaderMlockConfig mlock_config, struct MmapDataLoader *out);
     void executorch_MmapDataLoader_destructor(struct MmapDataLoader *self);
-    const struct DataLoader *executorch_MmapDataLoader_as_data_loader(const struct MmapDataLoader *self);
+    DataLoaderMut executorch_MmapDataLoader_as_data_loader(struct MmapDataLoader *self);
 
 #endif
 
@@ -558,7 +555,7 @@ extern "C"
 
     // Program
     enum ProgramHeaderStatus executorch_Program_check_header(const void *data, size_t size);
-    enum Error executorch_Program_load(struct DataLoader *loader, enum ProgramVerification verification, struct Program *out);
+    enum Error executorch_Program_load(DataLoaderMut loader, enum ProgramVerification verification, struct Program *out);
     enum Error executorch_Program_load_method(const struct Program *self, const char *method_name, struct MemoryManager *memory_manager, /* TODO */ void *event_tracer, struct Method *out);
     enum Error executorch_Program_get_method_name(const struct Program *self, size_t method_index, const char **out);
     enum Error executorch_Program_method_meta(const struct Program *self, const char *method_name, struct MethodMeta *method_meta_out);

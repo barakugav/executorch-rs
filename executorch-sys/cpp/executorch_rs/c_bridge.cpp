@@ -161,6 +161,14 @@ struct MemoryManager executorch_MemoryManager_new(
 }
 
 // Loaders
+static executorch::runtime::DataLoader *cast_data_loader_mut(DataLoaderMut loader)
+{
+    return reinterpret_cast<executorch::runtime::DataLoader *>(loader);
+}
+static DataLoaderMut cast_data_loader_mut(executorch::runtime::DataLoader *loader)
+{
+    return reinterpret_cast<DataLoaderMut>(loader);
+}
 struct BufferDataLoader executorch_BufferDataLoader_new(const void *data, size_t size)
 {
     struct BufferDataLoader loader;
@@ -168,11 +176,11 @@ struct BufferDataLoader executorch_BufferDataLoader_new(const void *data, size_t
     new (loader_) executorch::extension::BufferDataLoader(data, size);
     return loader;
 }
-const struct DataLoader *executorch_BufferDataLoader_as_data_loader(const struct BufferDataLoader *self)
+DataLoaderMut executorch_BufferDataLoader_as_data_loader(struct BufferDataLoader *self)
 {
     auto self_ = checked_reinterpret_cast<executorch::extension::BufferDataLoader>(self);
-    auto loader = static_cast<const executorch::runtime::DataLoader *>(self_);
-    return checked_reinterpret_cast<DataLoader>(loader);
+    auto loader = static_cast<executorch::runtime::DataLoader *>(self_);
+    return cast_data_loader_mut(loader);
 }
 #if defined(EXECUTORCH_RS_DATA_LOADER)
 enum Error executorch_FileDataLoader_new(const char *file_path, size_t alignment, struct FileDataLoader *out)
@@ -191,11 +199,11 @@ void executorch_FileDataLoader_destructor(struct FileDataLoader *self)
     auto self_ = checked_reinterpret_cast<executorch::extension::FileDataLoader>(self);
     self_->~FileDataLoader();
 }
-const struct DataLoader *executorch_FileDataLoader_as_data_loader(const struct FileDataLoader *self)
+DataLoaderMut executorch_FileDataLoader_as_data_loader(struct FileDataLoader *self)
 {
     auto self_ = checked_reinterpret_cast<executorch::extension::FileDataLoader>(self);
-    auto loader = static_cast<const executorch::runtime::DataLoader *>(self_);
-    return checked_reinterpret_cast<DataLoader>(loader);
+    auto loader = static_cast<executorch::runtime::DataLoader *>(self_);
+    return cast_data_loader_mut(loader);
 }
 enum Error executorch_MmapDataLoader_new(const char *file_path, enum MmapDataLoaderMlockConfig mlock_config, struct MmapDataLoader *out)
 {
@@ -214,11 +222,11 @@ void executorch_MmapDataLoader_destructor(struct MmapDataLoader *self)
     auto self_ = checked_reinterpret_cast<executorch::extension::MmapDataLoader>(self);
     self_->~MmapDataLoader();
 }
-const struct DataLoader *executorch_MmapDataLoader_as_data_loader(const struct MmapDataLoader *self)
+DataLoaderMut executorch_MmapDataLoader_as_data_loader(struct MmapDataLoader *self)
 {
     auto self_ = checked_reinterpret_cast<executorch::extension::MmapDataLoader>(self);
-    auto loader = static_cast<const executorch::runtime::DataLoader *>(self_);
-    return checked_reinterpret_cast<DataLoader>(loader);
+    auto loader = static_cast<executorch::runtime::DataLoader *>(self_);
+    return cast_data_loader_mut(loader);
 }
 #endif
 
@@ -590,9 +598,9 @@ enum ProgramHeaderStatus executorch_Program_check_header(const void *data, size_
     auto status = executorch::runtime::Program::check_header(data, size);
     return static_cast<ProgramHeaderStatus>(status);
 }
-enum Error executorch_Program_load(struct DataLoader *loader, enum ProgramVerification verification, struct Program *out)
+enum Error executorch_Program_load(DataLoaderMut loader, enum ProgramVerification verification, struct Program *out)
 {
-    auto loader_ = checked_reinterpret_cast<executorch::runtime::DataLoader>(loader);
+    auto loader_ = cast_data_loader_mut(loader);
     auto verification_ = static_cast<executorch::runtime::Program::Verification>(verification);
     auto out_ = checked_reinterpret_cast<executorch::runtime::Program>(out);
     // return extract_result(executorch::runtime::Program::load(loader, verification), out);

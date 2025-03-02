@@ -38,10 +38,10 @@ impl<'a> Program<'a> {
     ///
     /// A new instance of Program.
     pub fn load(
-        data_loader: &'a impl AsRef<DataLoader>,
+        data_loader: &'a dyn DataLoader,
         verification: Option<ProgramVerification>,
     ) -> Result<Self> {
-        let data_loader = data_loader.as_ref().0.get();
+        let data_loader = data_loader.__data_loader_ptr();
         let verification = verification.unwrap_or(ProgramVerification::Minimal).cpp();
         let program = try_new(|program| unsafe {
             et_c::executorch_Program_load(data_loader, verification, program)
