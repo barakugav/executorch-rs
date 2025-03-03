@@ -251,14 +251,26 @@ extern "C"
     {
         size_t _blob[4];
     };
-    typedef const void *EValue;
-    typedef void *EValueMut;
+    struct EValueRef
+    {
+        const void *ptr;
+    };
+    struct EValueRefMut
+    {
+        void *ptr;
+    };
     struct TensorStorage
     {
         size_t _blob[1];
     };
-    typedef const void *Tensor;
-    typedef void *TensorMut;
+    struct TensorRef
+    {
+        const void *ptr;
+    };
+    struct TensorRefMut
+    {
+        void *ptr;
+    };
     struct TensorImpl
     {
         size_t _blob[8];
@@ -279,8 +291,11 @@ extern "C"
     {
         size_t _blob[14];
     };
+    struct DataLoaderRefMut
+    {
+        void *ptr;
+    };
 
-    typedef void *DataLoaderMut;
     struct BufferDataLoader
     {
         size_t _blob[3];
@@ -317,8 +332,14 @@ extern "C"
         size_t _blob2[1];
         bool _blob3[1];
     };
-    typedef const void *OptionalTensor;
-    typedef void *OptionalTensorMut;
+    struct OptionalTensorRef
+    {
+        const void *ptr;
+    };
+    struct OptionalTensorRefMut
+    {
+        void *ptr;
+    };
 
 #if defined(EXECUTORCH_RS_STD)
     struct VecChar
@@ -339,7 +360,7 @@ extern "C"
 
     struct VecEValue
     {
-        EValueMut data;
+        struct EValueRefMut data;
         size_t len;
         size_t cap;
     };
@@ -398,22 +419,22 @@ extern "C"
     };
     struct ArrayRefTensor
     {
-        Tensor data;
+        struct TensorRef data;
         size_t len;
     };
     struct ArrayRefOptionalTensor
     {
-        OptionalTensor data;
+        struct OptionalTensorRef data;
         size_t len;
     };
     struct ArrayRefEValue
     {
-        EValue data;
+        struct EValueRef data;
         size_t len;
     };
     struct ArrayRefEValuePtr
     {
-        const EValue *data;
+        const struct EValueRef *data;
         size_t len;
     };
     struct SpanU8
@@ -438,12 +459,12 @@ extern "C"
     };
     struct SpanTensor
     {
-        TensorMut data;
+        struct TensorRefMut data;
         size_t len;
     };
     struct SpanOptionalTensor
     {
-        OptionalTensorMut data;
+        struct OptionalTensorRefMut data;
         size_t len;
     };
     struct BoxedEvalueListI64
@@ -462,7 +483,10 @@ extern "C"
         struct SpanOptionalTensor unwrapped_vals;
     };
 
-    typedef void *EventTracer;
+    struct EventTracerRefMut
+    {
+        void *ptr;
+    };
 #if defined(EXECUTORCH_RS_ETDUMP)
     struct ETDumpGen
     {
@@ -489,14 +513,14 @@ extern "C"
 
     // Loaders
     struct BufferDataLoader executorch_BufferDataLoader_new(const void *data, size_t size);
-    DataLoaderMut executorch_BufferDataLoader_as_data_loader_mut(struct BufferDataLoader *self);
+    struct DataLoaderRefMut executorch_BufferDataLoader_as_data_loader_mut(struct BufferDataLoader *self);
 #if defined(EXECUTORCH_RS_DATA_LOADER)
     enum Error executorch_FileDataLoader_new(const char *file_path, size_t alignment, struct FileDataLoader *out);
     void executorch_FileDataLoader_destructor(struct FileDataLoader *self);
-    DataLoaderMut executorch_FileDataLoader_as_data_loader_mut(struct FileDataLoader *self);
+    struct DataLoaderRefMut executorch_FileDataLoader_as_data_loader_mut(struct FileDataLoader *self);
     enum Error executorch_MmapDataLoader_new(const char *file_path, enum MmapDataLoaderMlockConfig mlock_config, struct MmapDataLoader *out);
     void executorch_MmapDataLoader_destructor(struct MmapDataLoader *self);
-    DataLoaderMut executorch_MmapDataLoader_as_data_loader_mut(struct MmapDataLoader *self);
+    struct DataLoaderRefMut executorch_MmapDataLoader_as_data_loader_mut(struct MmapDataLoader *self);
 
 #endif
 
@@ -510,55 +534,55 @@ extern "C"
         DimOrderType *dim_order,
         StridesType *strides,
         enum TensorShapeDynamism dynamism);
-    void executorch_Tensor_new(TensorMut self, struct TensorImpl *tensor_impl);
-    size_t executorch_Tensor_nbytes(Tensor self);
-    size_t executorch_Tensor_size(Tensor self, size_t dim);
-    size_t executorch_Tensor_dim(Tensor self);
-    size_t executorch_Tensor_numel(Tensor self);
-    enum ScalarType executorch_Tensor_scalar_type(Tensor self);
-    size_t executorch_Tensor_element_size(Tensor self);
-    struct ArrayRefSizesType executorch_Tensor_sizes(Tensor self);
-    struct ArrayRefDimOrderType executorch_Tensor_dim_order(Tensor self);
-    struct ArrayRefStridesType executorch_Tensor_strides(Tensor self);
-    const void *executorch_Tensor_const_data_ptr(Tensor self);
-    void *executorch_Tensor_mutable_data_ptr(Tensor self);
-    int64_t executorch_Tensor_coordinate_to_index(Tensor self, struct ArrayRefUsizeType coordinate);
-    void executorch_Tensor_destructor(TensorMut self);
+    void executorch_Tensor_new(struct TensorRefMut self, struct TensorImpl *tensor_impl);
+    size_t executorch_Tensor_nbytes(struct TensorRef self);
+    size_t executorch_Tensor_size(struct TensorRef self, size_t dim);
+    size_t executorch_Tensor_dim(struct TensorRef self);
+    size_t executorch_Tensor_numel(struct TensorRef self);
+    enum ScalarType executorch_Tensor_scalar_type(struct TensorRef self);
+    size_t executorch_Tensor_element_size(struct TensorRef self);
+    struct ArrayRefSizesType executorch_Tensor_sizes(struct TensorRef self);
+    struct ArrayRefDimOrderType executorch_Tensor_dim_order(struct TensorRef self);
+    struct ArrayRefStridesType executorch_Tensor_strides(struct TensorRef self);
+    const void *executorch_Tensor_const_data_ptr(struct TensorRef self);
+    void *executorch_Tensor_mutable_data_ptr(struct TensorRef self);
+    int64_t executorch_Tensor_coordinate_to_index(struct TensorRef self, struct ArrayRefUsizeType coordinate);
+    void executorch_Tensor_destructor(struct TensorRefMut self);
 
     // OptionalTensor
-    Tensor executorch_OptionalTensor_get(OptionalTensor self);
+    struct TensorRef executorch_OptionalTensor_get(struct OptionalTensorRef self);
 
     // EValue
-    void executorch_EValue_new_none(EValueMut self);
-    void executorch_EValue_new_from_i64(EValueMut self, int64_t value);
-    void executorch_EValue_new_from_i64_list(EValueMut self, struct BoxedEvalueListI64 value);
-    void executorch_EValue_new_from_f64(EValueMut self, double value);
-    void executorch_EValue_new_from_f64_list(EValueMut self, struct ArrayRefF64 value);
-    void executorch_EValue_new_from_bool(EValueMut self, bool value);
-    void executorch_EValue_new_from_bool_list(EValueMut self, struct ArrayRefBool value);
-    void executorch_EValue_new_from_string(EValueMut self, struct ArrayRefChar value);
-    void executorch_EValue_new_from_tensor(EValueMut self, Tensor value);
-    void executorch_EValue_new_from_tensor_list(EValueMut self, struct BoxedEvalueListTensor value);
-    void executorch_EValue_new_from_optional_tensor_list(EValueMut self, struct BoxedEvalueListOptionalTensor value);
-    enum Tag executorch_EValue_tag(EValue self);
-    int64_t executorch_EValue_as_i64(EValue self);
-    struct ArrayRefI64 executorch_EValue_as_i64_list(EValue self);
-    double executorch_EValue_as_f64(EValue self);
-    struct ArrayRefF64 executorch_EValue_as_f64_list(EValue self);
-    bool executorch_EValue_as_bool(EValue self);
-    struct ArrayRefBool executorch_EValue_as_bool_list(EValue self);
-    struct ArrayRefChar executorch_EValue_as_string(EValue self);
-    Tensor executorch_EValue_as_tensor(EValue self);
-    struct ArrayRefTensor executorch_EValue_as_tensor_list(EValue self);
-    struct ArrayRefOptionalTensor executorch_EValue_as_optional_tensor_list(EValue self);
-    void executorch_EValue_copy(EValue src, EValueMut dst);
-    void executorch_EValue_destructor(EValueMut self);
-    void executorch_EValue_move(EValueMut src, EValueMut dst);
+    void executorch_EValue_new_none(struct EValueRefMut self);
+    void executorch_EValue_new_from_i64(struct EValueRefMut self, int64_t value);
+    void executorch_EValue_new_from_i64_list(struct EValueRefMut self, struct BoxedEvalueListI64 value);
+    void executorch_EValue_new_from_f64(struct EValueRefMut self, double value);
+    void executorch_EValue_new_from_f64_list(struct EValueRefMut self, struct ArrayRefF64 value);
+    void executorch_EValue_new_from_bool(struct EValueRefMut self, bool value);
+    void executorch_EValue_new_from_bool_list(struct EValueRefMut self, struct ArrayRefBool value);
+    void executorch_EValue_new_from_string(struct EValueRefMut self, struct ArrayRefChar value);
+    void executorch_EValue_new_from_tensor(struct EValueRefMut self, struct TensorRef value);
+    void executorch_EValue_new_from_tensor_list(struct EValueRefMut self, struct BoxedEvalueListTensor value);
+    void executorch_EValue_new_from_optional_tensor_list(struct EValueRefMut self, struct BoxedEvalueListOptionalTensor value);
+    enum Tag executorch_EValue_tag(struct EValueRef self);
+    int64_t executorch_EValue_as_i64(struct EValueRef self);
+    struct ArrayRefI64 executorch_EValue_as_i64_list(struct EValueRef self);
+    double executorch_EValue_as_f64(struct EValueRef self);
+    struct ArrayRefF64 executorch_EValue_as_f64_list(struct EValueRef self);
+    bool executorch_EValue_as_bool(struct EValueRef self);
+    struct ArrayRefBool executorch_EValue_as_bool_list(struct EValueRef self);
+    struct ArrayRefChar executorch_EValue_as_string(struct EValueRef self);
+    struct TensorRef executorch_EValue_as_tensor(struct EValueRef self);
+    struct ArrayRefTensor executorch_EValue_as_tensor_list(struct EValueRef self);
+    struct ArrayRefOptionalTensor executorch_EValue_as_optional_tensor_list(struct EValueRef self);
+    void executorch_EValue_copy(struct EValueRef src, struct EValueRefMut dst);
+    void executorch_EValue_destructor(struct EValueRefMut self);
+    void executorch_EValue_move(struct EValueRefMut src, struct EValueRefMut dst);
 
     // Program
     enum ProgramHeaderStatus executorch_Program_check_header(const void *data, size_t size);
-    enum Error executorch_Program_load(DataLoaderMut loader, enum ProgramVerification verification, struct Program *out);
-    enum Error executorch_Program_load_method(const struct Program *self, const char *method_name, struct MemoryManager *memory_manager, EventTracer event_tracer, struct Method *out);
+    enum Error executorch_Program_load(struct DataLoaderRefMut loader, enum ProgramVerification verification, struct Program *out);
+    enum Error executorch_Program_load_method(const struct Program *self, const char *method_name, struct MemoryManager *memory_manager, struct EventTracerRefMut event_tracer, struct Method *out);
     enum Error executorch_Program_get_method_name(const struct Program *self, size_t method_index, const char **out);
     enum Error executorch_Program_method_meta(const struct Program *self, const char *method_name, struct MethodMeta *method_meta_out);
     size_t executorch_Program_num_methods(const struct Program *self);
@@ -567,8 +591,8 @@ extern "C"
     // MethodMeta
     size_t executorch_Method_inputs_size(const struct Method *self);
     size_t executorch_Method_outputs_size(const struct Method *self);
-    enum Error executorch_Method_set_input(struct Method *self, EValue input_evalue, size_t input_idx);
-    EValue executorch_Method_get_output(const struct Method *self, size_t i);
+    enum Error executorch_Method_set_input(struct Method *self, struct EValueRef input_evalue, size_t input_idx);
+    struct EValueRef executorch_Method_get_output(const struct Method *self, size_t i);
     enum Error executorch_Method_execute(struct Method *self);
     void executorch_Method_destructor(struct Method *self);
     const char *executorch_MethodMeta_name(const struct MethodMeta *self);
@@ -591,7 +615,7 @@ extern "C"
     // ETDumpGen
     struct ETDumpGen executorch_ETDumpGen_new(struct SpanU8 buffer);
     struct ArrayRefU8 executorch_ETDumpGen_get_etdump_data(struct ETDumpGen *self);
-    EventTracer executorch_ETDumpGen_as_event_tracer_mut(struct ETDumpGen *self);
+    struct EventTracerRefMut executorch_ETDumpGen_as_event_tracer_mut(struct ETDumpGen *self);
 #endif
 
 #ifdef __cplusplus

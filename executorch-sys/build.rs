@@ -111,7 +111,7 @@ fn generate_bindings() {
         .default_enum_style(bindgen::EnumVariation::Rust {
             non_exhaustive: false,
         })
-        .no_copy(".*") // TODO: specific some exact types, regex act weird
+        .no_copy(".*")
         .manually_drop_union(".*")
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()));
     let bindings = builder.generate().expect("Unable to generate bindings");

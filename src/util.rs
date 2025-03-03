@@ -331,12 +331,14 @@ impl __ArrayRefImpl for et_c::ArrayRefEValue {
     type Element = et_c::EValueStorage;
     unsafe fn from_slice(slice: &[et_c::EValueStorage]) -> Self {
         Self {
-            data: slice.as_ptr() as et_c::EValue,
+            data: et_c::EValueRef {
+                ptr: slice.as_ptr() as *const _,
+            },
             len: slice.len(),
         }
     }
     unsafe fn as_slice(&self) -> &'static [et_c::EValueStorage] {
-        let data = self.data as *const et_c::EValueStorage;
+        let data = self.data.ptr as *const et_c::EValueStorage;
         unsafe { std::slice::from_raw_parts(data, self.len) }
     }
     private_impl! {}
@@ -535,11 +537,11 @@ pub(crate) mod cpp_vec {
     impl CppVecImpl for et_c::VecEValue {
         type Element = et_c::EValueStorage;
         fn as_slice(&self) -> &[et_c::EValueStorage] {
-            let data = self.data as *const et_c::EValueStorage;
+            let data = self.data.ptr as *const et_c::EValueStorage;
             unsafe { std::slice::from_raw_parts(data, self.len) }
         }
         fn as_mut_slice(&mut self) -> &mut [et_c::EValueStorage] {
-            let data = self.data as *mut et_c::EValueStorage;
+            let data = self.data.ptr as *mut et_c::EValueStorage;
             unsafe { std::slice::from_raw_parts_mut(data, self.len) }
         }
     }

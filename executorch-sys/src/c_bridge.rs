@@ -13,3 +13,22 @@ mod c_link {
 pub use c_link::*;
 
 impl Copy for Tag {}
+
+macro_rules! impl_ref_clone_copy {
+    ($name:ty) => {
+        impl Clone for $name {
+            fn clone(&self) -> Self {
+                *self
+            }
+        }
+        impl Copy for $name {}
+    };
+}
+impl_ref_clone_copy!(EValueRef);
+impl_ref_clone_copy!(EValueRefMut);
+impl_ref_clone_copy!(TensorRef);
+impl_ref_clone_copy!(TensorRefMut);
+impl_ref_clone_copy!(OptionalTensorRef);
+impl_ref_clone_copy!(OptionalTensorRefMut);
+impl_ref_clone_copy!(DataLoaderRefMut);
+impl_ref_clone_copy!(EventTracerRefMut);

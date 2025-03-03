@@ -90,8 +90,11 @@ impl<'a> Program<'a> {
     ) -> Result<Method<'b>> {
         let memory_manager = memory_manager.0.get();
         let event_tracer = event_tracer
-            .map(|tracer| tracer as *mut EventTracer as et_c::EventTracer)
+            .map(|tracer| tracer as *mut EventTracer)
             .unwrap_or(ptr::null_mut());
+        let event_tracer = et_c::EventTracerRefMut {
+            ptr: event_tracer as *mut _,
+        };
         let method = try_new(|method| unsafe {
             et_c::executorch_Program_load_method(
                 &self.0,
@@ -385,10 +388,7 @@ impl<'a> Execution<'a> {
     ///     provided as inputs here rather then deepcopy the input into the memory planned arena.
     /// * `input_idx` - Zero-based index of the input to set. Must be less than the value returned by inputs_size().
     pub fn set_input(&mut self, input: &'a EValue, input_idx: usize) -> Result<()> {
-        unsafe {
-            et_c::executorch_Method_set_input(self.method, input.cpp() as *const _, input_idx)
-        }
-        .rs()?;
+        unsafe { et_c::executorch_Method_set_input(self.method, input.cpp(), input_idx) }.rs()?;
         self.set_inputs |= 1 << input_idx;
         Ok(())
     }

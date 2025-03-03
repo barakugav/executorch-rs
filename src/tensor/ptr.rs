@@ -73,7 +73,7 @@ impl<D: Data> TensorPtr<'_, D> {
         let tensor = self.0.as_ref().expect("Null tensor");
         // Safety: *et_c::cpp::Tensor and et_c::Tensor is the same.
         let tensor = unsafe {
-            std::mem::transmute::<*const et_c::cpp::Tensor, et_c::Tensor>(tensor as *const _)
+            std::mem::transmute::<*const et_c::cpp::Tensor, et_c::TensorRef>(tensor as *const _)
         };
         // Safety: the tensor is valid and the data is immutable.
         unsafe { TensorBase::convert_from(TensorBase::from_inner_ref(tensor)) }
@@ -85,9 +85,8 @@ impl<D: Data> TensorPtr<'_, D> {
         D: DataMut,
     {
         let tensor = self.0.as_ref().expect("Null tensor");
-        // Safety: *et_c::cpp::Tensor and et_c::Tensor is the same.
-        let tensor = unsafe {
-            std::mem::transmute::<*const et_c::cpp::Tensor, et_c::Tensor>(tensor as *const _)
+        let tensor = et_c::TensorRef {
+            ptr: tensor as *const et_c::cpp::Tensor as *const _,
         };
         // Safety: the tensor is mutable, and we are the sole borrower.
         unsafe { TensorBase::convert_from(TensorBase::from_inner_ref(tensor)) }
