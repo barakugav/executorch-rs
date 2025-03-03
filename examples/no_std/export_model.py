@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import torch
 from executorch.exir import to_edge
 from torch.export import export
@@ -22,5 +24,6 @@ edge_program = to_edge(aten_dialect)
 executorch_program = edge_program.to_executorch()
 
 # 4. Save the compiled .pte program
-with open("model.pte", "wb") as file:
+model_path = Path(__file__).parent.parent / "models" / "add.pte"
+with open(model_path, "wb") as file:
     file.write(executorch_program.buffer)

@@ -24,7 +24,8 @@ fn real_main() {
     let buffer = unsafe { &mut *core::ptr::addr_of_mut!(MEMORY_ALLOCATOR_BUF) };
     let allocator = BufferMemoryAllocator::new(buffer);
 
-    let file_data_loader = FileDataLoader::from_path_cstr(cstr::cstr!(b"model.pte"), None).unwrap();
+    let file_data_loader =
+        FileDataLoader::from_path_cstr(cstr::cstr!("../models/add.pte"), None).unwrap();
 
     let program = Program::load(
         &file_data_loader,
