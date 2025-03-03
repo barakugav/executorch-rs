@@ -51,7 +51,7 @@ fn main() {
     let args = Args::parse();
     executorch::platform::pal_init();
 
-    let mut model = Module::new(&args.model, Some(LoadMode::File));
+    let mut model = Module::new(&args.model, Some(LoadMode::File), None);
     let tokenizer = Tokenizer::from_json(&args.tokenizer);
     let mut rng = if let Some(seed) = args.seed {
         rand::rngs::StdRng::seed_from_u64(seed)
@@ -105,7 +105,7 @@ fn main() {
     }
 
     let load_t0 = Instant::now();
-    model.load_method("forward").unwrap();
+    model.load_method("forward", None).unwrap();
     println!(
         "'forward' method loaded in {}s",
         load_t0.elapsed().as_millis()

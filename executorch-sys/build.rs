@@ -173,6 +173,13 @@ fn link_executorch() {
         }
         println!("cargo::rustc-link-lib=static:+whole-archive=extension_tensor");
     }
+
+    if cfg!(feature = "etdump") {
+        if let Some(libs_dir) = &libs_dir {
+            println!("cargo::rustc-link-search=native={libs_dir}/devtools/");
+        }
+        println!("cargo::rustc-link-lib=static:+whole-archive=etdump");
+    }
 }
 
 fn cpp_dir() -> PathBuf {
@@ -193,6 +200,9 @@ fn cpp_defines() -> Vec<&'static str> {
     }
     if cfg!(feature = "tensor-ptr") {
         defines.push("EXECUTORCH_RS_TENSOR_PTR");
+    }
+    if cfg!(feature = "etdump") {
+        defines.push("EXECUTORCH_RS_ETDUMP");
     }
     if cfg!(feature = "std") {
         defines.push("EXECUTORCH_RS_STD");

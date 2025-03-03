@@ -4,10 +4,10 @@
 //! This enable using the library in embedded systems where dynamic memory allocation is not allowed, or when allocation
 //! is a performance bottleneck.
 
-use core::ops::Deref;
 use std::cell::UnsafeCell;
 use std::marker::{PhantomData, PhantomPinned};
 use std::mem::MaybeUninit;
+use std::ops::Deref;
 use std::pin::Pin;
 use std::ptr;
 

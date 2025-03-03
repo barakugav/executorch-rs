@@ -1021,9 +1021,10 @@ impl<'a> EValuePtrList<'a> {
     fn new_impl(values: impl IntoIterator<Item = Option<&'a EValue<'a>>>) -> Self {
         let values: crate::alloc::Vec<et_c::EValue> = values
             .into_iter()
-            .map(|value| match value {
-                Some(value) => value.cpp() as *const _,
-                None => std::ptr::null(),
+            .map(|value| {
+                value
+                    .map(|value| value.cpp() as *const _)
+                    .unwrap_or(std::ptr::null())
             })
             .collect();
         Self(EValuePtrListInner::Vec((values, PhantomData)))
@@ -1071,10 +1072,11 @@ impl<'a> EValuePtrList<'a> {
         loop {
             match (values.next(), storage_iter.next()) {
                 (Some(value), Some(storage)) => {
-                    storage.write(match value {
-                        Some(value) => value.cpp() as *const _,
-                        None => std::ptr::null(),
-                    });
+                    storage.write(
+                        value
+                            .map(|value| value.cpp() as *const _)
+                            .unwrap_or(std::ptr::null()),
+                    );
                 }
                 (None, None) => break,
                 _ => panic!("Mismatched lengths"),

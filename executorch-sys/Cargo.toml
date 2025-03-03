@@ -47,7 +47,9 @@ default = ["std"]
 std = ["cxx", "cxx-build", "link-cplusplus"]
 data-loader = []
 module = ["std"]
+etdump = []
 tensor-ptr = ["std"]
 
 [package.metadata.docs.rs]
-features = ["data-loader", "module"]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

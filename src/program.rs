@@ -12,6 +12,7 @@ use std::ptr;
 use crate::data_loader::DataLoader;
 use crate::error::try_new;
 use crate::evalue::{EValue, Tag};
+use crate::event_tracer::EventTracer;
 use crate::memory::MemoryManager;
 use crate::tensor::ScalarType;
 use crate::util::{ArrayRef, IntoCpp, IntoRust};
@@ -76,6 +77,7 @@ impl<'a> Program<'a> {
     ///
     /// * `method_name` - The name of the method to load.
     /// * `memory_manager` - The allocators to use during initialization and execution of the loaded method.
+    /// * `event_tracer` - The event tracer to use for this method run.
     ///
     /// # Returns
     ///
@@ -84,9 +86,12 @@ impl<'a> Program<'a> {
         &'b self,
         method_name: &CStr,
         memory_manager: &'b MemoryManager,
+        event_tracer: Option<&'b mut EventTracer>,
     ) -> Result<Method<'b>> {
         let memory_manager = memory_manager.0.get();
-        let event_tracer = ptr::null_mut(); // TODO: support event tracer
+        let event_tracer = event_tracer
+            .map(|tracer| tracer as *mut EventTracer as et_c::EventTracer)
+            .unwrap_or(ptr::null_mut());
         let method = try_new(|method| unsafe {
             et_c::executorch_Program_load_method(
                 &self.0,

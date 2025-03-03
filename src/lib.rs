@@ -70,6 +70,11 @@
 //!     object alongside the lifetimes of the data buffer and additional metadata. The `extension_tensor.a`
 //!     static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_TENSOR=ON`.
 //!     Also includes the `std` feature.
+//! - `etdump`
+//!     Includes the `ETDumpGen` struct, an implementation of an `EventTracer`, used for debugging and profiling.
+//!     The `libetdump.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_DEVTOOLS=ON` and
+//!     `EXECUTORCH_ENABLE_EVENT_TRACER=ON`.
+//!     In addition, the `flatcc` (or `flatcc_d`) library is required, available at `{CPP_EXECUTORCH_DIR}/third-party/flatcc/lib/`.
 //! - `ndarray`:
 //!     Conversions between `executorch` tensors and `ndarray` arrays.
 //!     Adds a dependency to the `ndarray` crate.
@@ -141,6 +146,7 @@ mod private;
 pub mod data_loader;
 mod error;
 pub mod evalue;
+pub mod event_tracer;
 pub mod memory;
 #[cfg(feature = "module")]
 pub mod module;

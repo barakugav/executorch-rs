@@ -9,8 +9,12 @@ use executorch::tensor::{Tensor, TensorImpl};
 fn main() {
     executorch::platform::pal_init();
 
-    let model_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("model.pte");
-    let mut module = Module::new(model_path, None);
+    let model_path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .join("models")
+        .join("add.pte");
+    let mut module = Module::new(model_path, None, None);
 
     let data1 = [1.0_f32];
     let sizes1 = [1];

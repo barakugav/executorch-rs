@@ -104,6 +104,8 @@ def build_executorch_with_dev_cfg():
             "-DEXECUTORCH_BUILD_KERNELS_QUANTIZED=ON",
             "-DEXECUTORCH_BUILD_KERNELS_OPTIMIZED=ON",
             "-DEXECUTORCH_BUILD_KERNELS_CUSTOM=ON",
+            "-DEXECUTORCH_BUILD_DEVTOOLS=ON",
+            "-DEXECUTORCH_ENABLE_EVENT_TRACER=ON",
             # TODO check USE_ATEN_LIB=true/false in CI
             "..",
         ],

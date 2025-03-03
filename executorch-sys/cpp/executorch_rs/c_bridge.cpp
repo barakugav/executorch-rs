@@ -11,6 +11,10 @@
 #include "executorch/runtime/executor/program.h"
 #include "executorch/runtime/executor/memory_manager.h"
 #include "executorch/runtime/core/hierarchical_allocator.h"
+#include "executorch/runtime/core/exec_aten/exec_aten.h"
+#include "executorch/runtime/core/exec_aten/util/tensor_util.h"
+#include "executorch/runtime/core/exec_aten/util/dim_order_util.h"
+#include "executorch/runtime/platform/assert.h"
 
 #include "executorch/runtime/core/data_loader.h"
 #include "executorch/extension/data_loader/buffer_data_loader.h"
@@ -18,18 +22,14 @@
 #include "executorch/extension/data_loader/file_data_loader.h"
 #include "executorch/extension/data_loader/mmap_data_loader.h"
 #endif
+
+#if defined(EXECUTORCH_RS_ETDUMP)
+#include "executorch/devtools/etdump/etdump_flatcc.h"
+#endif
+
 #if defined(EXECUTORCH_RS_STD)
 #include "executorch/extension/memory_allocator/malloc_memory_allocator.h"
 #endif
-
-#if defined(EXECUTORCH_RS_MODULE)
-#include "executorch/extension/module/module.h"
-#endif
-
-#include "executorch/runtime/core/exec_aten/exec_aten.h"
-#include "executorch/runtime/core/exec_aten/util/tensor_util.h"
-#include "executorch/runtime/core/exec_aten/util/dim_order_util.h"
-#include "executorch/runtime/platform/assert.h"
 
 // Layout asserts
 namespace
@@ -91,7 +91,7 @@ namespace
     // MemoryAllocator is not trivially move constructible because it has a vtable with virtual
     // destructor, but when we have a concrete instance of it there is nothing virtual and no move
     // constructor, so it is safe to move it in Rust.
-
+    //
     // static_assert(std::is_trivially_move_constructible_v<executorch::runtime::MemoryAllocator>);
 
     static_assert(is_equal_layout<HierarchicalAllocator, executorch::runtime::HierarchicalAllocator>());
@@ -99,6 +99,15 @@ namespace
 
     static_assert(is_equal_layout<MemoryManager, executorch::runtime::MemoryManager>());
     static_assert(std::is_trivially_move_constructible_v<executorch::runtime::MemoryManager>);
+
+#if defined(EXECUTORCH_RS_ETDUMP)
+    static_assert(is_equal_layout<ETDumpGen, executorch::etdump::ETDumpGen>());
+// MemoryAllocator is not trivially move constructible because it has a vtable with virtual
+// destructor, but when we have a concrete instance of it there is nothing virtual and no move
+// constructor, so it is safe to move it in Rust.
+//
+// static_assert(std::is_trivially_move_constructible_v<executorch::etdump::ETDumpGen>);
+#endif
 
 }
 
@@ -197,7 +206,7 @@ struct BufferDataLoader executorch_BufferDataLoader_new(const void *data, size_t
     new (loader_) executorch::extension::BufferDataLoader(data, size);
     return loader;
 }
-DataLoaderMut executorch_BufferDataLoader_as_data_loader(struct BufferDataLoader *self)
+DataLoaderMut executorch_BufferDataLoader_as_data_loader_mut(struct BufferDataLoader *self)
 {
     auto self_ = checked_reinterpret_cast<executorch::extension::BufferDataLoader>(self);
     auto loader = static_cast<executorch::runtime::DataLoader *>(self_);
@@ -220,7 +229,7 @@ void executorch_FileDataLoader_destructor(struct FileDataLoader *self)
     auto self_ = checked_reinterpret_cast<executorch::extension::FileDataLoader>(self);
     self_->~FileDataLoader();
 }
-DataLoaderMut executorch_FileDataLoader_as_data_loader(struct FileDataLoader *self)
+DataLoaderMut executorch_FileDataLoader_as_data_loader_mut(struct FileDataLoader *self)
 {
     auto self_ = checked_reinterpret_cast<executorch::extension::FileDataLoader>(self);
     auto loader = static_cast<executorch::runtime::DataLoader *>(self_);
@@ -243,7 +252,7 @@ void executorch_MmapDataLoader_destructor(struct MmapDataLoader *self)
     auto self_ = checked_reinterpret_cast<executorch::extension::MmapDataLoader>(self);
     self_->~MmapDataLoader();
 }
-DataLoaderMut executorch_MmapDataLoader_as_data_loader(struct MmapDataLoader *self)
+DataLoaderMut executorch_MmapDataLoader_as_data_loader_mut(struct MmapDataLoader *self)
 {
     auto self_ = checked_reinterpret_cast<executorch::extension::MmapDataLoader>(self);
     auto loader = static_cast<executorch::runtime::DataLoader *>(self_);
@@ -632,16 +641,14 @@ enum Error executorch_Program_load(DataLoaderMut loader, enum ProgramVerificatio
     new (out_) executorch::runtime::Program(std::move(program));
     return Error::Error_Ok;
 }
-enum Error executorch_Program_load_method(const struct Program *self, const char *method_name, struct MemoryManager *memory_manager, void *event_tracer, struct Method *out)
+enum Error executorch_Program_load_method(const struct Program *self, const char *method_name, struct MemoryManager *memory_manager, EventTracer event_tracer, struct Method *out)
 {
-    // TODO: support executorch::runtime::EventTracer
-    (void)event_tracer;
-
     auto self_ = checked_reinterpret_cast<executorch::runtime::Program>(self);
     auto memory_manager_ = checked_reinterpret_cast<executorch::runtime::MemoryManager>(memory_manager);
+    auto event_tracer_ = reinterpret_cast<executorch::runtime::EventTracer *>(event_tracer);
     auto out_ = checked_reinterpret_cast<executorch::runtime::Method>(out);
-    // return extract_result(std::move(self.load_method(method_name, memory_manager, event_tracer)), out);
-    auto res = self_->load_method(method_name, memory_manager_, nullptr);
+
+    auto res = self_->load_method(method_name, memory_manager_, event_tracer_);
     if (!res.ok())
         return static_cast<Error>(res.error());
     auto &method = res.get();
@@ -786,3 +793,26 @@ size_t executorch_TensorInfo_nbytes(const struct TensorInfo *self)
     auto self_ = checked_reinterpret_cast<executorch::runtime::TensorInfo>(self);
     return self_->nbytes();
 }
+
+#if defined(EXECUTORCH_RS_ETDUMP)
+// ETDumpGen
+struct ETDumpGen executorch_ETDumpGen_new(struct SpanU8 buffer)
+{
+    struct ETDumpGen self;
+    auto self_ = checked_reinterpret_cast<executorch::etdump::ETDumpGen>(&self);
+    new (self_) executorch::etdump::ETDumpGen({buffer.data, buffer.len});
+    return self;
+}
+struct ArrayRefU8 executorch_ETDumpGen_get_etdump_data(struct ETDumpGen *self)
+{
+    auto self_ = checked_reinterpret_cast<executorch::etdump::ETDumpGen>(self);
+    auto res = self_->get_etdump_data();
+    return ArrayRefU8{.data = (uint8_t *)res.buf, .len = res.size};
+}
+EventTracer executorch_ETDumpGen_as_event_tracer_mut(struct ETDumpGen *self)
+{
+    auto self_ = checked_reinterpret_cast<executorch::etdump::ETDumpGen>(self);
+    auto tracer = static_cast<executorch::runtime::EventTracer *>(self_);
+    return reinterpret_cast<EventTracer>(tracer);
+}
+#endif

@@ -36,7 +36,7 @@ impl<'a> BufferDataLoader<'a> {
 }
 impl DataLoader for BufferDataLoader<'_> {
     fn __data_loader_ptr(&self) -> et_c::DataLoaderMut {
-        unsafe { et_c::executorch_BufferDataLoader_as_data_loader(self.0.get()) }
+        unsafe { et_c::executorch_BufferDataLoader_as_data_loader_mut(self.0.get()) }
     }
 }
 
@@ -126,7 +126,7 @@ mod file_data_loader {
     }
     impl DataLoader for FileDataLoader {
         fn __data_loader_ptr(&self) -> et_c::DataLoaderMut {
-            unsafe { et_c::executorch_FileDataLoader_as_data_loader(self.0.get()) }
+            unsafe { et_c::executorch_FileDataLoader_as_data_loader_mut(self.0.get()) }
         }
     }
     impl Drop for FileDataLoader {
@@ -197,7 +197,7 @@ mod file_data_loader {
     }
     impl DataLoader for MmapDataLoader {
         fn __data_loader_ptr(&self) -> et_c::DataLoaderMut {
-            unsafe { et_c::executorch_MmapDataLoader_as_data_loader(self.0.get()) }
+            unsafe { et_c::executorch_MmapDataLoader_as_data_loader_mut(self.0.get()) }
         }
     }
     impl Drop for MmapDataLoader {

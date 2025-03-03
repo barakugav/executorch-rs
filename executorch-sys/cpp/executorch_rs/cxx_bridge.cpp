@@ -77,12 +77,11 @@ namespace executorch_rs
 #if defined(EXECUTORCH_RS_MODULE)
     std::unique_ptr<executorch::extension::Module> Module_new(
         rust::Str file_path,
-        const ModuleLoadMode load_mode
-        // executorch::runtime::EventTracer *event_tracer
-    )
+        const ModuleLoadMode load_mode,
+        std::unique_ptr<executorch::runtime::EventTracer> event_tracer)
     {
         auto load_mode_ = static_cast<executorch::extension::Module::LoadMode>(load_mode);
-        return std::make_unique<executorch::extension::Module>((std::string)file_path, load_mode_);
+        return std::make_unique<executorch::extension::Module>((std::string)file_path, load_mode_, std::move(event_tracer));
     }
 
     Error Module_load(executorch::extension::Module &self, ProgramVerification verification)
@@ -104,9 +103,9 @@ namespace executorch_rs
     {
         return static_cast<Error>(Module_method_names_(self, method_names_out));
     }
-    Error Module_load_method(executorch::extension::Module &self, rust::Str method_name)
+    Error Module_load_method(executorch::extension::Module &self, rust::Str method_name, executorch::runtime::EventTracer *event_tracer)
     {
-        auto ret = self.load_method((std::string)method_name);
+        auto ret = self.load_method((std::string)method_name, event_tracer);
         return static_cast<Error>(ret);
     }
     bool Module_is_method_loaded(const executorch::extension::Module &self, rust::Str method_name)

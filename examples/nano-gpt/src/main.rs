@@ -45,7 +45,7 @@ fn main() {
 }
 
 struct Gpt2 {
-    model: Module,
+    model: Module<'static>,
 
     // The tokenizer is used to convert between tokens (used by the model) and
     // human-readable strings.
@@ -56,6 +56,7 @@ impl Gpt2 {
         let model = Module::new(
             model_path,
             Some(executorch::module::LoadMode::MmapUseMlockIgnoreErrors),
+            None,
         );
         let tokenizer = BasicTokenizer::from_file(vocab_file);
         Self { model, tokenizer }
