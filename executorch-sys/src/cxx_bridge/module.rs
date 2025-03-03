@@ -92,7 +92,11 @@ pub(crate) mod ffi {
         /// # Returns
         /// An Error to indicate success or failure.
         #[namespace = "executorch_rs"]
-        fn Module_load_method(self_: Pin<&mut Module>, method_name: &str) -> Error;
+        unsafe fn Module_load_method(
+            self_: Pin<&mut Module>,
+            method_name: &str,
+            event_tracer: *mut EventTracer,
+        ) -> Error;
 
         /// Checks if a specific method is loaded.
         ///

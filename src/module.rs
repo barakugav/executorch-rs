@@ -14,7 +14,7 @@ use std::path::Path;
 
 use crate::error::try_new;
 use crate::evalue::EValue;
-use crate::event_tracer::EventTracerPtr;
+use crate::event_tracer::{EventTracer, EventTracerPtr};
 use crate::program::{MethodMeta, ProgramVerification};
 use crate::util::{ArrayRef, IntoCpp, IntoRust, NonTriviallyMovableVec};
 use crate::Result;
@@ -104,6 +104,7 @@ impl<'a> Module<'a> {
     /// # Arguments
     ///
     /// * `method_name` - The name of the method to load.
+    /// * `event_tracer` - The event tracer to use for this method run.
     ///
     /// # Returns
     ///
@@ -112,8 +113,22 @@ impl<'a> Module<'a> {
     /// # Panics
     ///
     /// If the method name is not a valid UTF-8 string or contains a null character.
-    pub fn load_method(&mut self, method_name: impl AsRef<str>) -> Result<()> {
-        et_c::cpp::Module_load_method(self.0.as_mut().unwrap(), method_name.as_ref()).rs()
+    pub fn load_method(
+        &mut self,
+        method_name: impl AsRef<str>,
+        event_tracer: Option<&'a mut EventTracer>,
+    ) -> Result<()> {
+        let event_tracer = event_tracer
+            .map(|tracer| tracer as *mut EventTracer as *mut et_c::cpp::EventTracer)
+            .unwrap_or(std::ptr::null_mut());
+        unsafe {
+            et_c::cpp::Module_load_method(
+                self.0.as_mut().unwrap(),
+                method_name.as_ref(),
+                event_tracer,
+            )
+            .rs()
+        }
     }
 
     /// Checks if a specific method is loaded.

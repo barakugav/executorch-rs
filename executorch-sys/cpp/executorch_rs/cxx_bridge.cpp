@@ -103,9 +103,9 @@ namespace executorch_rs
     {
         return static_cast<Error>(Module_method_names_(self, method_names_out));
     }
-    Error Module_load_method(executorch::extension::Module &self, rust::Str method_name)
+    Error Module_load_method(executorch::extension::Module &self, rust::Str method_name, executorch::runtime::EventTracer *event_tracer)
     {
-        auto ret = self.load_method((std::string)method_name);
+        auto ret = self.load_method((std::string)method_name, event_tracer);
         return static_cast<Error>(ret);
     }
     bool Module_is_method_loaded(const executorch::extension::Module &self, rust::Str method_name)

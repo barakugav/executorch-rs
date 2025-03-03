@@ -5,7 +5,8 @@ import subprocess
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-HEADERS_DIR = Path(__file__).parent.parent / "executorch-sys" / "third-party" / "executorch"
+ROOT_DIR = Path(__file__).parent.parent.resolve()
+HEADERS_DIR = ROOT_DIR / "executorch-sys" / "third-party" / "executorch"
 
 
 def main():
@@ -40,6 +41,7 @@ def main():
             "runtime/core/**/*.h",
             "runtime/executor/**/*.h",
             "runtime/platform/**/*.h",
+            "devtools/etdump/etdump_flatcc.h",
             "LICENSE",
             "version.txt",
         ]

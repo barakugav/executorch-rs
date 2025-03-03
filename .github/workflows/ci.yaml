@@ -77,11 +77,11 @@ jobs:
 
       - name: cargo check executorch
         if: ${{ matrix.runner == 'ubuntu-latest' }}
-        run: cargo hack check --feature-powerset
+        run: cargo hack check --feature-powerset --depth 3
         working-directory: .
       - name: cargo check executorch-sys
         if: ${{ matrix.runner == 'ubuntu-latest' }}
-        run: cargo hack check --feature-powerset
+        run: cargo hack check --feature-powerset  --depth 3
         working-directory: executorch-sys
 
       ############ Linters ############

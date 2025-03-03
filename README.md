@@ -97,6 +97,8 @@ make -j
 #   cmake-out/extension/module/libextension_module_static.a
 # extension tensor, enabled with EXECUTORCH_BUILD_EXTENSION_TENSOR=ON:
 #   cmake-out/extension/tensor/libextension_tensor.a
+# extension tensor, enabled with EXECUTORCH_BUILD_DEVTOOLS=ON:
+#   cmake-out/devtools/libetdump.a
 
 # Run example
 # We set EXECUTORCH_RS_EXECUTORCH_LIB_DIR to the path of the C++ build output
@@ -113,6 +115,7 @@ Additional libs are required if feature flags are enabled (see next section):
 - `libextension_data_loader.a`
 - `libextension_module_static.a`
 - `libextension_tensor.a`
+- `libetdump.a`
 
 The static libraries of the kernels implementations are required only if your model uses them, and they should be **linked manually** by the binary that uses the `executorch` crate.
 For example, the `hello_world` example uses a model with a single addition operation, so it compile the C++ library with `DEXECUTORCH_SELECT_OPS_LIST=aten::add.out` and contain the following lines in its `build.rs`:
@@ -143,6 +146,13 @@ The build (and library) is tested on Ubuntu and MacOS, not on Windows.
     object alongside the lifetimes of the data buffer and additional metadata. The `extension_tensor.a`
     static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_TENSOR=ON`.
     Also includes the `std` feature.
+
+- `etdump`
+
+    Includes the `ETDumpGen` struct, an implementation of an `EventTracer`, used for debugging and profiling.
+    The `libetdump.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_DEVTOOLS=ON` and
+    `EXECUTORCH_ENABLE_EVENT_TRACER=ON`.
+    In addition, the `flatcc` (or `flatcc_d`) library is required, available at `{CPP_EXECUTORCH_DIR}/third-party/flatcc/lib/`.
 
 - `ndarray`
 

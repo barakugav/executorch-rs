@@ -461,7 +461,20 @@ extern "C"
         struct ArrayRefEValuePtr wrapped_vals;
         struct SpanOptionalTensor unwrapped_vals;
     };
+
     typedef void *EventTracer;
+#if defined(EXECUTORCH_RS_ETDUMP)
+    struct ETDumpGen
+    {
+        size_t _blob0[1];
+        int _blob1[2];
+        bool _blob2[2];
+        int _blob3[3];
+        size_t _blob4[5];
+        int _blob5[2];
+        size_t _blob6[6];
+    };
+#endif
 
     void executorch_pal_init();
 
@@ -476,14 +489,14 @@ extern "C"
 
     // Loaders
     struct BufferDataLoader executorch_BufferDataLoader_new(const void *data, size_t size);
-    DataLoaderMut executorch_BufferDataLoader_as_data_loader(struct BufferDataLoader *self);
+    DataLoaderMut executorch_BufferDataLoader_as_data_loader_mut(struct BufferDataLoader *self);
 #if defined(EXECUTORCH_RS_DATA_LOADER)
     enum Error executorch_FileDataLoader_new(const char *file_path, size_t alignment, struct FileDataLoader *out);
     void executorch_FileDataLoader_destructor(struct FileDataLoader *self);
-    DataLoaderMut executorch_FileDataLoader_as_data_loader(struct FileDataLoader *self);
+    DataLoaderMut executorch_FileDataLoader_as_data_loader_mut(struct FileDataLoader *self);
     enum Error executorch_MmapDataLoader_new(const char *file_path, enum MmapDataLoaderMlockConfig mlock_config, struct MmapDataLoader *out);
     void executorch_MmapDataLoader_destructor(struct MmapDataLoader *self);
-    DataLoaderMut executorch_MmapDataLoader_as_data_loader(struct MmapDataLoader *self);
+    DataLoaderMut executorch_MmapDataLoader_as_data_loader_mut(struct MmapDataLoader *self);
 
 #endif
 
@@ -573,6 +586,13 @@ extern "C"
     struct ArrayRefU8 executorch_TensorInfo_dim_order(const struct TensorInfo *self);
     enum ScalarType executorch_TensorInfo_scalar_type(const struct TensorInfo *self);
     size_t executorch_TensorInfo_nbytes(const struct TensorInfo *self);
+
+#if defined(EXECUTORCH_RS_ETDUMP)
+    // ETDumpGen
+    struct ETDumpGen executorch_ETDumpGen_new(struct SpanU8 buffer);
+    struct ArrayRefU8 executorch_ETDumpGen_get_etdump_data(struct ETDumpGen *self);
+    EventTracer executorch_ETDumpGen_as_event_tracer_mut(struct ETDumpGen *self);
+#endif
 
 #ifdef __cplusplus
 } // end of extern "C" block

@@ -44,7 +44,7 @@ namespace executorch_rs
 
     Error Module_load(executorch::extension::Module &self, ProgramVerification verification);
     Error Module_method_names(executorch::extension::Module &self, rust::Vec<rust::String> &method_names_out);
-    Error Module_load_method(executorch::extension::Module &self, rust::Str method_name);
+    Error Module_load_method(executorch::extension::Module &self, rust::Str method_name, executorch::runtime::EventTracer *event_tracer);
     bool Module_is_method_loaded(const executorch::extension::Module &self, rust::Str method_name);
     Error Module_method_meta(executorch::extension::Module &self, rust::Str method_name, MethodMeta *method_meta_out);
     Error Module_execute(executorch::extension::Module &self, rust::Str method_name, ArrayRefEValue inputs, VecEValue *outputs);
