@@ -111,8 +111,23 @@ fn generate_bindings() {
         .default_enum_style(bindgen::EnumVariation::Rust {
             non_exhaustive: false,
         })
-        .no_copy(".*") // TODO: specific some exact types, regex act weird
+        .no_copy(".*")
         .manually_drop_union(".*")
+        .opaque_type("EValueStorage")
+        .opaque_type("TensorStorage")
+        .opaque_type("TensorImpl")
+        .opaque_type("Program")
+        .opaque_type("TensorInfo")
+        .opaque_type("MethodMeta")
+        .opaque_type("Method")
+        .opaque_type("BufferDataLoader")
+        .opaque_type("FileDataLoader")
+        .opaque_type("MmapDataLoader")
+        .opaque_type("MemoryAllocator")
+        .opaque_type("HierarchicalAllocator")
+        .opaque_type("MemoryManager")
+        .opaque_type("OptionalTensorStorage")
+        .opaque_type("ETDumpGen")
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()));
     let bindings = builder.generate().expect("Unable to generate bindings");
 

@@ -257,7 +257,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
         // Safety: the closure init the pointer
         let tensor = unsafe {
             NonTriviallyMovable::new_boxed(|p: *mut et_c::TensorStorage| {
-                let p = p as et_c::TensorMut;
+                let p = et_c::TensorRefMut { ptr: p as *mut _ };
                 et_c::executorch_Tensor_new(p, impl_)
             })
         };
@@ -279,7 +279,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
         let tensor = unsafe {
             NonTriviallyMovable::new_in_storage(
                 |p: *mut executorch_sys::TensorStorage| {
-                    let p = p as et_c::TensorMut;
+                    let p = et_c::TensorRefMut { ptr: p as *mut _ };
                     et_c::executorch_Tensor_new(p, impl_)
                 },
                 storage,
@@ -305,7 +305,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// If `D2` must be immutable as we take immutable reference to the given tensor.
     pub(crate) unsafe fn convert_from_ref<D2: Data>(tensor: &'a TensorBase<D2>) -> Self {
         let inner = tensor.as_cpp_tensor();
-        let inner = &*(inner as *const et_c::TensorStorage);
+        let inner = &*(inner.ptr as *const et_c::TensorStorage);
         Self(NonTriviallyMovable::from_ref(inner), PhantomData)
     }
 
@@ -321,13 +321,15 @@ impl<'a, D: Data> TensorBase<'a, D> {
     {
         // Safety: we are not moving out of the mut reference of the inner tensor
         let inner = unsafe { tensor.as_mut_cpp_tensor() };
-        let inner = &mut *(inner as *mut et_c::TensorStorage);
+        let inner = &mut *(inner.ptr as *mut et_c::TensorStorage);
         Self(NonTriviallyMovable::from_mut_ref(inner), PhantomData)
     }
 
     /// Get the underlying Cpp tensor.
-    pub(crate) fn as_cpp_tensor(&self) -> et_c::Tensor {
-        self.0.as_ref() as *const et_c::TensorStorage as et_c::Tensor
+    pub(crate) fn as_cpp_tensor(&self) -> et_c::TensorRef {
+        et_c::TensorRef {
+            ptr: self.0.as_ref() as *const et_c::TensorStorage as *const _,
+        }
     }
 
     /// Get a mutable reference to the underlying Cpp tensor.
@@ -335,12 +337,14 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// # Safety
     ///
     /// The caller can not move out of the returned mut reference.
-    pub(crate) unsafe fn as_mut_cpp_tensor(&mut self) -> et_c::TensorMut
+    pub(crate) unsafe fn as_mut_cpp_tensor(&mut self) -> et_c::TensorRefMut
     where
         D: DataMut,
     {
         // Safety: the caller does not move out of the returned mut reference.
-        unsafe { self.0.as_mut() }.unwrap() as *mut et_c::TensorStorage as et_c::TensorMut
+        et_c::TensorRefMut {
+            ptr: unsafe { self.0.as_mut() }.unwrap() as *mut et_c::TensorStorage as *mut _,
+        }
     }
 
     /// Returns the size of the tensor in bytes.
@@ -527,7 +531,11 @@ impl<'a, D: Data> TensorBase<'a, D> {
 }
 impl Destroy for et_c::TensorStorage {
     unsafe fn destroy(&mut self) {
-        unsafe { et_c::executorch_Tensor_destructor(self as *mut Self as et_c::TensorMut) }
+        unsafe {
+            et_c::executorch_Tensor_destructor(et_c::TensorRefMut {
+                ptr: self as *mut Self as *mut _,
+            })
+        }
     }
 }
 impl<D: Data> Storable for TensorBase<'_, D> {
@@ -856,8 +864,9 @@ impl<'a, S: Scalar> TensorMut<'a, S> {
 /// A type-erased immutable tensor that does not own the underlying data.
 pub type TensorAny<'a> = TensorBase<'a, ViewAny>;
 impl TensorAny<'_> {
-    pub(crate) unsafe fn from_inner_ref(tensor: et_c::Tensor) -> Self {
-        let tensor = unsafe { &*(tensor as *const et_c::TensorStorage) };
+    pub(crate) unsafe fn from_inner_ref(tensor: et_c::TensorRef) -> Self {
+        debug_assert!(!tensor.ptr.is_null());
+        let tensor = unsafe { &*(tensor.ptr as *const et_c::TensorStorage) };
         Self(NonTriviallyMovable::from_ref(tensor), PhantomData)
     }
 
@@ -1258,7 +1267,7 @@ mod ptr;
 pub use ptr::*;
 
 impl Storable for Option<TensorAny<'_>> {
-    type __Storage = et_c::OptionalTensor;
+    type __Storage = et_c::OptionalTensorStorage;
 }
 
 #[cfg(test)]

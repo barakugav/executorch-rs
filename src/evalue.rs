@@ -80,8 +80,8 @@ impl<'a> EValue<'a> {
     ///
     /// The closure must initialize the value correctly, otherwise the value will be in an invalid state.
     #[cfg(feature = "alloc")]
-    unsafe fn new_impl(init: impl FnOnce(et_c::EValueMut)) -> Self {
-        let init = |p: *mut et_c::EValueStorage| init(p as et_c::EValueMut);
+    unsafe fn new_impl(init: impl FnOnce(et_c::EValueRefMut)) -> Self {
+        let init = |ptr: *mut et_c::EValueStorage| init(et_c::EValueRefMut { ptr: ptr as *mut _ });
         Self(unsafe { NonTriviallyMovable::new_boxed(init) })
     }
 
@@ -109,10 +109,10 @@ impl<'a> EValue<'a> {
     ///
     /// The closure must initialize the value correctly, otherwise the value will be in an invalid state.
     unsafe fn new_in_storage_impl(
-        init: impl FnOnce(et_c::EValueMut),
+        init: impl FnOnce(et_c::EValueRefMut),
         storage: Pin<&'a mut Storage<EValue>>,
     ) -> Self {
-        let init = |p: *mut et_c::EValueStorage| init(p as et_c::EValueMut);
+        let init = |ptr: *mut et_c::EValueStorage| init(et_c::EValueRefMut { ptr: ptr as *mut _ });
         Self(unsafe { NonTriviallyMovable::new_in_storage(init, storage) })
     }
 
@@ -158,8 +158,8 @@ impl<'a> EValue<'a> {
         Self::new_in_storage(value, storage)
     }
 
-    pub(crate) unsafe fn from_inner_ref(value: et_c::EValue) -> Self {
-        let value = value as *const et_c::EValueStorage;
+    pub(crate) unsafe fn from_inner_ref(value: et_c::EValueRef) -> Self {
+        let value = value.ptr as *const et_c::EValueStorage;
         assert!(!value.is_null());
         let value = unsafe { &*value };
         Self(NonTriviallyMovable::from_ref(value))
@@ -172,10 +172,10 @@ impl<'a> EValue<'a> {
     /// The given value should not be used after this function is called, and its Cpp destructor should be called.
     #[cfg(feature = "alloc")]
     #[allow(dead_code)]
-    pub(crate) unsafe fn move_from(value: et_c::EValueMut) -> Self {
+    pub(crate) unsafe fn move_from(value: et_c::EValueRefMut) -> Self {
         Self(unsafe {
             NonTriviallyMovable::new_boxed(|p: *mut et_c::EValueStorage| {
-                et_c::executorch_EValue_move(value, p as et_c::EValueMut)
+                et_c::executorch_EValue_move(value, et_c::EValueRefMut { ptr: p as *mut _ })
             })
         })
     }
@@ -336,13 +336,19 @@ impl<'a> EValue<'a> {
 }
 impl Destroy for et_c::EValueStorage {
     unsafe fn destroy(&mut self) {
-        unsafe { et_c::executorch_EValue_destructor(self as *mut Self as et_c::EValueMut) }
+        unsafe {
+            et_c::executorch_EValue_destructor(et_c::EValueRefMut {
+                ptr: self as *mut Self as *mut _,
+            })
+        }
     }
 }
 impl IntoCpp for &EValue<'_> {
-    type CppType = et_c::EValue;
+    type CppType = et_c::EValueRef;
     fn cpp(self) -> Self::CppType {
-        self.0.as_ref() as *const et_c::EValueStorage as et_c::EValue
+        et_c::EValueRef {
+            ptr: self.0.as_ref() as *const et_c::EValueStorage as *const _,
+        }
     }
 }
 
@@ -672,7 +678,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for TensorAny<'a> {
     fn try_from(value: &'a EValue) -> Result<Self> {
         if value.tag() == Tag::Tensor {
             let tensor = unsafe { et_c::executorch_EValue_as_tensor(value.cpp()) };
-            Ok(unsafe { TensorAny::from_inner_ref(&*tensor) })
+            Ok(unsafe { TensorAny::from_inner_ref(tensor) })
         } else {
             Err(Error::CError(CError::InvalidType))
         }
@@ -741,7 +747,7 @@ pub struct TensorList<'a>(&'a [et_c::TensorStorage]);
 impl TensorList<'_> {
     /// Safety: the array must be valid for the lifetime of the returned list.
     unsafe fn from_array_ref(array: et_c::ArrayRefTensor) -> Self {
-        let data = array.data as *const et_c::TensorStorage;
+        let data = array.data.ptr as *const et_c::TensorStorage;
         Self(unsafe { std::slice::from_raw_parts(data, array.len) })
     }
 
@@ -758,7 +764,9 @@ impl TensorList<'_> {
     /// Get the tensor at the given index.
     pub fn get(&self, index: usize) -> Option<TensorAny> {
         self.0.get(index).map(|t| unsafe {
-            TensorAny::from_inner_ref(t as *const et_c::TensorStorage as et_c::Tensor)
+            TensorAny::from_inner_ref(et_c::TensorRef {
+                ptr: t as *const et_c::TensorStorage as *const _,
+            })
         })
     }
 }
@@ -778,7 +786,7 @@ pub struct OptionalTensorList<'a>(&'a [et_c::OptionalTensorStorage]);
 impl OptionalTensorList<'_> {
     /// Safety: the array must be valid for the lifetime of the returned list.
     unsafe fn from_array_ref(array: et_c::ArrayRefOptionalTensor) -> Self {
-        let data = array.data as *const et_c::OptionalTensorStorage;
+        let data = array.data.ptr as *const et_c::OptionalTensorStorage;
         Self(unsafe { std::slice::from_raw_parts(data, array.len) })
     }
 
@@ -801,12 +809,13 @@ impl OptionalTensorList<'_> {
     /// - `Some(Some(tensor))` if the tensor at the index is not `None`.
     pub fn get(&self, index: usize) -> Option<Option<TensorAny>> {
         self.0.get(index).map(|tensor| {
-            let tensor = tensor as *const et_c::OptionalTensorStorage as et_c::OptionalTensor;
+            let tensor = et_c::OptionalTensorRef {
+                ptr: tensor as *const et_c::OptionalTensorStorage as *const _,
+            };
             let tensor = unsafe { et_c::executorch_OptionalTensor_get(tensor) };
-            if tensor.is_null() {
+            if tensor.ptr.is_null() {
                 return None;
             }
-            let tensor = tensor as *const et_c::TensorStorage as et_c::Tensor;
             Some(unsafe { TensorAny::from_inner_ref(tensor) })
         })
     }
@@ -944,6 +953,16 @@ pub trait __BoxedEvalueListImpl {
     private_decl! {}
 }
 
+macro_rules! ptr2ref {
+    ($ptr:expr) => {
+        $ptr
+    };
+    ($ptr:expr, $ref_type:path) => {{
+        $ref_type {
+            ptr: $ptr as *mut _,
+        }
+    }};
+}
 macro_rules! impl_boxed_evalue_list {
     ($element:path, $list_impl:path, $unwrapped_span_type:path, $element_tag:ident, $allow_null_element:expr $(, $unwrapped_type:ty)?) => {
         impl<'a> BoxedEvalueListElement<'a> for $element {
@@ -961,12 +980,12 @@ macro_rules! impl_boxed_evalue_list {
             ) -> Result<Self> {
                 // Safety: we dont move out of the pinned slice.
                 let unwrapped_vals = unsafe { unwrapped_vals.get_unchecked_mut() };
+                let unwrapped_vals_ptr = unwrapped_vals.as_mut_ptr() as *mut <Self::Element<'_> as Storable>::__Storage;
                 Ok(Self {
                     wrapped_vals,
                     unwrapped_vals: {
                         $unwrapped_span_type {
-                            data: unwrapped_vals.as_mut_ptr()
-                                as *mut <Self::Element<'_> as Storable>::__Storage $(as $unwrapped_type)?,
+                            data: ptr2ref!(unwrapped_vals_ptr $(, $unwrapped_type)?),
                             len: unwrapped_vals.len(),
                         }
                     },
@@ -984,7 +1003,7 @@ impl_boxed_evalue_list!(
     et_c::SpanOptionalTensor,
     Tensor,
     true,
-    et_c::OptionalTensorMut
+    et_c::OptionalTensorRefMut
 );
 impl_boxed_evalue_list!(
     TensorAny<'a>,
@@ -992,7 +1011,7 @@ impl_boxed_evalue_list!(
     et_c::SpanTensor,
     Tensor,
     false,
-    et_c::TensorMut
+    et_c::TensorRefMut
 );
 
 /// A list of pointers to `EValue`.
@@ -1003,14 +1022,14 @@ enum EValuePtrListInner<'a> {
     #[cfg(feature = "alloc")]
     Vec(
         (
-            crate::alloc::Vec<et_c::EValue>,
+            crate::alloc::Vec<et_c::EValueRef>,
             // A lifetime for the `*const EValue` values
             PhantomData<&'a ()>,
         ),
     ),
     Slice(
         (
-            &'a [et_c::EValue],
+            &'a [et_c::EValueRef],
             // A lifetime for the `*const EValue` values
             PhantomData<&'a ()>,
         ),
@@ -1019,12 +1038,12 @@ enum EValuePtrListInner<'a> {
 impl<'a> EValuePtrList<'a> {
     #[cfg(feature = "alloc")]
     fn new_impl(values: impl IntoIterator<Item = Option<&'a EValue<'a>>>) -> Self {
-        let values: crate::alloc::Vec<et_c::EValue> = values
+        let values: crate::alloc::Vec<et_c::EValueRef> = values
             .into_iter()
             .map(|value| {
-                value
-                    .map(|value| value.cpp() as *const _)
-                    .unwrap_or(std::ptr::null())
+                value.map(|value| value.cpp()).unwrap_or(et_c::EValueRef {
+                    ptr: std::ptr::null(),
+                })
             })
             .collect();
         Self(EValuePtrListInner::Vec((values, PhantomData)))
@@ -1072,11 +1091,9 @@ impl<'a> EValuePtrList<'a> {
         loop {
             match (values.next(), storage_iter.next()) {
                 (Some(value), Some(storage)) => {
-                    storage.write(
-                        value
-                            .map(|value| value.cpp() as *const _)
-                            .unwrap_or(std::ptr::null()),
-                    );
+                    storage.write(value.map(|value| value.cpp()).unwrap_or(et_c::EValueRef {
+                        ptr: std::ptr::null(),
+                    }));
                 }
                 (None, None) => break,
                 _ => panic!("Mismatched lengths"),
@@ -1126,7 +1143,7 @@ impl<'a> EValuePtrList<'a> {
         Self::new_in_storage_impl(values, storage)
     }
 
-    fn as_slice(&self) -> &[et_c::EValue] {
+    fn as_slice(&self) -> &[et_c::EValueRef] {
         match &self.0 {
             #[cfg(feature = "alloc")]
             EValuePtrListInner::Vec((values, _)) => values.as_slice(),
@@ -1138,10 +1155,10 @@ impl<'a> EValuePtrList<'a> {
     /// Returns Some(None) if the pointer at the given entry is null.
     fn get(&self, index: usize) -> Option<Option<EValue>> {
         let ptr = *self.as_slice().get(index)?;
-        Some(if ptr.is_null() {
+        Some(if ptr.ptr.is_null() {
             None
         } else {
-            Some(unsafe { EValue::from_inner_ref(&*ptr) })
+            Some(unsafe { EValue::from_inner_ref(ptr) })
         })
     }
 }
@@ -1153,9 +1170,9 @@ impl<'a> EValuePtrList<'a> {
 /// let wrapped_vals_storage = executorch::storage!(EValuePtrListElement, [3]);
 /// let wrapped_vals = EValuePtrList::new_in_storage([&evalue1, &evalue2, &evalue3], wrapped_vals_storage);
 /// ```
-pub struct EValuePtrListElem(#[allow(dead_code)] et_c::EValue);
+pub struct EValuePtrListElem(#[allow(dead_code)] et_c::EValueRef);
 impl Storable for EValuePtrListElem {
-    type __Storage = et_c::EValue;
+    type __Storage = et_c::EValueRef;
 }
 
 #[cfg(test)]

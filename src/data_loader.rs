@@ -16,7 +16,7 @@ use executorch_sys as et_c;
 /// [`Program`]: crate::program::Program
 pub trait DataLoader {
     #[doc(hidden)]
-    fn __data_loader_ptr(&self) -> et_c::DataLoaderMut;
+    fn __data_loader_ptr(&self) -> et_c::DataLoaderRefMut;
 }
 
 /// A DataLoader that wraps a pre-allocated buffer. The FreeableBuffers
@@ -35,7 +35,7 @@ impl<'a> BufferDataLoader<'a> {
     }
 }
 impl DataLoader for BufferDataLoader<'_> {
-    fn __data_loader_ptr(&self) -> et_c::DataLoaderMut {
+    fn __data_loader_ptr(&self) -> et_c::DataLoaderRefMut {
         unsafe { et_c::executorch_BufferDataLoader_as_data_loader_mut(self.0.get()) }
     }
 }
@@ -125,7 +125,7 @@ mod file_data_loader {
         }
     }
     impl DataLoader for FileDataLoader {
-        fn __data_loader_ptr(&self) -> et_c::DataLoaderMut {
+        fn __data_loader_ptr(&self) -> et_c::DataLoaderRefMut {
             unsafe { et_c::executorch_FileDataLoader_as_data_loader_mut(self.0.get()) }
         }
     }
@@ -196,7 +196,7 @@ mod file_data_loader {
         }
     }
     impl DataLoader for MmapDataLoader {
-        fn __data_loader_ptr(&self) -> et_c::DataLoaderMut {
+        fn __data_loader_ptr(&self) -> et_c::DataLoaderRefMut {
             unsafe { et_c::executorch_MmapDataLoader_as_data_loader_mut(self.0.get()) }
         }
     }

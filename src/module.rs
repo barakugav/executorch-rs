@@ -191,7 +191,12 @@ impl<'a> Module<'a> {
     ) -> Result<Vec<EValue<'b>>> {
         let inputs = unsafe {
             NonTriviallyMovableVec::<et_c::EValueStorage>::new(inputs.len(), |i, p| {
-                et_c::executorch_EValue_copy(inputs[i].cpp(), p.as_mut_ptr() as et_c::EValueMut)
+                et_c::executorch_EValue_copy(
+                    inputs[i].cpp(),
+                    et_c::EValueRefMut {
+                        ptr: p.as_mut_ptr() as *mut _,
+                    },
+                )
             })
         };
         let inputs = ArrayRef::from_slice(inputs.as_slice());
@@ -208,7 +213,9 @@ impl<'a> Module<'a> {
             .as_mut_slice()
             .iter_mut()
             .map(|val| unsafe {
-                EValue::move_from(val as *mut et_c::EValueStorage as et_c::EValueMut)
+                EValue::move_from(et_c::EValueRefMut {
+                    ptr: val as *mut et_c::EValueStorage as *mut _,
+                })
             })
             .collect())
     }

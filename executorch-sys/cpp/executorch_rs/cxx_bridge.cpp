@@ -22,7 +22,7 @@ namespace executorch_rs
     {
         executorch::runtime::EValue *arr = vec_to_array(std::move(vec));
         return VecEValue{
-            .data = reinterpret_cast<EValueMut>(arr),
+            .data = EValueRefMut{.ptr = arr},
             .len = vec.size(),
             .cap = vec.size(),
         };
@@ -119,7 +119,7 @@ namespace executorch_rs
     }
     static executorch::runtime::Error Module_execute_(executorch::extension::Module &self, rust::Str method_name, ArrayRefEValue inputs, VecEValue *outputs)
     {
-        auto inputs_data = reinterpret_cast<const executorch::runtime::EValue *>(inputs.data);
+        auto inputs_data = reinterpret_cast<const executorch::runtime::EValue *>(inputs.data.ptr);
         std::vector<executorch::runtime::EValue> inputs_vec(inputs_data, inputs_data + inputs.len);
         std::vector<executorch::runtime::EValue> outputs_ = ET_UNWRAP(self.execute((std::string)method_name, inputs_vec));
         *outputs = VecEValue_new(std::move(outputs_));

@@ -77,8 +77,7 @@ mod etdump {
         fn as_mut(&mut self) -> &mut EventTracer<'a> {
             let self_ = (&mut self.0) as *mut et_c::ETDumpGen;
             let tracer = unsafe { et_c::executorch_ETDumpGen_as_event_tracer_mut(self_) };
-            let tracer =
-                unsafe { std::mem::transmute::<et_c::EventTracer, *mut EventTracer<'a>>(tracer) };
+            let tracer = tracer.ptr as *mut EventTracer<'a>;
             unsafe { &mut *tracer }
         }
     }
