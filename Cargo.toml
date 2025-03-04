@@ -44,7 +44,7 @@ data-loader = ["executorch-sys/data-loader"]
 module = ["executorch-sys/module", "std"]
 tensor-ptr = ["executorch-sys/tensor-ptr", "std"]
 etdump = ["executorch-sys/etdump"]
-f16 = ["half"]
+half = ["dep:half"]
 complex = ["num-complex"]
 
 [package.metadata.docs.rs]

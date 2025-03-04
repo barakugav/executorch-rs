@@ -1,5 +1,6 @@
 use executorch_sys::ScalarType as CScalarType;
 
+use crate::scalar::{bf16, f16};
 use crate::util::{IntoCpp, IntoRust};
 
 /// Data types (dtypes) that can be used as element types in Tensors.
@@ -19,13 +20,13 @@ pub enum ScalarType {
     Int = CScalarType::ScalarType_Int as u8,
     /// 64-bit signed integer, `i64`
     Long = CScalarType::ScalarType_Long as u8,
-    /// 16-bit floating point, `half::f16`, enabled by the `f16` feature
+    /// 16-bit floating point, [`executorch::scalar::f16`](`crate::scalar::f16`).
     Half = CScalarType::ScalarType_Half as u8,
     /// 32-bit floating point, `f32`
     Float = CScalarType::ScalarType_Float as u8,
     /// 64-bit floating point, `f64`
     Double = CScalarType::ScalarType_Double as u8,
-    /// 16-bit complex floating point, `num_complex::Complex<half::f16>`, enabled by the `complex` and `f16` features
+    /// 16-bit complex floating point, `num_complex::Complex<executorch::scalar::f16>`, enabled by the `complex`.
     ComplexHalf = CScalarType::ScalarType_ComplexHalf as u8,
     /// 32-bit complex floating point, `num_complex::Complex32`, enabled by the `complex` feature
     ComplexFloat = CScalarType::ScalarType_ComplexFloat as u8,
@@ -39,7 +40,7 @@ pub enum ScalarType {
     QUInt8 = CScalarType::ScalarType_QUInt8 as u8,
     /// **\[Unsupported\]** 32-bit quantized integer
     QInt32 = CScalarType::ScalarType_QInt32 as u8,
-    /// 16-bit floating point using the bfloat16 format, `half::bf16`, enabled by the `f16` feature
+    /// 16-bit floating point using the bfloat16 format, [`executorch::scalar::bf16`](`crate::scalar::bf16`).
     BFloat16 = CScalarType::ScalarType_BFloat16 as u8,
     /// **\[Unsupported\]**
     QUInt4x2 = CScalarType::ScalarType_QUInt4x2 as u8,
@@ -169,19 +170,17 @@ impl_scalar!(i8, Char);
 impl_scalar!(i16, Short);
 impl_scalar!(i32, Int);
 impl_scalar!(i64, Long);
-#[cfg(feature = "f16")]
-impl_scalar!(half::f16, Half);
+impl_scalar!(f16, Half);
 impl_scalar!(f32, Float);
 impl_scalar!(f64, Double);
-#[cfg(all(feature = "complex", feature = "f16"))]
-impl_scalar!(num_complex::Complex<half::f16>, ComplexHalf);
+#[cfg(feature = "complex")]
+impl_scalar!(num_complex::Complex<f16>, ComplexHalf);
 #[cfg(feature = "complex")]
 impl_scalar!(num_complex::Complex32, ComplexFloat);
 #[cfg(feature = "complex")]
 impl_scalar!(num_complex::Complex64, ComplexDouble);
 impl_scalar!(bool, Bool);
-#[cfg(feature = "f16")]
-impl_scalar!(half::bf16, BFloat16);
+impl_scalar!(bf16, BFloat16);
 impl_scalar!(u16, UInt16);
 impl_scalar!(u32, UInt32);
 impl_scalar!(u64, UInt64);

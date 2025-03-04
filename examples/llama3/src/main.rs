@@ -126,7 +126,7 @@ fn main() {
         assert_eq!(outputs.len(), 1);
         let logits = outputs[0]
             .as_tensor()
-            .into_typed::<executorch::half::bf16>();
+            .into_typed::<executorch::scalar::bf16>();
         let logits = logits
             .as_array()
             .squeeze()

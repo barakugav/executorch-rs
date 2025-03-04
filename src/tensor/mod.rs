@@ -462,17 +462,13 @@ impl<D: Data> std::fmt::Debug for TensorBase<'_, D> {
             ScalarType::Int => add_data_field(self.as_typed::<i32>(), &mut st),
             ScalarType::Long => add_data_field(self.as_typed::<i64>(), &mut st),
             ScalarType::Half => {
-                cfg_if::cfg_if! { if #[cfg(feature = "f16")] {
-                    add_data_field(self.as_typed::<half::f16>(), &mut st);
-                } else {
-                    add_data_field_unsupported(&mut st);
-                } }
+                add_data_field(self.as_typed::<crate::scalar::f16>(), &mut st);
             }
             ScalarType::Float => add_data_field(self.as_typed::<f32>(), &mut st),
             ScalarType::Double => add_data_field(self.as_typed::<f64>(), &mut st),
             ScalarType::ComplexHalf => {
-                cfg_if::cfg_if! { if #[cfg(all(feature = "complex", feature = "f16"))] {
-                    add_data_field(self.as_typed::<num_complex::Complex<half::f16>>(), &mut st);
+                cfg_if::cfg_if! { if #[cfg(feature = "complex")] {
+                    add_data_field(self.as_typed::<num_complex::Complex<crate::scalar::f16>>(), &mut st);
                 } else {
                     add_data_field_unsupported(&mut st);
                 } }
@@ -496,11 +492,7 @@ impl<D: Data> std::fmt::Debug for TensorBase<'_, D> {
             ScalarType::QUInt8 => add_data_field_unsupported(&mut st),
             ScalarType::QInt32 => add_data_field_unsupported(&mut st),
             ScalarType::BFloat16 => {
-                cfg_if::cfg_if! { if #[cfg(feature = "f16")] {
-                    add_data_field(self.as_typed::<half::bf16>(), &mut st);
-                } else {
-                    add_data_field_unsupported(&mut st);
-                } }
+                add_data_field(self.as_typed::<crate::scalar::bf16>(), &mut st);
             }
             ScalarType::QUInt4x2 => add_data_field_unsupported(&mut st),
             ScalarType::QUInt2x4 => add_data_field_unsupported(&mut st),
