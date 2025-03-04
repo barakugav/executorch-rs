@@ -1211,6 +1211,12 @@ mod tests {
             let evalue = EValue::new(42);
             assert_eq!(evalue.tag(), Tag::Int);
             assert_eq!(evalue.as_i64(), 42);
+
+            let evalue: EValue = 17.into();
+            assert_eq!(evalue.tag(), Tag::Int);
+            assert_eq!(evalue.as_i64(), 17);
+
+            test_try_from_evalue(Tag::Int);
         }
         {
             let storage = storage!(EValue);
@@ -1232,6 +1238,8 @@ mod tests {
             let evalue = EValue::new(list);
             assert_eq!(evalue.tag(), Tag::ListInt);
             assert_eq!(evalue.as_i64_list(), &[42, 17, 6]);
+
+            test_try_from_evalue(Tag::ListInt);
         }
         {
             let evalue1_storage = storage!(EValue);
@@ -1261,6 +1269,8 @@ mod tests {
             let evalue = EValue::new(42.0);
             assert_eq!(evalue.tag(), Tag::Double);
             assert_eq!(evalue.as_f64(), 42.0);
+
+            test_try_from_evalue(Tag::Double);
         }
         {
             let storage = storage!(EValue);
@@ -1279,6 +1289,8 @@ mod tests {
             let evalue = EValue::new(list.as_slice());
             assert_eq!(evalue.tag(), Tag::ListDouble);
             assert_eq!(evalue.as_f64_list(), [42.0, 17.0, 6.0]);
+
+            test_try_from_evalue(Tag::ListDouble);
         }
         {
             let storage = storage!(EValue);
@@ -1295,6 +1307,8 @@ mod tests {
             let evalue = EValue::new(true);
             assert_eq!(evalue.tag(), Tag::Bool);
             assert!(evalue.as_bool());
+
+            test_try_from_evalue(Tag::Bool);
         }
         {
             let storage = storage!(EValue);
@@ -1313,6 +1327,8 @@ mod tests {
             let evalue = EValue::new(list.as_slice());
             assert_eq!(evalue.tag(), Tag::ListBool);
             assert_eq!(evalue.as_bool_list(), [true, false, true]);
+
+            test_try_from_evalue(Tag::ListBool);
         }
         {
             let storage = storage!(EValue);
@@ -1333,6 +1349,8 @@ mod tests {
             assert_eq!(evalue.tag(), Tag::String);
             assert_eq!(evalue.as_cstr(), string);
             assert_eq!(evalue.as_chars(), chars);
+
+            test_try_from_evalue(Tag::String);
         }
         {
             let storage = storage!(EValue);
@@ -1368,11 +1386,21 @@ mod tests {
             let tensor = evalue.as_tensor().into_typed::<i32>();
             let tensor_data = unsafe { std::slice::from_raw_parts(tensor.as_ptr(), data.len()) };
             assert_eq!(tensor_data, data);
+
+            test_try_from_evalue(Tag::Tensor);
         }
         #[cfg(feature = "tensor-ptr")]
         {
             let tensor = TensorPtr::from_slice(&data);
             let evalue = EValue::new(&tensor);
+            assert_eq!(evalue.tag(), Tag::Tensor);
+            let tensor = evalue.as_tensor().into_typed::<i32>();
+            let tensor_data = unsafe { std::slice::from_raw_parts(tensor.as_ptr(), data.len()) };
+            assert_eq!(tensor_data, data);
+
+            let tensor = TensorPtr::from_slice(&data);
+            let evalue_storage = storage!(EValue);
+            let evalue = EValue::new_in_storage(&tensor, evalue_storage);
             assert_eq!(evalue.tag(), Tag::Tensor);
             let tensor = evalue.as_tensor().into_typed::<i32>();
             let tensor_data = unsafe { std::slice::from_raw_parts(tensor.as_ptr(), data.len()) };
@@ -1441,6 +1469,7 @@ mod tests {
             assert_eq!(evalue.tag(), Tag::ListTensor);
             let tensor_list = evalue.as_tensor_list();
             assert_eq!(tensor_list.len(), 3);
+            assert!(!tensor_list.is_empty());
 
             for (i, data) in [data1.as_slice(), &data2, &data3].iter().enumerate() {
                 let tensor = tensor_list.get(i).unwrap().into_typed::<i32>();
@@ -1448,6 +1477,8 @@ mod tests {
                     unsafe { std::slice::from_raw_parts(tensor.as_ptr(), data.len()) };
                 assert_eq!(&tensor_data, data);
             }
+
+            test_try_from_evalue(Tag::ListTensor);
         }
         #[cfg(feature = "tensor-ptr")]
         {
@@ -1465,6 +1496,7 @@ mod tests {
             assert_eq!(evalue.tag(), Tag::ListTensor);
             let tensor_list = evalue.as_tensor_list();
             assert_eq!(tensor_list.len(), 3);
+            assert!(!tensor_list.is_empty());
 
             for (i, data) in [data1.as_slice(), &data2, &data3].iter().enumerate() {
                 let tensor = tensor_list.get(i).unwrap().into_typed::<i32>();
@@ -1513,6 +1545,7 @@ mod tests {
             assert_eq!(evalue.tag(), Tag::ListTensor);
             let tensor_list = evalue.as_tensor_list();
             assert_eq!(tensor_list.len(), 3);
+            assert!(!tensor_list.is_empty());
 
             for (i, data) in [data1.as_slice(), &data2, &data3].iter().enumerate() {
                 let tensor = tensor_list.get(i).unwrap().into_typed::<i32>();
@@ -1568,6 +1601,7 @@ mod tests {
             assert_eq!(evalue.tag(), Tag::ListOptionalTensor);
             let tensor_list = evalue.as_optional_tensor_list();
             assert_eq!(tensor_list.len(), 4);
+            assert!(!tensor_list.is_empty());
 
             for (i, data) in [Some(data1.as_slice()), Some(&data2), None, Some(&data4)]
                 .iter()
@@ -1589,6 +1623,8 @@ mod tests {
                     _ => unreachable!(),
                 }
             }
+
+            test_try_from_evalue(Tag::ListOptionalTensor);
         }
         #[cfg(feature = "tensor-ptr")]
         {
@@ -1613,6 +1649,7 @@ mod tests {
             assert_eq!(evalue.tag(), Tag::ListOptionalTensor);
             let tensor_list = evalue.as_optional_tensor_list();
             assert_eq!(tensor_list.len(), 4);
+            assert!(!tensor_list.is_empty());
 
             for (i, data) in [Some(data1.as_slice()), Some(&data2), None, Some(&data4)]
                 .iter()
@@ -1680,6 +1717,7 @@ mod tests {
             assert_eq!(evalue.tag(), Tag::ListOptionalTensor);
             let tensor_list = evalue.as_optional_tensor_list();
             assert_eq!(tensor_list.len(), 4);
+            assert!(!tensor_list.is_empty());
 
             for (i, data) in [Some(data1.as_slice()), Some(&data2), None, Some(&data4)]
                 .iter()
@@ -1700,6 +1738,180 @@ mod tests {
                     }
                     _ => unreachable!(),
                 }
+            }
+        }
+    }
+
+    #[cfg(feature = "alloc")]
+    fn test_try_from_evalue(tag: Tag) {
+        let tags = [
+            Tag::None,
+            Tag::Tensor,
+            Tag::String,
+            Tag::Double,
+            Tag::Int,
+            Tag::Bool,
+            Tag::ListBool,
+            Tag::ListDouble,
+            Tag::ListInt,
+            Tag::ListTensor,
+            Tag::ListOptionalTensor,
+        ];
+
+        for actual_tag in tags {
+            let check_evalue = |evalue: EValue<'_>| {
+                let same_tag = actual_tag == tag;
+                match tag {
+                    Tag::None => unimplemented!(),
+                    Tag::Tensor => assert_eq!(
+                        same_tag,
+                        <TensorAny as TryFrom<&EValue>>::try_from(&evalue).is_ok()
+                    ),
+                    Tag::String => {
+                        assert_eq!(
+                            same_tag,
+                            <&[std::ffi::c_char] as TryFrom<&EValue>>::try_from(&evalue).is_ok()
+                        );
+                        assert_eq!(
+                            same_tag,
+                            <&CStr as TryFrom<&EValue>>::try_from(&evalue).is_ok()
+                        );
+                    }
+                    Tag::Double => assert_eq!(
+                        same_tag,
+                        <f64 as TryFrom<&EValue>>::try_from(&evalue).is_ok()
+                    ),
+                    Tag::Int => assert_eq!(
+                        same_tag,
+                        <i64 as TryFrom<&EValue>>::try_from(&evalue).is_ok()
+                    ),
+                    Tag::Bool => assert_eq!(
+                        same_tag,
+                        <bool as TryFrom<&EValue>>::try_from(&evalue).is_ok()
+                    ),
+                    Tag::ListBool => assert_eq!(
+                        same_tag,
+                        <&[bool] as TryFrom<&EValue>>::try_from(&evalue).is_ok()
+                    ),
+                    Tag::ListDouble => assert_eq!(
+                        same_tag,
+                        <&[f64] as TryFrom<&EValue>>::try_from(&evalue).is_ok()
+                    ),
+                    Tag::ListInt => assert_eq!(
+                        same_tag,
+                        <&[i64] as TryFrom<&EValue>>::try_from(&evalue).is_ok()
+                    ),
+                    Tag::ListTensor => assert_eq!(
+                        same_tag,
+                        <TensorList as TryFrom<&EValue>>::try_from(&evalue).is_ok()
+                    ),
+                    Tag::ListOptionalTensor => assert_eq!(
+                        same_tag,
+                        <OptionalTensorList as TryFrom<&EValue>>::try_from(&evalue).is_ok()
+                    ),
+                    Tag::ListScalar => unimplemented!(),
+                }
+            };
+            match actual_tag {
+                Tag::None => check_evalue(EValue::none()),
+                Tag::Tensor => {
+                    let data: [i32; 3] = [42, 17, 6];
+                    let sizes = [data.len() as SizesType];
+                    let dim_order = [0];
+                    let strides = [1];
+                    let tensor_impl = TensorImpl::from_slice(&sizes, &data, &dim_order, &strides);
+                    check_evalue(EValue::new(Tensor::new(&tensor_impl)));
+                }
+                Tag::String => check_evalue(EValue::new(cstr::cstr!(b"hello world!"))),
+                Tag::Double => check_evalue(EValue::new(42.6)),
+                Tag::Int => check_evalue(EValue::new(17)),
+                Tag::Bool => check_evalue(EValue::new(true)),
+                Tag::ListBool => {
+                    let bool_list = [true, false, false, true, true];
+                    check_evalue(EValue::new(bool_list.as_slice()))
+                }
+                Tag::ListDouble => {
+                    let f64_list = [42.2_f64, 17.6, 55.9];
+                    check_evalue(EValue::new(f64_list.as_slice()))
+                }
+                Tag::ListInt => {
+                    let values = [42_i64, 17, 99].map(EValue::new);
+                    let wrapped_vals = EValuePtrList::new([&values[0], &values[1], &values[2]]);
+                    let mut unwrapped_vals = storage!(i64, (3));
+                    let list =
+                        BoxedEvalueList::new(&wrapped_vals, unwrapped_vals.as_mut()).unwrap();
+                    check_evalue(EValue::new(list));
+                }
+                Tag::ListTensor => {
+                    let data1: [i32; 3] = [42, 17, 6];
+                    let sizes = [data1.len() as SizesType];
+                    let dim_order = [0];
+                    let strides = [1];
+                    let tensor_impl = TensorImpl::from_slice(&sizes, &data1, &dim_order, &strides);
+                    let tensor1 = Tensor::new(&tensor_impl);
+
+                    let data2: [i32; 2] = [55, 8];
+                    let sizes = [data2.len() as SizesType];
+                    let dim_order = [0];
+                    let strides = [1];
+                    let tensor_impl = TensorImpl::from_slice(&sizes, &data2, &dim_order, &strides);
+                    let tensor2 = Tensor::new(&tensor_impl);
+
+                    let data3: [i32; 2] = [106, 144];
+                    let sizes = [data3.len() as SizesType];
+                    let dim_order = [0];
+                    let strides = [1];
+                    let tensor_impl = TensorImpl::from_slice(&sizes, &data3, &dim_order, &strides);
+                    let tensor3 = Tensor::new(&tensor_impl);
+
+                    let evalue1 = EValue::new(tensor1);
+                    let evalue2 = EValue::new(tensor2);
+                    let evalue3 = EValue::new(tensor3);
+                    let wrapped_vals = EValuePtrList::new([&evalue1, &evalue2, &evalue3]);
+                    let unwrapped_vals = storage!(TensorAny, [3]);
+                    let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals).unwrap();
+                    check_evalue(EValue::new(list));
+                }
+                Tag::ListOptionalTensor => {
+                    let data1: [i32; 3] = [42, 17, 6];
+
+                    let sizes = [data1.len() as SizesType];
+                    let dim_order = [0];
+                    let strides = [1];
+                    let tensor_impl = TensorImpl::from_slice(&sizes, &data1, &dim_order, &strides);
+                    let tensor1 = Tensor::new(&tensor_impl);
+
+                    let data2: [i32; 2] = [55, 8];
+                    let sizes = [data2.len() as SizesType];
+                    let dim_order = [0];
+                    let strides = [1];
+                    let tensor_impl = TensorImpl::from_slice(&sizes, &data2, &dim_order, &strides);
+                    let tensor2 = Tensor::new(&tensor_impl);
+
+                    // let tensor3 = None;
+
+                    let data4: [i32; 2] = [106, 144];
+                    let sizes = [data4.len() as SizesType];
+                    let dim_order = [0];
+                    let strides = [1];
+                    let tensor_impl = TensorImpl::from_slice(&sizes, &data4, &dim_order, &strides);
+                    let tensor4 = Tensor::new(&tensor_impl);
+
+                    let evalue1 = EValue::new(tensor1);
+                    let evalue2 = EValue::new(tensor2);
+                    let evalue3 = None;
+                    let evalue4 = EValue::new(tensor4);
+                    let wrapped_vals = EValuePtrList::new_optional([
+                        Some(&evalue1),
+                        Some(&evalue2),
+                        evalue3,
+                        Some(&evalue4),
+                    ]);
+                    let unwrapped_vals = storage!(Option<TensorAny>, [4]);
+                    let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals).unwrap();
+                    check_evalue(EValue::new(list));
+                }
+                Tag::ListScalar => unimplemented!(),
             }
         }
     }
