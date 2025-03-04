@@ -4,7 +4,7 @@ use ndarray::{ArrayBase, ArrayView, ArrayViewMut, ShapeBuilder};
 
 use executorch_sys as et_c;
 
-use crate::{error::try_new, util::IntoCpp};
+use crate::util::{c_new, IntoCpp};
 
 use super::{
     DataMut, DataTyped, DimOrderType, Scalar, SizesType, StridesType, TensorBase, TensorImpl,
@@ -127,7 +127,7 @@ impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> ArrayStorage<A, S, 
     /// must outlive the [`TensorImpl`] created from it.
     pub fn as_tensor_impl(&self) -> TensorImpl<A> {
         let impl_ = unsafe {
-            try_new(|this| {
+            c_new(|this| {
                 et_c::executorch_TensorImpl_new(
                     this,
                     A::TYPE.cpp(),
@@ -138,9 +138,7 @@ impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> ArrayStorage<A, S, 
                     self.strides.as_ref().as_ptr() as *mut StridesType,
                     et_c::TensorShapeDynamism::TensorShapeDynamism_STATIC,
                 );
-                et_c::Error::Error_Ok
             })
-            .unwrap()
         };
         TensorImplBase(impl_, PhantomData)
     }

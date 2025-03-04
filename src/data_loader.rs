@@ -48,8 +48,7 @@ mod file_data_loader {
     use std::cell::UnsafeCell;
     use std::ffi::CStr;
 
-    use crate::error::try_new;
-    use crate::util::IntoCpp;
+    use crate::util::{try_c_new, IntoCpp};
     use crate::Result;
     use executorch_sys as et_c;
 
@@ -88,8 +87,8 @@ mod file_data_loader {
             file_name: impl AsRef<std::path::Path>,
             alignment: Option<usize>,
         ) -> Result<Self> {
-            let file_name = file_name.as_ref().to_str().expect("Invalid file name");
-            let file_name = std::ffi::CString::new(file_name).unwrap();
+            let file_name = file_name.as_ref().as_os_str().as_encoded_bytes();
+            let file_name = std::ffi::CString::new(file_name).map_err(|_| crate::Error::ToCStr)?;
             Self::from_path_cstr(&file_name, alignment)
         }
 
@@ -118,7 +117,7 @@ mod file_data_loader {
         /// The `file_name` should be a valid UTF-8 string and not contains a null byte other than the one at the end.
         pub fn from_path_cstr(file_name: &CStr, alignment: Option<usize>) -> Result<Self> {
             let alignment = alignment.unwrap_or(16);
-            let loader = try_new(|loader| unsafe {
+            let loader = try_c_new(|loader| unsafe {
                 et_c::executorch_FileDataLoader_new(file_name.as_ptr(), alignment, loader)
             })?;
             Ok(Self(UnsafeCell::new(loader)))
@@ -164,8 +163,8 @@ mod file_data_loader {
             file_name: impl AsRef<std::path::Path>,
             mlock_config: Option<MlockConfig>,
         ) -> Result<Self> {
-            let file_name = file_name.as_ref().to_str().expect("Invalid file name");
-            let file_name = std::ffi::CString::new(file_name).unwrap();
+            let file_name = file_name.as_ref().as_os_str().as_encoded_bytes();
+            let file_name = std::ffi::CString::new(file_name).map_err(|_| crate::Error::ToCStr)?;
             Self::from_path_cstr(&file_name, mlock_config)
         }
 
@@ -189,7 +188,7 @@ mod file_data_loader {
         /// The `file_name` should be a valid UTF-8 string and not contains a null byte other than the one at the end.
         pub fn from_path_cstr(file_name: &CStr, mlock_config: Option<MlockConfig>) -> Result<Self> {
             let mlock_config = mlock_config.unwrap_or(MlockConfig::UseMlock).cpp();
-            let loader = try_new(|loader| unsafe {
+            let loader = try_c_new(|loader| unsafe {
                 et_c::executorch_MmapDataLoader_new(file_name.as_ptr(), mlock_config, loader)
             })?;
             Ok(Self(UnsafeCell::new(loader)))

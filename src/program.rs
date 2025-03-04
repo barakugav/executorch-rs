@@ -10,13 +10,12 @@ use std::marker::PhantomData;
 use std::ptr;
 
 use crate::data_loader::DataLoader;
-use crate::error::try_new;
 use crate::evalue::{EValue, Tag};
 use crate::event_tracer::EventTracer;
 use crate::memory::MemoryManager;
 use crate::tensor::ScalarType;
-use crate::util::{ArrayRef, IntoCpp, IntoRust};
-use crate::Result;
+use crate::util::{try_c_new, ArrayRef, IntoCpp, IntoRust};
+use crate::{Error, Result};
 use executorch_sys as et_c;
 
 /// A deserialized ExecuTorch program binary.
@@ -44,7 +43,7 @@ impl<'a> Program<'a> {
     ) -> Result<Self> {
         let data_loader = data_loader.__data_loader_ptr();
         let verification = verification.unwrap_or(ProgramVerification::Minimal).cpp();
-        let program = try_new(|program| unsafe {
+        let program = try_c_new(|program| unsafe {
             et_c::executorch_Program_load(data_loader, verification, program)
         })?;
         Ok(Self(program, PhantomData))
@@ -65,10 +64,11 @@ impl<'a> Program<'a> {
     ///
     /// The name of the requested method. The pointer is owned by the Program, and has the same lifetime as the Program.
     pub fn get_method_name(&self, method_index: usize) -> Result<&str> {
-        let method_name = try_new(|method_name| unsafe {
+        let method_name = try_c_new(|method_name| unsafe {
             et_c::executorch_Program_get_method_name(&self.0, method_index, method_name)
         })?;
-        Ok(unsafe { CStr::from_ptr(method_name).to_str().unwrap() })
+        let method_name = unsafe { CStr::from_ptr(method_name) };
+        method_name.to_str().map_err(|_| Error::FromCStr)
     }
 
     /// Loads the named method and prepares it for execution.
@@ -95,7 +95,7 @@ impl<'a> Program<'a> {
         let event_tracer = et_c::EventTracerRefMut {
             ptr: event_tracer as *mut _,
         };
-        let method = try_new(|method| unsafe {
+        let method = try_c_new(|method| unsafe {
             et_c::executorch_Program_load_method(
                 &self.0,
                 method_name.as_ptr(),
@@ -113,7 +113,7 @@ impl<'a> Program<'a> {
     ///
     /// * `method_name` - The name of the method to get metadata for.
     pub fn method_meta(&self, method_name: &CStr) -> Result<MethodMeta> {
-        let meta = try_new(|meta| unsafe {
+        let meta = try_c_new(|meta| unsafe {
             et_c::executorch_Program_method_meta(&self.0, method_name.as_ptr(), meta)
         })?;
         Ok(unsafe { MethodMeta::new(meta) })
@@ -202,7 +202,8 @@ impl MethodMeta<'_> {
     /// Get the name of this method.
     pub fn name(&self) -> &str {
         let name = unsafe { et_c::executorch_MethodMeta_name(&self.0) };
-        unsafe { CStr::from_ptr(name).to_str().unwrap() }
+        let name = unsafe { CStr::from_ptr(name) };
+        name.to_str().map_err(|_| Error::FromCStr).unwrap()
     }
 
     /// Get the number of inputs to this method.
@@ -220,7 +221,7 @@ impl MethodMeta<'_> {
     ///
     /// The tag of input, can only be [Tensor, Int, Bool, Double, String].
     pub fn input_tag(&self, idx: usize) -> Result<Tag> {
-        try_new(|tag| unsafe { et_c::executorch_MethodMeta_input_tag(&self.0, idx, tag) })
+        try_c_new(|tag| unsafe { et_c::executorch_MethodMeta_input_tag(&self.0, idx, tag) })
             .map(IntoRust::rs)
     }
 
@@ -234,7 +235,7 @@ impl MethodMeta<'_> {
     ///
     /// The metadata on success, or an error on failure. Only valid for `Tag::Tensor`
     pub fn input_tensor_meta(&self, idx: usize) -> Result<TensorInfo> {
-        let info = try_new(|info| unsafe {
+        let info = try_c_new(|info| unsafe {
             et_c::executorch_MethodMeta_input_tensor_meta(&self.0, idx, info)
         })?;
         Ok(unsafe { TensorInfo::new(info) })
@@ -255,7 +256,7 @@ impl MethodMeta<'_> {
     ///
     /// The tag of output, can only be [Tensor, Int, Bool, Double, String].
     pub fn output_tag(&self, idx: usize) -> Result<Tag> {
-        try_new(|tag| unsafe { et_c::executorch_MethodMeta_output_tag(&self.0, idx, tag) })
+        try_c_new(|tag| unsafe { et_c::executorch_MethodMeta_output_tag(&self.0, idx, tag) })
             .map(IntoRust::rs)
     }
 
@@ -269,7 +270,7 @@ impl MethodMeta<'_> {
     ///
     /// The metadata on success, or an error on failure. Only valid for `Tag::Tensor`
     pub fn output_tensor_meta(&self, idx: usize) -> Result<TensorInfo> {
-        let info = try_new(|info| unsafe {
+        let info = try_c_new(|info| unsafe {
             et_c::executorch_MethodMeta_output_tensor_meta(&self.0, idx, info)
         })?;
         Ok(unsafe { TensorInfo::new(info) })
@@ -290,7 +291,7 @@ impl MethodMeta<'_> {
     ///
     /// The size in bytes on success, or an error on failure.
     pub fn memory_planned_buffer_size(&self, idx: usize) -> Result<usize> {
-        let size = try_new(|size| unsafe {
+        let size = try_c_new(|size| unsafe {
             et_c::executorch_MethodMeta_memory_planned_buffer_size(&self.0, idx, size)
         })?;
         Ok(size as usize)

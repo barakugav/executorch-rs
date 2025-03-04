@@ -12,12 +12,11 @@ use core::marker::PhantomData;
 use std::collections::HashSet;
 use std::path::Path;
 
-use crate::error::try_new;
 use crate::evalue::EValue;
 use crate::event_tracer::{EventTracer, EventTracerPtr};
 use crate::program::{MethodMeta, ProgramVerification};
-use crate::util::{ArrayRef, IntoCpp, IntoRust, NonTriviallyMovableVec};
-use crate::Result;
+use crate::util::{try_c_new, ArrayRef, IntoCpp, IntoRust, NonTriviallyMovableVec};
+use crate::{Error, Result};
 use executorch_sys as et_c;
 
 /// A facade class for loading programs and executing methods within them.
@@ -49,15 +48,12 @@ impl<'a> Module<'a> {
         load_mode: Option<LoadMode>,
         event_tracer: Option<EventTracerPtr<'a>>,
     ) -> Self {
+        let file_path = file_path.as_ref().to_str().ok_or(Error::ToCStr).unwrap();
         let load_mode = load_mode.unwrap_or(LoadMode::MmapUseMlock).cpp();
         let event_tracer = event_tracer
             .map(|tracer| tracer.0)
             .unwrap_or(et_c::cxx::UniquePtr::null());
-        let module = et_c::cpp::Module_new(
-            file_path.as_ref().to_str().unwrap(),
-            load_mode,
-            event_tracer,
-        );
+        let module = et_c::cpp::Module_new(file_path, load_mode, event_tracer);
         Self(module, PhantomData)
     }
 
@@ -163,7 +159,7 @@ impl<'a> Module<'a> {
     ///
     /// If the method name is not a valid UTF-8 string or contains a null character.
     pub fn method_meta(&mut self, method_name: impl AsRef<str>) -> Result<MethodMeta> {
-        let meta = try_new(|meta| unsafe {
+        let meta = try_c_new(|meta| unsafe {
             et_c::cpp::Module_method_meta(self.0.as_mut().unwrap(), method_name.as_ref(), meta)
         })?;
         Ok(unsafe { MethodMeta::new(meta) })
@@ -200,7 +196,7 @@ impl<'a> Module<'a> {
             })
         };
         let inputs = ArrayRef::from_slice(inputs.as_slice());
-        let mut outputs = try_new(|outputs| unsafe {
+        let mut outputs = try_c_new(|outputs| unsafe {
             et_c::cpp::Module_execute(
                 self.0.as_mut().unwrap(),
                 method_name.as_ref(),

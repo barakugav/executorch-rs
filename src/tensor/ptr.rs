@@ -70,7 +70,7 @@ impl<'a, S: Scalar> TensorPtr<'a, View<S>> {
 impl<D: Data> TensorPtr<'_, D> {
     /// Get an immutable tensor that points to the underlying data.
     pub fn as_tensor(&self) -> TensorBase<D::Immutable> {
-        let tensor = self.0.as_ref().expect("Null tensor");
+        let tensor = self.0.as_ref().unwrap();
         // Safety: *et_c::cpp::Tensor and et_c::Tensor is the same.
         let tensor = unsafe {
             std::mem::transmute::<*const et_c::cpp::Tensor, et_c::TensorRef>(tensor as *const _)
@@ -84,7 +84,7 @@ impl<D: Data> TensorPtr<'_, D> {
     where
         D: DataMut,
     {
-        let tensor = self.0.as_ref().expect("Null tensor");
+        let tensor = self.0.as_ref().unwrap();
         let tensor = et_c::TensorRef {
             ptr: tensor as *const et_c::cpp::Tensor as *const _,
         };
@@ -313,7 +313,7 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
 
         let (data_ptr, allocation_vec, _data_bound) = match self.data {
             TensorPtrBuilderData::Vec { data, offset } => {
-                let bound = data.len().checked_sub(offset).expect("Invalid offset");
+                let bound = data.len().checked_sub(offset).unwrap();
                 let ptr = unsafe { data.as_ptr().add(offset) };
                 (ptr, data, Some(bound))
             }
@@ -361,7 +361,7 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
 
         let (data_ptr, allocation_vec, _data_bound) = match self.data {
             TensorPtrBuilderData::Vec { mut data, offset } => {
-                let bound = data.len().checked_sub(offset).expect("Invalid offset");
+                let bound = data.len().checked_sub(offset).unwrap();
                 let ptr = unsafe { data.as_mut_ptr().add(offset) };
                 (ptr, data, Some(bound))
             }

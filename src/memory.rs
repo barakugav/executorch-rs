@@ -141,7 +141,7 @@ impl<'a> BufferMemoryAllocator<'a> {
     ///
     /// Panics if the buffer is larger than `u32::MAX` bytes.
     pub fn new(buffer: &'a mut [u8]) -> Self {
-        let size = buffer.len().try_into().expect("usize -> u32");
+        let size = buffer.len().try_into().unwrap();
         let base_addr = buffer.as_mut_ptr();
         let allocator = unsafe { et_c::executorch_MemoryAllocator_new(size, base_addr) };
         Self(UnsafeCell::new(allocator), PhantomData)

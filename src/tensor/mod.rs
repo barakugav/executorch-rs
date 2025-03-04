@@ -36,9 +36,8 @@ use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
 use std::pin::Pin;
 
-use crate::error::try_new;
 use crate::memory::{MemoryAllocator, Storable, Storage};
-use crate::util::{Destroy, IntoCpp, IntoRust, NonTriviallyMovable, __ArrayRefImpl};
+use crate::util::{Destroy, IntoCpp, IntoRust, NonTriviallyMovable, __ArrayRefImpl, c_new};
 use crate::{CError, Error, Result};
 use executorch_sys as et_c;
 
@@ -269,9 +268,9 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// Try to convert this tensor into a typed tensor with scalar type `S`.
     ///
     /// Fails if the scalar type of the tensor does not match the required one.
-    pub fn try_into_typed<S: Scalar>(self) -> Result<TensorBase<'a, D::Typed<S>>> {
+    pub fn try_into_typed<S: Scalar>(self) -> Result<TensorBase<'a, D::Typed<S>>, Self> {
         if self.scalar_type() != S::TYPE {
-            return Err(Error::CError(CError::InvalidType));
+            return Err(self);
         }
         // Safety: the scalar type is checked, D::Typed is compatible with D
         Ok(unsafe { TensorBase::<'a, D::Typed<S>>::convert_from(self) })
@@ -284,19 +283,21 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// If the scalar type of the tensor does not match the required one.
     #[track_caller]
     pub fn into_typed<S: Scalar>(self) -> TensorBase<'a, D::Typed<S>> {
-        self.try_into_typed().expect("Invalid type")
+        self.try_into_typed()
+            .map_err(|_| Error::CError(CError::InvalidType))
+            .unwrap()
     }
 
     /// Try to get a typed tensor with scalar type `S` referencing the same internal data as this tensor.
     ///
     /// Fails if the scalar type of the tensor does not match the required one.
-    pub fn try_as_typed<S: Scalar>(&self) -> Result<TensorBase<<D::Immutable as Data>::Typed<S>>> {
+    pub fn try_as_typed<S: Scalar>(&self) -> Option<TensorBase<<D::Immutable as Data>::Typed<S>>> {
         if self.scalar_type() != S::TYPE {
-            return Err(Error::CError(CError::InvalidType));
+            return None;
         }
         // Safety: the scalar type is checked, <D::Immutable as Data>::Typed<S> is compatible with D and its
         //  immutable (we took &self)
-        Ok(unsafe { TensorBase::<<D::Immutable as Data>::Typed<S>>::convert_from_ref(self) })
+        Some(unsafe { TensorBase::<<D::Immutable as Data>::Typed<S>>::convert_from_ref(self) })
     }
 
     /// Get a typed tensor with scalar type `S` referencing the same internal data as this tensor.
@@ -306,21 +307,23 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// If the scalar type of the tensor does not match the required one.
     #[track_caller]
     pub fn as_typed<S: Scalar>(&self) -> TensorBase<<D::Immutable as Data>::Typed<S>> {
-        self.try_as_typed().expect("Invalid type")
+        self.try_as_typed()
+            .ok_or(Error::CError(CError::InvalidType))
+            .unwrap()
     }
 
     /// Try to get a mutable typed tensor with scalar type `S` referencing the same internal data as this tensor.
     ///
     /// Fails if the scalar type of the tensor does not match the required one.
-    pub fn try_as_typed_mut<S: Scalar>(&mut self) -> Result<TensorBase<D::Typed<S>>>
+    pub fn try_as_typed_mut<S: Scalar>(&mut self) -> Option<TensorBase<D::Typed<S>>>
     where
         D: DataMut,
     {
         if self.scalar_type() != S::TYPE {
-            return Err(Error::CError(CError::InvalidType));
+            return None;
         }
         // Safety: the scalar type is checked, D::Typed<S> is compatible with D
-        Ok(unsafe { TensorBase::<D::Typed<S>>::convert_from_mut_ref(self) })
+        Some(unsafe { TensorBase::<D::Typed<S>>::convert_from_mut_ref(self) })
     }
 
     /// Get a mutable typed tensor with scalar type `S` referencing the same internal data as this tensor.
@@ -333,7 +336,9 @@ impl<'a, D: Data> TensorBase<'a, D> {
     where
         D: DataMut,
     {
-        self.try_as_typed_mut().expect("Invalid type")
+        self.try_as_typed_mut()
+            .ok_or(Error::CError(CError::InvalidType))
+            .unwrap()
     }
 
     fn coordinate_to_index(&self, coordinate: &[usize]) -> Option<usize> {
@@ -493,7 +498,10 @@ impl<D: DataTyped> Index<&[usize]> for TensorBase<'_, D> {
     type Output = D::Scalar;
 
     fn index(&self, index: &[usize]) -> &Self::Output {
-        let index = self.coordinate_to_index(index).expect("Invalid index");
+        let index = self
+            .coordinate_to_index(index)
+            .ok_or(Error::InvalidIndex)
+            .unwrap();
         let base_ptr = self.as_ptr();
         debug_assert!(!base_ptr.is_null());
         unsafe { &*base_ptr.add(index) }
@@ -501,7 +509,10 @@ impl<D: DataTyped> Index<&[usize]> for TensorBase<'_, D> {
 }
 impl<D: DataTyped + DataMut> IndexMut<&[usize]> for TensorBase<'_, D> {
     fn index_mut(&mut self, index: &[usize]) -> &mut Self::Output {
-        let index = self.coordinate_to_index(index).expect("Invalid index");
+        let index = self
+            .coordinate_to_index(index)
+            .ok_or(Error::InvalidIndex)
+            .unwrap();
         let base_ptr = self.as_mut_ptr();
         unsafe { &mut *base_ptr.add(index) }
     }
@@ -563,7 +574,10 @@ impl<'a, S: Scalar> Tensor<'a, S> {
         tensor_impl: &'a TensorImpl<S>,
         allocator: &'a MemoryAllocator<'a>,
     ) -> Self {
-        let storage = allocator.allocate_pinned().expect("Allocation failed");
+        let storage = allocator
+            .allocate_pinned()
+            .ok_or(Error::AllocationFailed)
+            .unwrap();
         Self::new_in_storage(tensor_impl, storage)
     }
 }
@@ -666,7 +680,7 @@ impl<'a, D: Data> TensorImplBase<'a, D> {
         debug_assert!(!dim_order.is_null());
         debug_assert!(!strides.is_null());
         let impl_ = unsafe {
-            try_new(|this| {
+            c_new(|this| {
                 et_c::executorch_TensorImpl_new(
                     this,
                     S::TYPE.cpp(),
@@ -677,9 +691,7 @@ impl<'a, D: Data> TensorImplBase<'a, D> {
                     strides as *mut StridesType,
                     et_c::TensorShapeDynamism::TensorShapeDynamism_STATIC,
                 );
-                et_c::Error::Error_Ok
             })
-            .unwrap()
         };
         Self(impl_, PhantomData)
     }

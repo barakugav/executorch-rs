@@ -154,7 +154,10 @@ impl<'a> EValue<'a> {
         value: impl IntoEValue<'a>,
         allocator: &'a MemoryAllocator<'a>,
     ) -> Self {
-        let storage = allocator.allocate_pinned().expect("Allocation failed");
+        let storage = allocator
+            .allocate_pinned()
+            .ok_or(Error::AllocationFailed)
+            .unwrap();
         Self::new_in_storage(value, storage)
     }
 
@@ -207,7 +210,7 @@ impl<'a> EValue<'a> {
     /// [`tag`][Self::tag] method.
     #[track_caller]
     pub fn as_i64(&self) -> i64 {
-        self.try_into().expect("Invalid type")
+        self.try_into().unwrap()
     }
 
     /// Get a reference to the value as a `&[i64]`.
@@ -219,7 +222,7 @@ impl<'a> EValue<'a> {
     /// [`tag`][Self::tag] method.
     #[track_caller]
     pub fn as_i64_list(&self) -> &[i64] {
-        self.try_into().expect("Invalid type")
+        self.try_into().unwrap()
     }
 
     /// Get a reference to the value as an `f64`.
@@ -231,7 +234,7 @@ impl<'a> EValue<'a> {
     /// [`tag`][Self::tag] method.
     #[track_caller]
     pub fn as_f64(&self) -> f64 {
-        self.try_into().expect("Invalid type")
+        self.try_into().unwrap()
     }
 
     /// Get a reference to the value as a `&[f64]`.
@@ -243,7 +246,7 @@ impl<'a> EValue<'a> {
     /// [`tag`][Self::tag] method.
     #[track_caller]
     pub fn as_f64_list(&self) -> &[f64] {
-        self.try_into().expect("Invalid type")
+        self.try_into().unwrap()
     }
 
     /// Get a reference to the value as a `bool`.
@@ -255,7 +258,7 @@ impl<'a> EValue<'a> {
     /// [`tag`][Self::tag] method.
     #[track_caller]
     pub fn as_bool(&self) -> bool {
-        self.try_into().expect("Invalid type")
+        self.try_into().unwrap()
     }
 
     /// Get a reference to the value as a `&[bool]`.
@@ -267,7 +270,7 @@ impl<'a> EValue<'a> {
     /// [`tag`][Self::tag] method.
     #[track_caller]
     pub fn as_bool_list(&self) -> &[bool] {
-        self.try_into().expect("Invalid type")
+        self.try_into().unwrap()
     }
 
     /// Get a reference to the value as a `&[c_char]`.
@@ -279,7 +282,7 @@ impl<'a> EValue<'a> {
     /// [`tag`][Self::tag] method.
     #[track_caller]
     pub fn as_chars(&self) -> &[std::ffi::c_char] {
-        self.try_into().expect("Invalid type")
+        self.try_into().unwrap()
     }
 
     /// Get a reference to the value as a `CStr`.
@@ -290,7 +293,7 @@ impl<'a> EValue<'a> {
     /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
     /// [`tag`][Self::tag] method.
     pub fn as_cstr(&self) -> &CStr {
-        self.try_into().expect("Invalid type")
+        self.try_into().unwrap()
     }
 
     /// Get a reference to the value as a [`TensorAny`].
@@ -302,7 +305,7 @@ impl<'a> EValue<'a> {
     /// [`tag`][Self::tag] method.
     #[track_caller]
     pub fn as_tensor(&self) -> TensorAny {
-        self.try_into().expect("Invalid type")
+        self.try_into().unwrap()
     }
 
     /// Get a reference to the value as a [`TensorList`].
@@ -313,7 +316,7 @@ impl<'a> EValue<'a> {
     /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
     /// [`tag`][Self::tag] method.
     pub fn as_tensor_list(&self) -> TensorList {
-        self.try_into().expect("Invalid type")
+        self.try_into().unwrap()
     }
 
     /// Get a reference to the value as a [`OptionalTensorList`].
@@ -324,7 +327,7 @@ impl<'a> EValue<'a> {
     /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
     /// [`tag`][Self::tag] method.
     pub fn as_optional_tensor_list(&self) -> OptionalTensorList {
-        self.try_into().expect("Invalid type")
+        self.try_into().unwrap()
     }
 
     /// Get the tag indicating the type of the value.
