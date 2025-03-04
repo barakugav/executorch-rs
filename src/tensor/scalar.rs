@@ -185,3 +185,50 @@ impl_scalar!(half::bf16, BFloat16);
 impl_scalar!(u16, UInt16);
 impl_scalar!(u32, UInt32);
 impl_scalar!(u64, UInt64);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rust_cpp_conversions() {
+        type CType = CScalarType;
+        type RType = ScalarType;
+        let scalars = [
+            (CType::ScalarType_Byte, RType::Byte),
+            (CType::ScalarType_Char, RType::Char),
+            (CType::ScalarType_Short, RType::Short),
+            (CType::ScalarType_Int, RType::Int),
+            (CType::ScalarType_Long, RType::Long),
+            (CType::ScalarType_Half, RType::Half),
+            (CType::ScalarType_Float, RType::Float),
+            (CType::ScalarType_Double, RType::Double),
+            (CType::ScalarType_ComplexHalf, RType::ComplexHalf),
+            (CType::ScalarType_ComplexFloat, RType::ComplexFloat),
+            (CType::ScalarType_ComplexDouble, RType::ComplexDouble),
+            (CType::ScalarType_Bool, RType::Bool),
+            (CType::ScalarType_QInt8, RType::QInt8),
+            (CType::ScalarType_QUInt8, RType::QUInt8),
+            (CType::ScalarType_QInt32, RType::QInt32),
+            (CType::ScalarType_BFloat16, RType::BFloat16),
+            (CType::ScalarType_QUInt4x2, RType::QUInt4x2),
+            (CType::ScalarType_QUInt2x4, RType::QUInt2x4),
+            (CType::ScalarType_Bits1x8, RType::Bits1x8),
+            (CType::ScalarType_Bits2x4, RType::Bits2x4),
+            (CType::ScalarType_Bits4x2, RType::Bits4x2),
+            (CType::ScalarType_Bits8, RType::Bits8),
+            (CType::ScalarType_Bits16, RType::Bits16),
+            (CType::ScalarType_Float8_e5m2, RType::Float8_e5m2),
+            (CType::ScalarType_Float8_e4m3fn, RType::Float8_e4m3fn),
+            (CType::ScalarType_Float8_e5m2fnuz, RType::Float8_e5m2fnuz),
+            (CType::ScalarType_Float8_e4m3fnuz, RType::Float8_e4m3fnuz),
+            (CType::ScalarType_UInt16, RType::UInt16),
+            (CType::ScalarType_UInt32, RType::UInt32),
+            (CType::ScalarType_UInt64, RType::UInt64),
+        ];
+        for (cpp, rust) in scalars {
+            assert_eq!(cpp.rs(), rust);
+            assert_eq!(rust.cpp(), cpp);
+        }
+    }
+}
