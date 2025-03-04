@@ -5,7 +5,7 @@
 // Unfortunately, no_std is still WIP, see https://github.com/pytorch/executorch/issues/4561
 extern crate link_cplusplus;
 
-use executorch::data_loader::FileDataLoader;
+use executorch::data_loader::BufferDataLoader;
 use executorch::evalue::EValue;
 use executorch::memory::{BufferMemoryAllocator, HierarchicalAllocator, MemoryManager};
 use executorch::ndarray::array;
@@ -17,6 +17,12 @@ use libc_print::libc_println;
 
 static mut MEMORY_ALLOCATOR_BUF: [u8; 4096] = [0; 4096];
 
+#[repr(align(16))]
+struct AlignedBytes<const N: usize>([u8; N]);
+const ADD_MODEL_BYTES_ALIGNED: AlignedBytes<{ include_bytes!("../../models/add.pte").len() }> =
+    AlignedBytes(*include_bytes!("../../models/add.pte"));
+const ADD_MODEL_BYTES: &[u8] = &ADD_MODEL_BYTES_ALIGNED.0;
+
 fn real_main() {
     executorch::platform::pal_init();
 
@@ -24,8 +30,7 @@ fn real_main() {
     let buffer = unsafe { &mut *core::ptr::addr_of_mut!(MEMORY_ALLOCATOR_BUF) };
     let allocator = BufferMemoryAllocator::new(buffer);
 
-    let file_data_loader =
-        FileDataLoader::from_path_cstr(cstr::cstr!("../models/add.pte"), None).unwrap();
+    let file_data_loader = BufferDataLoader::new(ADD_MODEL_BYTES);
 
     let program = Program::load(
         &file_data_loader,

@@ -18,4 +18,9 @@ pub const ADD_MODEL_PATH_CSTR: &CStr = unsafe {
     )
 };
 
-pub const ADD_MODEL_BYTES: &[u8] = include_bytes!("../examples/models/add.pte");
+#[repr(align(16))]
+struct AlignedBytes<const N: usize>([u8; N]);
+const ADD_MODEL_BYTES_ALIGNED: AlignedBytes<
+    { include_bytes!("../examples/models/add.pte").len() },
+> = AlignedBytes(*include_bytes!("../examples/models/add.pte"));
+pub const ADD_MODEL_BYTES: &[u8] = &ADD_MODEL_BYTES_ALIGNED.0;
