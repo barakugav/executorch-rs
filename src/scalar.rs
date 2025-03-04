@@ -2,6 +2,9 @@
 //!
 //! Half precision floating point types are provided by the `half` feature if enabled, otherwise a simple wrappers
 //! around `u16` are provided without any arithmetic operations.
+//!
+//! Complex numbers are provided by the `num-complex` feature if enabled, otherwise a simple struct with real and
+//! imaginary parts is provided without any arithmetic operations.
 
 cfg_if::cfg_if! { if #[cfg(feature = "half")] {
     pub use half::f16;

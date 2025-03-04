@@ -96,7 +96,7 @@ the crate will not link to any library and not modify the linker search path.
 - `tensor-ptr`
 
     Includes a few functions creating `cxx::SharedPtr<Tensor>` pointers, that manage the lifetime of the tensor
-    object alongside the lifetimes of the data buffer and additional metadata. The `extension_tensor.a`
+    object alongside the lifetimes of the data buffer and additional metadata. The `libextension_tensor.a`
     static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_TENSOR=ON`.
     Also includes the `std` feature.
 
@@ -105,7 +105,8 @@ the crate will not link to any library and not modify the linker search path.
     Includes the `ETDumpGen` struct, an implementation of an `EventTracer`, used for debugging and profiling.
     The `libetdump.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_DEVTOOLS=ON` and
     `EXECUTORCH_ENABLE_EVENT_TRACER=ON`.
-    In addition, the `flatcc` (or `flatcc_d`) library is required, available at `{CPP_EXECUTORCH_DIR}/third-party/flatcc/lib/`.
+    In addition, the `flatcc` (or `flatcc_d`) library is required, available at `{CPP_EXECUTORCH_DIR}/third-party/flatcc/lib/`,
+    and should be linked by the user.
 
 - `std`
 
