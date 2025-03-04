@@ -76,7 +76,7 @@ impl<D: Data> TensorPtr<'_, D> {
             std::mem::transmute::<*const et_c::cpp::Tensor, et_c::TensorRef>(tensor as *const _)
         };
         // Safety: the tensor is valid and the data is immutable.
-        unsafe { TensorBase::convert_from(TensorBase::from_inner_ref(tensor)) }
+        unsafe { TensorBase::from_inner_ref(tensor) }
     }
 
     /// Get a mutable tensor that points to the underlying data.
@@ -85,11 +85,11 @@ impl<D: Data> TensorPtr<'_, D> {
         D: DataMut,
     {
         let tensor = self.0.as_ref().unwrap();
-        let tensor = et_c::TensorRef {
-            ptr: tensor as *const et_c::cpp::Tensor as *const _,
+        let tensor = et_c::TensorRefMut {
+            ptr: tensor as *const et_c::cpp::Tensor as *mut et_c::cpp::Tensor as *mut _,
         };
         // Safety: the tensor is mutable, and we are the sole borrower.
-        unsafe { TensorBase::convert_from(TensorBase::from_inner_ref(tensor)) }
+        unsafe { TensorBase::from_inner_ref_mut(tensor) }
     }
 }
 

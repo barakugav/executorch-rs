@@ -108,6 +108,32 @@ impl<'a, D: Data> TensorBase<'a, D> {
         Self(tensor, PhantomData)
     }
 
+    /// Create a new tensor from an immutable Cpp reference.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the given tensor is valid for the lifetime of the new tensor,
+    /// and that the tensor is compatible with the data generic. `D` must be immutable as we take immutable reference
+    /// to the given tensor.
+    pub(crate) unsafe fn from_inner_ref(tensor: et_c::TensorRef) -> Self {
+        debug_assert!(!tensor.ptr.is_null());
+        let tensor = unsafe { &*(tensor.ptr as *const et_c::TensorStorage) };
+        Self(NonTriviallyMovable::from_ref(tensor), PhantomData)
+    }
+
+    /// Create a new mutable tensor from a mutable Cpp reference.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the given tensor is valid for the lifetime of the new tensor,
+    /// and that the tensor is compatible with the data generic.
+    #[allow(dead_code)]
+    pub(crate) unsafe fn from_inner_ref_mut(tensor: et_c::TensorRefMut) -> Self {
+        debug_assert!(!tensor.ptr.is_null());
+        let tensor = unsafe { &mut *(tensor.ptr as *mut et_c::TensorStorage) };
+        Self(NonTriviallyMovable::from_mut_ref(tensor), PhantomData)
+    }
+
     /// Create a new tensor with the same internal data as the given tensor, but with different data generic.
     ///
     /// # Safety
@@ -122,7 +148,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// # Safety
     ///
     /// The caller must ensure that the new data generic is compatible with the data of the given tensor.
-    /// If `D2` must be immutable as we take immutable reference to the given tensor.
+    /// `D2` must be immutable as we take immutable reference to the given tensor.
     pub(crate) unsafe fn convert_from_ref<D2: Data>(tensor: &'a TensorBase<D2>) -> Self {
         let inner = tensor.as_cpp_tensor();
         let inner = &*(inner.ptr as *const et_c::TensorStorage);
@@ -354,6 +380,36 @@ impl<'a, D: Data> TensorBase<'a, D> {
             Some(index as usize)
         }
     }
+
+    /// Safety: the caller must ensure that type `S` is the correct scalar type of the tensor.
+    unsafe fn get_without_type_check<S: Scalar>(&self, index: &[usize]) -> Option<&S> {
+        let index = self.coordinate_to_index(index)?;
+        let base_ptr = self.as_ptr_raw() as *const S;
+        debug_assert!(!base_ptr.is_null());
+        Some(unsafe { &*base_ptr.add(index) })
+    }
+
+    /// Safety: the caller must ensure that type `S` is the correct scalar type of the tensor.
+    unsafe fn get_without_type_check_mut<S: Scalar>(&self, index: &[usize]) -> Option<&mut S>
+    where
+        D: DataMut,
+    {
+        let index = self.coordinate_to_index(index)?;
+        let base_ptr = self.as_mut_ptr_raw() as *mut S;
+        debug_assert!(!base_ptr.is_null());
+        Some(unsafe { &mut *base_ptr.add(index) })
+    }
+
+    /// Get a reference to the element at `index`, or `None` if the scalar type of the tensor does not
+    /// match `S` or the index is out of bounds.
+    pub fn try_get<S: Scalar>(&self, index: &[usize]) -> Option<&S> {
+        if self.scalar_type() == S::TYPE {
+            // Safety: the scalar type is checked
+            unsafe { self.get_without_type_check(index) }
+        } else {
+            None
+        }
+    }
 }
 impl Destroy for et_c::TensorStorage {
     unsafe fn destroy(&mut self) {
@@ -468,8 +524,15 @@ impl<D: Data> std::fmt::Debug for TensorBase<'_, D> {
 impl<D: DataTyped> TensorBase<'_, D> {
     /// Returns a pointer to the constant underlying data blob.
     pub fn as_ptr(&self) -> *const D::Scalar {
-        debug_assert_eq!(self.scalar_type(), D::Scalar::TYPE, "Invalid type");
+        debug_assert_eq!(self.scalar_type(), D::Scalar::TYPE);
         self.as_ptr_raw() as *const D::Scalar
+    }
+
+    /// Get a reference to the element at `index`, or `None` if the index is out of bounds.
+    pub fn get(&self, index: &[usize]) -> Option<&D::Scalar> {
+        debug_assert_eq!(self.scalar_type(), D::Scalar::TYPE);
+        // Safety: the scalar type is checked
+        unsafe { self.get_without_type_check(index) }
     }
 }
 
@@ -485,12 +548,30 @@ impl<D: DataMut> TensorBase<'_, D> {
         debug_assert!(!ptr.is_null());
         ptr as *mut ()
     }
+
+    /// Get a mutable reference to the element at `index`, or `None` if the scalar type of the tensor does not
+    /// match `S` or the index is out of bounds.
+    pub fn try_get_mut<S: Scalar>(&mut self, index: &[usize]) -> Option<&mut S> {
+        if self.scalar_type() == S::TYPE {
+            // Safety: the scalar type is checked
+            unsafe { self.get_without_type_check_mut(index) }
+        } else {
+            None
+        }
+    }
 }
-impl<'a, D: DataTyped + DataMut> TensorBase<'a, D> {
+impl<D: DataTyped + DataMut> TensorBase<'_, D> {
     /// Returns a mutable pointer of type S to the underlying data blob.
     pub fn as_mut_ptr(&self) -> *mut D::Scalar {
-        debug_assert_eq!(self.scalar_type(), D::Scalar::TYPE, "Invalid type");
+        debug_assert_eq!(self.scalar_type(), D::Scalar::TYPE);
         self.as_mut_ptr_raw().cast()
+    }
+
+    /// Get a mutable reference to the element at `index`, or `None` if the index is out of bounds.
+    pub fn get_mut(&self, index: &[usize]) -> Option<&mut D::Scalar> {
+        debug_assert_eq!(self.scalar_type(), D::Scalar::TYPE);
+        // Safety: the scalar type is checked
+        unsafe { self.get_without_type_check_mut(index) }
     }
 }
 
@@ -629,38 +710,6 @@ impl<'a, S: Scalar> TensorMut<'a, S> {
 
 /// A type-erased immutable tensor that does not own the underlying data.
 pub type TensorAny<'a> = TensorBase<'a, ViewAny>;
-impl TensorAny<'_> {
-    pub(crate) unsafe fn from_inner_ref(tensor: et_c::TensorRef) -> Self {
-        debug_assert!(!tensor.ptr.is_null());
-        let tensor = unsafe { &*(tensor.ptr as *const et_c::TensorStorage) };
-        Self(NonTriviallyMovable::from_ref(tensor), PhantomData)
-    }
-
-    /// Get a reference to the element at `index`, or return `None` if the scalar type of the tensor does not
-    /// match `S` or the index is out of bounds.
-    pub fn get<S: Scalar>(&self, index: &[usize]) -> Option<&S> {
-        if self.scalar_type() != S::TYPE {
-            return None;
-        }
-        let index = self.coordinate_to_index(index)?;
-        let base_ptr = self.as_ptr_raw() as *const S;
-        debug_assert!(!base_ptr.is_null());
-        Some(unsafe { &*base_ptr.add(index) })
-    }
-}
-impl TensorBase<'_, ViewMutAny> {
-    /// Get a mutable reference to the element at `index`, or return `None` if the scalar type of the tensor does not
-    /// match `S` or the index is out of bounds.
-    pub fn get_mut<S: Scalar>(&mut self, index: &[usize]) -> Option<&mut S> {
-        if self.scalar_type() != S::TYPE {
-            return None;
-        }
-        let index = self.coordinate_to_index(index)?;
-        let base_ptr = self.as_mut_ptr_raw() as *mut S;
-        debug_assert!(!base_ptr.is_null());
-        Some(unsafe { &mut *base_ptr.add(index) })
-    }
-}
 
 /// A tensor implementation that does not own the underlying data.
 ///
@@ -914,110 +963,185 @@ impl Storable for Option<TensorAny<'_>> {
 mod tests {
     #[allow(unused_imports)]
     use super::*;
+    use crate::memory::BufferMemoryAllocator;
+    use crate::storage;
 
-    #[cfg(feature = "alloc")]
     #[test]
     fn tensor_from_ptr() {
-        // Create a tensor with sizes [2, 3] and data [1, 2, 3, 4, 5, 6]
-        let sizes = [2, 3];
-        let data = [1, 2, 3, 4, 5, 6];
-        let dim_order = [0, 1];
-        let strides = [3, 1];
-        let tensor_impl =
-            unsafe { TensorImpl::from_ptr(&sizes, data.as_ptr(), &dim_order, &strides) };
-        let tensor = Tensor::new(&tensor_impl);
+        for i in 0..3 {
+            // Create a tensor with sizes [2, 3] and data [1, 2, 3, 4, 5, 6]
+            let sizes = [2, 3];
+            let data = [1, 2, 3, 4, 5, 6];
+            let dim_order = [0, 1];
+            let strides = [3, 1];
+            let tensor_impl =
+                unsafe { TensorImpl::from_ptr(&sizes, data.as_ptr(), &dim_order, &strides) };
 
-        assert_eq!(tensor.nbytes(), 24);
-        assert_eq!(tensor.size(0), 2);
-        assert_eq!(tensor.size(1), 3);
-        assert_eq!(tensor.dim(), 2);
-        assert_eq!(tensor.numel(), 6);
-        assert_eq!(tensor.scalar_type(), ScalarType::Int);
-        assert_eq!(tensor.element_size(), 4);
-        assert_eq!(tensor.sizes(), &[2, 3]);
-        assert_eq!(tensor.dim_order(), &[0, 1]);
-        assert_eq!(tensor.strides(), &[3, 1]);
-        assert_eq!(tensor.as_ptr(), data.as_ptr());
+            let storage = storage!(Tensor<i32>);
+            let mut allocator_buf = [0u8; 1024];
+            let allocator = BufferMemoryAllocator::new(&mut allocator_buf);
+            #[allow(unused_assignments)]
+            let mut tensor = None;
+            cfg_if::cfg_if! { if #[cfg(feature = "alloc")] {
+                if i == 0 {
+                    tensor = Some(Tensor::new(&tensor_impl));
+                } else if i == 1 {
+                    tensor = Some(Tensor::new_in_storage(&tensor_impl, storage));
+                } else {
+                    tensor = Some(Tensor::new_in_allocator(&tensor_impl, &allocator));
+                }
+            } else {
+                if i == 0 {
+                    tensor = Some(Tensor::new_in_storage(&tensor_impl, storage));
+                } else {
+                    tensor = Some(Tensor::new_in_allocator(&tensor_impl, &allocator));
+                }
+            } }
+            let tensor = tensor.unwrap();
+
+            assert_eq!(tensor.nbytes(), 24);
+            assert_eq!(tensor.size(0), 2);
+            assert_eq!(tensor.size(1), 3);
+            assert_eq!(tensor.dim(), 2);
+            assert_eq!(tensor.numel(), 6);
+            assert_eq!(tensor.scalar_type(), ScalarType::Int);
+            assert_eq!(tensor.element_size(), 4);
+            assert_eq!(tensor.sizes(), &[2, 3]);
+            assert_eq!(tensor.dim_order(), &[0, 1]);
+            assert_eq!(tensor.strides(), &[3, 1]);
+            assert_eq!(tensor.as_ptr(), data.as_ptr());
+        }
     }
 
-    #[cfg(feature = "alloc")]
     #[test]
     fn tensor_from_slice() {
-        // Create a tensor with sizes [2, 3] and data [1, 2, 3, 4, 5, 6]
-        let sizes = [2, 3];
-        let data = [1, 2, 3, 4, 5, 6];
-        let dim_order = [0, 1];
-        let strides = [3, 1];
-        let tensor_impl = TensorImpl::from_slice(&sizes, &data, &dim_order, &strides);
-        let tensor = Tensor::new(&tensor_impl);
+        for i in 0..3 {
+            // Create a tensor with sizes [2, 3] and data [1, 2, 3, 4, 5, 6]
+            let sizes = [2, 3];
+            let data = [1, 2, 3, 4, 5, 6];
+            let dim_order = [0, 1];
+            let strides = [3, 1];
+            let tensor_impl = TensorImpl::from_slice(&sizes, &data, &dim_order, &strides);
 
-        assert_eq!(tensor.nbytes(), 24);
-        assert_eq!(tensor.size(0), 2);
-        assert_eq!(tensor.size(1), 3);
-        assert_eq!(tensor.dim(), 2);
-        assert_eq!(tensor.numel(), 6);
-        assert_eq!(tensor.scalar_type(), ScalarType::Int);
-        assert_eq!(tensor.element_size(), 4);
-        assert_eq!(tensor.sizes(), &[2, 3]);
-        assert_eq!(tensor.dim_order(), &[0, 1]);
-        assert_eq!(tensor.strides(), &[3, 1]);
-        assert_eq!(tensor.as_ptr(), data.as_ptr());
+            let storage = storage!(Tensor<i32>);
+            let mut allocator_buf = [0u8; 1024];
+            let allocator = BufferMemoryAllocator::new(&mut allocator_buf);
+            #[allow(unused_assignments)]
+            let mut tensor = None;
+            cfg_if::cfg_if! { if #[cfg(feature = "alloc")] {
+                if i == 0 {
+                    tensor = Some(Tensor::new(&tensor_impl));
+                } else if i == 1 {
+                    tensor = Some(Tensor::new_in_storage(&tensor_impl, storage));
+                } else {
+                    tensor = Some(Tensor::new_in_allocator(&tensor_impl, &allocator));
+                }
+            } else {
+                if i == 0 {
+                    tensor = Some(Tensor::new_in_storage(&tensor_impl, storage));
+                } else {
+                    tensor = Some(Tensor::new_in_allocator(&tensor_impl, &allocator));
+                }
+            } }
+            let tensor = tensor.unwrap();
+
+            assert_eq!(tensor.nbytes(), 24);
+            assert_eq!(tensor.size(0), 2);
+            assert_eq!(tensor.size(1), 3);
+            assert_eq!(tensor.dim(), 2);
+            assert_eq!(tensor.numel(), 6);
+            assert_eq!(tensor.scalar_type(), ScalarType::Int);
+            assert_eq!(tensor.element_size(), 4);
+            assert_eq!(tensor.sizes(), &[2, 3]);
+            assert_eq!(tensor.dim_order(), &[0, 1]);
+            assert_eq!(tensor.strides(), &[3, 1]);
+            assert_eq!(tensor.as_ptr(), data.as_ptr());
+        }
     }
 
-    #[cfg(feature = "alloc")]
     #[test]
     fn tensor_mut_from_ptr() {
-        // Create a tensor with sizes [2, 3] and data [1, 2, 3, 4, 5, 6]
-        let sizes = [2, 3];
-        let mut data = [1, 2, 3, 4, 5, 6];
-        let data_ptr = data.as_ptr();
-        let dim_order = [0, 1];
-        let strides = [3, 1];
-        let mut tensor_impl =
-            unsafe { TensorImplMut::from_ptr(&sizes, data.as_mut_ptr(), &dim_order, &strides) };
-        let tensor = TensorMut::new(&mut tensor_impl);
+        for _i in 0..2 {
+            // Create a tensor with sizes [2, 3] and data [1, 2, 3, 4, 5, 6]
+            let sizes = [2, 3];
+            let mut data = [1, 2, 3, 4, 5, 6];
+            let data_ptr = data.as_ptr();
+            let dim_order = [0, 1];
+            let strides = [3, 1];
+            let mut tensor_impl =
+                unsafe { TensorImplMut::from_ptr(&sizes, data.as_mut_ptr(), &dim_order, &strides) };
 
-        assert_eq!(tensor.nbytes(), 24);
-        assert_eq!(tensor.size(0), 2);
-        assert_eq!(tensor.size(1), 3);
-        assert_eq!(tensor.dim(), 2);
-        assert_eq!(tensor.numel(), 6);
-        assert_eq!(tensor.scalar_type(), ScalarType::Int);
-        assert_eq!(tensor.element_size(), 4);
-        assert_eq!(tensor.sizes(), &[2, 3]);
-        assert_eq!(tensor.dim_order(), &[0, 1]);
-        assert_eq!(tensor.strides(), &[3, 1]);
-        assert_eq!(tensor.as_ptr(), data_ptr);
+            let storage = storage!(TensorMut<i32>);
+            #[allow(unused_assignments)]
+            let mut tensor = None;
+            cfg_if::cfg_if! { if #[cfg(feature = "alloc")] {
+                if _i == 0 {
+                    tensor = Some(TensorMut::new(&mut tensor_impl));
+                } else {
+                    tensor = Some(TensorMut::new_in_storage(&mut tensor_impl, storage));
+                }
+            } else {
+                tensor = Some(TensorMut::new_in_storage(&mut tensor_impl, storage));
+            } }
+            let tensor = tensor.unwrap();
+
+            assert_eq!(tensor.nbytes(), 24);
+            assert_eq!(tensor.size(0), 2);
+            assert_eq!(tensor.size(1), 3);
+            assert_eq!(tensor.dim(), 2);
+            assert_eq!(tensor.numel(), 6);
+            assert_eq!(tensor.scalar_type(), ScalarType::Int);
+            assert_eq!(tensor.element_size(), 4);
+            assert_eq!(tensor.sizes(), &[2, 3]);
+            assert_eq!(tensor.dim_order(), &[0, 1]);
+            assert_eq!(tensor.strides(), &[3, 1]);
+            assert_eq!(tensor.as_ptr(), data_ptr);
+        }
     }
 
-    #[cfg(feature = "alloc")]
     #[test]
     fn tensor_mut_from_slice() {
-        // Create a tensor with sizes [2, 3] and data [1, 2, 3, 4, 5, 6]
-        let sizes = [2, 3];
-        let mut data = [1, 2, 3, 4, 5, 6];
-        let data_ptr = data.as_ptr();
-        let dim_order = [0, 1];
-        let strides = [3, 1];
-        let mut tensor_impl = TensorImplMut::from_slice(&sizes, &mut data, &dim_order, &strides);
-        let tensor = TensorMut::new(&mut tensor_impl);
+        for _i in 0..2 {
+            // Create a tensor with sizes [2, 3] and data [1, 2, 3, 4, 5, 6]
+            let sizes = [2, 3];
+            let mut data = [1, 2, 3, 4, 5, 6];
+            let data_ptr = data.as_ptr();
+            let dim_order = [0, 1];
+            let strides = [3, 1];
+            let mut tensor_impl =
+                TensorImplMut::from_slice(&sizes, &mut data, &dim_order, &strides);
 
-        assert_eq!(tensor.nbytes(), 24);
-        assert_eq!(tensor.size(0), 2);
-        assert_eq!(tensor.size(1), 3);
-        assert_eq!(tensor.dim(), 2);
-        assert_eq!(tensor.numel(), 6);
-        assert_eq!(tensor.scalar_type(), ScalarType::Int);
-        assert_eq!(tensor.element_size(), 4);
-        assert_eq!(tensor.sizes(), &[2, 3]);
-        assert_eq!(tensor.dim_order(), &[0, 1]);
-        assert_eq!(tensor.strides(), &[3, 1]);
-        assert_eq!(tensor.as_ptr(), data_ptr);
+            let storage = storage!(TensorMut<i32>);
+            #[allow(unused_assignments)]
+            let mut tensor = None;
+            cfg_if::cfg_if! { if #[cfg(feature = "alloc")] {
+                if _i == 0 {
+                    tensor = Some(TensorMut::new(&mut tensor_impl));
+                } else {
+                    tensor = Some(TensorMut::new_in_storage(&mut tensor_impl, storage));
+                }
+            } else {
+                tensor = Some(TensorMut::new_in_storage(&mut tensor_impl, storage));
+            } }
+            let tensor = tensor.unwrap();
+
+            assert_eq!(tensor.nbytes(), 24);
+            assert_eq!(tensor.size(0), 2);
+            assert_eq!(tensor.size(1), 3);
+            assert_eq!(tensor.dim(), 2);
+            assert_eq!(tensor.numel(), 6);
+            assert_eq!(tensor.scalar_type(), ScalarType::Int);
+            assert_eq!(tensor.element_size(), 4);
+            assert_eq!(tensor.sizes(), &[2, 3]);
+            assert_eq!(tensor.dim_order(), &[0, 1]);
+            assert_eq!(tensor.strides(), &[3, 1]);
+            assert_eq!(tensor.as_ptr(), data_ptr);
+        }
     }
 
     #[cfg(feature = "std")]
     #[test]
-    fn tensor_with_scalar_type() {
+    fn tensor_get_scalar_type() {
         fn test_scalar_type<S: Scalar>(data_allocator: impl FnOnce(usize) -> crate::alloc::Vec<S>) {
             let sizes = [2, 4, 17];
             let data = data_allocator(2 * 4 * 17);
@@ -1049,16 +1173,35 @@ mod tests {
         let data = indices
             .clone()
             .map(|(x, y, z)| x as i32 * 1337 - y as i32 * 87 + z as i32 * 13)
-            .collect::<Vec<_>>();
+            .collect::<crate::alloc::Vec<_>>();
         let dim_order = [0, 1, 2];
         let strides = [15, 3, 1];
         let tensor_impl = TensorImpl::from_slice(&sizes, &data, &dim_order, &strides);
         let tensor = Tensor::new(&tensor_impl);
 
-        for (x, y, z) in indices {
-            let actual = tensor[&[x, y, z]];
-            assert_eq!(actual, x as i32 * 1337 - y as i32 * 87 + z as i32 * 13);
+        assert!(tensor.get(&[4, 0, 0]).is_none());
+        assert!(tensor.get(&[0, 5, 0]).is_none());
+        assert!(tensor.get(&[0, 0, 3]).is_none());
+        assert!(tensor.try_get::<i32>(&[4, 0, 0]).is_none());
+        assert!(tensor.try_get::<i32>(&[0, 5, 0]).is_none());
+        assert!(tensor.try_get::<i32>(&[0, 0, 3]).is_none());
+
+        for (x, y, z) in indices.clone() {
+            let actual1 = tensor[&[x, y, z]];
+            let actual2 = tensor.get(&[x, y, z]).unwrap();
+            let actual3 = tensor.try_get::<i32>(&[x, y, z]).unwrap();
+            let expected = x as i32 * 1337 - y as i32 * 87 + z as i32 * 13;
+            assert_eq!(actual1, expected);
+            assert_eq!(*actual2, expected);
+            assert_eq!(*actual3, expected);
         }
+
+        let tensor = tensor.as_type_erased();
+        for (x, y, z) in indices.clone() {
+            let actual = tensor.try_get::<i32>(&[x, y, z]).unwrap();
+            assert_eq!(*actual, x as i32 * 1337 - y as i32 * 87 + z as i32 * 13);
+        }
+        assert!(tensor.try_get::<f32>(&[0, 0, 0]).is_none())
     }
 
     #[cfg(feature = "alloc")]
@@ -1068,12 +1211,20 @@ mod tests {
         let indices = (0..sizes[0] as usize)
             .flat_map(|x| (0..sizes[1] as usize).map(move |y| (x, y)))
             .flat_map(|(x, y)| (0..sizes[2] as usize).map(move |z| (x, y, z)));
-        let mut data = indices.clone().map(|_| 0).collect::<Vec<_>>();
+        let mut data = indices.clone().map(|_| 0).collect::<crate::alloc::Vec<_>>();
         let dim_order = [0, 1, 2];
         let strides = [15, 3, 1];
         let mut tensor_impl = TensorImplMut::from_slice(&sizes, &mut data, &dim_order, &strides);
         let mut tensor = TensorMut::new(&mut tensor_impl);
 
+        assert!(tensor.get_mut(&[4, 0, 0]).is_none());
+        assert!(tensor.get_mut(&[0, 5, 0]).is_none());
+        assert!(tensor.get_mut(&[0, 0, 3]).is_none());
+        assert!(tensor.try_get_mut::<i32>(&[4, 0, 0]).is_none());
+        assert!(tensor.try_get_mut::<i32>(&[0, 5, 0]).is_none());
+        assert!(tensor.try_get_mut::<i32>(&[0, 0, 3]).is_none());
+
+        // IndexMut
         for (x, y, z) in indices.clone() {
             assert_eq!(tensor[&[x, y, z]], 0);
         }
@@ -1081,10 +1232,190 @@ mod tests {
             tensor[&[x, y, z]] = x as i32 * 1337 - y as i32 * 87 + z as i32 * 13;
         }
         for (x, y, z) in indices.clone() {
-            assert_eq!(
-                tensor[&[x, y, z]],
-                x as i32 * 1337 - y as i32 * 87 + z as i32 * 13
-            );
+            let expected = x as i32 * 1337 - y as i32 * 87 + z as i32 * 13;
+            assert_eq!(tensor[&[x, y, z]], expected);
         }
+        for (x, y, z) in indices.clone() {
+            tensor[&[x, y, z]] = 0;
+        }
+
+        // get_mut
+        for (x, y, z) in indices.clone() {
+            assert_eq!(tensor[&[x, y, z]], 0);
+        }
+        for (x, y, z) in indices.clone() {
+            *tensor.get_mut(&[x, y, z]).unwrap() = x as i32 * 1337 - y as i32 * 87 + z as i32 * 13;
+        }
+        for (x, y, z) in indices.clone() {
+            let expected = x as i32 * 1337 - y as i32 * 87 + z as i32 * 13;
+            assert_eq!(tensor[&[x, y, z]], expected);
+        }
+        for (x, y, z) in indices.clone() {
+            *tensor.get_mut(&[x, y, z]).unwrap() = 0;
+        }
+
+        // try_get_mut
+        for (x, y, z) in indices.clone() {
+            assert_eq!(tensor[&[x, y, z]], 0);
+        }
+        for (x, y, z) in indices.clone() {
+            *tensor.try_get_mut::<i32>(&[x, y, z]).unwrap() =
+                x as i32 * 1337 - y as i32 * 87 + z as i32 * 13;
+        }
+        for (x, y, z) in indices.clone() {
+            let expected = x as i32 * 1337 - y as i32 * 87 + z as i32 * 13;
+            assert_eq!(tensor[&[x, y, z]], expected);
+        }
+        for (x, y, z) in indices.clone() {
+            *tensor.try_get_mut::<i32>(&[x, y, z]).unwrap() = 0;
+        }
+
+        // try_get_mut of type-erased tensor
+        let mut tensor = tensor.as_type_erased_mut();
+        for (x, y, z) in indices.clone() {
+            assert_eq!(*tensor.try_get_mut::<i32>(&[x, y, z]).unwrap(), 0);
+        }
+        for (x, y, z) in indices.clone() {
+            *tensor.try_get_mut::<i32>(&[x, y, z]).unwrap() =
+                x as i32 * 1337 - y as i32 * 87 + z as i32 * 13;
+        }
+        for (x, y, z) in indices.clone() {
+            let expected = x as i32 * 1337 - y as i32 * 87 + z as i32 * 13;
+            assert_eq!(*tensor.try_get_mut::<i32>(&[x, y, z]).unwrap(), expected);
+        }
+        for (x, y, z) in indices.clone() {
+            *tensor.try_get_mut::<i32>(&[x, y, z]).unwrap() = 0;
+        }
+        assert!(tensor.try_get_mut::<f32>(&[0, 0, 0]).is_none())
+    }
+
+    #[cfg(feature = "tensor-ptr")]
+    #[test]
+    fn into_type_erased() {
+        let tensor_ptr = TensorPtr::from_vec(vec![1_i32, 2, 3, 4]);
+        let tensor = tensor_ptr.as_tensor();
+        let tensor = tensor.into_type_erased();
+        assert_eq!(tensor.scalar_type(), ScalarType::Int);
+        let _ = tensor.into_typed::<i32>();
+
+        let mut tensor_ptr =
+            TensorPtrBuilder::<ViewMut<i32>>::from_vec(vec![1, 2, 3, 4]).build_mut();
+        let tensor = tensor_ptr.as_tensor_mut();
+        let tensor = tensor.into_type_erased();
+        assert_eq!(tensor.scalar_type(), ScalarType::Int);
+        let tensor = tensor.into_typed::<i32>();
+        // as_mut_ptr_raw is available only if the tensor is mutable
+        assert!(!tensor.as_mut_ptr_raw().is_null());
+    }
+
+    #[cfg(feature = "tensor-ptr")]
+    #[test]
+    fn as_type_erased() {
+        let tensor_ptr = TensorPtr::from_vec(vec![1_i32, 2, 3, 4]);
+        let tensor = tensor_ptr.as_tensor();
+        let tensor = tensor.as_type_erased();
+        assert_eq!(tensor.scalar_type(), ScalarType::Int);
+        let _ = tensor.as_typed::<i32>();
+
+        let mut tensor_ptr =
+            TensorPtrBuilder::<ViewMut<i32>>::from_vec(vec![1, 2, 3, 4]).build_mut();
+        let mut tensor = tensor_ptr.as_tensor_mut();
+        let mut tensor = tensor.as_type_erased_mut();
+        assert_eq!(tensor.scalar_type(), ScalarType::Int);
+        let tensor = tensor.as_typed_mut::<i32>();
+        // as_mut_ptr_raw is available only if the tensor is mutable
+        assert!(!tensor.as_mut_ptr_raw().is_null());
+    }
+
+    #[cfg(feature = "tensor-ptr")]
+    #[test]
+    fn try_into_typed() {
+        let tensor_ptr = TensorPtr::from_vec(vec![1_i32, 2, 3, 4]);
+        let tensor = tensor_ptr.as_tensor().into_type_erased();
+        let tensor = tensor.try_into_typed::<f64>().map(|_| ()).unwrap_err();
+        let tensor = tensor.try_into_typed::<i32>().map_err(|_| ()).unwrap();
+        assert_eq!(tensor.scalar_type(), ScalarType::Int);
+
+        let mut tensor_ptr =
+            TensorPtrBuilder::<ViewMut<i32>>::from_vec(vec![1, 2, 3, 4]).build_mut();
+        let tensor = tensor_ptr.as_tensor_mut().into_type_erased();
+        let tensor = tensor.try_into_typed::<f64>().map(|_| ()).unwrap_err();
+        let tensor = tensor.try_into_typed::<i32>().map_err(|_| ()).unwrap();
+        assert_eq!(tensor.scalar_type(), ScalarType::Int);
+    }
+
+    #[cfg(feature = "tensor-ptr")]
+    #[test]
+    fn into_typed() {
+        let tensor_ptr = TensorPtr::from_vec(vec![1_i32, 2, 3, 4]);
+        let tensor = tensor_ptr.as_tensor().into_type_erased();
+        let tensor = tensor.into_typed::<i32>();
+        assert_eq!(tensor.scalar_type(), ScalarType::Int);
+
+        let mut tensor_ptr =
+            TensorPtrBuilder::<ViewMut<i32>>::from_vec(vec![1, 2, 3, 4]).build_mut();
+        let tensor = tensor_ptr.as_tensor_mut().into_type_erased();
+        let tensor = tensor.into_typed::<i32>();
+        assert_eq!(tensor.scalar_type(), ScalarType::Int);
+    }
+
+    #[cfg(feature = "tensor-ptr")]
+    #[test]
+    #[should_panic]
+    fn into_typed_wrong() {
+        let tensor_ptr = TensorPtr::from_vec(vec![1_i32, 2, 3, 4]);
+        let tensor = tensor_ptr.as_tensor().into_type_erased();
+        let _ = tensor.into_typed::<f64>();
+    }
+
+    #[cfg(feature = "tensor-ptr")]
+    #[test]
+    fn try_as_typed() {
+        let tensor_ptr = TensorPtr::from_vec(vec![1_i32, 2, 3, 4]);
+        let tensor = tensor_ptr.as_tensor().into_type_erased();
+        assert!(tensor.try_as_typed::<f64>().is_none());
+        let tensor = tensor.try_as_typed::<i32>().unwrap();
+        assert_eq!(tensor.scalar_type(), ScalarType::Int);
+
+        let mut tensor_ptr =
+            TensorPtrBuilder::<ViewMut<i32>>::from_vec(vec![1, 2, 3, 4]).build_mut();
+        let mut tensor = tensor_ptr.as_tensor_mut().into_type_erased();
+        assert!(tensor.try_as_typed_mut::<f64>().is_none());
+        let tensor = tensor.try_as_typed_mut::<i32>().unwrap();
+        assert_eq!(tensor.scalar_type(), ScalarType::Int);
+    }
+
+    #[cfg(feature = "tensor-ptr")]
+    #[test]
+    fn as_typed() {
+        let tensor_ptr = TensorPtr::from_vec(vec![1_i32, 2, 3, 4]);
+        let tensor = tensor_ptr.as_tensor().into_type_erased();
+        let tensor = tensor.as_typed::<i32>();
+        assert_eq!(tensor.scalar_type(), ScalarType::Int);
+
+        let mut tensor_ptr =
+            TensorPtrBuilder::<ViewMut<i32>>::from_vec(vec![1, 2, 3, 4]).build_mut();
+        let mut tensor = tensor_ptr.as_tensor_mut().into_type_erased();
+        let tensor = tensor.as_typed_mut::<i32>();
+        assert_eq!(tensor.scalar_type(), ScalarType::Int);
+    }
+
+    #[cfg(feature = "tensor-ptr")]
+    #[test]
+    #[should_panic]
+    fn as_typed_wrong() {
+        let tensor_ptr = TensorPtr::from_vec(vec![1_i32, 2, 3, 4]);
+        let tensor = tensor_ptr.as_tensor().into_type_erased();
+        let _ = tensor.as_typed::<f64>();
+    }
+
+    #[cfg(feature = "tensor-ptr")]
+    #[test]
+    #[should_panic]
+    fn as_typed_mut_wrong() {
+        let mut tensor_ptr =
+            TensorPtrBuilder::<ViewMut<i32>>::from_vec(vec![1, 2, 3, 4]).build_mut();
+        let mut tensor = tensor_ptr.as_tensor_mut().into_type_erased();
+        let _ = tensor.as_typed_mut::<f64>();
     }
 }
