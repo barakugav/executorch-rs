@@ -160,13 +160,17 @@ The build (and library) is tested on Ubuntu and MacOS, not on Windows.
     Adds a dependency to the `ndarray` crate.
     This feature is enabled by default.
 
-- `f16`
+- `half`
 
-    Support for half precision floating point numbers using the `half` crate. Models that require input or output tensors with `f16` data type can be operated on with this features.
+    Adds a dependency to the `half` crate, which provides a fully capable `f16` and `bf16` types.
+    Without this feature enabled, both of these types are available with a simple conversions to/from `u16` only.
+    Note that this only affect input/output tensors, the internal computations always have the capability to operate on such scalars.
 
-- `complex`
+- `num-complex`
 
-    Support for complex numbers using the `num-complex` crate. Models that require input or output tensors with complex `32` or `64` bit floating point numbers can be operated on with this feature. If the `f16` feature is enabled as well, complex numbers with half precision can be used.
+    Adds a dependency to the `num-complex` crate, which provides a fully capable complex number type.
+    Without this feature enabled, complex numbers are available as a simple struct with two public fields without any operations.
+    Note that this only affect input/output tensors, the internal computations always have the capability to operate on such scalars.
 
 - `std`
 

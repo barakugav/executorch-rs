@@ -80,13 +80,13 @@
 //!     Adds a dependency to the `ndarray` crate.
 //!     This feature is enabled by default.
 //! - `f16`:
-//!     Support for half precision floating point numbers using the [`half`](https://docs.rs/half/latest/half/) crate.
-//!     Models that require input or output tensors with `f16` data type can be operated on with this features.
-//! - `complex`:
-//!     Support for complex numbers using the [`num-complex`](https://docs.rs/num/latest/num/complex/struct.Complex.html)
-//!     crate. Models that require input or output tensors with complex `32` or `64` bit floating point numbers can be
-//!     operated on with this feature. If the `f16` feature is enabled as well, complex numbers with half
-//!     precision can be used.
+//!     Adds a dependency to the `half` crate, which provides a fully capable `f16` and `bf16` types.
+//!     Without this feature enabled, both of these types are available with a simple conversions to/from `u16` only.
+//!     Note that this only affect input/output tensors, the internal computations always have the capability to operate on such scalars.
+//! - `num-complex`:
+//!     Adds a dependency to the `num-complex` crate, which provides a fully capable complex number type.
+//!     Without this feature enabled, complex numbers are available as a simple struct with two public fields without any operations.
+//!     Note that this only affect input/output tensors, the internal computations always have the capability to operate on such scalars.
 //! - `std`:
 //!     Enable the standard library. This feature is enabled by default, but can be disabled to build [`executorch`](crate)
 //!     in a `no_std` environment.
@@ -152,6 +152,7 @@ pub mod memory;
 pub mod module;
 pub mod platform;
 pub mod program;
+pub mod scalar;
 pub mod tensor;
 pub mod util;
 
@@ -161,10 +162,10 @@ pub use error::{CError, Error};
 #[cfg(feature = "ndarray")]
 pub use ndarray;
 
-#[cfg(feature = "f16")]
+#[cfg(feature = "half")]
 pub use half;
 
-#[cfg(feature = "complex")]
+#[cfg(feature = "num-complex")]
 pub use num_complex;
 
 #[cfg(test)]

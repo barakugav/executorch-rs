@@ -12,7 +12,7 @@ executorch = { path = "../../", features = [
     "data-loader",
     "module",
     "tensor-ptr",
-    "f16",
+    "half",
 ] }
 rand = "0.9"
 serde_json = "1.0"
