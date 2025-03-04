@@ -168,14 +168,7 @@ impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> AsRef<ArrayBase<S, 
     for ArrayStorage<A, S, D>
 {
     fn as_ref(&self) -> &ArrayBase<S, D> {
-        &self.array
-    }
-}
-impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> From<ArrayStorage<A, S, D>>
-    for ArrayBase<S, D>
-{
-    fn from(val: ArrayStorage<A, S, D>) -> Self {
-        val.array
+        self.as_array()
     }
 }
 
@@ -219,6 +212,10 @@ mod tests {
         assert_eq!(tensor.dim_order(), &[0]);
         assert_eq!(tensor.strides(), &[1]);
         assert_eq!(tensor.as_ptr(), array.as_ref().as_ptr());
+        drop(tensor);
+
+        let array = array.into_array();
+        assert_eq!(array, arr1(&[1, 2, 3]));
 
         // Create a 2D array and convert it to a tensor
         let array = ArrayStorage::<f64, _, _>::new(arr2(&[[1.0, 2.0, 7.0], [3.0, 4.0, 8.0]]));
@@ -235,6 +232,10 @@ mod tests {
         assert_eq!(tensor.dim_order(), &[0, 1]);
         assert_eq!(tensor.strides(), &[3, 1]);
         assert_eq!(tensor.as_ptr(), array.as_ref().as_ptr());
+        drop(tensor);
+
+        let array = array.into_array();
+        assert_eq!(array, arr2(&[[1.0, 2.0, 7.0], [3.0, 4.0, 8.0]]));
     }
 
     #[cfg(feature = "std")]
@@ -288,7 +289,7 @@ mod tests {
             let arr1 = ArrayStorage::new(arr1.as_ref().view().into_dyn());
             let tensor_impl = arr1.as_tensor_impl();
             let tensor = Tensor::new(&tensor_impl);
-            let arr2 = tensor.as_array::<ndarray::IxDyn>().into_shape_with_order(vec![18, 4]).unwrap();
+            let arr2 = tensor.as_array_dyn().into_shape_with_order(vec![18, 4]).unwrap();
             assert_eq!(arr1.as_ref().view().into_shape_with_order(vec![18, 4]).unwrap(), arr2);
             assert_eq!(arr2.strides(), [4, 1]);
         } }
@@ -311,7 +312,7 @@ mod tests {
             let mut arr1 = ArrayStorage::new(arr1.view_mut().into_shape_with_order((18, 4)).unwrap());
             let mut tensor_impl = arr1.as_tensor_impl_mut();
             let mut tensor = TensorMut::new(&mut tensor_impl);
-            let arr2 = tensor.as_array_mut::<ndarray::IxDyn>();
+            let arr2 = tensor.as_array_mut_dyn();
             assert_eq!(arr1_clone.view().into_shape_with_order(vec![18, 4]).unwrap(), arr2);
             assert_eq!(arr2.strides(), [4, 1]);
         } }
