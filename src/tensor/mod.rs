@@ -467,25 +467,16 @@ impl<D: Data> std::fmt::Debug for TensorBase<'_, D> {
             ScalarType::Float => add_data_field(self.as_typed::<f32>(), &mut st),
             ScalarType::Double => add_data_field(self.as_typed::<f64>(), &mut st),
             ScalarType::ComplexHalf => {
-                cfg_if::cfg_if! { if #[cfg(feature = "complex")] {
-                    add_data_field(self.as_typed::<num_complex::Complex<crate::scalar::f16>>(), &mut st);
-                } else {
-                    add_data_field_unsupported(&mut st);
-                } }
+                add_data_field(
+                    self.as_typed::<crate::scalar::Complex<crate::scalar::f16>>(),
+                    &mut st,
+                );
             }
             ScalarType::ComplexFloat => {
-                cfg_if::cfg_if! { if #[cfg(feature = "complex")] {
-                    add_data_field(self.as_typed::<num_complex::Complex32>(), &mut st);
-                } else {
-                    add_data_field_unsupported(&mut st);
-                } }
+                add_data_field(self.as_typed::<crate::scalar::Complex<f32>>(), &mut st);
             }
             ScalarType::ComplexDouble => {
-                cfg_if::cfg_if! { if #[cfg(feature = "complex")] {
-                    add_data_field(self.as_typed::<num_complex::Complex64>(), &mut st);
-                } else {
-                    add_data_field_unsupported(&mut st);
-                } }
+                add_data_field(self.as_typed::<crate::scalar::Complex<f64>>(), &mut st);
             }
             ScalarType::Bool => add_data_field(self.as_typed::<bool>(), &mut st),
             ScalarType::QInt8 => add_data_field_unsupported(&mut st),

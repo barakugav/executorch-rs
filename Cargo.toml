@@ -45,7 +45,7 @@ module = ["executorch-sys/module", "std"]
 tensor-ptr = ["executorch-sys/tensor-ptr", "std"]
 etdump = ["executorch-sys/etdump"]
 half = ["dep:half"]
-complex = ["num-complex"]
+num-complex = ["dep:num-complex"]
 
 [package.metadata.docs.rs]
 all-features = true

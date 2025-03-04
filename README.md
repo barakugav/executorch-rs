@@ -166,9 +166,11 @@ The build (and library) is tested on Ubuntu and MacOS, not on Windows.
     Without this feature enabled, both of these types are available with a simple conversions to/from `u16` only.
     Note that this only affect input/output tensors, the internal computations always have the capability to operate on such scalars.
 
-- `complex`
+- `num-complex`
 
-    Support for complex numbers using the `num-complex` crate. Models that require input or output tensors with complex `16`, `32` or `64` bit floating point numbers can be operated on with this feature.
+    Adds a dependency to the `num-complex` crate, which provides a fully capable complex number type.
+    Without this feature enabled, complex numbers are available as a simple struct with two public fields without any operations.
+    Note that this only affect input/output tensors, the internal computations always have the capability to operate on such scalars.
 
 - `std`
 

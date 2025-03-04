@@ -13,7 +13,7 @@ cfg_if::cfg_if! { if #[cfg(feature = "half")] {
     /// Doesn't provide any arithmetic operations, but can be converted to/from `u16`.
     /// Enable the `half` feature to get a fully functional `f16` type.
     #[allow(non_camel_case_types)]
-    #[derive(Clone, Copy, Default)]
+    #[derive(Copy, Clone, Debug, Default)]
     #[repr(transparent)]
     pub struct f16(u16);
     impl f16 {
@@ -26,18 +26,13 @@ cfg_if::cfg_if! { if #[cfg(feature = "half")] {
             self.0
         }
     }
-    impl std::fmt::Debug for f16 {
-        fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            fmt.debug_tuple("f16").field(&self.0).finish()
-        }
-    }
 
     /// A 16-bit floating point type implementing the [`bfloat16`] format.
     ///
     /// Doesn't provide any arithmetic operations, but can be converted to/from `u16`.
     /// Enable the `half` feature to get a fully functional `bf16` type.
     #[allow(non_camel_case_types)]
-    #[derive(Clone, Copy, Default)]
+    #[derive(Copy, Clone, Debug, Default)]
     #[repr(transparent)]
     pub struct bf16(u16);
     impl bf16 {
@@ -50,9 +45,21 @@ cfg_if::cfg_if! { if #[cfg(feature = "half")] {
             self.0
         }
     }
-    impl std::fmt::Debug for bf16 {
-        fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            fmt.debug_tuple("bf16").field(&self.0).finish()
-        }
+} }
+
+cfg_if::cfg_if! { if #[cfg(feature = "num-complex")] {
+    pub use num_complex::Complex;
+} else {
+    /// A complex number in Cartesian form.
+    ///
+    /// Doesn't provide any arithmetic operations, but expose the real and imaginary parts.
+    /// Enable the `num-complex` feature to get a fully functional `Complex` type.
+    #[derive(Copy, Clone, Debug, Default)]
+    #[repr(C)]
+    pub struct Complex<T> {
+        /// Real portion of the complex number
+        pub re: T,
+        /// Imaginary portion of the complex number
+        pub im: T,
     }
 } }
