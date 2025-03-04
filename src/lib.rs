@@ -166,3 +166,6 @@ pub use half;
 
 #[cfg(feature = "complex")]
 pub use num_complex;
+
+#[cfg(test)]
+mod tests;

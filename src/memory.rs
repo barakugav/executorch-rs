@@ -141,7 +141,7 @@ impl<'a> BufferMemoryAllocator<'a> {
     ///
     /// Panics if the buffer is larger than `u32::MAX` bytes.
     pub fn new(buffer: &'a mut [u8]) -> Self {
-        let size = buffer.len().try_into().expect("usize -> u32");
+        let size = buffer.len().try_into().unwrap();
         let base_addr = buffer.as_mut_ptr();
         let allocator = unsafe { et_c::executorch_MemoryAllocator_new(size, base_addr) };
         Self(UnsafeCell::new(allocator), PhantomData)
@@ -465,6 +465,97 @@ impl_default_storable!(i8, i16, i32, i64, u8, u16, u32, u64, f32, f64);
 
 #[cfg(test)]
 mod tests {
+    use core::ops::Deref;
+
+    use super::*;
+
+    #[test]
+    fn buffer_memory_allocator() {
+        let mut buffer: [u8; 16384] = [0; 16384];
+        let allocator = BufferMemoryAllocator::new(&mut buffer);
+        let allocator_init = |size| {
+            let buffer = allocator.allocate_raw(size, 1).unwrap();
+            BufferMemoryAllocator::new(buffer)
+        };
+        test_memory_allocator(allocator_init, true);
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn malloc_memory_allocator() {
+        let mut idx = 0;
+        let allocator_init = |_size| {
+            idx += 1;
+            if idx % 2 == 0 {
+                MallocMemoryAllocator::default()
+            } else {
+                MallocMemoryAllocator::new()
+            }
+        };
+        test_memory_allocator(allocator_init, false);
+    }
+
+    fn test_memory_allocator<'a, T>(mut allocator_init: impl FnMut(usize) -> T, is_bounded: bool)
+    where
+        T: Deref<Target = super::MemoryAllocator<'a>>,
+    {
+        let sizes = [1, 2, 4, 5, 8, 13, 31];
+        let alignments = [1, 2, 4, 8, 16, 32];
+        let allocations = sizes
+            .into_iter()
+            .flat_map(|size| alignments.map(|alignment| (size, alignment)));
+
+        let raw_allocations_size = allocations.clone().map(|(size, _)| size).sum::<usize>() * 2;
+        let allocator = allocator_init(raw_allocations_size);
+        for (size, alignment) in allocations.clone() {
+            let allocation = allocator.allocate_raw(size, alignment).unwrap_or_else(|| {
+                panic!(
+                    "Failed to allocate {} bytes with alignment {}",
+                    size, alignment
+                )
+            });
+            assert_eq!(allocation.len(), size);
+            assert_eq!(allocation.as_ptr() as usize % alignment, 0);
+        }
+        if is_bounded {
+            let allocator = allocator_init(0);
+            assert!(allocator.allocate_raw(5, 8).is_none());
+        }
+
+        let allocator = allocator_init(1024);
+        assert!(allocator.allocate::<[u8; 1]>().is_some());
+        assert!(allocator.allocate::<[u8; 2]>().is_some());
+        assert!(allocator.allocate::<[u8; 4]>().is_some());
+        assert!(allocator.allocate::<[u8; 8]>().is_some());
+        assert!(allocator.allocate::<[f64; 15]>().is_some());
+
+        let allocator = allocator_init(1024);
+        assert!(allocator.allocate_pinned::<[u8; 1]>().is_some());
+        assert!(allocator.allocate_pinned::<[u8; 2]>().is_some());
+        assert!(allocator.allocate_pinned::<[u8; 4]>().is_some());
+        assert!(allocator.allocate_pinned::<[u8; 8]>().is_some());
+        assert!(allocator.allocate_pinned::<[f64; 15]>().is_some());
+
+        let allocator = allocator_init(4096);
+        for sizes in sizes {
+            let arr = allocator.allocate_arr::<u8>(sizes).unwrap();
+            assert_eq!(arr.len(), sizes);
+            assert!(arr.iter().all(|&x| x == 0));
+            let arr = allocator.allocate_arr::<f32>(sizes).unwrap();
+            assert_eq!(arr.len(), sizes);
+            assert!(arr.iter().all(|&x| x == 0.0));
+        }
+
+        let allocator = allocator_init(4096);
+        for sizes in sizes {
+            let arr = allocator.allocate_arr_fn(sizes, |i| i as u8).unwrap();
+            assert_eq!(arr.len(), sizes);
+            assert!(arr.iter().enumerate().all(|(i, &x)| x == i as u8));
+            let arr = allocator.allocate_arr_fn(sizes, |i| i as f32).unwrap();
+            assert_eq!(arr.len(), sizes);
+            assert!(arr.iter().enumerate().all(|(i, &x)| x == i as f32));
+        }
+    }
 
     #[test]
     fn storage_macro() {

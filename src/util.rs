@@ -4,10 +4,10 @@
 //! that are used in the C++ API. Some structs and functions accept these types as arguments, so they are
 //! necessary to interact with the C++ API.
 
+use et_c::Error as CError;
 use std::ffi::CStr;
 use std::fmt::Debug;
 use std::marker::{PhantomData, PhantomPinned};
-#[cfg(feature = "alloc")]
 use std::mem::MaybeUninit;
 use std::pin::Pin;
 
@@ -207,6 +207,17 @@ impl<T: Destroy> Drop for NonTriviallyMovableVec<T> {
             unsafe { elem.destroy() };
         }
     }
+}
+
+pub(crate) fn try_c_new<T>(f: impl FnOnce(*mut T) -> CError) -> crate::Result<T> {
+    let mut value = MaybeUninit::uninit();
+    let err = f(value.as_mut_ptr());
+    err.rs().map(|_| unsafe { value.assume_init() })
+}
+pub(crate) fn c_new<T>(f: impl FnOnce(*mut T)) -> T {
+    let mut value = MaybeUninit::uninit();
+    f(value.as_mut_ptr());
+    unsafe { value.assume_init() }
 }
 
 pub(crate) trait IntoRust {

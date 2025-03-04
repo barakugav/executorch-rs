@@ -10,3 +10,12 @@
 pub fn pal_init() {
     unsafe { executorch_sys::executorch_pal_init() };
 }
+
+#[cfg(test)]
+mod tests {
+
+    #[ctor::ctor]
+    fn pal_init() {
+        super::pal_init();
+    }
+}

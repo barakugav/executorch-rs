@@ -13,6 +13,7 @@ mod c_link {
 pub use c_link::*;
 
 impl Copy for Tag {}
+impl Copy for ScalarType {}
 
 macro_rules! impl_ref_clone_copy {
     ($name:ty) => {

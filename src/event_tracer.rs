@@ -40,8 +40,10 @@ mod etdump {
             Self::new()
         }
     }
+
     impl ETDumpGen<'static> {
         /// Create a new ETDumpGen object with a buffer allocated using malloc.
+        #[cfg(feature = "std")]
         pub fn new() -> Self {
             Self::new_impl(None)
         }

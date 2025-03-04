@@ -1,7 +1,5 @@
 //! Error types used in the [`executortorch`](crate) crate.
 
-use std::mem::MaybeUninit;
-
 use crate::util::IntoRust;
 use executorch_sys as et_c;
 
@@ -9,14 +7,30 @@ use et_c::Error as RawCError;
 
 /// ExecuTorch Error type.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum Error {
     /// An error from the Cpp underlying library.
     CError(CError),
+
+    /// Failed to convert a string or Path to a CStr.
+    ToCStr,
+
+    /// Failed to convert from CStr to str.
+    FromCStr,
+
+    /// Failed to allocate memory.
+    AllocationFailed,
+
+    /// The index is invalid.
+    InvalidIndex,
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Error::CError(error) => std::fmt::Display::fmt(error, fmt),
+            Error::ToCStr | Error::FromCStr | Error::AllocationFailed | Error::InvalidIndex => {
+                std::fmt::Debug::fmt(self, fmt)
+            }
         }
     }
 }
@@ -70,8 +84,8 @@ pub enum CError {
     DelegateInvalidHandle,
 }
 impl std::fmt::Display for CError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{self:?}")
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Debug::fmt(self, fmt)
     }
 }
 #[cfg(feature = "std")]
@@ -103,13 +117,7 @@ impl IntoRust for RawCError {
     }
 }
 
-pub(crate) type Result<T> = std::result::Result<T, Error>;
-
-pub(crate) fn try_new<T>(f: impl FnOnce(*mut T) -> RawCError) -> crate::Result<T> {
-    let mut value = MaybeUninit::uninit();
-    let err = f(value.as_mut_ptr());
-    err.rs().map(|_| unsafe { value.assume_init() })
-}
+pub(crate) type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[cfg(test)]
 mod tests {

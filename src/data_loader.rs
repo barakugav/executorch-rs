@@ -48,8 +48,7 @@ mod file_data_loader {
     use std::cell::UnsafeCell;
     use std::ffi::CStr;
 
-    use crate::error::try_new;
-    use crate::util::IntoCpp;
+    use crate::util::{try_c_new, IntoCpp};
     use crate::Result;
     use executorch_sys as et_c;
 
@@ -88,8 +87,8 @@ mod file_data_loader {
             file_name: impl AsRef<std::path::Path>,
             alignment: Option<usize>,
         ) -> Result<Self> {
-            let file_name = file_name.as_ref().to_str().expect("Invalid file name");
-            let file_name = std::ffi::CString::new(file_name).unwrap();
+            let file_name = file_name.as_ref().as_os_str().as_encoded_bytes();
+            let file_name = std::ffi::CString::new(file_name).map_err(|_| crate::Error::ToCStr)?;
             Self::from_path_cstr(&file_name, alignment)
         }
 
@@ -118,7 +117,7 @@ mod file_data_loader {
         /// The `file_name` should be a valid UTF-8 string and not contains a null byte other than the one at the end.
         pub fn from_path_cstr(file_name: &CStr, alignment: Option<usize>) -> Result<Self> {
             let alignment = alignment.unwrap_or(16);
-            let loader = try_new(|loader| unsafe {
+            let loader = try_c_new(|loader| unsafe {
                 et_c::executorch_FileDataLoader_new(file_name.as_ptr(), alignment, loader)
             })?;
             Ok(Self(UnsafeCell::new(loader)))
@@ -164,8 +163,8 @@ mod file_data_loader {
             file_name: impl AsRef<std::path::Path>,
             mlock_config: Option<MlockConfig>,
         ) -> Result<Self> {
-            let file_name = file_name.as_ref().to_str().expect("Invalid file name");
-            let file_name = std::ffi::CString::new(file_name).unwrap();
+            let file_name = file_name.as_ref().as_os_str().as_encoded_bytes();
+            let file_name = std::ffi::CString::new(file_name).map_err(|_| crate::Error::ToCStr)?;
             Self::from_path_cstr(&file_name, mlock_config)
         }
 
@@ -189,7 +188,7 @@ mod file_data_loader {
         /// The `file_name` should be a valid UTF-8 string and not contains a null byte other than the one at the end.
         pub fn from_path_cstr(file_name: &CStr, mlock_config: Option<MlockConfig>) -> Result<Self> {
             let mlock_config = mlock_config.unwrap_or(MlockConfig::UseMlock).cpp();
-            let loader = try_new(|loader| unsafe {
+            let loader = try_c_new(|loader| unsafe {
                 et_c::executorch_MmapDataLoader_new(file_name.as_ptr(), mlock_config, loader)
             })?;
             Ok(Self(UnsafeCell::new(loader)))
@@ -231,5 +230,71 @@ mod file_data_loader {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::data_loader::BufferDataLoader;
+    #[cfg(feature = "data-loader")]
+    use crate::data_loader::{FileDataLoader, MlockConfig, MmapDataLoader};
+
+    #[cfg(all(feature = "data-loader", feature = "std"))]
+    use crate::tests::add_model_path;
+    use crate::tests::ADD_MODEL_BYTES;
+    #[cfg(feature = "data-loader")]
+    use crate::tests::ADD_MODEL_PATH_CSTR;
+
+    #[test]
+    fn buffer_loader() {
+        let _ = BufferDataLoader::new(ADD_MODEL_BYTES);
+    }
+
+    #[cfg(all(feature = "data-loader", feature = "std"))]
+    #[test]
+    fn file_loader_from_path() {
+        assert!(FileDataLoader::from_path(add_model_path(), None).is_ok());
+        for alignment in [1, 2, 4, 8, 16, 32, 64] {
+            assert!(FileDataLoader::from_path(add_model_path(), Some(alignment)).is_ok());
+        }
+    }
+
+    #[cfg(feature = "data-loader")]
+    #[test]
+    fn file_loader_from_path_cstr() {
+        assert!(FileDataLoader::from_path_cstr(ADD_MODEL_PATH_CSTR, None).is_ok());
+        for alignment in [1, 2, 4, 8, 16, 32, 64] {
+            assert!(FileDataLoader::from_path_cstr(ADD_MODEL_PATH_CSTR, Some(alignment)).is_ok());
+        }
+    }
+
+    #[cfg(all(feature = "data-loader", feature = "std"))]
+    #[test]
+    fn mmap_loader_from_path() {
+        assert!(MmapDataLoader::from_path(add_model_path(), None).is_ok());
+        assert!(MmapDataLoader::from_path(add_model_path(), Some(MlockConfig::NoMlock)).is_ok());
+        assert!(MmapDataLoader::from_path(add_model_path(), Some(MlockConfig::UseMlock)).is_ok());
+        assert!(MmapDataLoader::from_path(
+            add_model_path(),
+            Some(MlockConfig::UseMlockIgnoreErrors)
+        )
+        .is_ok());
+    }
+
+    #[cfg(feature = "data-loader")]
+    #[test]
+    fn mmap_loader_from_path_cstr() {
+        assert!(
+            MmapDataLoader::from_path_cstr(ADD_MODEL_PATH_CSTR, Some(MlockConfig::NoMlock)).is_ok()
+        );
+        assert!(
+            MmapDataLoader::from_path_cstr(ADD_MODEL_PATH_CSTR, Some(MlockConfig::UseMlock))
+                .is_ok()
+        );
+        assert!(MmapDataLoader::from_path_cstr(
+            ADD_MODEL_PATH_CSTR,
+            Some(MlockConfig::UseMlockIgnoreErrors)
+        )
+        .is_ok());
     }
 }
