@@ -232,3 +232,69 @@ mod file_data_loader {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::data_loader::BufferDataLoader;
+    #[cfg(feature = "data-loader")]
+    use crate::data_loader::{FileDataLoader, MlockConfig, MmapDataLoader};
+
+    #[cfg(all(feature = "data-loader", feature = "std"))]
+    use crate::tests::add_model_path;
+    use crate::tests::ADD_MODEL_BYTES;
+    #[cfg(feature = "data-loader")]
+    use crate::tests::ADD_MODEL_PATH_CSTR;
+
+    #[test]
+    fn buffer_loader() {
+        let _ = BufferDataLoader::new(ADD_MODEL_BYTES);
+    }
+
+    #[cfg(all(feature = "data-loader", feature = "std"))]
+    #[test]
+    fn file_loader_from_path() {
+        assert!(FileDataLoader::from_path(add_model_path(), None).is_ok());
+        for alignment in [1, 2, 4, 8, 16, 32, 64] {
+            assert!(FileDataLoader::from_path(add_model_path(), Some(alignment)).is_ok());
+        }
+    }
+
+    #[cfg(feature = "data-loader")]
+    #[test]
+    fn file_loader_from_path_cstr() {
+        assert!(FileDataLoader::from_path_cstr(ADD_MODEL_PATH_CSTR, None).is_ok());
+        for alignment in [1, 2, 4, 8, 16, 32, 64] {
+            assert!(FileDataLoader::from_path_cstr(ADD_MODEL_PATH_CSTR, Some(alignment)).is_ok());
+        }
+    }
+
+    #[cfg(all(feature = "data-loader", feature = "std"))]
+    #[test]
+    fn mmap_loader_from_path() {
+        assert!(MmapDataLoader::from_path(add_model_path(), None).is_ok());
+        assert!(MmapDataLoader::from_path(add_model_path(), Some(MlockConfig::NoMlock)).is_ok());
+        assert!(MmapDataLoader::from_path(add_model_path(), Some(MlockConfig::UseMlock)).is_ok());
+        assert!(MmapDataLoader::from_path(
+            add_model_path(),
+            Some(MlockConfig::UseMlockIgnoreErrors)
+        )
+        .is_ok());
+    }
+
+    #[cfg(feature = "data-loader")]
+    #[test]
+    fn mmap_loader_from_path_cstr() {
+        assert!(
+            MmapDataLoader::from_path_cstr(ADD_MODEL_PATH_CSTR, Some(MlockConfig::NoMlock)).is_ok()
+        );
+        assert!(
+            MmapDataLoader::from_path_cstr(ADD_MODEL_PATH_CSTR, Some(MlockConfig::UseMlock))
+                .is_ok()
+        );
+        assert!(MmapDataLoader::from_path_cstr(
+            ADD_MODEL_PATH_CSTR,
+            Some(MlockConfig::UseMlockIgnoreErrors)
+        )
+        .is_ok());
+    }
+}
