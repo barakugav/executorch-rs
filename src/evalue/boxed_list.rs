@@ -354,3 +354,80 @@ pub struct EValuePtrListElem(#[allow(dead_code)] et_c::EValueRef);
 impl Storable for EValuePtrListElem {
     type __Storage = et_c::EValueRef;
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::evalue::EValue;
+    use crate::storage;
+
+    #[test]
+    #[should_panic]
+    fn evalue_ptr_list_length_mismatch() {
+        let evalue1_storage = storage!(EValue);
+        let evalue2_storage = storage!(EValue);
+        let evalue3_storage = storage!(EValue);
+        let evalue1 = EValue::new_in_storage(42, evalue1_storage);
+        let evalue2 = EValue::new_in_storage(17, evalue2_storage);
+        let evalue3 = EValue::new_in_storage(6, evalue3_storage);
+
+        let wrapped_vals_storage = storage!(EValuePtrListElem, [2]); // length mismatch
+        let _ = EValuePtrList::new_in_storage([&evalue1, &evalue2, &evalue3], wrapped_vals_storage);
+    }
+
+    #[test]
+    fn length_mismatch() {
+        let evalue1_storage = storage!(EValue);
+        let evalue2_storage = storage!(EValue);
+        let evalue3_storage = storage!(EValue);
+        let evalue1 = EValue::new_in_storage(42, evalue1_storage);
+        let evalue2 = EValue::new_in_storage(17, evalue2_storage);
+        let evalue3 = EValue::new_in_storage(6, evalue3_storage);
+
+        let wrapped_vals_storage = storage!(EValuePtrListElem, [3]);
+        let wrapped_vals =
+            EValuePtrList::new_in_storage([&evalue1, &evalue2, &evalue3], wrapped_vals_storage);
+        let unwrapped_vals = storage!(i64, [2]); // length mismatch
+
+        let res = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals);
+        assert!(matches!(res, Err(Error::CError(CError::InvalidArgument))));
+    }
+
+    #[test]
+    fn wrong_type() {
+        let evalue1_storage = storage!(EValue);
+        let evalue2_storage = storage!(EValue);
+        let evalue3_storage = storage!(EValue);
+        let evalue1 = EValue::new_in_storage(42, evalue1_storage);
+        let evalue2 = EValue::new_in_storage(17, evalue2_storage);
+        let evalue3 = EValue::new_in_storage(6.5, evalue3_storage); // wrong type
+
+        let wrapped_vals_storage = storage!(EValuePtrListElem, [3]);
+        let wrapped_vals =
+            EValuePtrList::new_in_storage([&evalue1, &evalue2, &evalue3], wrapped_vals_storage);
+        let unwrapped_vals = storage!(i64, [3]);
+
+        let res = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals);
+        assert!(matches!(res, Err(Error::CError(CError::InvalidType))));
+    }
+
+    #[test]
+    fn null_element() {
+        let evalue1_storage = storage!(EValue);
+        let evalue2_storage = storage!(EValue);
+        // let evalue3_storage = None;
+        let evalue1 = EValue::new_in_storage(42, evalue1_storage);
+        let evalue2 = EValue::new_in_storage(17, evalue2_storage);
+        let evalue3 = None; // null element
+
+        let wrapped_vals_storage = storage!(EValuePtrListElem, [3]);
+        let wrapped_vals = EValuePtrList::new_optional_in_storage(
+            [Some(&evalue1), Some(&evalue2), evalue3],
+            wrapped_vals_storage,
+        );
+        let unwrapped_vals = storage!(i64, [3]);
+
+        let res = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals);
+        assert!(matches!(res, Err(Error::CError(CError::InvalidType))));
+    }
+}
