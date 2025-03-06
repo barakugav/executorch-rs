@@ -15,8 +15,6 @@ use executorch::util::Span;
 
 use libc_print::libc_println;
 
-static mut MEMORY_ALLOCATOR_BUF: [u8; 4096] = [0; 4096];
-
 #[repr(align(16))]
 struct AlignedBytes<const N: usize>([u8; N]);
 const ADD_MODEL_BYTES_ALIGNED: AlignedBytes<{ include_bytes!("../../models/add.pte").len() }> =
@@ -26,19 +24,14 @@ const ADD_MODEL_BYTES: &[u8] = &ADD_MODEL_BYTES_ALIGNED.0;
 fn real_main() {
     executorch::platform::pal_init();
 
-    // Safety: We are the main function, no other function access the buffer
-    let buffer = unsafe { &mut *core::ptr::addr_of_mut!(MEMORY_ALLOCATOR_BUF) };
-    let allocator = BufferMemoryAllocator::new(buffer);
+    let mut buffer = [0_u8; 4096];
+    let allocator = BufferMemoryAllocator::new(&mut buffer);
 
-    let file_data_loader = BufferDataLoader::new(ADD_MODEL_BYTES);
+    let data_loader = BufferDataLoader::new(ADD_MODEL_BYTES);
+    let program =
+        Program::load(&data_loader, Some(ProgramVerification::InternalConsistency)).unwrap();
 
-    let program = Program::load(
-        &file_data_loader,
-        Some(ProgramVerification::InternalConsistency),
-    )
-    .unwrap();
-
-    let method_meta = program.method_meta(cstr::cstr!(b"forward")).unwrap();
+    let method_meta = program.method_meta(cstr::cstr!("forward")).unwrap();
 
     let num_memory_planned_buffers = method_meta.num_memory_planned_buffers();
     let planned_arenas = allocator
@@ -56,7 +49,7 @@ fn real_main() {
     let memory_manager = MemoryManager::new(&allocator, Some(&mut planned_memory), None);
 
     let mut method = program
-        .load_method(cstr::cstr!(b"forward"), &memory_manager, None)
+        .load_method(cstr::cstr!("forward"), &memory_manager, None)
         .unwrap();
 
     let input_array1 = ArrayStorage::new(array!(1.0_f32));

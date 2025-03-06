@@ -105,6 +105,8 @@ jobs:
       - name: Test executorch
         run: cargo test --all-features
         working-directory: .
+        env:
+          EXECUTORCH_RS_LINK_TEST_KERNELS: 1
 
       ############ Examples ############
       - name: Run 'hello world' example
@@ -123,12 +125,12 @@ jobs:
         run: cargo check
         working-directory: examples/nano-gpt
         env:
-          EXECUTORCH_RS_LINK: "0"
+          EXECUTORCH_RS_LINK: 0
       - name: Check llama3 example
         run: cargo check
         working-directory: examples/llama3
         env:
-          EXECUTORCH_RS_LINK: "0"
+          EXECUTORCH_RS_LINK: 0
 
   rust-version-check-clippy:
     # check that we can build using different rust versions:
@@ -164,7 +166,7 @@ jobs:
         run: cargo check --all-features
         working-directory: .
         env:
-          EXECUTORCH_RS_LINK: "0"
+          EXECUTORCH_RS_LINK: 0
       - name: cargo clippy executorch
         uses: auguwu/clippy-action@1.4.0
         with:
@@ -172,13 +174,13 @@ jobs:
           check-args: --all-features
           token: ${{ secrets.GITHUB_TOKEN }}
         env:
-          EXECUTORCH_RS_LINK: "0"
+          EXECUTORCH_RS_LINK: 0
 
       - name: cargo check executorch-sys
         run: cargo check --all-features
         working-directory: executorch-sys
         env:
-          EXECUTORCH_RS_LINK: "0"
+          EXECUTORCH_RS_LINK: 0
       - name: cargo clippy executorch-sys
         uses: auguwu/clippy-action@1.4.0
         with:
@@ -186,4 +188,4 @@ jobs:
           check-args: --all-features
           token: ${{ secrets.GITHUB_TOKEN }}
         env:
-          EXECUTORCH_RS_LINK: "0"
+          EXECUTORCH_RS_LINK: 0
