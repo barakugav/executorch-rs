@@ -233,7 +233,7 @@ impl<'a> Module<'a> {
 
 #[repr(u32)]
 #[doc = " Enum to define loading behavior."]
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum LoadMode {
     #[doc = " Load the whole file as a buffer."]
     File = 0,
@@ -255,5 +255,163 @@ impl IntoCpp for LoadMode {
                 et_c::ModuleLoadMode::ModuleLoadMode_MmapUseMlockIgnoreErrors
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::{
+        evalue::Tag,
+        tensor::{ScalarType, Tensor, TensorImpl},
+        tests::add_model_path,
+    };
+
+    #[test]
+    fn load() {
+        for load_mode in [
+            None,
+            Some(LoadMode::File),
+            Some(LoadMode::Mmap),
+            Some(LoadMode::MmapUseMlock),
+            Some(LoadMode::MmapUseMlockIgnoreErrors),
+        ] {
+            for verification in [
+                None,
+                Some(ProgramVerification::Minimal),
+                Some(ProgramVerification::InternalConsistency),
+            ] {
+                let mut module = Module::new(add_model_path(), load_mode, None);
+                assert!(module.load(verification).is_ok());
+            }
+        }
+
+        let mut module = Module::new("non-existing-file.pte2", None, None);
+        assert!(module.load(None).is_err());
+    }
+
+    #[test]
+    fn method_names() {
+        let mut module = Module::new(add_model_path(), None, None);
+        let names = module.method_names().unwrap();
+        assert_eq!(names, HashSet::from_iter(["forward".to_string()]));
+
+        let mut module = Module::new("non-existing-file.pte2", None, None);
+        assert!(module.method_names().is_err());
+    }
+
+    #[test]
+    fn load_method() {
+        let mut module = Module::new(add_model_path(), None, None);
+        assert!(!module.is_method_loaded("forward"));
+        assert!(module.load_method("forward", None).is_ok());
+        assert!(module.is_method_loaded("forward"));
+        assert!(module.load_method("non-existing-method", None).is_err());
+        assert!(!module.is_method_loaded("non-existing-method"));
+
+        let mut module = Module::new("non-existing-file.pte2", None, None);
+        assert!(module.load_method("forward", None).is_err());
+    }
+
+    #[test]
+    fn method_meta() {
+        let mut module = Module::new(add_model_path(), None, None);
+        let method_meta = module.method_meta("forward").unwrap();
+
+        assert_eq!(method_meta.name(), "forward");
+
+        assert_eq!(method_meta.num_inputs(), 2);
+        assert_eq!(method_meta.input_tag(0).unwrap(), Tag::Tensor);
+        assert_eq!(method_meta.input_tag(1).unwrap(), Tag::Tensor);
+        assert!(method_meta.input_tag(2).is_err());
+        let tinfo1 = method_meta.input_tensor_meta(1).unwrap();
+        let tinfo2 = method_meta.input_tensor_meta(0).unwrap();
+        for tinfo in [tinfo1, tinfo2] {
+            assert_eq!(tinfo.sizes(), &[1]);
+            assert_eq!(tinfo.dim_order(), &[0]);
+            assert_eq!(tinfo.scalar_type(), ScalarType::Float);
+            assert_eq!(tinfo.nbytes(), 4);
+        }
+
+        assert_eq!(method_meta.num_outputs(), 1);
+        assert_eq!(method_meta.output_tag(0).unwrap(), Tag::Tensor);
+        assert!(method_meta.output_tag(1).is_err());
+        let tinfo = method_meta.output_tensor_meta(0).unwrap();
+        assert_eq!(tinfo.sizes(), &[1]);
+        assert_eq!(tinfo.dim_order(), &[0]);
+        assert_eq!(tinfo.scalar_type(), ScalarType::Float);
+        assert_eq!(tinfo.nbytes(), 4);
+        assert!(method_meta.output_tensor_meta(1).is_err());
+
+        for i in 0..method_meta.num_memory_planned_buffers() {
+            assert!(method_meta.memory_planned_buffer_size(i).is_ok());
+        }
+        assert!(method_meta
+            .memory_planned_buffer_size(method_meta.num_memory_planned_buffers())
+            .is_err());
+
+        let mut module = Module::new("non-existing-file.pte2", None, None);
+        assert!(module.method_meta("forward").is_err());
+    }
+
+    #[test]
+    fn execute() {
+        let mut module = Module::new(add_model_path(), None, None);
+
+        let sizes = [1];
+        let data = [1.0_f32];
+        let dim_order = [0];
+        let strides = [1];
+        let tensor1 = TensorImpl::from_slice(&sizes, &data, &dim_order, &strides);
+
+        let sizes = [1];
+        let data = [1.0_f32];
+        let dim_order = [0];
+        let strides = [1];
+        let tensor2 = TensorImpl::from_slice(&sizes, &data, &dim_order, &strides);
+
+        for i in 0..2 {
+            let inputs = [
+                EValue::new(Tensor::new(&tensor1)),
+                EValue::new(Tensor::new(&tensor2)),
+            ];
+            let outputs = if i == 0 {
+                module.execute("forward", &inputs).unwrap()
+            } else {
+                module.forward(&inputs).unwrap()
+            };
+            assert_eq!(outputs.len(), 1);
+            let output = &outputs[0];
+            assert_eq!(output.tag(), Tag::Tensor);
+            let output = output.as_tensor().into_typed::<f32>();
+            assert_eq!(output.sizes(), [1]);
+            assert_eq!(output[&[0]], 2.0);
+        }
+
+        // wrong number of inputs
+        let inputs = [EValue::new(Tensor::new(&tensor1))];
+        assert!(module.execute("forward", &inputs).is_err());
+        let inputs = [
+            EValue::new(Tensor::new(&tensor1)),
+            EValue::new(Tensor::new(&tensor2)),
+            EValue::new(Tensor::new(&tensor2)),
+        ];
+        assert!(module.execute("forward", &inputs).is_err());
+
+        // non-existing method
+        let inputs = [
+            EValue::new(Tensor::new(&tensor1)),
+            EValue::new(Tensor::new(&tensor2)),
+        ];
+        assert!(module.execute("non-existing-method", &inputs).is_err());
+
+        // non-existing file
+        let mut module = Module::new("non-existing-file.pte2", None, None);
+        let inputs = [
+            EValue::new(Tensor::new(&tensor1)),
+            EValue::new(Tensor::new(&tensor2)),
+        ];
+        assert!(module.execute("non-existing-method", &inputs).is_err());
     }
 }

@@ -210,7 +210,7 @@ mod file_data_loader {
     /// Using `mlock()` typically loads all of the pages immediately, and will
     /// typically ensure that they are not swapped out. The actual behavior
     /// will depend on the host system.
-    #[derive(Debug, Clone, Hash, PartialEq, Eq)]
+    #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
     pub enum MlockConfig {
         #[doc = " Do not call `mlock()` on loaded pages."]
         NoMlock = 0,

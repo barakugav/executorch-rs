@@ -121,7 +121,10 @@ namespace executorch_rs
     {
         auto inputs_data = reinterpret_cast<const executorch::runtime::EValue *>(inputs.data.ptr);
         std::vector<executorch::runtime::EValue> inputs_vec(inputs_data, inputs_data + inputs.len);
-        std::vector<executorch::runtime::EValue> outputs_ = ET_UNWRAP(self.execute((std::string)method_name, inputs_vec));
+        auto err = self.set_inputs(inputs_vec);
+        if (err != executorch::runtime::Error::Ok)
+            return err;
+        std::vector<executorch::runtime::EValue> outputs_ = ET_UNWRAP(self.execute((std::string)method_name));
         *outputs = VecEValue_new(std::move(outputs_));
         return executorch::runtime::Error::Ok;
     }

@@ -140,7 +140,7 @@ impl Drop for Program<'_> {
 
 #[repr(u32)]
 #[doc = " Types of validation that the Program can do before parsing the data."]
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum ProgramVerification {
     #[doc = " Do minimal verification of the data, ensuring that the header appears\n correct.\n\n Has minimal runtime overhead."]
     Minimal = 0,
@@ -161,7 +161,7 @@ impl IntoCpp for ProgramVerification {
 
 #[repr(u32)]
 #[doc = " Describes the presence of an ExecuTorch program header."]
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum HeaderStatus {
     #[doc = " An ExecuTorch program header is present, and its version is compatible\n with this version of the runtime."]
     CompatibleVersion = 0,

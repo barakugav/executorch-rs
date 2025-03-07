@@ -631,7 +631,7 @@ macro_rules! impl_dim_arr {
     (0) => {
         impl<T: Clone + Copy + Default> DimArr<T> for [T; 0] {
             fn zeros(ndim: usize) -> Self {
-                assert_eq!(ndim, 0, "Invalid dimension size");
+                assert_eq!(ndim, 0);
                 []
             }
         }
@@ -639,7 +639,7 @@ macro_rules! impl_dim_arr {
     ($size:literal) => {
         impl<T: Clone + Copy + Default> DimArr<T> for [T; $size] {
             fn zeros(ndim: usize) -> Self {
-                assert_eq!(ndim, $size, "Invalid dimension size");
+                assert_eq!(ndim, $size);
                 [T::default(); $size]
             }
         }
