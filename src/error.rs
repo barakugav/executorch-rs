@@ -121,11 +121,82 @@ pub(crate) type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[cfg(test)]
 mod tests {
-    use super::Error;
+    use executorch_sys as et_c;
+
+    use et_c::Error as RawCError;
+
+    use crate::util::IntoRust;
+
+    use super::{CError, Error};
 
     #[test]
     fn test_error_send_sync() {
         fn assert_send_sync<T: Send + Sync>() {}
         assert_send_sync::<Error>();
+    }
+
+    #[test]
+    fn cerror_to_error() {
+        assert!(matches!(RawCError::Error_Ok.rs(), Ok(())));
+        assert!(matches!(
+            RawCError::Error_Internal.rs(),
+            Err(Error::CError(CError::Internal))
+        ));
+        assert!(matches!(
+            RawCError::Error_InvalidState.rs(),
+            Err(Error::CError(CError::InvalidState))
+        ));
+        assert!(matches!(
+            RawCError::Error_EndOfMethod.rs(),
+            Err(Error::CError(CError::EndOfMethod))
+        ));
+        assert!(matches!(
+            RawCError::Error_NotSupported.rs(),
+            Err(Error::CError(CError::NotSupported))
+        ));
+        assert!(matches!(
+            RawCError::Error_NotImplemented.rs(),
+            Err(Error::CError(CError::NotImplemented))
+        ));
+        assert!(matches!(
+            RawCError::Error_InvalidArgument.rs(),
+            Err(Error::CError(CError::InvalidArgument))
+        ));
+        assert!(matches!(
+            RawCError::Error_InvalidType.rs(),
+            Err(Error::CError(CError::InvalidType))
+        ));
+        assert!(matches!(
+            RawCError::Error_OperatorMissing.rs(),
+            Err(Error::CError(CError::OperatorMissing))
+        ));
+        assert!(matches!(
+            RawCError::Error_NotFound.rs(),
+            Err(Error::CError(CError::NotFound))
+        ));
+        assert!(matches!(
+            RawCError::Error_MemoryAllocationFailed.rs(),
+            Err(Error::CError(CError::MemoryAllocationFailed))
+        ));
+        assert!(matches!(
+            RawCError::Error_AccessFailed.rs(),
+            Err(Error::CError(CError::AccessFailed))
+        ));
+        assert!(matches!(
+            RawCError::Error_InvalidProgram.rs(),
+            Err(Error::CError(CError::InvalidProgram))
+        ));
+        assert!(matches!(
+            RawCError::Error_DelegateInvalidCompatibility.rs(),
+            Err(Error::CError(CError::DelegateInvalidCompatibility))
+        ));
+        assert!(matches!(
+            RawCError::Error_DelegateMemoryAllocationFailed.rs(),
+            Err(Error::CError(CError::DelegateMemoryAllocationFailed))
+        ));
+        assert!(matches!(
+            RawCError::Error_DelegateInvalidHandle.rs(),
+            Err(Error::CError(CError::DelegateInvalidHandle))
+        ));
     }
 }

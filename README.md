@@ -143,7 +143,7 @@ The build (and library) is tested on Ubuntu and MacOS, not on Windows.
 - `tensor-ptr`
 
     Includes the `TensorPtr` struct, a smart pointer for tensors that manage the lifetime of the tensor
-    object alongside the lifetimes of the data buffer and additional metadata. The `extension_tensor.a`
+    object alongside the lifetimes of the data buffer and additional metadata. The `libextension_tensor.a`
     static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_TENSOR=ON`.
     Also includes the `std` feature.
 
@@ -152,7 +152,8 @@ The build (and library) is tested on Ubuntu and MacOS, not on Windows.
     Includes the `ETDumpGen` struct, an implementation of an `EventTracer`, used for debugging and profiling.
     The `libetdump.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_DEVTOOLS=ON` and
     `EXECUTORCH_ENABLE_EVENT_TRACER=ON`.
-    In addition, the `flatcc` (or `flatcc_d`) library is required, available at `{CPP_EXECUTORCH_DIR}/third-party/flatcc/lib/`.
+    In addition, the `flatcc` (or `flatcc_d`) library is required, available at `{CPP_EXECUTORCH_DIR}/third-party/flatcc/lib/`,
+    and should be linked by the user.
 
 - `ndarray`
 

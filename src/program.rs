@@ -15,7 +15,7 @@ use crate::event_tracer::EventTracer;
 use crate::memory::MemoryManager;
 use crate::tensor::ScalarType;
 use crate::util::{try_c_new, ArrayRef, IntoCpp, IntoRust};
-use crate::{Error, Result};
+use crate::{CError, Error, Result};
 use executorch_sys as et_c;
 
 /// A deserialized ExecuTorch program binary.
@@ -140,7 +140,7 @@ impl Drop for Program<'_> {
 
 #[repr(u32)]
 #[doc = " Types of validation that the Program can do before parsing the data."]
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum ProgramVerification {
     #[doc = " Do minimal verification of the data, ensuring that the header appears\n correct.\n\n Has minimal runtime overhead."]
     Minimal = 0,
@@ -161,7 +161,7 @@ impl IntoCpp for ProgramVerification {
 
 #[repr(u32)]
 #[doc = " Describes the presence of an ExecuTorch program header."]
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum HeaderStatus {
     #[doc = " An ExecuTorch program header is present, and its version is compatible\n with this version of the runtime."]
     CompatibleVersion = 0,
@@ -396,11 +396,10 @@ impl<'a> Execution<'a> {
 
     /// Execute the method.
     pub fn execute(self) -> Result<Outputs<'a>> {
-        assert_eq!(
-            self.set_inputs,
-            (1 << unsafe { et_c::executorch_Method_inputs_size(self.method) }) - 1,
-            "some inputs were not set"
-        );
+        if self.set_inputs != (1 << unsafe { et_c::executorch_Method_inputs_size(self.method) }) - 1
+        {
+            return Err(Error::CError(CError::InvalidArgument));
+        }
         unsafe { et_c::executorch_Method_execute(self.method) }.rs()?;
         Ok(Outputs::new(self.method))
     }
@@ -435,5 +434,195 @@ impl<'a> Outputs<'a> {
     pub fn get(&self, index: usize) -> EValue {
         let value = unsafe { et_c::executorch_Method_get_output(self.method as *const _, index) };
         unsafe { EValue::from_inner_ref(value) }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::data_loader::BufferDataLoader;
+    use crate::memory::{BufferMemoryAllocator, HierarchicalAllocator};
+    use crate::tensor::{Tensor, TensorImpl};
+    use crate::tests::ADD_MODEL_BYTES;
+    use crate::util::Span;
+    use cstr::cstr;
+
+    use super::*;
+
+    #[test]
+    fn load() {
+        let loader = BufferDataLoader::new(ADD_MODEL_BYTES);
+        let program = Program::load(&loader, None);
+        assert!(program.is_ok());
+
+        let loader = BufferDataLoader::new(ADD_MODEL_BYTES);
+        let program = Program::load(&loader, Some(ProgramVerification::Minimal));
+        assert!(program.is_ok());
+
+        let loader = BufferDataLoader::new(ADD_MODEL_BYTES);
+        let program = Program::load(&loader, Some(ProgramVerification::InternalConsistency));
+        assert!(program.is_ok());
+
+        let loader = BufferDataLoader::new(&[]);
+        let program = Program::load(&loader, None);
+        assert!(program.is_err());
+    }
+
+    #[test]
+    fn num_methods() {
+        let loader = BufferDataLoader::new(ADD_MODEL_BYTES);
+        let program = Program::load(&loader, None).unwrap();
+        assert_eq!(program.num_methods(), 1);
+    }
+
+    #[test]
+    fn get_method_name() {
+        let loader = BufferDataLoader::new(ADD_MODEL_BYTES);
+        let program = Program::load(&loader, None).unwrap();
+        assert_eq!(program.get_method_name(0).ok(), Some("forward"));
+        assert_eq!(program.get_method_name(1).ok(), None);
+    }
+
+    #[test]
+    fn method_meta() {
+        let loader = BufferDataLoader::new(ADD_MODEL_BYTES);
+        let program = Program::load(&loader, None).unwrap();
+        let method_meta = program.method_meta(cstr!("forward")).unwrap();
+        assert!(program.method_meta(cstr!("non-existing-method")).is_err());
+
+        assert_eq!(method_meta.name(), "forward");
+
+        assert_eq!(method_meta.num_inputs(), 2);
+        assert_eq!(method_meta.input_tag(0).unwrap(), Tag::Tensor);
+        assert_eq!(method_meta.input_tag(1).unwrap(), Tag::Tensor);
+        assert!(method_meta.input_tag(2).is_err());
+        let tinfo1 = method_meta.input_tensor_meta(1).unwrap();
+        let tinfo2 = method_meta.input_tensor_meta(0).unwrap();
+        for tinfo in [tinfo1, tinfo2] {
+            assert_eq!(tinfo.sizes(), &[1]);
+            assert_eq!(tinfo.dim_order(), &[0]);
+            assert_eq!(tinfo.scalar_type(), ScalarType::Float);
+            assert_eq!(tinfo.nbytes(), 4);
+        }
+
+        assert_eq!(method_meta.num_outputs(), 1);
+        assert_eq!(method_meta.output_tag(0).unwrap(), Tag::Tensor);
+        assert!(method_meta.output_tag(1).is_err());
+        let tinfo = method_meta.output_tensor_meta(0).unwrap();
+        assert_eq!(tinfo.sizes(), &[1]);
+        assert_eq!(tinfo.dim_order(), &[0]);
+        assert_eq!(tinfo.scalar_type(), ScalarType::Float);
+        assert_eq!(tinfo.nbytes(), 4);
+        assert!(method_meta.output_tensor_meta(1).is_err());
+
+        for i in 0..method_meta.num_memory_planned_buffers() {
+            assert!(method_meta.memory_planned_buffer_size(i).is_ok());
+        }
+        assert!(method_meta
+            .memory_planned_buffer_size(method_meta.num_memory_planned_buffers())
+            .is_err());
+    }
+
+    #[test]
+    fn load_method() {
+        let mut buffer = [0_u8; 4096];
+        let allocator = BufferMemoryAllocator::new(&mut buffer);
+
+        let data_loader = BufferDataLoader::new(ADD_MODEL_BYTES);
+        let program =
+            Program::load(&data_loader, Some(ProgramVerification::InternalConsistency)).unwrap();
+
+        let method_meta = program.method_meta(cstr!("forward")).unwrap();
+        let num_memory_planned_buffers = method_meta.num_memory_planned_buffers();
+        let planned_arenas = allocator
+            .allocate_arr_fn(num_memory_planned_buffers, |idx| {
+                let buf_size = method_meta.memory_planned_buffer_size(idx).unwrap();
+                Span::from_slice(allocator.allocate_arr::<u8>(buf_size).unwrap())
+            })
+            .unwrap();
+
+        let mut planned_memory = HierarchicalAllocator::new(planned_arenas);
+        let memory_manager = MemoryManager::new(&allocator, Some(&mut planned_memory), None);
+
+        assert!(program
+            .load_method(cstr!("non-existing-method"), &memory_manager, None)
+            .is_err());
+        assert!(program
+            .load_method(cstr!("forward"), &memory_manager, None)
+            .is_ok());
+    }
+
+    #[test]
+    fn check_header() {
+        assert_ne!(Program::check_header(&[]), HeaderStatus::CompatibleVersion);
+        assert_ne!(
+            Program::check_header(&[42, 6, 17]),
+            HeaderStatus::CompatibleVersion
+        );
+        assert_eq!(
+            Program::check_header(ADD_MODEL_BYTES),
+            HeaderStatus::CompatibleVersion
+        );
+    }
+
+    #[test]
+    fn method_execution() {
+        let mut buffer = [0_u8; 4096];
+        let allocator = BufferMemoryAllocator::new(&mut buffer);
+
+        let data_loader = BufferDataLoader::new(ADD_MODEL_BYTES);
+        let program =
+            Program::load(&data_loader, Some(ProgramVerification::InternalConsistency)).unwrap();
+
+        let method_meta = program.method_meta(cstr!("forward")).unwrap();
+        let num_memory_planned_buffers = method_meta.num_memory_planned_buffers();
+        let planned_arenas = allocator
+            .allocate_arr_fn(num_memory_planned_buffers, |idx| {
+                let buf_size = method_meta.memory_planned_buffer_size(idx).unwrap();
+                Span::from_slice(allocator.allocate_arr::<u8>(buf_size).unwrap())
+            })
+            .unwrap();
+
+        let mut planned_memory = HierarchicalAllocator::new(planned_arenas);
+        let memory_manager = MemoryManager::new(&allocator, Some(&mut planned_memory), None);
+
+        let mut method = program
+            .load_method(cstr!("forward"), &memory_manager, None)
+            .unwrap();
+        assert_eq!(method.inputs_size(), 2);
+        let execution = method.start_execution();
+        assert!(matches!(
+            execution.execute(), // inputs not set
+            Err(Error::CError(CError::InvalidArgument))
+        ));
+        let mut execution = method.start_execution();
+
+        let sizes = [1];
+        let data = [1.0_f32];
+        let dim_order = [0];
+        let strides = [1];
+        let tensor_impl = TensorImpl::from_slice(&sizes, &data, &dim_order, &strides);
+        let tensor = Tensor::new_in_allocator(&tensor_impl, &allocator);
+        let input1 = EValue::new_in_allocator(tensor, &allocator);
+
+        let sizes = [1];
+        let data = [1.0_f32];
+        let dim_order = [0];
+        let strides = [1];
+        let tensor_impl = TensorImpl::from_slice(&sizes, &data, &dim_order, &strides);
+        let tensor = Tensor::new_in_allocator(&tensor_impl, &allocator);
+        let input2 = EValue::new_in_allocator(tensor, &allocator);
+
+        assert!(execution.set_input(&input1, 2).is_err());
+        execution.set_input(&input1, 0).unwrap();
+        execution.set_input(&input2, 1).unwrap();
+        let outputs = execution.execute().unwrap();
+
+        assert!(!outputs.is_empty());
+        assert_eq!(outputs.len(), 1);
+        let output = outputs.get(0);
+        assert_eq!(output.tag(), Tag::Tensor);
+        let output = output.as_tensor().into_typed::<f32>();
+        assert_eq!(output.sizes(), [1]);
+        assert_eq!(output[&[0]], 2.0);
     }
 }

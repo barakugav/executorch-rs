@@ -332,7 +332,7 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
                 dim_order,
                 strides,
                 D::Scalar::TYPE.cpp(),
-                self.dynamism.clone(),
+                self.dynamism,
                 Box::new(executorch_sys::cpp::util::RustAny::new(Box::new(
                     allocation_vec,
                 ))),
@@ -386,7 +386,7 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
                 dim_order,
                 strides,
                 D::Scalar::TYPE.cpp(),
-                self.dynamism.clone(),
+                self.dynamism,
                 Box::new(executorch_sys::cpp::util::RustAny::new(Box::new(
                     allocation_vec,
                 ))),

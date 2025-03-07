@@ -12,8 +12,14 @@ mod c_link {
 }
 pub use c_link::*;
 
-impl Copy for Tag {}
+impl Copy for Error {}
 impl Copy for ScalarType {}
+impl Copy for Tag {}
+impl Copy for TensorShapeDynamism {}
+impl Copy for ProgramHeaderStatus {}
+impl Copy for ProgramVerification {}
+impl Copy for MmapDataLoaderMlockConfig {}
+impl Copy for ModuleLoadMode {}
 
 macro_rules! impl_ref_clone_copy {
     ($name:ty) => {
@@ -25,6 +31,8 @@ macro_rules! impl_ref_clone_copy {
         impl Copy for $name {}
     };
 }
+
+// Ref and RefMut
 impl_ref_clone_copy!(EValueRef);
 impl_ref_clone_copy!(EValueRefMut);
 impl_ref_clone_copy!(TensorRef);
@@ -33,3 +41,26 @@ impl_ref_clone_copy!(OptionalTensorRef);
 impl_ref_clone_copy!(OptionalTensorRefMut);
 impl_ref_clone_copy!(DataLoaderRefMut);
 impl_ref_clone_copy!(EventTracerRefMut);
+
+// ArrayRef
+impl_ref_clone_copy!(ArrayRefBool);
+impl_ref_clone_copy!(ArrayRefChar);
+impl_ref_clone_copy!(ArrayRefDimOrderType);
+impl_ref_clone_copy!(ArrayRefEValue);
+impl_ref_clone_copy!(ArrayRefEValuePtr);
+impl_ref_clone_copy!(ArrayRefF64);
+impl_ref_clone_copy!(ArrayRefI32);
+impl_ref_clone_copy!(ArrayRefI64);
+impl_ref_clone_copy!(ArrayRefOptionalTensor);
+impl_ref_clone_copy!(ArrayRefSizesType);
+impl_ref_clone_copy!(ArrayRefStridesType);
+impl_ref_clone_copy!(ArrayRefTensor);
+impl_ref_clone_copy!(ArrayRefU8);
+impl_ref_clone_copy!(ArrayRefUsizeType);
+
+// Span
+impl_ref_clone_copy!(SpanI64);
+impl_ref_clone_copy!(SpanOptionalTensor);
+impl_ref_clone_copy!(SpanSpanU8);
+impl_ref_clone_copy!(SpanTensor);
+impl_ref_clone_copy!(SpanU8);

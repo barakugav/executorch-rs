@@ -15,6 +15,12 @@ use crate::util::Span;
 use executorch_sys as et_c;
 
 /// An allocator used to allocate objects for the runtime.
+///
+/// The allocator does not have a 'free' method, and the memory is deallocated when the allocator is destroyed.
+/// Allocated objects are NOT DESTROYED when the allocator is destroyed, therefore most method require the allocated
+/// objects to implement the [`NoDrop`] trait.
+/// When using [`allocate_raw`](MemoryAllocator::allocate_raw) as a way to allocate bytes and than populate an object in
+/// them, the user is responsible dropping the allocated object when it is no longer needed.
 pub struct MemoryAllocator<'a>(UnsafeCell<et_c::MemoryAllocator>, PhantomData<&'a ()>);
 impl MemoryAllocator<'_> {
     unsafe fn from_inner_ref(allocator: &et_c::MemoryAllocator) -> &Self {
@@ -31,7 +37,8 @@ impl MemoryAllocator<'_> {
     ///
     /// # Returns
     ///
-    /// A mutable reference to the allocated memory, or [`None`] if allocation failed.
+    /// A mutable reference to the allocated memory, or [`None`] if allocation failed due to insufficient memory or
+    /// an alignment that is not a power of 2.
     pub fn allocate_raw(&self, size: usize, alignment: usize) -> Option<&mut [u8]> {
         let ptr =
             unsafe { et_c::executorch_MemoryAllocator_allocate(self.0.get(), size, alignment) };
@@ -42,37 +49,58 @@ impl MemoryAllocator<'_> {
         }
     }
 
-    /// Allocates memory for a type `T` and initializes it with `Default::default()`.
+    /// Allocates memory for a type `T` with uninitialized memory.
+    ///
+    /// Once a valid object is written to the allocated memory by the user, its also the responsibility of user to
+    /// drop the initialized value.
     ///
     /// # Returns
     ///
-    /// A mutable reference to the allocated memory, or [`None`] if allocation failed.
-    ///
-    /// Allocation may failed if the allocator is out of memory.
-    pub fn allocate<T: Default>(&self) -> Option<&mut T> {
-        let size = std::mem::size_of::<T>();
-        let alignment = std::mem::align_of::<T>();
-        let ptr = self.allocate_raw(size, alignment)?.as_mut_ptr() as *mut T;
-        unsafe { ptr.write(Default::default()) };
+    /// A mutable reference to the allocated memory, or [`None`] if allocation failed due to insufficient memory.
+    pub fn allocate_uninit<T>(&self) -> Option<&mut MaybeUninit<T>> {
+        let ptr = self.allocate_raw(std::mem::size_of::<T>(), std::mem::align_of::<T>())?;
+        let ptr = ptr.as_mut_ptr() as *mut MaybeUninit<T>;
         Some(unsafe { &mut *ptr })
+    }
+
+    /// Allocates memory for a type `T` and initializes it with `Default::default()`.
+    ///
+    /// The method require the type `T` to implement the [`NoDrop`] trait because the allocator does not call the
+    /// destructor of objects allocated by it when the allocator is dropped.
+    ///
+    /// # Returns
+    ///
+    /// A mutable reference to the allocated memory, or [`None`] if allocation failed due to insufficient memory.
+    pub fn allocate<T>(&self) -> Option<&mut T>
+    where
+        T: NoDrop + Default,
+    {
+        let val = self.allocate_uninit::<T>()?;
+        val.write(Default::default());
+        Some(unsafe { val.assume_init_mut() })
     }
 
     /// Allocates a pinned memory for a type `T` and initializes it with `Default::default()`.
     ///
+    /// The method require the type `T` to implement the [`NoDrop`] trait because the allocator does not call the
+    /// destructor of objects allocated by it when the allocator is dropped.
+    ///
     /// # Returns
     ///
-    /// A pinned mutable reference to the allocated memory, or [`None`] if allocation failed.
-    ///
-    /// Allocation may failed if the allocator is out of memory.
-    pub fn allocate_pinned<T: Default>(&self) -> Option<Pin<&mut T>> {
-        let size = std::mem::size_of::<T>();
-        let alignment = std::mem::align_of::<T>();
-        let ptr = self.allocate_raw(size, alignment)?.as_mut_ptr() as *mut T;
-        unsafe { ptr.write(Default::default()) };
-        Some(unsafe { Pin::new_unchecked(&mut *ptr) })
+    /// A pinned mutable reference to the allocated memory, or [`None`] if allocation failed due to insufficient memory.
+    pub fn allocate_pinned<T>(&self) -> Option<Pin<&mut T>>
+    where
+        T: NoDrop + Default,
+    {
+        let val = self.allocate::<T>()?;
+        // Safety: the value was just allocated in a fixed address and was not moved
+        Some(unsafe { Pin::new_unchecked(val) })
     }
 
     /// Allocates memory for an array of type `T` and initializes each element with `Default::default()`.
+    ///
+    /// The method require the type `T` to implement the [`NoDrop`] trait because the allocator does not call the
+    /// destructor of objects allocated by it when the allocator is dropped.
     ///
     /// # Arguments
     ///
@@ -80,14 +108,18 @@ impl MemoryAllocator<'_> {
     ///
     /// # Returns
     ///
-    /// A mutable reference to the allocated array, or [`None`] if allocation failed.
-    ///
-    /// Allocation may failed if the allocator is out of memory.
-    pub fn allocate_arr<T: Default>(&self, len: usize) -> Option<&mut [T]> {
+    /// A mutable reference to the allocated array, or [`None`] if allocation failed due to insufficient memory.
+    pub fn allocate_arr<T>(&self, len: usize) -> Option<&mut [T]>
+    where
+        T: NoDrop + Default,
+    {
         self.allocate_arr_fn(len, |_| Default::default())
     }
 
     /// Allocates memory for an array of type `T` and initializes each element with the result of the closure `f`.
+    ///
+    /// The method require the type `T` to implement the [`NoDrop`] trait because the allocator does not call the
+    /// destructor of objects allocated by it when the allocator is dropped.
     ///
     /// # Arguments
     ///
@@ -96,10 +128,11 @@ impl MemoryAllocator<'_> {
     ///
     /// # Returns
     ///
-    /// A mutable reference to the allocated array, or [`None`] if allocation failed.
-    ///
-    /// Allocation may failed if the allocator is out of memory.
-    pub fn allocate_arr_fn<T>(&self, len: usize, f: impl Fn(usize) -> T) -> Option<&mut [T]> {
+    /// A mutable reference to the allocated array, or [`None`] if allocation failed due to insufficient memory.
+    pub fn allocate_arr_fn<T>(&self, len: usize, f: impl Fn(usize) -> T) -> Option<&mut [T]>
+    where
+        T: NoDrop,
+    {
         let elm_size = std::mem::size_of::<T>();
         let alignment = std::mem::align_of::<T>();
         let actual_elm_size = (elm_size + alignment - 1) & !(alignment - 1);
@@ -121,6 +154,24 @@ impl MemoryAllocator<'_> {
         Some(slice)
     }
 }
+
+/// A marker trait indicating it's OK to not drop an instance of that type.
+///
+/// The [`MemoryAllocator`] allocates memory for objects and return a pointer or reference to the allocated memory.
+/// While doing so, it does NOT maintain the type or destructors of allocated objects, and does not call their
+/// destructor (if exit). This trait marks types that can safely be not dropped.
+///
+/// # Safety
+/// When implementing this trait for a type, the user must ensure the type does not implement the [`Drop`] trait.
+pub unsafe trait NoDrop {}
+// Safety: any type that implement Copy can not implement Drop, enforced by the compiler
+unsafe impl<T: Copy> NoDrop for T {}
+// unsafe impl<T: Drop> NoDrop for MaybeUninit<T> {}
+// unsafe impl<T: Drop> NoDrop for ManuallyDrop<T> {}
+// Safety: Storage doesn't implement drop
+unsafe impl<T: Storable> NoDrop for Storage<T> {}
+// Safety: Span doesn't implement drop
+unsafe impl<T: crate::util::SpanElement> NoDrop for crate::util::Span<'_, T> {}
 
 /// A class that does simple allocation based on a size and returns the pointer
 /// to the memory address. It bookmarks a buffer with certain size. The
