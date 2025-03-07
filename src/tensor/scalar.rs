@@ -1,6 +1,5 @@
 use executorch_sys::ScalarType as CScalarType;
 
-use crate::scalar::{bf16, f16, Complex};
 use crate::util::{IntoCpp, IntoRust};
 
 /// Data types (dtypes) that can be used as element types in Tensors.
@@ -34,38 +33,45 @@ pub enum ScalarType {
     ComplexDouble = CScalarType::ScalarType_ComplexDouble as u8,
     /// Boolean, `bool`
     Bool = CScalarType::ScalarType_Bool as u8,
-    /// **\[Unsupported\]** 8-bit quantized integer
+    /// 8-bit quantized integer, [`executorch::scalar::QInt8`](`crate::scalar::QInt8`).
     QInt8 = CScalarType::ScalarType_QInt8 as u8,
-    /// **\[Unsupported\]** 8-bit quantized unsigned integer
+    /// 8-bit quantized unsigned integer, [`executorch::scalar::QUInt8`](`crate::scalar::QUInt8`).
     QUInt8 = CScalarType::ScalarType_QUInt8 as u8,
-    /// **\[Unsupported\]** 32-bit quantized integer
+    /// 32-bit quantized integer, [`executorch::scalar::QInt32`](`crate::scalar::QInt32`).
     QInt32 = CScalarType::ScalarType_QInt32 as u8,
     /// 16-bit floating point using the bfloat16 format, [`executorch::scalar::bf16`](`crate::scalar::bf16`).
     BFloat16 = CScalarType::ScalarType_BFloat16 as u8,
-    /// **\[Unsupported\]**
+    /// Two 4-bit unsigned quantized integers packed into a byte. [`executorch::scalar::QUInt4x2`](`crate::scalar::QUInt4x2`).
     QUInt4x2 = CScalarType::ScalarType_QUInt4x2 as u8,
-    /// **\[Unsupported\]**
+    /// Four 2-bit unsigned quantized integers packed into a byte. [`executorch::scalar::QUInt2x4`](`crate::scalar::QUInt2x4`).
     QUInt2x4 = CScalarType::ScalarType_QUInt2x4 as u8,
-    /// **\[Unsupported\]**
+    /// Eight 1-bit values packed into a byte. [`executorch::scalar::Bits1x8`](`crate::scalar::Bits1x8`).
     Bits1x8 = CScalarType::ScalarType_Bits1x8 as u8,
-    /// **\[Unsupported\]**
+    /// Four 2-bit values packed into a byte. [`executorch::scalar::Bits2x4`](`crate::scalar::Bits2x4`).
     Bits2x4 = CScalarType::ScalarType_Bits2x4 as u8,
-    /// **\[Unsupported\]**
+    /// Two 4-bit values packed into a byte. [`executorch::scalar::Bits4x2`](`crate::scalar::Bits4x2`).
     Bits4x2 = CScalarType::ScalarType_Bits4x2 as u8,
-    /// **\[Unsupported\]**
+    /// 8-bit bitfield (1 byte). [`executorch::scalar::Bits8`](`crate::scalar::Bits8`).
     Bits8 = CScalarType::ScalarType_Bits8 as u8,
-    /// **\[Unsupported\]**
+    /// 16-bit bitfield (2 bytes). [`executorch::scalar::Bits16`](`crate::scalar::Bits16`).
     Bits16 = CScalarType::ScalarType_Bits16 as u8,
-    /// **\[Unsupported\]**
+    /// 8-bit floating-point with 1 bit for the sign, 5 bits for the exponents, 2 bits for the mantissa.
+    /// [`executorch::scalar::Float8_e5m2`](`crate::scalar::Float8_e5m2`).
     #[allow(non_camel_case_types)]
     Float8_e5m2 = CScalarType::ScalarType_Float8_e5m2 as u8,
-    /// **\[Unsupported\]**
+    /// 8-bit floating-point with 1 bit for the sign, 4 bits for the exponents, 3 bits for the mantissa,
+    /// only nan values and no infinite values (FN).
+    /// [`executorch::scalar::Float8_e4m3fn`](`crate::scalar::Float8_e4m3fn`).
     #[allow(non_camel_case_types)]
     Float8_e4m3fn = CScalarType::ScalarType_Float8_e4m3fn as u8,
-    /// **\[Unsupported\]**
+    /// 8-bit floating-point with 1 bit for the sign, 5 bits for the exponents, 2 bits for the mantissa,
+    /// only nan values and no infinite values (FN), no negative zero (UZ).
+    /// [`executorch::scalar::Float8_e5m2fnuz`](`crate::scalar::Float8_e5m2fnuz`).
     #[allow(non_camel_case_types)]
     Float8_e5m2fnuz = CScalarType::ScalarType_Float8_e5m2fnuz as u8,
-    /// **\[Unsupported\]**
+    /// 8-bit floating-point with 1 bit for the sign, 4 bits for the exponents, 3 bits for the mantissa,
+    /// only nan values and no infinite values (FN), no negative zero (UZ).
+    /// [`executorch::scalar::Float8_e4m3fnuz`](`crate::scalar::Float8_e4m3fnuz`).
     #[allow(non_camel_case_types)]
     Float8_e4m3fnuz = CScalarType::ScalarType_Float8_e4m3fnuz as u8,
     /// 16-bit unsigned integer, `u16`
@@ -165,19 +171,34 @@ macro_rules! impl_scalar {
         }
     };
 }
+
 impl_scalar!(u8, Byte);
 impl_scalar!(i8, Char);
 impl_scalar!(i16, Short);
 impl_scalar!(i32, Int);
 impl_scalar!(i64, Long);
-impl_scalar!(f16, Half);
+impl_scalar!(crate::scalar::f16, Half);
 impl_scalar!(f32, Float);
 impl_scalar!(f64, Double);
-impl_scalar!(Complex<f16>, ComplexHalf);
-impl_scalar!(Complex<f32>, ComplexFloat);
-impl_scalar!(Complex<f64>, ComplexDouble);
+impl_scalar!(crate::scalar::Complex<crate::scalar::f16>, ComplexHalf);
+impl_scalar!(crate::scalar::Complex<f32>, ComplexFloat);
+impl_scalar!(crate::scalar::Complex<f64>, ComplexDouble);
 impl_scalar!(bool, Bool);
-impl_scalar!(bf16, BFloat16);
+impl_scalar!(crate::scalar::QInt8, QInt8);
+impl_scalar!(crate::scalar::QUInt8, QUInt8);
+impl_scalar!(crate::scalar::QInt32, QInt32);
+impl_scalar!(crate::scalar::bf16, BFloat16);
+impl_scalar!(crate::scalar::QUInt4x2, QUInt4x2);
+impl_scalar!(crate::scalar::QUInt2x4, QUInt2x4);
+impl_scalar!(crate::scalar::Bits1x8, Bits1x8);
+impl_scalar!(crate::scalar::Bits2x4, Bits2x4);
+impl_scalar!(crate::scalar::Bits4x2, Bits4x2);
+impl_scalar!(crate::scalar::Bits8, Bits8);
+impl_scalar!(crate::scalar::Bits16, Bits16);
+impl_scalar!(crate::scalar::Float8_e5m2, Float8_e5m2);
+impl_scalar!(crate::scalar::Float8_e4m3fn, Float8_e4m3fn);
+impl_scalar!(crate::scalar::Float8_e5m2fnuz, Float8_e5m2fnuz);
+impl_scalar!(crate::scalar::Float8_e4m3fnuz, Float8_e4m3fnuz);
 impl_scalar!(u16, UInt16);
 impl_scalar!(u32, UInt32);
 impl_scalar!(u64, UInt64);
