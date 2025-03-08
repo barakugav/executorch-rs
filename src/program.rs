@@ -440,10 +440,7 @@ impl<'a> Outputs<'a> {
 #[cfg(test)]
 mod tests {
     use crate::data_loader::BufferDataLoader;
-    use crate::memory::{BufferMemoryAllocator, HierarchicalAllocator};
-    use crate::tensor::{Tensor, TensorImpl};
     use crate::tests::ADD_MODEL_BYTES;
-    use crate::util::Span;
     use cstr::cstr;
 
     use super::*;
@@ -522,8 +519,12 @@ mod tests {
             .is_err());
     }
 
+    #[cfg(tests_with_kernels)]
     #[test]
     fn load_method() {
+        use crate::memory::{BufferMemoryAllocator, HierarchicalAllocator};
+        use crate::util::Span;
+
         let mut buffer = [0_u8; 4096];
         let allocator = BufferMemoryAllocator::new(&mut buffer);
 
@@ -564,8 +565,13 @@ mod tests {
         );
     }
 
+    #[cfg(tests_with_kernels)]
     #[test]
     fn method_execution() {
+        use crate::memory::{BufferMemoryAllocator, HierarchicalAllocator};
+        use crate::tensor::{Tensor, TensorImpl};
+        use crate::util::Span;
+
         let mut buffer = [0_u8; 4096];
         let allocator = BufferMemoryAllocator::new(&mut buffer);
 
