@@ -35,7 +35,7 @@ struct Args {
     /// Sampling temperature.
     ///
     /// 0 = greedy argmax sampling (deterministic). Lower temperature = more deterministic.
-    #[arg(long, default_value_t = 0.8)]
+    #[arg(long, default_value_t = 0.4)]
     temperature: f32,
 
     /// Random generator seed
@@ -49,6 +49,8 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
+    assert!(args.temperature >= 0.0);
+
     executorch::platform::pal_init();
 
     let mut model = Module::new(&args.model, Some(LoadMode::File), None);
@@ -135,12 +137,21 @@ fn main() {
             .unwrap();
         let logits = logits.into_iter().map(|x| x.to_f32()).collect::<Vec<_>>();
 
-        let probs = softmax(&logits, args.temperature);
-        let next_token = rand::distr::weighted::WeightedIndex::new(probs)
-            .unwrap()
-            .sample(&mut rng) as i64;
+        let next_token = if args.temperature == 0.0 {
+            logits
+                .iter()
+                .enumerate()
+                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+                .unwrap()
+                .0
+        } else {
+            let probs = softmax(&logits, args.temperature);
+            rand::distr::weighted::WeightedIndex::new(probs)
+                .unwrap()
+                .sample(&mut rng)
+        };
 
-        prompt_tokens.push(next_token);
+        prompt_tokens.push(next_token as i64);
         println!("{}", tokenizer.decode(&prompt_tokens));
     }
 }
