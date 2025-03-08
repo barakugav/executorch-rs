@@ -7,7 +7,8 @@ To run the example, follow these steps (note that some steps should run from the
 - Follow the [tutorial](https://pytorch.org/executorch/main/getting-started-setup) to set up Cpp ExecuTorch. For installation run
     ```bash
     cd executorch
-    ./install_requirements.sh --pybind xnnpack
+    source install_requirements.sh --pybind xnnpack
+    source examples/models/llama/install_requirements.sh
     ```
 
 - Download `consolidated.00.pth` and `params.json` from [Llama website](https://www.llama.com/llama-downloads/) or [Hugging Face](https://huggingface.co/meta-llama/Llama-3.2-1B).
@@ -15,7 +16,7 @@ To run the example, follow these steps (note that some steps should run from the
 - Download the vocablurary:
     ```bash
     cd executorch-rs/examples/llama3
-    python download_vocal.py > vocab.json
+    python download_vocab.py > vocab.json
     ```
 
 - Export the model and generate `.pte` file.
@@ -62,7 +63,7 @@ To run the example, follow these steps (note that some steps should run from the
     EXECUTORCH_RS_EXECUTORCH_LIB_DIR=/path/to/executorch/cmake-out
     cargo run -- \
         --model llama3_2.pte \
-        --tokenizer vocal.json \
+        --tokenizer vocab.json \
         --prompt "hello world" \
         --length 20
     ```
