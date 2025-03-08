@@ -18,9 +18,6 @@ pub enum Error {
     /// Failed to convert from CStr to str.
     FromCStr,
 
-    /// Failed to allocate memory.
-    AllocationFailed,
-
     /// The index is invalid.
     InvalidIndex,
 }
@@ -28,7 +25,7 @@ impl std::fmt::Display for Error {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Error::CError(error) => std::fmt::Display::fmt(error, fmt),
-            Error::ToCStr | Error::FromCStr | Error::AllocationFailed | Error::InvalidIndex => {
+            Error::ToCStr | Error::FromCStr | Error::InvalidIndex => {
                 std::fmt::Debug::fmt(self, fmt)
             }
         }
@@ -39,49 +36,50 @@ impl std::error::Error for Error {}
 
 /// Categories of errors that can occur in executorch.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[repr(u8)]
 #[non_exhaustive]
 pub enum CError {
     /* System errors */
     //
     /// An internal error occurred.
-    Internal,
+    Internal = RawCError::Error_Internal as u8,
     /// Status indicating the executor is in an invalid state for a target
-    InvalidState,
+    InvalidState = RawCError::Error_InvalidState as u8,
     /// Status indicating there are no more steps of execution to run
-    EndOfMethod,
+    EndOfMethod = RawCError::Error_EndOfMethod as u8,
 
     /* Logical errors */
     //
     /// Operation is not supported in the current context.
-    NotSupported,
+    NotSupported = RawCError::Error_NotSupported as u8,
     /// Operation is not yet implemented.
-    NotImplemented,
+    NotImplemented = RawCError::Error_NotImplemented as u8,
     /// User provided an invalid argument.
-    InvalidArgument,
+    InvalidArgument = RawCError::Error_InvalidArgument as u8,
     /// Object is an invalid type for the operation.
-    InvalidType,
+    InvalidType = RawCError::Error_InvalidType as u8,
     /// Operator(s) missing in the operator registry.
-    OperatorMissing,
+    OperatorMissing = RawCError::Error_OperatorMissing as u8,
 
     /* Resource errors */
     //
     /// Requested resource could not be found.
-    NotFound,
+    NotFound = RawCError::Error_NotFound as u8,
     /// Could not allocate the requested memory.
-    MemoryAllocationFailed,
+    MemoryAllocationFailed = RawCError::Error_MemoryAllocationFailed as u8,
     /// Could not access a resource.
-    AccessFailed,
+    AccessFailed = RawCError::Error_AccessFailed as u8,
     /// Error caused by the contents of a program.
-    InvalidProgram,
+    InvalidProgram = RawCError::Error_InvalidProgram as u8,
 
     /* Delegate errors */
     //
     /// Init stage: Backend receives an incompatible delegate version.
-    DelegateInvalidCompatibility,
+    DelegateInvalidCompatibility = RawCError::Error_DelegateInvalidCompatibility as u8,
     /// Init stage: Backend fails to allocate memory.
-    DelegateMemoryAllocationFailed,
+    DelegateMemoryAllocationFailed = RawCError::Error_DelegateMemoryAllocationFailed as u8,
     /// Execute stage: The handle is invalid.
-    DelegateInvalidHandle,
+    DelegateInvalidHandle = RawCError::Error_DelegateInvalidHandle as u8,
 }
 impl std::fmt::Display for CError {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {

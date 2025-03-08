@@ -562,7 +562,7 @@ impl<'a, S: Scalar> Tensor<'a, S> {
     ) -> Self {
         let storage = allocator
             .allocate_pinned()
-            .ok_or(Error::AllocationFailed)
+            .ok_or(Error::CError(CError::MemoryAllocationFailed))
             .unwrap();
         Self::new_in_storage(tensor_impl, storage)
     }
