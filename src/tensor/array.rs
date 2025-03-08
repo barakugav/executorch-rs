@@ -79,15 +79,15 @@ impl<'a, D: DataTyped + DataMut> TensorBase<'a, D> {
     }
 }
 
-/// A wrapper around `ndarray::ArrayBase` that can be converted to [`TensorImplBase`].
+/// A wrapper around [`ndarray::ArrayBase`] that can be converted to [`TensorImplBase`](super::TensorImplBase).
 ///
-/// The [`TensorImplBase`] struct does not own any of the data it points to alongside the dimensions and strides arrays.
+/// The [`TensorImplBase`](super::TensorImplBase) struct does not own any of the data it points to alongside the dimensions and strides arrays.
 /// This struct allocate any required auxiliary memory in addition to the underlying `ndarray::ArrayBase`,
-/// allowing to create a [`TensorImplBase`] that points to it.
+/// allowing to create a [`TensorImplBase`](super::TensorImplBase) that points to it.
 /// If the number of dimensions is known at compile time, this struct will not allocate any memory on the heap.
 ///
 /// Use [`as_tensor_impl`](ArrayStorage::as_tensor_impl) and [`as_tensor_impl_mut`](ArrayStorage::as_tensor_impl_mut)
-/// to obtain a [`TensorImplBase`] pointing to this array data.
+/// to obtain a [`TensorImplBase`](super::TensorImplBase) pointing to this array data.
 pub struct ArrayStorage<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> {
     array: ArrayBase<S, D>,
     sizes: D::Arr<SizesType>,

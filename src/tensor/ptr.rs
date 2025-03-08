@@ -14,6 +14,8 @@ use super::*;
 ///
 /// // Create a TensorPtr from an ndarray, clean and short syntax
 /// let tensor_ptr = TensorPtr::from_array(array![1.0_f32]).unwrap();
+/// // or use even a shorter macro:
+/// // let tensor_ptr = executorch::tensor_ptr![1.0_f32];
 /// let outputs = module.forward(&[tensor_ptr.into_evalue()]).unwrap();
 ///
 /// // Alternatively, manage the lifetimes yourself:
@@ -470,6 +472,23 @@ fn default_strides(sizes: &cxx::Vector<SizesType>) -> UniquePtr<cxx::Vector<Stri
     strides
 }
 
+/// A short syntax for creating a [`TensorPtr`].
+///
+/// ```rust,ignore
+/// let tensor_ptr = TensorPtr::from_array(ndarray::array![1.0_f32]).unwrap();
+/// // same as:
+/// let tensor_ptr = tensor_ptr![1.0_f32];
+/// ```
+///
+/// The macro create an immutable tensor with one or more dimensions.
+#[cfg(feature = "ndarray")]
+#[macro_export]
+macro_rules! tensor_ptr {
+    ($($args:expr),*) => {
+        $crate::tensor::TensorPtr::<$crate::tensor::View<_>>::from_array(ndarray::array![$($args),*]).unwrap()
+    };
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -744,5 +763,17 @@ mod tests {
         )
         .build_mut()
         .is_err());
+    }
+
+    #[cfg(feature = "ndarray")]
+    #[test]
+    fn tensor_ptr_macro() {
+        use ndarray::array;
+
+        assert_eq!(tensor_ptr!(1.0).as_tensor().as_array(), array![1.0]);
+        assert_eq!(tensor_ptr!(1u8).as_tensor().as_array_dyn().shape(), &[1]);
+        assert_eq!(tensor_ptr!(1u64, 2).as_tensor().as_array(), array![1, 2]);
+        let t: TensorPtr<'_, View<i8>> = tensor_ptr!([1i8, 2]);
+        assert_eq!(t.as_tensor().as_array_dyn().shape(), &[1, 2]);
     }
 }
