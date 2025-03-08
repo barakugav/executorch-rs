@@ -20,6 +20,9 @@ fn main() {
     }
 
     println!("cargo::rerun-if-env-changed=EXECUTORCH_RS_LINK_TEST_KERNELS");
+    if check_cfg {
+        println!("cargo:rustc-check-cfg=cfg(tests_with_kernels)");
+    }
     if std::env::var("EXECUTORCH_RS_LINK_TEST_KERNELS").as_deref() == Ok("1") {
         println!("cargo::rerun-if-env-changed=EXECUTORCH_RS_EXECUTORCH_LIB_DIR");
         let libs_dir = std::env::var("EXECUTORCH_RS_EXECUTORCH_LIB_DIR").expect(
@@ -29,6 +32,8 @@ fn main() {
         println!("cargo::rustc-link-search=native={libs_dir}/kernels/portable/");
         println!("cargo::rustc-link-lib=static:+whole-archive=portable_kernels");
         println!("cargo::rustc-link-lib=static:+whole-archive=portable_ops_lib");
+
+        println!("cargo:rustc-cfg=tests_with_kernels");
     }
 }
 

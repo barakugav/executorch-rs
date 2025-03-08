@@ -262,11 +262,7 @@ impl IntoCpp for LoadMode {
 mod tests {
     use super::*;
 
-    use crate::{
-        evalue::Tag,
-        tensor::{ScalarType, Tensor, TensorImpl},
-        tests::add_model_path,
-    };
+    use crate::tests::add_model_path;
 
     #[test]
     fn load() {
@@ -301,6 +297,7 @@ mod tests {
         assert!(module.method_names().is_err());
     }
 
+    #[cfg(tests_with_kernels)]
     #[test]
     fn load_method() {
         let mut module = Module::new(add_model_path(), None, None);
@@ -314,8 +311,12 @@ mod tests {
         assert!(module.load_method("forward", None).is_err());
     }
 
+    #[cfg(tests_with_kernels)]
     #[test]
     fn method_meta() {
+        use crate::evalue::Tag;
+        use crate::tensor::ScalarType;
+
         let mut module = Module::new(add_model_path(), None, None);
         let method_meta = module.method_meta("forward").unwrap();
 
@@ -355,8 +356,12 @@ mod tests {
         assert!(module.method_meta("forward").is_err());
     }
 
+    #[cfg(tests_with_kernels)]
     #[test]
     fn execute() {
+        use crate::evalue::Tag;
+        use crate::tensor::{Tensor, TensorImpl};
+
         let mut module = Module::new(add_model_path(), None, None);
 
         let sizes = [1];

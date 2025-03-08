@@ -742,6 +742,13 @@ impl<'a, S: Scalar> TensorImpl<'a, S> {
         let data_ptr = data.as_ptr() as *mut S;
         unsafe { Self::from_ptr_impl(sizes, data_ptr, dim_order, strides) }
     }
+
+    /// Create a new TensorImpl from a scalar.
+    ///
+    /// The created tensor will be zero-dimensional.
+    pub fn from_scalar(scalar: &'a S) -> Self {
+        unsafe { Self::from_ptr(&[], scalar as *const S, &[], &[]).unwrap() }
+    }
 }
 
 /// A mutable tensor implementation that does not own the underlying data.
@@ -809,6 +816,13 @@ impl<'a, S: Scalar> TensorImplMut<'a, S> {
         // TODO: verify the data length make sense with the sizes/dim_order/strides
         let data_ptr = data.as_ptr() as *mut S;
         unsafe { Self::from_ptr_impl(sizes, data_ptr, dim_order, strides) }
+    }
+
+    /// Create a new TensorImplMut from a scalar.
+    ///
+    /// The created tensor will be zero-dimensional.
+    pub fn from_scalar(scalar: &'a mut S) -> Self {
+        unsafe { Self::from_ptr(&[], scalar as *mut S, &[], &[]).unwrap() }
     }
 }
 
@@ -1397,5 +1411,41 @@ mod tests {
         assert!(TensorImplMut::from_slice(&[2, 3], &mut [0; 6], &[1, 0], &[1, 2]).is_ok());
         assert!(TensorImplMut::from_slice(&[2, 3], &mut [0; 6], &[0, 1], &[1, 2]).is_err());
         assert!(TensorImplMut::from_slice(&[2, 3], &mut [0; 12], &[1, 0], &[2, 4]).is_err());
+    }
+
+    #[test]
+    fn scalar_tensor() {
+        let scalar = 42;
+        let tensor = TensorImpl::from_scalar(&scalar);
+        let storage = storage!(Tensor<i32>);
+        let tensor = Tensor::new_in_storage(&tensor, storage);
+        assert_eq!(tensor.nbytes(), 4);
+        assert_eq!(tensor.dim(), 0);
+        assert_eq!(tensor.numel(), 1);
+        assert_eq!(tensor.scalar_type(), ScalarType::Int);
+        assert_eq!(tensor.element_size(), 4);
+        assert_eq!(tensor.sizes(), &[]);
+        assert_eq!(tensor.dim_order(), &[]);
+        assert_eq!(tensor.strides(), &[]);
+        assert_eq!(unsafe { *(tensor.as_ptr() as *const i32) }, 42);
+        assert_eq!(tensor[&[]], 42);
+
+        let mut scalar = 17;
+        let mut tensor = TensorImplMut::from_scalar(&mut scalar);
+        let storage = storage!(TensorMut<i32>);
+        let mut tensor = TensorMut::new_in_storage(&mut tensor, storage);
+        assert_eq!(tensor.nbytes(), 4);
+        assert_eq!(tensor.dim(), 0);
+        assert_eq!(tensor.numel(), 1);
+        assert_eq!(tensor.scalar_type(), ScalarType::Int);
+        assert_eq!(tensor.element_size(), 4);
+        assert_eq!(tensor.sizes(), &[]);
+        assert_eq!(tensor.dim_order(), &[]);
+        assert_eq!(tensor.strides(), &[]);
+        assert_eq!(unsafe { *(tensor.as_ptr() as *const i32) }, 17);
+        assert_eq!(tensor[&[]], 17);
+        tensor[&[]] = 6;
+        assert_eq!(unsafe { *(tensor.as_ptr() as *const i32) }, 6);
+        assert_eq!(tensor[&[]], 6);
     }
 }
