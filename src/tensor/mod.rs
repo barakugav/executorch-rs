@@ -451,9 +451,6 @@ impl<D: Data> std::fmt::Debug for TensorBase<'_, D> {
                 }
             };
         }
-        fn add_data_field_unsupported(st: &mut std::fmt::DebugStruct) {
-            st.field("data", &"unsupported");
-        }
 
         match self.scalar_type() {
             ScalarType::Byte => add_data_field(self.as_typed::<u8>(), &mut st),
@@ -479,23 +476,41 @@ impl<D: Data> std::fmt::Debug for TensorBase<'_, D> {
                 add_data_field(self.as_typed::<crate::scalar::Complex<f64>>(), &mut st);
             }
             ScalarType::Bool => add_data_field(self.as_typed::<bool>(), &mut st),
-            ScalarType::QInt8 => add_data_field_unsupported(&mut st),
-            ScalarType::QUInt8 => add_data_field_unsupported(&mut st),
-            ScalarType::QInt32 => add_data_field_unsupported(&mut st),
+            ScalarType::QInt8 => add_data_field(self.as_typed::<crate::scalar::QInt8>(), &mut st),
+            ScalarType::QUInt8 => add_data_field(self.as_typed::<crate::scalar::QUInt8>(), &mut st),
+            ScalarType::QInt32 => add_data_field(self.as_typed::<crate::scalar::QInt32>(), &mut st),
             ScalarType::BFloat16 => {
                 add_data_field(self.as_typed::<crate::scalar::bf16>(), &mut st);
             }
-            ScalarType::QUInt4x2 => add_data_field_unsupported(&mut st),
-            ScalarType::QUInt2x4 => add_data_field_unsupported(&mut st),
-            ScalarType::Bits1x8 => add_data_field_unsupported(&mut st),
-            ScalarType::Bits2x4 => add_data_field_unsupported(&mut st),
-            ScalarType::Bits4x2 => add_data_field_unsupported(&mut st),
-            ScalarType::Bits8 => add_data_field_unsupported(&mut st),
-            ScalarType::Bits16 => add_data_field_unsupported(&mut st),
-            ScalarType::Float8_e5m2 => add_data_field_unsupported(&mut st),
-            ScalarType::Float8_e4m3fn => add_data_field_unsupported(&mut st),
-            ScalarType::Float8_e5m2fnuz => add_data_field_unsupported(&mut st),
-            ScalarType::Float8_e4m3fnuz => add_data_field_unsupported(&mut st),
+            ScalarType::QUInt4x2 => {
+                add_data_field(self.as_typed::<crate::scalar::QUInt4x2>(), &mut st)
+            }
+            ScalarType::QUInt2x4 => {
+                add_data_field(self.as_typed::<crate::scalar::QUInt2x4>(), &mut st)
+            }
+            ScalarType::Bits1x8 => {
+                add_data_field(self.as_typed::<crate::scalar::Bits1x8>(), &mut st)
+            }
+            ScalarType::Bits2x4 => {
+                add_data_field(self.as_typed::<crate::scalar::Bits2x4>(), &mut st)
+            }
+            ScalarType::Bits4x2 => {
+                add_data_field(self.as_typed::<crate::scalar::Bits4x2>(), &mut st)
+            }
+            ScalarType::Bits8 => add_data_field(self.as_typed::<crate::scalar::Bits8>(), &mut st),
+            ScalarType::Bits16 => add_data_field(self.as_typed::<crate::scalar::Bits16>(), &mut st),
+            ScalarType::Float8_e5m2 => {
+                add_data_field(self.as_typed::<crate::scalar::Float8_e5m2>(), &mut st)
+            }
+            ScalarType::Float8_e4m3fn => {
+                add_data_field(self.as_typed::<crate::scalar::Float8_e4m3fn>(), &mut st)
+            }
+            ScalarType::Float8_e5m2fnuz => {
+                add_data_field(self.as_typed::<crate::scalar::Float8_e5m2fnuz>(), &mut st)
+            }
+            ScalarType::Float8_e4m3fnuz => {
+                add_data_field(self.as_typed::<crate::scalar::Float8_e4m3fnuz>(), &mut st)
+            }
             ScalarType::UInt16 => add_data_field(self.as_typed::<u16>(), &mut st),
             ScalarType::UInt32 => add_data_field(self.as_typed::<u32>(), &mut st),
             ScalarType::UInt64 => add_data_field(self.as_typed::<u64>(), &mut st),
