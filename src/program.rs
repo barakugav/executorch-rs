@@ -3,6 +3,53 @@
 //! This module is the lowest level API for the ExecuTorch library. It provides the ability to load and execute
 //! programs, while controlling memory allocation and execution.
 //!
+//! ```rust,ignore
+//! let mut buffer = [0_u8; 4096];
+//! let allocator = BufferMemoryAllocator::new(&mut buffer);
+//!
+//! let data_loader = BufferDataLoader::new(ADD_MODEL_BYTES);
+//! let program = Program::load(&data_loader, None).unwrap();
+//!
+//! let method_meta = program.method_meta(cstr::cstr!("forward")).unwrap();
+//!
+//! let num_memory_planned_buffers = method_meta.num_memory_planned_buffers();
+//! let planned_arenas = allocator
+//!     .allocate_arr_fn(num_memory_planned_buffers, |idx| {
+//!         let buf_size = method_meta.memory_planned_buffer_size(idx).unwrap();
+//!         Span::from_slice(allocator.allocate_arr::<u8>(buf_size).unwrap())
+//!     })
+//!     .unwrap();
+//!
+//! let mut planned_memory = HierarchicalAllocator::new(planned_arenas);
+//!
+//! let memory_manager = MemoryManager::new(&allocator, Some(&mut planned_memory), None);
+//!
+//! let mut method = program
+//!     .load_method(cstr::cstr!("forward"), &memory_manager, None)
+//!     .unwrap();
+//!
+//! let input_array1 = ArrayStorage::new(array!(1.0_f32)).unwrap();
+//! let input_tensor_impl1 = input_array1.as_tensor_impl();
+//! let input_tensor1 = Tensor::new_in_allocator(&input_tensor_impl1, &allocator);
+//! let input_evalue1 = EValue::new_in_allocator(input_tensor1, &allocator);
+//!
+//! let input_array2 = ArrayStorage::new(array!(1.0_f32)).unwrap();
+//! let input_tensor_impl2 = input_array2.as_tensor_impl();
+//! let input_tensor2 = Tensor::new_in_allocator(&input_tensor_impl2, &allocator);
+//! let input_evalue2 = EValue::new_in_allocator(input_tensor2, &allocator);
+//!
+//! let mut method_exe = method.start_execution();
+//!
+//! method_exe.set_input(&input_evalue1, 0).unwrap();
+//! method_exe.set_input(&input_evalue2, 1).unwrap();
+//!
+//! let outputs = method_exe.execute().unwrap();
+//! let output = outputs.get(0);
+//! let output = output.as_tensor().into_typed::<f32>();
+//!
+//! assert_eq!(array!(2.0), output.as_array());
+//! ```
+//!
 //! See the `examples/no_std` example for how to load and execute a program.
 
 use std::ffi::CStr;
