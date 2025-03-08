@@ -626,7 +626,7 @@ impl<'a, D: Data> TensorImplBase<'a, D> {
     ///
     /// # Errors
     ///
-    /// Returns an error if dim order is invalid, or it doesn't match the strides, or the strides are not dense,
+    /// Returns an error if dim order is invalid, or if it doesn't match the strides, or if the strides are not dense,
     /// i.e. if the strides are not the default strides of some permutation of the sizes.
     ///
     /// # Panics
@@ -692,7 +692,7 @@ impl<'a, S: Scalar> TensorImpl<'a, S> {
     ///
     /// # Errors
     ///
-    /// Returns an error if dim order is invalid, or it doesn't match the strides, or the strides are not dense,
+    /// Returns an error if dim order is invalid, or if it doesn't match the strides, or if the strides are not dense,
     /// i.e. if the strides are not the default strides of some permutation of the sizes.
     ///
     /// # Panics
@@ -726,7 +726,7 @@ impl<'a, S: Scalar> TensorImpl<'a, S> {
     ///
     /// # Errors
     ///
-    /// Returns an error if dim order is invalid, or it doesn't match the strides, or the strides are not dense,
+    /// Returns an error if dim order is invalid, or if it doesn't match the strides, or if the strides are not dense,
     /// i.e. if the strides are not the default strides of some permutation of the sizes.
     ///
     /// # Panics
@@ -761,7 +761,7 @@ impl<'a, S: Scalar> TensorImplMut<'a, S> {
     ///
     /// # Errors
     ///
-    /// Returns an error if dim order is invalid, or it doesn't match the strides, or the strides are not dense,
+    /// Returns an error if dim order is invalid, or if it doesn't match the strides, or if the strides are not dense,
     /// i.e. if the strides are not the default strides of some permutation of the sizes.
     ///
     /// # Panics
@@ -794,7 +794,7 @@ impl<'a, S: Scalar> TensorImplMut<'a, S> {
     ///
     /// # Errors
     ///
-    /// Returns an error if dim order is invalid, or it doesn't match the strides, or the strides are not dense,
+    /// Returns an error if dim order is invalid, or if it doesn't match the strides, or if the strides are not dense,
     /// i.e. if the strides are not the default strides of some permutation of the sizes.
     ///
     /// # Panics

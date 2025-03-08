@@ -313,7 +313,7 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
     ///
     /// # Errors
     ///
-    /// Returns an error if dim order is invalid, or it doesn't match the strides, or the strides are not dense,
+    /// Returns an error if dim order is invalid, or if it doesn't match the strides, or if the strides are not dense,
     /// i.e. if the strides are not the default strides of some permutation of the sizes.
     /// The function may return an error if the sizes and strides do not make sense with respect to the data buffer,
     /// but this is not guaranteed.
@@ -383,7 +383,7 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
     ///
     /// # Errors
     ///
-    /// Returns an error if dim order is invalid, or it doesn't match the strides, or the strides are not dense,
+    /// Returns an error if dim order is invalid, or if it doesn't match the strides, or if the strides are not dense,
     /// i.e. if the strides are not the default strides of some permutation of the sizes.
     /// The function may return an error if the sizes and strides do not make sense with respect to the data buffer,
     /// but this is not guaranteed.
