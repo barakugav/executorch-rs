@@ -506,16 +506,14 @@ impl<'a, D: tensor::Data> IntoEValue<'a> for TensorBase<'a, D> {
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a> {
         // Safety: the closure init the pointer
-        unsafe {
-            EValue::new_impl(|p| et_c::executorch_EValue_new_from_tensor(p, self.as_cpp_tensor()))
-        }
+        unsafe { EValue::new_impl(|p| et_c::executorch_EValue_new_from_tensor(p, self.as_cpp())) }
     }
 
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
         // Safety: the closure init the pointer
         unsafe {
             EValue::new_in_storage_impl(
-                |p| et_c::executorch_EValue_new_from_tensor(p, self.as_cpp_tensor()),
+                |p| et_c::executorch_EValue_new_from_tensor(p, self.as_cpp()),
                 storage,
             )
         }
@@ -524,16 +522,14 @@ impl<'a, D: tensor::Data> IntoEValue<'a> for TensorBase<'a, D> {
 impl<'a, D: tensor::Data> IntoEValue<'a> for &'a TensorBase<'_, D> {
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a> {
-        unsafe {
-            EValue::new_impl(|p| et_c::executorch_EValue_new_from_tensor(p, self.as_cpp_tensor()))
-        }
+        unsafe { EValue::new_impl(|p| et_c::executorch_EValue_new_from_tensor(p, self.as_cpp())) }
     }
 
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
         // Safety: the closure init the pointer
         unsafe {
             EValue::new_in_storage_impl(
-                |p| et_c::executorch_EValue_new_from_tensor(p, self.as_cpp_tensor()),
+                |p| et_c::executorch_EValue_new_from_tensor(p, self.as_cpp()),
                 storage,
             )
         }

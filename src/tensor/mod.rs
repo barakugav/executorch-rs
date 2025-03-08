@@ -32,6 +32,8 @@ mod array;
 #[cfg(feature = "ndarray")]
 pub use array::*;
 
+mod fmt;
+
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
 use std::pin::Pin;
@@ -150,7 +152,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// The caller must ensure that the new data generic is compatible with the data of the given tensor.
     /// `D2` must be immutable as we take immutable reference to the given tensor.
     pub(crate) unsafe fn convert_from_ref<D2: Data>(tensor: &'a TensorBase<D2>) -> Self {
-        let inner = tensor.as_cpp_tensor();
+        let inner = tensor.as_cpp();
         let inner = &*(inner.ptr as *const et_c::TensorStorage);
         Self(NonTriviallyMovable::from_ref(inner), PhantomData)
     }
@@ -166,13 +168,13 @@ impl<'a, D: Data> TensorBase<'a, D> {
         D2: DataMut,
     {
         // Safety: we are not moving out of the mut reference of the inner tensor
-        let inner = unsafe { tensor.as_mut_cpp_tensor() };
+        let inner = unsafe { tensor.as_cpp_mut() };
         let inner = &mut *(inner.ptr as *mut et_c::TensorStorage);
         Self(NonTriviallyMovable::from_mut_ref(inner), PhantomData)
     }
 
     /// Get the underlying Cpp tensor.
-    pub(crate) fn as_cpp_tensor(&self) -> et_c::TensorRef {
+    pub(crate) fn as_cpp(&self) -> et_c::TensorRef {
         et_c::TensorRef {
             ptr: self.0.as_ref() as *const et_c::TensorStorage as *const _,
         }
@@ -183,7 +185,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// # Safety
     ///
     /// The caller can not move out of the returned mut reference.
-    pub(crate) unsafe fn as_mut_cpp_tensor(&mut self) -> et_c::TensorRefMut
+    pub(crate) unsafe fn as_cpp_mut(&mut self) -> et_c::TensorRefMut
     where
         D: DataMut,
     {
@@ -198,7 +200,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// NOTE: Only the alive space is returned not the total capacity of the
     /// underlying data blob.
     pub fn nbytes(&self) -> usize {
-        unsafe { et_c::executorch_Tensor_nbytes(self.as_cpp_tensor()) }
+        unsafe { et_c::executorch_Tensor_nbytes(self.as_cpp()) }
     }
 
     /// Returns the size of the tensor at the given dimension.
@@ -208,33 +210,33 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// this method more compatible with at::Tensor, and more consistent with the
     /// rest of the methods on this class and in ETensor.
     pub fn size(&self, dim: usize) -> usize {
-        unsafe { et_c::executorch_Tensor_size(self.as_cpp_tensor(), dim) }
+        unsafe { et_c::executorch_Tensor_size(self.as_cpp(), dim) }
     }
 
     /// Returns the tensor's number of dimensions.
     pub fn dim(&self) -> usize {
-        unsafe { et_c::executorch_Tensor_dim(self.as_cpp_tensor()) }
+        unsafe { et_c::executorch_Tensor_dim(self.as_cpp()) }
     }
 
     /// Returns the number of elements in the tensor.
     pub fn numel(&self) -> usize {
-        unsafe { et_c::executorch_Tensor_numel(self.as_cpp_tensor()) }
+        unsafe { et_c::executorch_Tensor_numel(self.as_cpp()) }
     }
 
     /// Returns the type of the elements in the tensor (int32, float, bool, etc).
     pub fn scalar_type(&self) -> ScalarType {
-        unsafe { et_c::executorch_Tensor_scalar_type(self.as_cpp_tensor()) }.rs()
+        unsafe { et_c::executorch_Tensor_scalar_type(self.as_cpp()) }.rs()
     }
 
     /// Returns the size in bytes of one element of the tensor.
     pub fn element_size(&self) -> usize {
-        unsafe { et_c::executorch_Tensor_element_size(self.as_cpp_tensor()) }
+        unsafe { et_c::executorch_Tensor_element_size(self.as_cpp()) }
     }
 
     /// Returns the sizes of the tensor at each dimension.
     pub fn sizes(&self) -> &[SizesType] {
         unsafe {
-            let arr = et_c::executorch_Tensor_sizes(self.as_cpp_tensor());
+            let arr = et_c::executorch_Tensor_sizes(self.as_cpp());
             debug_assert!(!arr.data.is_null());
             std::slice::from_raw_parts(arr.data, arr.len)
         }
@@ -243,7 +245,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// Returns the order the dimensions are laid out in memory.
     pub fn dim_order(&self) -> &[DimOrderType] {
         unsafe {
-            let arr = et_c::executorch_Tensor_dim_order(self.as_cpp_tensor());
+            let arr = et_c::executorch_Tensor_dim_order(self.as_cpp());
             debug_assert!(!arr.data.is_null());
             std::slice::from_raw_parts(arr.data, arr.len)
         }
@@ -252,7 +254,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// Returns the strides of the tensor at each dimension.
     pub fn strides(&self) -> &[StridesType] {
         unsafe {
-            let arr = et_c::executorch_Tensor_strides(self.as_cpp_tensor());
+            let arr = et_c::executorch_Tensor_strides(self.as_cpp());
             debug_assert!(!arr.data.is_null());
             std::slice::from_raw_parts(arr.data, arr.len)
         }
@@ -265,7 +267,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// The caller must access the values in the returned pointer according to the type, sizes, dim order and strides
     /// of the tensor.
     pub fn as_ptr_raw(&self) -> *const () {
-        let ptr = unsafe { et_c::executorch_Tensor_const_data_ptr(self.as_cpp_tensor()) };
+        let ptr = unsafe { et_c::executorch_Tensor_const_data_ptr(self.as_cpp()) };
         debug_assert!(!ptr.is_null());
         ptr as *const ()
     }
@@ -370,7 +372,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     fn coordinate_to_index(&self, coordinate: &[usize]) -> Option<usize> {
         let index = unsafe {
             et_c::executorch_Tensor_coordinate_to_index(
-                self.as_cpp_tensor(),
+                self.as_cpp(),
                 et_c::ArrayRefUsizeType::from_slice(coordinate),
             )
         };
@@ -424,101 +426,6 @@ impl<D: Data> Storable for TensorBase<'_, D> {
     type __Storage = et_c::TensorStorage;
 }
 
-#[cfg(feature = "ndarray")]
-impl<D: Data> std::fmt::Debug for TensorBase<'_, D> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let mut st = f.debug_struct("Tensor");
-        st.field("scalar_type", &self.scalar_type());
-
-        fn add_data_field<S: Scalar + std::fmt::Debug, D: DataTyped<Scalar = S>>(
-            this: TensorBase<D>,
-            st: &mut std::fmt::DebugStruct,
-        ) {
-            match this.dim() {
-                0 => st.field("data", &this.as_array::<ndarray::Ix0>()),
-                1 => st.field("data", &this.as_array::<ndarray::Ix1>()),
-                2 => st.field("data", &this.as_array::<ndarray::Ix2>()),
-                3 => st.field("data", &this.as_array::<ndarray::Ix3>()),
-                4 => st.field("data", &this.as_array::<ndarray::Ix4>()),
-                5 => st.field("data", &this.as_array::<ndarray::Ix5>()),
-                6 => st.field("data", &this.as_array::<ndarray::Ix6>()),
-                _ => {
-                    cfg_if::cfg_if! { if #[cfg(feature = "alloc")] {
-                        st.field("data", &this.as_array_dyn())
-                    } else {
-                        st.field("data", &"unsupported (too many dimensions)")
-                    } }
-                }
-            };
-        }
-
-        match self.scalar_type() {
-            ScalarType::Byte => add_data_field(self.as_typed::<u8>(), &mut st),
-            ScalarType::Char => add_data_field(self.as_typed::<i8>(), &mut st),
-            ScalarType::Short => add_data_field(self.as_typed::<i16>(), &mut st),
-            ScalarType::Int => add_data_field(self.as_typed::<i32>(), &mut st),
-            ScalarType::Long => add_data_field(self.as_typed::<i64>(), &mut st),
-            ScalarType::Half => {
-                add_data_field(self.as_typed::<crate::scalar::f16>(), &mut st);
-            }
-            ScalarType::Float => add_data_field(self.as_typed::<f32>(), &mut st),
-            ScalarType::Double => add_data_field(self.as_typed::<f64>(), &mut st),
-            ScalarType::ComplexHalf => {
-                add_data_field(
-                    self.as_typed::<crate::scalar::Complex<crate::scalar::f16>>(),
-                    &mut st,
-                );
-            }
-            ScalarType::ComplexFloat => {
-                add_data_field(self.as_typed::<crate::scalar::Complex<f32>>(), &mut st);
-            }
-            ScalarType::ComplexDouble => {
-                add_data_field(self.as_typed::<crate::scalar::Complex<f64>>(), &mut st);
-            }
-            ScalarType::Bool => add_data_field(self.as_typed::<bool>(), &mut st),
-            ScalarType::QInt8 => add_data_field(self.as_typed::<crate::scalar::QInt8>(), &mut st),
-            ScalarType::QUInt8 => add_data_field(self.as_typed::<crate::scalar::QUInt8>(), &mut st),
-            ScalarType::QInt32 => add_data_field(self.as_typed::<crate::scalar::QInt32>(), &mut st),
-            ScalarType::BFloat16 => {
-                add_data_field(self.as_typed::<crate::scalar::bf16>(), &mut st);
-            }
-            ScalarType::QUInt4x2 => {
-                add_data_field(self.as_typed::<crate::scalar::QUInt4x2>(), &mut st)
-            }
-            ScalarType::QUInt2x4 => {
-                add_data_field(self.as_typed::<crate::scalar::QUInt2x4>(), &mut st)
-            }
-            ScalarType::Bits1x8 => {
-                add_data_field(self.as_typed::<crate::scalar::Bits1x8>(), &mut st)
-            }
-            ScalarType::Bits2x4 => {
-                add_data_field(self.as_typed::<crate::scalar::Bits2x4>(), &mut st)
-            }
-            ScalarType::Bits4x2 => {
-                add_data_field(self.as_typed::<crate::scalar::Bits4x2>(), &mut st)
-            }
-            ScalarType::Bits8 => add_data_field(self.as_typed::<crate::scalar::Bits8>(), &mut st),
-            ScalarType::Bits16 => add_data_field(self.as_typed::<crate::scalar::Bits16>(), &mut st),
-            ScalarType::Float8_e5m2 => {
-                add_data_field(self.as_typed::<crate::scalar::Float8_e5m2>(), &mut st)
-            }
-            ScalarType::Float8_e4m3fn => {
-                add_data_field(self.as_typed::<crate::scalar::Float8_e4m3fn>(), &mut st)
-            }
-            ScalarType::Float8_e5m2fnuz => {
-                add_data_field(self.as_typed::<crate::scalar::Float8_e5m2fnuz>(), &mut st)
-            }
-            ScalarType::Float8_e4m3fnuz => {
-                add_data_field(self.as_typed::<crate::scalar::Float8_e4m3fnuz>(), &mut st)
-            }
-            ScalarType::UInt16 => add_data_field(self.as_typed::<u16>(), &mut st),
-            ScalarType::UInt32 => add_data_field(self.as_typed::<u32>(), &mut st),
-            ScalarType::UInt64 => add_data_field(self.as_typed::<u64>(), &mut st),
-        };
-        st.finish()
-    }
-}
-
 impl<D: DataTyped> TensorBase<'_, D> {
     /// Returns a pointer to the constant underlying data blob.
     pub fn as_ptr(&self) -> *const D::Scalar {
@@ -542,7 +449,7 @@ impl<D: DataMut> TensorBase<'_, D> {
     /// The caller must access the values in the returned pointer according to the type, sizes, dim order and strides
     /// of the tensor.
     pub fn as_mut_ptr_raw(&self) -> *mut () {
-        let ptr = unsafe { et_c::executorch_Tensor_mutable_data_ptr(self.as_cpp_tensor()) };
+        let ptr = unsafe { et_c::executorch_Tensor_mutable_data_ptr(self.as_cpp()) };
         debug_assert!(!ptr.is_null());
         ptr as *mut ()
     }
