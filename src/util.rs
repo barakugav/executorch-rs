@@ -246,7 +246,10 @@ pub(crate) trait IntoCpp {
 /// This is intended to be trivially copyable, so it should be passed by
 /// value.
 #[allow(dead_code)]
-pub struct ArrayRef<'a, T: ArrayRefElement>(pub(crate) T::__ArrayRefImpl, PhantomData<&'a ()>);
+pub(crate) struct ArrayRef<'a, T: ArrayRefElement>(
+    pub(crate) T::__ArrayRefImpl,
+    PhantomData<&'a ()>,
+);
 impl<'a, T: ArrayRefElement> ArrayRef<'a, T> {
     pub(crate) unsafe fn from_inner(arr: T::__ArrayRefImpl) -> Self {
         Self(arr, PhantomData)
@@ -274,7 +277,7 @@ impl<T: ArrayRefElement + Debug + 'static> Debug for ArrayRef<'_, T> {
 }
 
 /// An element type that can be used in an ArrayRef.
-pub trait ArrayRefElement {
+pub(crate) trait ArrayRefElement {
     /// The Cpp type that represents an ArrayRef of this element type.
     #[doc(hidden)]
     type __ArrayRefImpl: __ArrayRefImpl<Element = Self>;
@@ -283,7 +286,7 @@ pub trait ArrayRefElement {
 
 /// A Cpp type that represents an ArrayRef of elements of type Element.
 #[doc(hidden)]
-pub trait __ArrayRefImpl {
+pub(crate) trait __ArrayRefImpl {
     /// The element type of the ArrayRef.
     type Element: ArrayRefElement<__ArrayRefImpl = Self>;
 
