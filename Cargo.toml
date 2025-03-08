@@ -1,6 +1,6 @@
 [package]
 name = "executorch"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["Barak Ugav <barakugav@gmail.com>"]
 edition = "2021"
 rust-version = "1.77.0" # executorch-sys
@@ -25,7 +25,7 @@ categories = [
 include = ["Cargo.toml", "build.rs", "src/", "README.md", "LICENSE"]
 
 [dependencies]
-executorch-sys = { path = "executorch-sys", version = "0.4.0", default-features = false }
+executorch-sys = { path = "executorch-sys", version = "0.5.0", default-features = false }
 ndarray = { version = "0.16", default-features = false, optional = true }
 half = { version = "2.4", default-features = false, optional = true }
 num-complex = { version = "0.4", optional = true }
