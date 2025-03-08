@@ -154,7 +154,7 @@ impl<'a> EValue<'a> {
     ) -> Self {
         let storage = allocator
             .allocate_pinned()
-            .ok_or(Error::AllocationFailed)
+            .ok_or(Error::CError(CError::MemoryAllocationFailed))
             .unwrap();
         Self::new_in_storage(value, storage)
     }
@@ -506,16 +506,14 @@ impl<'a, D: tensor::Data> IntoEValue<'a> for TensorBase<'a, D> {
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a> {
         // Safety: the closure init the pointer
-        unsafe {
-            EValue::new_impl(|p| et_c::executorch_EValue_new_from_tensor(p, self.as_cpp_tensor()))
-        }
+        unsafe { EValue::new_impl(|p| et_c::executorch_EValue_new_from_tensor(p, self.as_cpp())) }
     }
 
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
         // Safety: the closure init the pointer
         unsafe {
             EValue::new_in_storage_impl(
-                |p| et_c::executorch_EValue_new_from_tensor(p, self.as_cpp_tensor()),
+                |p| et_c::executorch_EValue_new_from_tensor(p, self.as_cpp()),
                 storage,
             )
         }
@@ -524,16 +522,14 @@ impl<'a, D: tensor::Data> IntoEValue<'a> for TensorBase<'a, D> {
 impl<'a, D: tensor::Data> IntoEValue<'a> for &'a TensorBase<'_, D> {
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a> {
-        unsafe {
-            EValue::new_impl(|p| et_c::executorch_EValue_new_from_tensor(p, self.as_cpp_tensor()))
-        }
+        unsafe { EValue::new_impl(|p| et_c::executorch_EValue_new_from_tensor(p, self.as_cpp())) }
     }
 
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
         // Safety: the closure init the pointer
         unsafe {
             EValue::new_in_storage_impl(
-                |p| et_c::executorch_EValue_new_from_tensor(p, self.as_cpp_tensor()),
+                |p| et_c::executorch_EValue_new_from_tensor(p, self.as_cpp()),
                 storage,
             )
         }
@@ -1027,7 +1023,7 @@ mod tests {
             let sizes = [data.len() as SizesType];
             let dim_order = [0];
             let strides = [1];
-            let tensor_impl = TensorImpl::from_slice(&sizes, &data, &dim_order, &strides);
+            let tensor_impl = TensorImpl::from_slice(&sizes, &data, &dim_order, &strides).unwrap();
             let tensor = Tensor::new(&tensor_impl);
 
             // Borrow tensor by EValue
@@ -1067,7 +1063,7 @@ mod tests {
             let sizes = [data.len() as SizesType];
             let dim_order = [0];
             let strides = [1];
-            let tensor_impl = TensorImpl::from_slice(&sizes, &data, &dim_order, &strides);
+            let tensor_impl = TensorImpl::from_slice(&sizes, &data, &dim_order, &strides).unwrap();
             let tensor_storage = storage!(Tensor<i32>);
             let tensor = Tensor::new_in_storage(&tensor_impl, tensor_storage);
 
@@ -1100,19 +1096,19 @@ mod tests {
             let sizes = [data1.len() as SizesType];
             let dim_order = [0];
             let strides = [1];
-            let tensor_impl = TensorImpl::from_slice(&sizes, &data1, &dim_order, &strides);
+            let tensor_impl = TensorImpl::from_slice(&sizes, &data1, &dim_order, &strides).unwrap();
             let tensor1 = Tensor::new(&tensor_impl);
 
             let sizes = [data2.len() as SizesType];
             let dim_order = [0];
             let strides = [1];
-            let tensor_impl = TensorImpl::from_slice(&sizes, &data2, &dim_order, &strides);
+            let tensor_impl = TensorImpl::from_slice(&sizes, &data2, &dim_order, &strides).unwrap();
             let tensor2 = Tensor::new(&tensor_impl);
 
             let sizes = [data3.len() as SizesType];
             let dim_order = [0];
             let strides = [1];
-            let tensor_impl = TensorImpl::from_slice(&sizes, &data3, &dim_order, &strides);
+            let tensor_impl = TensorImpl::from_slice(&sizes, &data3, &dim_order, &strides).unwrap();
             let tensor3 = Tensor::new(&tensor_impl);
 
             let evalue1 = EValue::new(tensor1);
@@ -1166,21 +1162,21 @@ mod tests {
             let sizes = [data1.len() as SizesType];
             let dim_order = [0];
             let strides = [1];
-            let tensor_impl = TensorImpl::from_slice(&sizes, &data1, &dim_order, &strides);
+            let tensor_impl = TensorImpl::from_slice(&sizes, &data1, &dim_order, &strides).unwrap();
             let tensor_storage = storage!(Tensor<i32>);
             let tensor1 = Tensor::new_in_storage(&tensor_impl, tensor_storage);
 
             let sizes = [data2.len() as SizesType];
             let dim_order = [0];
             let strides = [1];
-            let tensor_impl = TensorImpl::from_slice(&sizes, &data2, &dim_order, &strides);
+            let tensor_impl = TensorImpl::from_slice(&sizes, &data2, &dim_order, &strides).unwrap();
             let tensor_storage = storage!(Tensor<i32>);
             let tensor2 = Tensor::new_in_storage(&tensor_impl, tensor_storage);
 
             let sizes = [data3.len() as SizesType];
             let dim_order = [0];
             let strides = [1];
-            let tensor_impl = TensorImpl::from_slice(&sizes, &data3, &dim_order, &strides);
+            let tensor_impl = TensorImpl::from_slice(&sizes, &data3, &dim_order, &strides).unwrap();
             let tensor_storage = storage!(Tensor<i32>);
             let tensor3 = Tensor::new_in_storage(&tensor_impl, tensor_storage);
 
@@ -1224,13 +1220,13 @@ mod tests {
             let sizes = [data1.len() as SizesType];
             let dim_order = [0];
             let strides = [1];
-            let tensor_impl = TensorImpl::from_slice(&sizes, &data1, &dim_order, &strides);
+            let tensor_impl = TensorImpl::from_slice(&sizes, &data1, &dim_order, &strides).unwrap();
             let tensor1 = Tensor::new(&tensor_impl);
 
             let sizes = [data2.len() as SizesType];
             let dim_order = [0];
             let strides = [1];
-            let tensor_impl = TensorImpl::from_slice(&sizes, &data2, &dim_order, &strides);
+            let tensor_impl = TensorImpl::from_slice(&sizes, &data2, &dim_order, &strides).unwrap();
             let tensor2 = Tensor::new(&tensor_impl);
 
             // let tensor3 = None;
@@ -1238,7 +1234,7 @@ mod tests {
             let sizes = [data4.len() as SizesType];
             let dim_order = [0];
             let strides = [1];
-            let tensor_impl = TensorImpl::from_slice(&sizes, &data4, &dim_order, &strides);
+            let tensor_impl = TensorImpl::from_slice(&sizes, &data4, &dim_order, &strides).unwrap();
             let tensor4 = Tensor::new(&tensor_impl);
 
             let evalue1 = EValue::new(tensor1);
@@ -1333,14 +1329,14 @@ mod tests {
             let sizes = [data1.len() as SizesType];
             let dim_order = [0];
             let strides = [1];
-            let tensor_impl = TensorImpl::from_slice(&sizes, &data1, &dim_order, &strides);
+            let tensor_impl = TensorImpl::from_slice(&sizes, &data1, &dim_order, &strides).unwrap();
             let tensor_storage = storage!(Tensor<i32>);
             let tensor1 = Tensor::new_in_storage(&tensor_impl, tensor_storage);
 
             let sizes = [data2.len() as SizesType];
             let dim_order = [0];
             let strides = [1];
-            let tensor_impl = TensorImpl::from_slice(&sizes, &data2, &dim_order, &strides);
+            let tensor_impl = TensorImpl::from_slice(&sizes, &data2, &dim_order, &strides).unwrap();
             let tensor_storage = storage!(Tensor<i32>);
             let tensor2 = Tensor::new_in_storage(&tensor_impl, tensor_storage);
 
@@ -1349,7 +1345,7 @@ mod tests {
             let sizes = [data4.len() as SizesType];
             let dim_order = [0];
             let strides = [1];
-            let tensor_impl = TensorImpl::from_slice(&sizes, &data4, &dim_order, &strides);
+            let tensor_impl = TensorImpl::from_slice(&sizes, &data4, &dim_order, &strides).unwrap();
             let tensor_storage = storage!(Tensor<i32>);
             let tensor4 = Tensor::new_in_storage(&tensor_impl, tensor_storage);
 
@@ -1476,7 +1472,8 @@ mod tests {
                     let sizes = [data.len() as SizesType];
                     let dim_order = [0];
                     let strides = [1];
-                    let tensor_impl = TensorImpl::from_slice(&sizes, &data, &dim_order, &strides);
+                    let tensor_impl =
+                        TensorImpl::from_slice(&sizes, &data, &dim_order, &strides).unwrap();
                     check_evalue(EValue::new(Tensor::new(&tensor_impl)));
                 }
                 Tag::String => check_evalue(EValue::new(cstr::cstr!("hello world!"))),
@@ -1504,21 +1501,24 @@ mod tests {
                     let sizes = [data1.len() as SizesType];
                     let dim_order = [0];
                     let strides = [1];
-                    let tensor_impl = TensorImpl::from_slice(&sizes, &data1, &dim_order, &strides);
+                    let tensor_impl =
+                        TensorImpl::from_slice(&sizes, &data1, &dim_order, &strides).unwrap();
                     let tensor1 = Tensor::new(&tensor_impl);
 
                     let data2: [i32; 2] = [55, 8];
                     let sizes = [data2.len() as SizesType];
                     let dim_order = [0];
                     let strides = [1];
-                    let tensor_impl = TensorImpl::from_slice(&sizes, &data2, &dim_order, &strides);
+                    let tensor_impl =
+                        TensorImpl::from_slice(&sizes, &data2, &dim_order, &strides).unwrap();
                     let tensor2 = Tensor::new(&tensor_impl);
 
                     let data3: [i32; 2] = [106, 144];
                     let sizes = [data3.len() as SizesType];
                     let dim_order = [0];
                     let strides = [1];
-                    let tensor_impl = TensorImpl::from_slice(&sizes, &data3, &dim_order, &strides);
+                    let tensor_impl =
+                        TensorImpl::from_slice(&sizes, &data3, &dim_order, &strides).unwrap();
                     let tensor3 = Tensor::new(&tensor_impl);
 
                     let evalue1 = EValue::new(tensor1);
@@ -1535,14 +1535,16 @@ mod tests {
                     let sizes = [data1.len() as SizesType];
                     let dim_order = [0];
                     let strides = [1];
-                    let tensor_impl = TensorImpl::from_slice(&sizes, &data1, &dim_order, &strides);
+                    let tensor_impl =
+                        TensorImpl::from_slice(&sizes, &data1, &dim_order, &strides).unwrap();
                     let tensor1 = Tensor::new(&tensor_impl);
 
                     let data2: [i32; 2] = [55, 8];
                     let sizes = [data2.len() as SizesType];
                     let dim_order = [0];
                     let strides = [1];
-                    let tensor_impl = TensorImpl::from_slice(&sizes, &data2, &dim_order, &strides);
+                    let tensor_impl =
+                        TensorImpl::from_slice(&sizes, &data2, &dim_order, &strides).unwrap();
                     let tensor2 = Tensor::new(&tensor_impl);
 
                     // let tensor3 = None;
@@ -1551,7 +1553,8 @@ mod tests {
                     let sizes = [data4.len() as SizesType];
                     let dim_order = [0];
                     let strides = [1];
-                    let tensor_impl = TensorImpl::from_slice(&sizes, &data4, &dim_order, &strides);
+                    let tensor_impl =
+                        TensorImpl::from_slice(&sizes, &data4, &dim_order, &strides).unwrap();
                     let tensor4 = Tensor::new(&tensor_impl);
 
                     let evalue1 = EValue::new(tensor1);

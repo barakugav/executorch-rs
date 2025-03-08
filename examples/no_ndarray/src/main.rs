@@ -20,14 +20,14 @@ fn main() {
     let sizes1 = [1];
     let dim_order1 = [0];
     let strides1 = [1];
-    let input_tensor1 = TensorImpl::from_slice(&sizes1, &data1, &dim_order1, &strides1);
+    let input_tensor1 = TensorImpl::from_slice(&sizes1, &data1, &dim_order1, &strides1).unwrap();
     let input_evalue1 = Tensor::new(&input_tensor1).into_evalue();
 
     let sizes2 = [1];
     let data2 = [1.0_f32];
     let dim_order2 = [0];
     let strides2 = [1];
-    let input_tensor2 = TensorImpl::from_slice(&sizes2, &data2, &dim_order2, &strides2);
+    let input_tensor2 = TensorImpl::from_slice(&sizes2, &data2, &dim_order2, &strides2).unwrap();
     let input_evalue2 = Tensor::new(&input_tensor2).into_evalue();
 
     let outputs = module.forward(&[input_evalue1, input_evalue2]).unwrap();

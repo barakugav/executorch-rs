@@ -246,7 +246,10 @@ pub(crate) trait IntoCpp {
 /// This is intended to be trivially copyable, so it should be passed by
 /// value.
 #[allow(dead_code)]
-pub struct ArrayRef<'a, T: ArrayRefElement>(pub(crate) T::__ArrayRefImpl, PhantomData<&'a ()>);
+pub(crate) struct ArrayRef<'a, T: ArrayRefElement>(
+    pub(crate) T::__ArrayRefImpl,
+    PhantomData<&'a ()>,
+);
 impl<'a, T: ArrayRefElement> ArrayRef<'a, T> {
     pub(crate) unsafe fn from_inner(arr: T::__ArrayRefImpl) -> Self {
         Self(arr, PhantomData)
@@ -274,7 +277,7 @@ impl<T: ArrayRefElement + Debug + 'static> Debug for ArrayRef<'_, T> {
 }
 
 /// An element type that can be used in an ArrayRef.
-pub trait ArrayRefElement {
+pub(crate) trait ArrayRefElement {
     /// The Cpp type that represents an ArrayRef of this element type.
     #[doc(hidden)]
     type __ArrayRefImpl: __ArrayRefImpl<Element = Self>;
@@ -283,7 +286,7 @@ pub trait ArrayRefElement {
 
 /// A Cpp type that represents an ArrayRef of elements of type Element.
 #[doc(hidden)]
-pub trait __ArrayRefImpl {
+pub(crate) trait __ArrayRefImpl {
     /// The element type of the ArrayRef.
     type Element: ArrayRefElement<__ArrayRefImpl = Self>;
 
@@ -583,79 +586,4 @@ pub(crate) fn to_bytes<T>(val: &T) -> Vec<u8> {
             *ptr.add(i)
         })
         .collect()
-}
-
-/// A marker trait for dimensions that have a fixed size.
-///
-/// This trait is useful for functions that avoid allocations and want to define additional arrays with the same size as
-/// a given dimension.
-#[cfg(feature = "ndarray")]
-pub trait FixedSizeDim: ndarray::Dimension {
-    /// An array with the same fixed size as the dimension.
-    type Arr<T: Clone + Copy + Default>: DimArr<T>;
-    private_decl! {}
-}
-#[cfg(feature = "ndarray")]
-mod fixed_dim_impl {
-    use super::*;
-
-    macro_rules! impl_fixed_size_dim {
-        ($size:expr) => {
-            impl FixedSizeDim for ndarray::Dim<[ndarray::Ix; $size]> {
-                type Arr<T: Clone + Copy + Default> = [T; $size];
-                private_impl! {}
-            }
-        };
-    }
-    impl_fixed_size_dim!(0);
-    impl_fixed_size_dim!(1);
-    impl_fixed_size_dim!(2);
-    impl_fixed_size_dim!(3);
-    impl_fixed_size_dim!(4);
-    impl_fixed_size_dim!(5);
-    impl_fixed_size_dim!(6);
-}
-
-/// An abstraction over fixed-size arrays and regular vectors if the `alloc` feature is enabled.
-pub trait DimArr<T>: AsRef<[T]> + AsMut<[T]> {
-    /// Create an array of zeros with the given number of dimensions.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the given number of dimensions is not supported by the array. For example, if the array is a fixed
-    /// size array of size 3, it will panic if the given number of dimensions is 4. Regular vectors will never panic.
-    fn zeros(ndim: usize) -> Self;
-}
-
-macro_rules! impl_dim_arr {
-    (0) => {
-        impl<T: Clone + Copy + Default> DimArr<T> for [T; 0] {
-            fn zeros(ndim: usize) -> Self {
-                assert_eq!(ndim, 0);
-                []
-            }
-        }
-    };
-    ($size:literal) => {
-        impl<T: Clone + Copy + Default> DimArr<T> for [T; $size] {
-            fn zeros(ndim: usize) -> Self {
-                assert_eq!(ndim, $size);
-                [T::default(); $size]
-            }
-        }
-    };
-}
-impl_dim_arr!(0);
-impl_dim_arr!(1);
-impl_dim_arr!(2);
-impl_dim_arr!(3);
-impl_dim_arr!(4);
-impl_dim_arr!(5);
-impl_dim_arr!(6);
-
-#[cfg(feature = "alloc")]
-impl<T: Clone + Copy + Default> DimArr<T> for alloc::Vec<T> {
-    fn zeros(ndim: usize) -> Self {
-        alloc::Vec::from_iter(std::iter::repeat(T::default()).take(ndim))
-    }
 }

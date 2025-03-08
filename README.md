@@ -40,8 +40,8 @@ use ndarray::array;
 
 let mut module = Module::new("model.pte", None);
 
-let tensor1 = TensorPtr::from_array(array![1.0_f32]);
-let tensor2 = TensorPtr::from_array(array![1.0_f32]);
+let tensor1 = TensorPtr::from_array(array![1.0_f32]).unwrap();
+let tensor2 = TensorPtr::from_array(array![1.0_f32]).unwrap();
 let inputs = [tensor1.into_evalue(), tensor2.into_evalue()];
 
 let outputs = module.forward(&inputs).unwrap();

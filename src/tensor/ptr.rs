@@ -13,13 +13,13 @@ use super::*;
 /// let mut module = Module::new(...);
 ///
 /// // Create a TensorPtr from an ndarray, clean and short syntax
-/// let tensor_ptr = TensorPtr::from_array(array![1.0_f32]);
+/// let tensor_ptr = TensorPtr::from_array(array![1.0_f32]).unwrap();
 /// let outputs = module.forward(&[tensor_ptr.into_evalue()]).unwrap();
 ///
 /// // Alternatively, manage the lifetimes yourself:
 ///
 /// // Create a Tensor from an ndarray and manage the lifetime of the TensorImpl on the stack
-/// let array_storate = ArrayStorage::new(array![1.0_f32]);
+/// let array_storate = ArrayStorage::new(array![1.0_f32]).unwrap();
 /// let tensor_impl = array_storate.as_tensor_impl();
 /// let tensor = Tensor::new(&tensor_impl);
 /// let outputs = module.forward(&[tensor.into_evalue()]).unwrap();
@@ -29,7 +29,7 @@ use super::*;
 /// let sizes = [1];
 /// let dim_order = [0];
 /// let strides = [1];
-/// let tensor_impl = TensorImpl::from_slice(&sizes, &data, &dim_order, &strides);
+/// let tensor_impl = TensorImpl::from_slice(&sizes, &data, &dim_order, &strides).unwrap();
 /// let tensor = Tensor::new(&tensor);
 /// let outputs = module.forward(&[tensor.into_evalue()]).unwrap();
 /// ```
@@ -39,8 +39,13 @@ impl<S: Scalar> TensorPtr<'static, View<S>> {
     /// Create a new [`TensorPtr`] from an [`Array`](ndarray::Array).
     ///
     /// To create a mutable tensor from an array, use [`TensorPtrBuilder`].
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the array is not dense, i.e. if the strides are not the default strides of some permutation
+    /// of the dimensions.
     #[cfg(feature = "ndarray")]
-    pub fn from_array<D: ndarray::Dimension>(array: ndarray::Array<S, D>) -> Self {
+    pub fn from_array<D: ndarray::Dimension>(array: ndarray::Array<S, D>) -> Result<Self> {
         TensorPtrBuilder::<View<S>>::from_array(array).build()
     }
 
@@ -48,15 +53,22 @@ impl<S: Scalar> TensorPtr<'static, View<S>> {
     ///
     /// To create a mutable tensor from a vector, use [`TensorPtrBuilder`].
     pub fn from_vec(vec: Vec<S>) -> Self {
-        TensorPtrBuilder::<View<S>>::from_vec(vec).build()
+        TensorPtrBuilder::<View<S>>::from_vec(vec).build().unwrap()
     }
 }
 impl<'a, S: Scalar> TensorPtr<'a, View<S>> {
     /// Create a new [`TensorPtr`] from an [`Array`](ndarray::Array).
     ///
     /// To create a mutable tensor from an array view, use [`TensorPtrBuilder`].
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the array is not dense, i.e. if the strides are not the default strides of some permutation
+    /// of the dimensions.
     #[cfg(feature = "ndarray")]
-    pub fn from_array_view<D: ndarray::Dimension>(array: ndarray::ArrayView<'a, S, D>) -> Self {
+    pub fn from_array_view<D: ndarray::Dimension>(
+        array: ndarray::ArrayView<'a, S, D>,
+    ) -> Result<Self> {
         TensorPtrBuilder::<View<S>>::from_array_view(array).build()
     }
 
@@ -64,16 +76,17 @@ impl<'a, S: Scalar> TensorPtr<'a, View<S>> {
     ///
     /// To create a mutable tensor from a slice, use [`TensorPtrBuilder`].
     pub fn from_slice(data: &'a [S]) -> Self {
-        TensorPtrBuilder::<View<S>>::from_slice(data).build()
+        TensorPtrBuilder::<View<S>>::from_slice(data)
+            .build()
+            .unwrap()
     }
 }
 impl<D: Data> TensorPtr<'_, D> {
     /// Get an immutable tensor that points to the underlying data.
     pub fn as_tensor(&self) -> TensorBase<D::Immutable> {
         let tensor = self.0.as_ref().unwrap();
-        // Safety: *et_c::cpp::Tensor and et_c::Tensor is the same.
-        let tensor = unsafe {
-            std::mem::transmute::<*const et_c::cpp::Tensor, et_c::TensorRef>(tensor as *const _)
+        let tensor = et_c::TensorRef {
+            ptr: tensor as *const et_c::cpp::Tensor as *const _,
         };
         // Safety: the tensor is valid and the data is immutable.
         unsafe { TensorBase::from_inner_ref(tensor) }
@@ -108,7 +121,7 @@ enum TensorPtrBuilderData<'a, D: DataTyped> {
     PtrMut(*mut D::Scalar, PhantomData<&'a ()>),
 }
 impl<D: DataTyped> TensorPtrBuilder<'static, D> {
-    /// Create a new builer from an [`Array`](ndarray::Array).
+    /// Create a new builder from an [`Array`](ndarray::Array).
     ///
     /// The sizes and strides are extracted from the array, and the data is moved (without a copy) into the tensor
     /// builder.
@@ -116,8 +129,8 @@ impl<D: DataTyped> TensorPtrBuilder<'static, D> {
     /// This function can be used to create both immutable and mutable tensors, as the builder owns the array data.
     /// Use [`build`](Self::build) or [`build_mut`](Self::build_mut) accordingly.
     /// ```rust,ignore
-    /// let immutable_tensor = TensorPtrBuilder::<View<f32>>::from_array(array![1.0]).build();
-    /// let mutable_tensor = TensorPtrBuilder::<ViewMut<f32>>::from_array(array![1.0]).build_mut();
+    /// let immutable_tensor = TensorPtrBuilder::<View<f32>>::from_array(array![1.0]).build().unwrap();
+    /// let mutable_tensor = TensorPtrBuilder::<ViewMut<f32>>::from_array(array![1.0]).build_mut().unwrap();
     /// ```
     #[cfg(feature = "ndarray")]
     pub fn from_array<Dim: ndarray::Dimension>(array: ndarray::Array<D::Scalar, Dim>) -> Self {
@@ -142,7 +155,7 @@ impl<D: DataTyped> TensorPtrBuilder<'static, D> {
         }
     }
 
-    /// Create a one dimensional builer from a vector.
+    /// Create a one dimensional builder from a vector.
     ///
     /// The dimensions and strides are initialized to `[data.len()]`, `[1]` respectively, but can be changed with the
     /// [`sizes`](Self::sizes) and [`strides`](Self::strides) methods.
@@ -150,8 +163,8 @@ impl<D: DataTyped> TensorPtrBuilder<'static, D> {
     /// This function can be used to create both immutable and mutable tensors, as the builder owns the vector data.
     /// Use [`build`](Self::build) or [`build_mut`](Self::build_mut) accordingly.
     /// ```rust,ignore
-    /// let immutable_tensor = TensorPtrBuilder::<View<f32>>::from_vec(vec![1.0]).build();
-    /// let mutable_tensor = TensorPtrBuilder::<ViewMut<f32>>::from_vec(vec![1.0]).build_mut();
+    /// let immutable_tensor = TensorPtrBuilder::<View<f32>>::from_vec(vec![1.0]).build().unwrap();
+    /// let mutable_tensor = TensorPtrBuilder::<ViewMut<f32>>::from_vec(vec![1.0]).build_mut().unwrap();
     /// ```
     pub fn from_vec(data: Vec<D::Scalar>) -> Self {
         Self {
@@ -163,7 +176,7 @@ impl<D: DataTyped> TensorPtrBuilder<'static, D> {
     }
 }
 impl<'a, S: Scalar> TensorPtrBuilder<'a, View<S>> {
-    /// Create a new builer from an [`ArrayView`](ndarray::ArrayView).
+    /// Create a new builder from an [`ArrayView`](ndarray::ArrayView).
     ///
     /// The sizes and strides are extracted from the array, and a pointer to the data is stored in the tensor builder.
     #[cfg(feature = "ndarray")]
@@ -216,7 +229,7 @@ impl<'a, S: Scalar> TensorPtrBuilder<'a, View<S>> {
     }
 }
 impl<'a, S: Scalar> TensorPtrBuilder<'a, ViewMut<S>> {
-    /// Create a new builer from an [`ArrayViewMut`](ndarray::ArrayViewMut).
+    /// Create a new builder from an [`ArrayViewMut`](ndarray::ArrayViewMut).
     ///
     /// The sizes and strides are extracted from the array, and a mutable pointer to the data is stored in the tensor
     /// builder.
@@ -298,18 +311,31 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
 
     /// Build an immutable tensor.
     ///
+    /// # Errors
+    ///
+    /// Returns an error if dim order is invalid, or if it doesn't match the strides, or if the strides are not dense,
+    /// i.e. if the strides are not the default strides of some permutation of the sizes.
+    /// The function may return an error if the sizes and strides do not make sense with respect to the data buffer,
+    /// but this is not guaranteed.
+    ///
     /// # Panics
     ///
     /// The function panics if the number of dimensions in the sizes and strides array do not match.
-    /// The function may panic if the sizes and  strides do not make sense with respect to the data buffer,
-    /// but this is not guaranteed.
     #[track_caller]
-    pub fn build(self) -> TensorPtr<'a, View<D::Scalar>> {
+    pub fn build(self) -> Result<TensorPtr<'a, View<D::Scalar>>> {
         let ndim = self.sizes.len();
-        let dim_order = cxx_vec((0..ndim).map(|s| s as DimOrderType));
         let strides = self.strides.unwrap_or_else(|| default_strides(&self.sizes));
-        assert_eq!(ndim, dim_order.len(), "Invalid dim order length");
         assert_eq!(ndim, strides.len(), "Invalid strides length");
+        let mut dim_order = cxx_vec(std::iter::repeat(0 as DimOrderType).take(ndim));
+        unsafe {
+            et_c::executorch_stride_to_dim_order(
+                strides.as_ref().unwrap().as_slice().as_ptr(),
+                ndim,
+                dim_order.as_mut().unwrap().as_mut_slice().as_mut_ptr(),
+            )
+        }
+        .rs()?;
+        debug_assert_eq!(ndim, dim_order.len());
 
         let (data_ptr, allocation_vec, _data_bound) = match self.data {
             TensorPtrBuilderData::Vec { data, offset } => {
@@ -325,6 +351,18 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
 
         // TODO: check sizes, dim_order and strides make sense with respect to the data_bound
 
+        let valid_strides = unsafe {
+            et_c::executorch_is_valid_dim_order_and_strides(
+                ndim,
+                self.sizes.as_ref().unwrap().as_slice().as_ptr(),
+                dim_order.as_ref().unwrap().as_slice().as_ptr(),
+                strides.as_ref().unwrap().as_slice().as_ptr(),
+            )
+        };
+        if !valid_strides {
+            return Err(Error::CError(CError::InvalidArgument));
+        }
+
         let tensor = unsafe {
             executorch_sys::cpp::TensorPtr_new(
                 self.sizes,
@@ -338,18 +376,23 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
                 ))),
             )
         };
-        TensorPtr(tensor, PhantomData)
+        Ok(TensorPtr(tensor, PhantomData))
     }
 
     /// Build a mutable tensor.
     ///
+    /// # Errors
+    ///
+    /// Returns an error if dim order is invalid, or if it doesn't match the strides, or if the strides are not dense,
+    /// i.e. if the strides are not the default strides of some permutation of the sizes.
+    /// The function may return an error if the sizes and strides do not make sense with respect to the data buffer,
+    /// but this is not guaranteed.
+    ///
     /// # Panics
     ///
-    /// The function panics if the number of dimensions in the sizes and strides arrays do not match.
-    /// The function may panic if the sizes and  strides do not make sense with respect to the data buffer,
-    /// but this is not guaranteed.
+    /// The function panics if the number of dimensions in the sizes and strides array do not match.
     #[track_caller]
-    pub fn build_mut(self) -> TensorPtr<'a, ViewMut<D::Scalar>>
+    pub fn build_mut(self) -> Result<TensorPtr<'a, ViewMut<D::Scalar>>>
     where
         D: DataMut,
     {
@@ -379,6 +422,18 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
 
         // TODO: check sizes, dim_order and strides make sense with respect to the data_bound
 
+        let valid_strides = unsafe {
+            et_c::executorch_is_valid_dim_order_and_strides(
+                ndim,
+                self.sizes.as_ref().unwrap().as_slice().as_ptr(),
+                dim_order.as_ref().unwrap().as_slice().as_ptr(),
+                strides.as_ref().unwrap().as_slice().as_ptr(),
+            )
+        };
+        if !valid_strides {
+            return Err(Error::CError(CError::InvalidArgument));
+        }
+
         let tensor = unsafe {
             executorch_sys::cpp::TensorPtr_new(
                 self.sizes,
@@ -392,7 +447,7 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
                 ))),
             )
         };
-        TensorPtr(tensor, PhantomData)
+        Ok(TensorPtr(tensor, PhantomData))
     }
 }
 
@@ -406,7 +461,7 @@ where
 }
 
 fn default_strides(sizes: &cxx::Vector<SizesType>) -> UniquePtr<cxx::Vector<StridesType>> {
-    let mut strides = cxx_vec::<SizesType>((0..sizes.len()).map(|_| 0));
+    let mut strides = cxx_vec(std::iter::repeat(0 as SizesType).take(sizes.len()));
     let mut stride = 1;
     for i in (0..sizes.len()).rev() {
         strides.as_mut().unwrap().index_mut(i).unwrap().set(stride);
@@ -423,7 +478,7 @@ mod tests {
     #[test]
     fn fron_array() {
         let array = ndarray::array![[1, 2], [3, 4]];
-        let tensor_ptr = TensorPtr::from_array(array.clone());
+        let tensor_ptr = TensorPtr::from_array(array.clone()).unwrap();
         let tensor = tensor_ptr.as_tensor();
         assert_eq!(array, tensor.as_array::<ndarray::Ix2>());
     }
@@ -443,7 +498,7 @@ mod tests {
     #[test]
     fn fron_array_view() {
         let array = ndarray::array![[1, 2], [3, 4]];
-        let tensor_ptr = TensorPtr::from_array_view(array.view());
+        let tensor_ptr = TensorPtr::from_array_view(array.view()).unwrap();
         let tensor = tensor_ptr.as_tensor();
         assert_eq!(array, tensor.as_array::<ndarray::Ix2>());
     }
@@ -462,7 +517,9 @@ mod tests {
     #[test]
     fn as_tensor_mut() {
         let mut data = [1, 2, 3, 4];
-        let mut tensor_ptr = TensorPtrBuilder::<ViewMut<_>>::from_slice_mut(&mut data).build_mut();
+        let mut tensor_ptr = TensorPtrBuilder::<ViewMut<_>>::from_slice_mut(&mut data)
+            .build_mut()
+            .unwrap();
         let mut tensor = tensor_ptr.as_tensor_mut();
         tensor[&[2]] = 50;
         drop(tensor);
@@ -471,18 +528,22 @@ mod tests {
 
     #[cfg(feature = "ndarray")]
     #[test]
-    fn builer_from_array() {
+    fn builder_from_array() {
         let array = ndarray::array![[1, 2], [3, 4]];
-        let tensor_ptr = TensorPtrBuilder::<View<_>>::from_array(array.clone()).build();
+        let tensor_ptr = TensorPtrBuilder::<View<_>>::from_array(array.clone())
+            .build()
+            .unwrap();
         let tensor = tensor_ptr.as_tensor();
         assert_eq!(array, tensor.as_array::<ndarray::Ix2>());
     }
 
     #[cfg(feature = "ndarray")]
     #[test]
-    fn builer_from_array_build_mut() {
+    fn builder_from_array_build_mut() {
         let array = ndarray::array![[1, 2], [3, 4]];
-        let mut tensor_ptr = TensorPtrBuilder::<ViewMut<_>>::from_array(array.clone()).build_mut();
+        let mut tensor_ptr = TensorPtrBuilder::<ViewMut<_>>::from_array(array.clone())
+            .build_mut()
+            .unwrap();
         let mut tensor = tensor_ptr.as_tensor_mut();
         assert_eq!(array, tensor.as_array::<ndarray::Ix2>());
         tensor[&[1, 1]] = 50;
@@ -494,9 +555,11 @@ mod tests {
     }
 
     #[test]
-    fn builer_from_vec() {
+    fn builder_from_vec() {
         let vec = vec![1, 2, 3, 4];
-        let tensor_ptr = TensorPtrBuilder::<View<_>>::from_vec(vec.clone()).build();
+        let tensor_ptr = TensorPtrBuilder::<View<_>>::from_vec(vec.clone())
+            .build()
+            .unwrap();
         let tensor = tensor_ptr.as_tensor();
         assert_eq!(
             vec,
@@ -505,9 +568,11 @@ mod tests {
     }
 
     #[test]
-    fn builer_from_vec_build_mut() {
+    fn builder_from_vec_build_mut() {
         let vec = vec![1, 2, 3, 4];
-        let mut tensor_ptr = TensorPtrBuilder::<ViewMut<_>>::from_vec(vec.clone()).build_mut();
+        let mut tensor_ptr = TensorPtrBuilder::<ViewMut<_>>::from_vec(vec.clone())
+            .build_mut()
+            .unwrap();
         let mut tensor = tensor_ptr.as_tensor_mut();
         assert_eq!(
             vec,
@@ -522,19 +587,23 @@ mod tests {
 
     #[cfg(feature = "ndarray")]
     #[test]
-    fn builer_from_array_view() {
+    fn builder_from_array_view() {
         let array = ndarray::array![[1, 2], [3, 4]];
-        let tensor_ptr = TensorPtrBuilder::from_array_view(array.view()).build();
+        let tensor_ptr = TensorPtrBuilder::from_array_view(array.view())
+            .build()
+            .unwrap();
         let tensor = tensor_ptr.as_tensor();
         assert_eq!(array, tensor.as_array::<ndarray::Ix2>());
     }
 
     #[cfg(feature = "ndarray")]
     #[test]
-    fn builer_from_array_view_mut() {
+    fn builder_from_array_view_mut() {
         let array_orig = ndarray::array![[1, 2], [3, 4]];
         let mut array = array_orig.clone();
-        let mut tensor_ptr = TensorPtrBuilder::from_array_view_mut(array.view_mut()).build_mut();
+        let mut tensor_ptr = TensorPtrBuilder::from_array_view_mut(array.view_mut())
+            .build_mut()
+            .unwrap();
         let mut tensor = tensor_ptr.as_tensor_mut();
         assert_eq!(array_orig, tensor.as_array::<ndarray::Ix2>());
         tensor[&[1, 1]] = 50;
@@ -547,9 +616,9 @@ mod tests {
     }
 
     #[test]
-    fn builer_from_slice() {
+    fn builder_from_slice() {
         let data = [1, 2, 3, 4];
-        let tensor_ptr = TensorPtrBuilder::from_slice(&data).build();
+        let tensor_ptr = TensorPtrBuilder::from_slice(&data).build().unwrap();
         let tensor = tensor_ptr.as_tensor();
         assert_eq!(
             data.to_vec(),
@@ -558,10 +627,12 @@ mod tests {
     }
 
     #[test]
-    fn builer_from_slice_mut() {
+    fn builder_from_slice_mut() {
         let data_orig = [1, 2, 3, 4];
         let mut data = data_orig;
-        let mut tensor_ptr = TensorPtrBuilder::from_slice_mut(&mut data).build_mut();
+        let mut tensor_ptr = TensorPtrBuilder::from_slice_mut(&mut data)
+            .build_mut()
+            .unwrap();
         let mut tensor = tensor_ptr.as_tensor_mut();
         assert_eq!(
             data_orig.to_vec(),
@@ -581,10 +652,12 @@ mod tests {
     }
 
     #[test]
-    fn builer_from_ptr() {
+    fn builder_from_ptr() {
         let data = [1, 2, 3, 4];
         let tensor_ptr =
-            unsafe { TensorPtrBuilder::from_ptr(data.as_ptr(), [data.len() as SizesType]).build() };
+            unsafe { TensorPtrBuilder::from_ptr(data.as_ptr(), [data.len() as SizesType]) }
+                .build()
+                .unwrap();
         let tensor = tensor_ptr.as_tensor();
         assert_eq!(
             data.to_vec(),
@@ -593,12 +666,13 @@ mod tests {
     }
 
     #[test]
-    fn builer_from_ptr_mut() {
+    fn builder_from_ptr_mut() {
         let data_orig = [1, 2, 3, 4];
         let mut data = data_orig;
-        let mut tensor_ptr = unsafe {
-            TensorPtrBuilder::from_ptr_mut(data.as_mut_ptr(), [data.len() as SizesType]).build_mut()
-        };
+        let mut tensor_ptr =
+            unsafe { TensorPtrBuilder::from_ptr_mut(data.as_mut_ptr(), [data.len() as SizesType]) }
+                .build_mut()
+                .unwrap();
         let mut tensor = tensor_ptr.as_tensor_mut();
         assert_eq!(
             data_orig.to_vec(),
@@ -615,5 +689,60 @@ mod tests {
         );
         drop(tensor);
         assert_eq!([1, 2, 50, 4], data);
+    }
+
+    #[cfg(feature = "ndarray")]
+    #[test]
+    fn from_array_invalid_strides() {
+        use ndarray::{Array, ShapeBuilder};
+
+        assert!(TensorPtr::from_array(
+            Array::from_shape_vec((3,).strides((1,)), (0..3).collect()).unwrap()
+        )
+        .is_ok());
+        assert!(TensorPtr::from_array(
+            Array::from_shape_vec((3,).strides((10,)), (0..30).collect()).unwrap()
+        )
+        .is_err());
+
+        assert!(TensorPtr::from_array(
+            Array::from_shape_vec((2, 3).strides((3, 1)), (0..6).collect()).unwrap()
+        )
+        .is_ok());
+        assert!(TensorPtr::from_array(
+            Array::from_shape_vec((2, 3).strides((1, 2)), (0..6).collect()).unwrap()
+        )
+        .is_ok());
+        assert!(TensorPtr::from_array(
+            Array::from_shape_vec((2, 3).strides((2, 4)), (0..12).collect()).unwrap()
+        )
+        .is_err());
+
+        assert!(TensorPtrBuilder::<ViewMut<i32>>::from_array(
+            Array::from_shape_vec((3,).strides((1,)), (0..3).collect()).unwrap()
+        )
+        .build_mut()
+        .is_ok());
+        assert!(TensorPtrBuilder::<ViewMut<i32>>::from_array(
+            Array::from_shape_vec((3,).strides((10,)), (0..30).collect()).unwrap()
+        )
+        .build_mut()
+        .is_err());
+
+        assert!(TensorPtrBuilder::<ViewMut<i32>>::from_array(
+            Array::from_shape_vec((2, 3).strides((3, 1)), (0..6).collect()).unwrap()
+        )
+        .build_mut()
+        .is_ok());
+        assert!(TensorPtrBuilder::<ViewMut<i32>>::from_array(
+            Array::from_shape_vec((2, 3).strides((1, 2)), (0..6).collect()).unwrap()
+        )
+        .build_mut()
+        .is_err());
+        assert!(TensorPtrBuilder::<ViewMut<i32>>::from_array(
+            Array::from_shape_vec((2, 3).strides((2, 4)), (0..12).collect()).unwrap()
+        )
+        .build_mut()
+        .is_err());
     }
 }

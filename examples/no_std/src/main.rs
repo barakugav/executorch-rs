@@ -52,12 +52,12 @@ fn real_main() {
         .load_method(cstr::cstr!("forward"), &memory_manager, None)
         .unwrap();
 
-    let input_array1 = ArrayStorage::new(array!(1.0_f32));
+    let input_array1 = ArrayStorage::new(array!(1.0_f32)).unwrap();
     let input_tensor_impl1 = input_array1.as_tensor_impl();
     let input_tensor1 = Tensor::new_in_allocator(&input_tensor_impl1, &allocator);
     let input_evalue1 = EValue::new_in_allocator(input_tensor1, &allocator);
 
-    let input_array2 = ArrayStorage::new(array!(1.0_f32));
+    let input_array2 = ArrayStorage::new(array!(1.0_f32)).unwrap();
     let input_tensor_impl2 = input_array2.as_tensor_impl();
     let input_tensor2 = Tensor::new_in_allocator(&input_tensor_impl2, &allocator);
     // allocate storage for EValue on the local stack

@@ -32,6 +32,8 @@ mod array;
 #[cfg(feature = "ndarray")]
 pub use array::*;
 
+mod fmt;
+
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
 use std::pin::Pin;
@@ -150,7 +152,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// The caller must ensure that the new data generic is compatible with the data of the given tensor.
     /// `D2` must be immutable as we take immutable reference to the given tensor.
     pub(crate) unsafe fn convert_from_ref<D2: Data>(tensor: &'a TensorBase<D2>) -> Self {
-        let inner = tensor.as_cpp_tensor();
+        let inner = tensor.as_cpp();
         let inner = &*(inner.ptr as *const et_c::TensorStorage);
         Self(NonTriviallyMovable::from_ref(inner), PhantomData)
     }
@@ -166,13 +168,13 @@ impl<'a, D: Data> TensorBase<'a, D> {
         D2: DataMut,
     {
         // Safety: we are not moving out of the mut reference of the inner tensor
-        let inner = unsafe { tensor.as_mut_cpp_tensor() };
+        let inner = unsafe { tensor.as_cpp_mut() };
         let inner = &mut *(inner.ptr as *mut et_c::TensorStorage);
         Self(NonTriviallyMovable::from_mut_ref(inner), PhantomData)
     }
 
     /// Get the underlying Cpp tensor.
-    pub(crate) fn as_cpp_tensor(&self) -> et_c::TensorRef {
+    pub(crate) fn as_cpp(&self) -> et_c::TensorRef {
         et_c::TensorRef {
             ptr: self.0.as_ref() as *const et_c::TensorStorage as *const _,
         }
@@ -183,7 +185,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// # Safety
     ///
     /// The caller can not move out of the returned mut reference.
-    pub(crate) unsafe fn as_mut_cpp_tensor(&mut self) -> et_c::TensorRefMut
+    pub(crate) unsafe fn as_cpp_mut(&mut self) -> et_c::TensorRefMut
     where
         D: DataMut,
     {
@@ -198,7 +200,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// NOTE: Only the alive space is returned not the total capacity of the
     /// underlying data blob.
     pub fn nbytes(&self) -> usize {
-        unsafe { et_c::executorch_Tensor_nbytes(self.as_cpp_tensor()) }
+        unsafe { et_c::executorch_Tensor_nbytes(self.as_cpp()) }
     }
 
     /// Returns the size of the tensor at the given dimension.
@@ -208,33 +210,33 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// this method more compatible with at::Tensor, and more consistent with the
     /// rest of the methods on this class and in ETensor.
     pub fn size(&self, dim: usize) -> usize {
-        unsafe { et_c::executorch_Tensor_size(self.as_cpp_tensor(), dim) }
+        unsafe { et_c::executorch_Tensor_size(self.as_cpp(), dim) }
     }
 
     /// Returns the tensor's number of dimensions.
     pub fn dim(&self) -> usize {
-        unsafe { et_c::executorch_Tensor_dim(self.as_cpp_tensor()) }
+        unsafe { et_c::executorch_Tensor_dim(self.as_cpp()) }
     }
 
     /// Returns the number of elements in the tensor.
     pub fn numel(&self) -> usize {
-        unsafe { et_c::executorch_Tensor_numel(self.as_cpp_tensor()) }
+        unsafe { et_c::executorch_Tensor_numel(self.as_cpp()) }
     }
 
     /// Returns the type of the elements in the tensor (int32, float, bool, etc).
     pub fn scalar_type(&self) -> ScalarType {
-        unsafe { et_c::executorch_Tensor_scalar_type(self.as_cpp_tensor()) }.rs()
+        unsafe { et_c::executorch_Tensor_scalar_type(self.as_cpp()) }.rs()
     }
 
     /// Returns the size in bytes of one element of the tensor.
     pub fn element_size(&self) -> usize {
-        unsafe { et_c::executorch_Tensor_element_size(self.as_cpp_tensor()) }
+        unsafe { et_c::executorch_Tensor_element_size(self.as_cpp()) }
     }
 
     /// Returns the sizes of the tensor at each dimension.
     pub fn sizes(&self) -> &[SizesType] {
         unsafe {
-            let arr = et_c::executorch_Tensor_sizes(self.as_cpp_tensor());
+            let arr = et_c::executorch_Tensor_sizes(self.as_cpp());
             debug_assert!(!arr.data.is_null());
             std::slice::from_raw_parts(arr.data, arr.len)
         }
@@ -243,7 +245,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// Returns the order the dimensions are laid out in memory.
     pub fn dim_order(&self) -> &[DimOrderType] {
         unsafe {
-            let arr = et_c::executorch_Tensor_dim_order(self.as_cpp_tensor());
+            let arr = et_c::executorch_Tensor_dim_order(self.as_cpp());
             debug_assert!(!arr.data.is_null());
             std::slice::from_raw_parts(arr.data, arr.len)
         }
@@ -252,7 +254,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// Returns the strides of the tensor at each dimension.
     pub fn strides(&self) -> &[StridesType] {
         unsafe {
-            let arr = et_c::executorch_Tensor_strides(self.as_cpp_tensor());
+            let arr = et_c::executorch_Tensor_strides(self.as_cpp());
             debug_assert!(!arr.data.is_null());
             std::slice::from_raw_parts(arr.data, arr.len)
         }
@@ -265,7 +267,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// The caller must access the values in the returned pointer according to the type, sizes, dim order and strides
     /// of the tensor.
     pub fn as_ptr_raw(&self) -> *const () {
-        let ptr = unsafe { et_c::executorch_Tensor_const_data_ptr(self.as_cpp_tensor()) };
+        let ptr = unsafe { et_c::executorch_Tensor_const_data_ptr(self.as_cpp()) };
         debug_assert!(!ptr.is_null());
         ptr as *const ()
     }
@@ -370,7 +372,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     fn coordinate_to_index(&self, coordinate: &[usize]) -> Option<usize> {
         let index = unsafe {
             et_c::executorch_Tensor_coordinate_to_index(
-                self.as_cpp_tensor(),
+                self.as_cpp(),
                 et_c::ArrayRefUsizeType::from_slice(coordinate),
             )
         };
@@ -424,101 +426,6 @@ impl<D: Data> Storable for TensorBase<'_, D> {
     type __Storage = et_c::TensorStorage;
 }
 
-#[cfg(feature = "ndarray")]
-impl<D: Data> std::fmt::Debug for TensorBase<'_, D> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let mut st = f.debug_struct("Tensor");
-        st.field("scalar_type", &self.scalar_type());
-
-        fn add_data_field<S: Scalar + std::fmt::Debug, D: DataTyped<Scalar = S>>(
-            this: TensorBase<D>,
-            st: &mut std::fmt::DebugStruct,
-        ) {
-            match this.dim() {
-                0 => st.field("data", &this.as_array::<ndarray::Ix0>()),
-                1 => st.field("data", &this.as_array::<ndarray::Ix1>()),
-                2 => st.field("data", &this.as_array::<ndarray::Ix2>()),
-                3 => st.field("data", &this.as_array::<ndarray::Ix3>()),
-                4 => st.field("data", &this.as_array::<ndarray::Ix4>()),
-                5 => st.field("data", &this.as_array::<ndarray::Ix5>()),
-                6 => st.field("data", &this.as_array::<ndarray::Ix6>()),
-                _ => {
-                    cfg_if::cfg_if! { if #[cfg(feature = "alloc")] {
-                        st.field("data", &this.as_array_dyn())
-                    } else {
-                        st.field("data", &"unsupported (too many dimensions)")
-                    } }
-                }
-            };
-        }
-
-        match self.scalar_type() {
-            ScalarType::Byte => add_data_field(self.as_typed::<u8>(), &mut st),
-            ScalarType::Char => add_data_field(self.as_typed::<i8>(), &mut st),
-            ScalarType::Short => add_data_field(self.as_typed::<i16>(), &mut st),
-            ScalarType::Int => add_data_field(self.as_typed::<i32>(), &mut st),
-            ScalarType::Long => add_data_field(self.as_typed::<i64>(), &mut st),
-            ScalarType::Half => {
-                add_data_field(self.as_typed::<crate::scalar::f16>(), &mut st);
-            }
-            ScalarType::Float => add_data_field(self.as_typed::<f32>(), &mut st),
-            ScalarType::Double => add_data_field(self.as_typed::<f64>(), &mut st),
-            ScalarType::ComplexHalf => {
-                add_data_field(
-                    self.as_typed::<crate::scalar::Complex<crate::scalar::f16>>(),
-                    &mut st,
-                );
-            }
-            ScalarType::ComplexFloat => {
-                add_data_field(self.as_typed::<crate::scalar::Complex<f32>>(), &mut st);
-            }
-            ScalarType::ComplexDouble => {
-                add_data_field(self.as_typed::<crate::scalar::Complex<f64>>(), &mut st);
-            }
-            ScalarType::Bool => add_data_field(self.as_typed::<bool>(), &mut st),
-            ScalarType::QInt8 => add_data_field(self.as_typed::<crate::scalar::QInt8>(), &mut st),
-            ScalarType::QUInt8 => add_data_field(self.as_typed::<crate::scalar::QUInt8>(), &mut st),
-            ScalarType::QInt32 => add_data_field(self.as_typed::<crate::scalar::QInt32>(), &mut st),
-            ScalarType::BFloat16 => {
-                add_data_field(self.as_typed::<crate::scalar::bf16>(), &mut st);
-            }
-            ScalarType::QUInt4x2 => {
-                add_data_field(self.as_typed::<crate::scalar::QUInt4x2>(), &mut st)
-            }
-            ScalarType::QUInt2x4 => {
-                add_data_field(self.as_typed::<crate::scalar::QUInt2x4>(), &mut st)
-            }
-            ScalarType::Bits1x8 => {
-                add_data_field(self.as_typed::<crate::scalar::Bits1x8>(), &mut st)
-            }
-            ScalarType::Bits2x4 => {
-                add_data_field(self.as_typed::<crate::scalar::Bits2x4>(), &mut st)
-            }
-            ScalarType::Bits4x2 => {
-                add_data_field(self.as_typed::<crate::scalar::Bits4x2>(), &mut st)
-            }
-            ScalarType::Bits8 => add_data_field(self.as_typed::<crate::scalar::Bits8>(), &mut st),
-            ScalarType::Bits16 => add_data_field(self.as_typed::<crate::scalar::Bits16>(), &mut st),
-            ScalarType::Float8_e5m2 => {
-                add_data_field(self.as_typed::<crate::scalar::Float8_e5m2>(), &mut st)
-            }
-            ScalarType::Float8_e4m3fn => {
-                add_data_field(self.as_typed::<crate::scalar::Float8_e4m3fn>(), &mut st)
-            }
-            ScalarType::Float8_e5m2fnuz => {
-                add_data_field(self.as_typed::<crate::scalar::Float8_e5m2fnuz>(), &mut st)
-            }
-            ScalarType::Float8_e4m3fnuz => {
-                add_data_field(self.as_typed::<crate::scalar::Float8_e4m3fnuz>(), &mut st)
-            }
-            ScalarType::UInt16 => add_data_field(self.as_typed::<u16>(), &mut st),
-            ScalarType::UInt32 => add_data_field(self.as_typed::<u32>(), &mut st),
-            ScalarType::UInt64 => add_data_field(self.as_typed::<u64>(), &mut st),
-        };
-        st.finish()
-    }
-}
-
 impl<D: DataTyped> TensorBase<'_, D> {
     /// Returns a pointer to the constant underlying data blob.
     pub fn as_ptr(&self) -> *const D::Scalar {
@@ -542,7 +449,7 @@ impl<D: DataMut> TensorBase<'_, D> {
     /// The caller must access the values in the returned pointer according to the type, sizes, dim order and strides
     /// of the tensor.
     pub fn as_mut_ptr_raw(&self) -> *mut () {
-        let ptr = unsafe { et_c::executorch_Tensor_mutable_data_ptr(self.as_cpp_tensor()) };
+        let ptr = unsafe { et_c::executorch_Tensor_mutable_data_ptr(self.as_cpp()) };
         debug_assert!(!ptr.is_null());
         ptr as *mut ()
     }
@@ -655,7 +562,7 @@ impl<'a, S: Scalar> Tensor<'a, S> {
     ) -> Self {
         let storage = allocator
             .allocate_pinned()
-            .ok_or(Error::AllocationFailed)
+            .ok_or(Error::CError(CError::MemoryAllocationFailed))
             .unwrap();
         Self::new_in_storage(tensor_impl, storage)
     }
@@ -715,17 +622,42 @@ pub type TensorAny<'a> = TensorBase<'a, ViewAny>;
 /// used directly. It is used to provide a common API for both of them.
 pub struct TensorImplBase<'a, D: Data>(et_c::TensorImpl, PhantomData<(&'a (), D)>);
 impl<'a, D: Data> TensorImplBase<'a, D> {
-    unsafe fn new<S: Scalar>(
-        dim: usize,
-        sizes: *const SizesType,
+    /// Create a new TensorImpl from a pointer to the data.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if dim order is invalid, or if it doesn't match the strides, or if the strides are not dense,
+    /// i.e. if the strides are not the default strides of some permutation of the sizes.
+    ///
+    /// # Panics
+    ///
+    /// If the sizes, dim_order or strides slices are of different lengths.
+    unsafe fn from_ptr_impl<S: Scalar>(
+        sizes: &'a [SizesType],
         data: *mut S,
-        dim_order: *const DimOrderType,
-        strides: *const StridesType,
-    ) -> Self {
+        dim_order: &'a [DimOrderType],
+        strides: &'a [StridesType],
+    ) -> Result<Self> {
+        let dim = sizes.len();
+        assert_eq!(dim, dim_order.len());
+        assert_eq!(dim, strides.len());
+
+        let sizes = sizes.as_ptr();
+        let dim_order = dim_order.as_ptr();
+        let strides = strides.as_ptr();
+
         debug_assert!(!sizes.is_null());
         debug_assert!(!data.is_null());
         debug_assert!(!dim_order.is_null());
         debug_assert!(!strides.is_null());
+
+        let valid_strides = unsafe {
+            et_c::executorch_is_valid_dim_order_and_strides(dim, sizes, dim_order, strides)
+        };
+        if !valid_strides {
+            return Err(Error::CError(CError::InvalidArgument));
+        }
+
         let impl_ = unsafe {
             c_new(|this| {
                 et_c::executorch_TensorImpl_new(
@@ -737,30 +669,10 @@ impl<'a, D: Data> TensorImplBase<'a, D> {
                     dim_order as *mut DimOrderType,
                     strides as *mut StridesType,
                     et_c::TensorShapeDynamism::TensorShapeDynamism_STATIC,
-                );
+                )
             })
         };
-        Self(impl_, PhantomData)
-    }
-
-    unsafe fn from_ptr_impl<S: Scalar>(
-        sizes: &'a [SizesType],
-        data: *mut S,
-        dim_order: &'a [DimOrderType],
-        strides: &'a [StridesType],
-    ) -> Self {
-        let dim = sizes.len();
-        assert_eq!(dim, dim_order.len());
-        assert_eq!(dim, strides.len());
-        unsafe {
-            Self::new(
-                dim,
-                sizes.as_ptr(),
-                data,
-                dim_order.as_ptr(),
-                strides.as_ptr(),
-            )
-        }
+        Ok(Self(impl_, PhantomData))
     }
 }
 
@@ -778,6 +690,15 @@ impl<'a, S: Scalar> TensorImpl<'a, S> {
     /// * `dim_order` - The order of the dimensions of the tensor, must have the same length as `sizes`.
     /// * `strides` - The strides of the tensor, must have the same length as `sizes`.
     ///
+    /// # Errors
+    ///
+    /// Returns an error if dim order is invalid, or if it doesn't match the strides, or if the strides are not dense,
+    /// i.e. if the strides are not the default strides of some permutation of the sizes.
+    ///
+    /// # Panics
+    ///
+    /// If the data pointer is null or if the sizes, dim_order or strides slices are of different lengths.
+    ///
     /// # Safety
     ///
     /// The caller must ensure elements in the data can be safely accessed according to the scalar type, sizes,
@@ -788,7 +709,7 @@ impl<'a, S: Scalar> TensorImpl<'a, S> {
         data: *const S,
         dim_order: &'a [DimOrderType],
         strides: &'a [StridesType],
-    ) -> Self {
+    ) -> Result<Self> {
         unsafe { Self::from_ptr_impl(sizes, data as *mut S, dim_order, strides) }
     }
 
@@ -802,12 +723,21 @@ impl<'a, S: Scalar> TensorImpl<'a, S> {
     ///     but not smaller.
     /// * `dim_order` - The order of the dimensions of the tensor, must have the same length as `sizes`.
     /// * `strides` - The strides of the tensor, must have the same length as `sizes`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if dim order is invalid, or if it doesn't match the strides, or if the strides are not dense,
+    /// i.e. if the strides are not the default strides of some permutation of the sizes.
+    ///
+    /// # Panics
+    ///
+    /// If the sizes, dim_order or strides slices are of different lengths.
     pub fn from_slice(
         sizes: &'a [SizesType],
         data: &'a [S],
         dim_order: &'a [DimOrderType],
         strides: &'a [StridesType],
-    ) -> Self {
+    ) -> Result<Self> {
         // TODO: verify the data length make sense with the sizes/dim_order/strides
         let data_ptr = data.as_ptr() as *mut S;
         unsafe { Self::from_ptr_impl(sizes, data_ptr, dim_order, strides) }
@@ -829,6 +759,15 @@ impl<'a, S: Scalar> TensorImplMut<'a, S> {
     /// * `dim_order` - The order of the dimensions of the tensor, must have the same length as `sizes`.
     /// * `strides` - The strides of the tensor, must have the same length as `sizes`.
     ///
+    /// # Errors
+    ///
+    /// Returns an error if dim order is invalid, or if it doesn't match the strides, or if the strides are not dense,
+    /// i.e. if the strides are not the default strides of some permutation of the sizes.
+    ///
+    /// # Panics
+    ///
+    /// If the sizes, dim_order or strides slices are of different lengths.
+    ///
     /// # Safety
     ///
     /// The caller must ensure elements in the data can be safely accessed and mutated according to the scalar type,
@@ -838,7 +777,7 @@ impl<'a, S: Scalar> TensorImplMut<'a, S> {
         data: *mut S,
         dim_order: &'a [DimOrderType],
         strides: &'a [StridesType],
-    ) -> Self {
+    ) -> Result<Self> {
         unsafe { Self::from_ptr_impl(sizes, data, dim_order, strides) }
     }
 
@@ -852,12 +791,21 @@ impl<'a, S: Scalar> TensorImplMut<'a, S> {
     ///   but not smaller.
     /// * `dim_order` - The order of the dimensions of the tensor, must have the same length as `sizes`.
     /// * `strides` - The strides of the tensor, must have the same length as `sizes`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if dim order is invalid, or if it doesn't match the strides, or if the strides are not dense,
+    /// i.e. if the strides are not the default strides of some permutation of the sizes.
+    ///
+    /// # Panics
+    ///
+    /// If the sizes, dim_order or strides slices are of different lengths.
     pub fn from_slice(
         sizes: &'a [SizesType],
         data: &'a mut [S],
         dim_order: &'a [DimOrderType],
         strides: &'a [StridesType],
-    ) -> Self {
+    ) -> Result<Self> {
         // TODO: verify the data length make sense with the sizes/dim_order/strides
         let data_ptr = data.as_ptr() as *mut S;
         unsafe { Self::from_ptr_impl(sizes, data_ptr, dim_order, strides) }
@@ -972,8 +920,9 @@ mod tests {
             let data = [1, 2, 3, 4, 5, 6];
             let dim_order = [0, 1];
             let strides = [3, 1];
-            let tensor_impl =
-                unsafe { TensorImpl::from_ptr(&sizes, data.as_ptr(), &dim_order, &strides) };
+            let tensor_impl = unsafe {
+                TensorImpl::from_ptr(&sizes, data.as_ptr(), &dim_order, &strides).unwrap()
+            };
 
             let storage = storage!(Tensor<i32>);
             let mut allocator_buf = [0u8; 1024];
@@ -1019,7 +968,7 @@ mod tests {
             let data = [1, 2, 3, 4, 5, 6];
             let dim_order = [0, 1];
             let strides = [3, 1];
-            let tensor_impl = TensorImpl::from_slice(&sizes, &data, &dim_order, &strides);
+            let tensor_impl = TensorImpl::from_slice(&sizes, &data, &dim_order, &strides).unwrap();
 
             let storage = storage!(Tensor<i32>);
             let mut allocator_buf = [0u8; 1024];
@@ -1066,8 +1015,9 @@ mod tests {
             let data_ptr = data.as_ptr();
             let dim_order = [0, 1];
             let strides = [3, 1];
-            let mut tensor_impl =
-                unsafe { TensorImplMut::from_ptr(&sizes, data.as_mut_ptr(), &dim_order, &strides) };
+            let mut tensor_impl = unsafe {
+                TensorImplMut::from_ptr(&sizes, data.as_mut_ptr(), &dim_order, &strides).unwrap()
+            };
 
             let storage = storage!(TensorMut<i32>);
             #[allow(unused_assignments)]
@@ -1107,7 +1057,7 @@ mod tests {
             let dim_order = [0, 1];
             let strides = [3, 1];
             let mut tensor_impl =
-                TensorImplMut::from_slice(&sizes, &mut data, &dim_order, &strides);
+                TensorImplMut::from_slice(&sizes, &mut data, &dim_order, &strides).unwrap();
 
             let storage = storage!(TensorMut<i32>);
             #[allow(unused_assignments)]
@@ -1145,8 +1095,9 @@ mod tests {
             let data = data_allocator(2 * 4 * 17);
             let dim_order = [0, 1, 2];
             let strides = [4 * 17, 17, 1];
-            let tensor_impl =
-                unsafe { TensorImpl::from_ptr(&sizes, data.as_ptr(), &dim_order, &strides) };
+            let tensor_impl = unsafe {
+                TensorImpl::from_ptr(&sizes, data.as_ptr(), &dim_order, &strides).unwrap()
+            };
             let tensor = Tensor::new(&tensor_impl);
             assert_eq!(tensor.scalar_type(), S::TYPE);
         }
@@ -1174,7 +1125,7 @@ mod tests {
             .collect::<crate::alloc::Vec<_>>();
         let dim_order = [0, 1, 2];
         let strides = [15, 3, 1];
-        let tensor_impl = TensorImpl::from_slice(&sizes, &data, &dim_order, &strides);
+        let tensor_impl = TensorImpl::from_slice(&sizes, &data, &dim_order, &strides).unwrap();
         let tensor = Tensor::new(&tensor_impl);
 
         assert!(tensor.get(&[4, 0, 0]).is_none());
@@ -1212,7 +1163,8 @@ mod tests {
         let mut data = indices.clone().map(|_| 0).collect::<crate::alloc::Vec<_>>();
         let dim_order = [0, 1, 2];
         let strides = [15, 3, 1];
-        let mut tensor_impl = TensorImplMut::from_slice(&sizes, &mut data, &dim_order, &strides);
+        let mut tensor_impl =
+            TensorImplMut::from_slice(&sizes, &mut data, &dim_order, &strides).unwrap();
         let mut tensor = TensorMut::new(&mut tensor_impl);
 
         assert!(tensor.get_mut(&[4, 0, 0]).is_none());
@@ -1296,8 +1248,9 @@ mod tests {
         assert_eq!(tensor.scalar_type(), ScalarType::Int);
         let _ = tensor.into_typed::<i32>();
 
-        let mut tensor_ptr =
-            TensorPtrBuilder::<ViewMut<i32>>::from_vec(vec![1, 2, 3, 4]).build_mut();
+        let mut tensor_ptr = TensorPtrBuilder::<ViewMut<i32>>::from_vec(vec![1, 2, 3, 4])
+            .build_mut()
+            .unwrap();
         let tensor = tensor_ptr.as_tensor_mut();
         let tensor = tensor.into_type_erased();
         assert_eq!(tensor.scalar_type(), ScalarType::Int);
@@ -1315,8 +1268,9 @@ mod tests {
         assert_eq!(tensor.scalar_type(), ScalarType::Int);
         let _ = tensor.as_typed::<i32>();
 
-        let mut tensor_ptr =
-            TensorPtrBuilder::<ViewMut<i32>>::from_vec(vec![1, 2, 3, 4]).build_mut();
+        let mut tensor_ptr = TensorPtrBuilder::<ViewMut<i32>>::from_vec(vec![1, 2, 3, 4])
+            .build_mut()
+            .unwrap();
         let mut tensor = tensor_ptr.as_tensor_mut();
         let mut tensor = tensor.as_type_erased_mut();
         assert_eq!(tensor.scalar_type(), ScalarType::Int);
@@ -1334,8 +1288,9 @@ mod tests {
         let tensor = tensor.try_into_typed::<i32>().map_err(|_| ()).unwrap();
         assert_eq!(tensor.scalar_type(), ScalarType::Int);
 
-        let mut tensor_ptr =
-            TensorPtrBuilder::<ViewMut<i32>>::from_vec(vec![1, 2, 3, 4]).build_mut();
+        let mut tensor_ptr = TensorPtrBuilder::<ViewMut<i32>>::from_vec(vec![1, 2, 3, 4])
+            .build_mut()
+            .unwrap();
         let tensor = tensor_ptr.as_tensor_mut().into_type_erased();
         let tensor = tensor.try_into_typed::<f64>().map(|_| ()).unwrap_err();
         let tensor = tensor.try_into_typed::<i32>().map_err(|_| ()).unwrap();
@@ -1350,8 +1305,9 @@ mod tests {
         let tensor = tensor.into_typed::<i32>();
         assert_eq!(tensor.scalar_type(), ScalarType::Int);
 
-        let mut tensor_ptr =
-            TensorPtrBuilder::<ViewMut<i32>>::from_vec(vec![1, 2, 3, 4]).build_mut();
+        let mut tensor_ptr = TensorPtrBuilder::<ViewMut<i32>>::from_vec(vec![1, 2, 3, 4])
+            .build_mut()
+            .unwrap();
         let tensor = tensor_ptr.as_tensor_mut().into_type_erased();
         let tensor = tensor.into_typed::<i32>();
         assert_eq!(tensor.scalar_type(), ScalarType::Int);
@@ -1375,8 +1331,9 @@ mod tests {
         let tensor = tensor.try_as_typed::<i32>().unwrap();
         assert_eq!(tensor.scalar_type(), ScalarType::Int);
 
-        let mut tensor_ptr =
-            TensorPtrBuilder::<ViewMut<i32>>::from_vec(vec![1, 2, 3, 4]).build_mut();
+        let mut tensor_ptr = TensorPtrBuilder::<ViewMut<i32>>::from_vec(vec![1, 2, 3, 4])
+            .build_mut()
+            .unwrap();
         let mut tensor = tensor_ptr.as_tensor_mut().into_type_erased();
         assert!(tensor.try_as_typed_mut::<f64>().is_none());
         let tensor = tensor.try_as_typed_mut::<i32>().unwrap();
@@ -1391,8 +1348,9 @@ mod tests {
         let tensor = tensor.as_typed::<i32>();
         assert_eq!(tensor.scalar_type(), ScalarType::Int);
 
-        let mut tensor_ptr =
-            TensorPtrBuilder::<ViewMut<i32>>::from_vec(vec![1, 2, 3, 4]).build_mut();
+        let mut tensor_ptr = TensorPtrBuilder::<ViewMut<i32>>::from_vec(vec![1, 2, 3, 4])
+            .build_mut()
+            .unwrap();
         let mut tensor = tensor_ptr.as_tensor_mut().into_type_erased();
         let tensor = tensor.as_typed_mut::<i32>();
         assert_eq!(tensor.scalar_type(), ScalarType::Int);
@@ -1411,9 +1369,33 @@ mod tests {
     #[test]
     #[should_panic]
     fn as_typed_mut_wrong() {
-        let mut tensor_ptr =
-            TensorPtrBuilder::<ViewMut<i32>>::from_vec(vec![1, 2, 3, 4]).build_mut();
+        let mut tensor_ptr = TensorPtrBuilder::<ViewMut<i32>>::from_vec(vec![1, 2, 3, 4])
+            .build_mut()
+            .unwrap();
         let mut tensor = tensor_ptr.as_tensor_mut().into_type_erased();
         let _ = tensor.as_typed_mut::<f64>();
+    }
+
+    #[test]
+    fn invalid_strides_or_dim_order() {
+        assert!(TensorImpl::from_slice(&[3], &[0; 3], &[0], &[1]).is_ok());
+        assert!(TensorImpl::from_slice(&[3], &[0; 3], &[1], &[1]).is_err());
+        assert!(TensorImpl::from_slice(&[3], &[0; 30], &[0], &[10]).is_err());
+
+        assert!(TensorImpl::from_slice(&[2, 3], &[0; 6], &[0, 1], &[3, 1]).is_ok());
+        assert!(TensorImpl::from_slice(&[2, 3], &[0; 6], &[1, 0], &[3, 1]).is_err());
+        assert!(TensorImpl::from_slice(&[2, 3], &[0; 6], &[1, 0], &[1, 2]).is_ok());
+        assert!(TensorImpl::from_slice(&[2, 3], &[0; 6], &[0, 1], &[1, 2]).is_err());
+        assert!(TensorImpl::from_slice(&[2, 3], &[0; 12], &[1, 0], &[2, 4]).is_err());
+
+        assert!(TensorImplMut::from_slice(&[3], &mut [0; 3], &[0], &[1]).is_ok());
+        assert!(TensorImplMut::from_slice(&[3], &mut [0; 3], &[1], &[1]).is_err());
+        assert!(TensorImplMut::from_slice(&[3], &mut [0; 30], &[0], &[10]).is_err());
+
+        assert!(TensorImplMut::from_slice(&[2, 3], &mut [0; 6], &[0, 1], &[3, 1]).is_ok());
+        assert!(TensorImplMut::from_slice(&[2, 3], &mut [0; 6], &[1, 0], &[3, 1]).is_err());
+        assert!(TensorImplMut::from_slice(&[2, 3], &mut [0; 6], &[1, 0], &[1, 2]).is_ok());
+        assert!(TensorImplMut::from_slice(&[2, 3], &mut [0; 6], &[0, 1], &[1, 2]).is_err());
+        assert!(TensorImplMut::from_slice(&[2, 3], &mut [0; 12], &[1, 0], &[2, 4]).is_err());
     }
 }
