@@ -5,7 +5,7 @@ use std::path::Path;
 use executorch::evalue::IntoEValue;
 use executorch::event_tracer::ETDumpGen;
 use executorch::module::Module;
-use executorch::tensor::TensorPtr;
+use executorch::tensor_ptr;
 use ndarray::array;
 
 fn main() {
@@ -23,8 +23,7 @@ fn main() {
         .load_method("forward", Some(etdump_gen.as_mut()))
         .unwrap();
 
-    let tensor1 = TensorPtr::from_array(array![1.0_f32]).unwrap();
-    let tensor2 = TensorPtr::from_array(array![1.0_f32]).unwrap();
+    let (tensor1, tensor2) = (tensor_ptr![1.0_f32], tensor_ptr![1.0_f32]);
     let inputs = [tensor1.into_evalue(), tensor2.into_evalue()];
 
     {
