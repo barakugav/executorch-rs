@@ -524,6 +524,9 @@ extern "C"
 
 #endif
 
+    bool executorch_is_valid_dim_order_and_strides(size_t dim, const SizesType *sizes, const DimOrderType *dim_order, const StridesType *strides);
+    enum Error executorch_stride_to_dim_order(const StridesType *strides, size_t dims, DimOrderType *dim_order);
+
     // Tensor
     void executorch_TensorImpl_new(
         struct TensorImpl *self,

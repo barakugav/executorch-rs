@@ -600,7 +600,7 @@ mod tests {
         let data = [1.0_f32];
         let dim_order = [0];
         let strides = [1];
-        let tensor_impl = TensorImpl::from_slice(&sizes, &data, &dim_order, &strides);
+        let tensor_impl = TensorImpl::from_slice(&sizes, &data, &dim_order, &strides).unwrap();
         let tensor = Tensor::new_in_allocator(&tensor_impl, &allocator);
         let input1 = EValue::new_in_allocator(tensor, &allocator);
 
@@ -608,7 +608,7 @@ mod tests {
         let data = [1.0_f32];
         let dim_order = [0];
         let strides = [1];
-        let tensor_impl = TensorImpl::from_slice(&sizes, &data, &dim_order, &strides);
+        let tensor_impl = TensorImpl::from_slice(&sizes, &data, &dim_order, &strides).unwrap();
         let tensor = Tensor::new_in_allocator(&tensor_impl, &allocator);
         let input2 = EValue::new_in_allocator(tensor, &allocator);
 

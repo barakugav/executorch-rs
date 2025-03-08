@@ -111,6 +111,8 @@ namespace
 
 }
 
+constexpr size_t MAX_DIM = 16;
+
 using executorch_rs::checked_reinterpret_cast;
 
 #if defined(EXECUTORCH_RS_STD)
@@ -277,6 +279,26 @@ static executorch::aten::Tensor *cast_tensor_mut(struct TensorRefMut tensor)
 // {
 //     return reinterpret_cast<TensorMut>(tensor);
 // }
+
+bool executorch_is_valid_dim_order_and_strides(size_t dim, const SizesType *sizes, const DimOrderType *dim_order, const StridesType *strides)
+{
+    ET_CHECK_MSG(dim <= MAX_DIM, "dim > 16");
+
+    StridesType computed_strides[MAX_DIM];
+    auto error = executorch::runtime::dim_order_to_stride(
+        sizes, dim_order, dim, &computed_strides[0]);
+    if (error != executorch::runtime::Error::Ok)
+        return false; // Invalid dim order
+
+    for (size_t i = 0; i < dim; i++)
+        if (computed_strides[i] != strides[i])
+            return false;
+    return true;
+}
+enum Error executorch_stride_to_dim_order(const StridesType *strides, size_t dims, DimOrderType *dim_order)
+{
+    return static_cast<Error>(executorch::runtime::stride_to_dim_order(strides, dims, dim_order));
+}
 
 void executorch_TensorImpl_new(
     struct TensorImpl *self,

@@ -363,13 +363,13 @@ mod tests {
         let data = [1.0_f32];
         let dim_order = [0];
         let strides = [1];
-        let tensor1 = TensorImpl::from_slice(&sizes, &data, &dim_order, &strides);
+        let tensor1 = TensorImpl::from_slice(&sizes, &data, &dim_order, &strides).unwrap();
 
         let sizes = [1];
         let data = [1.0_f32];
         let dim_order = [0];
         let strides = [1];
-        let tensor2 = TensorImpl::from_slice(&sizes, &data, &dim_order, &strides);
+        let tensor2 = TensorImpl::from_slice(&sizes, &data, &dim_order, &strides).unwrap();
 
         for i in 0..2 {
             let inputs = [

@@ -121,7 +121,8 @@ fn main() {
         };
         let input = TensorPtr::from_array_view(
             ArrayView2::from_shape((1, input_tokens.len()), input_tokens).unwrap(),
-        );
+        )
+        .unwrap();
         let outputs = model.forward(&[input.into_evalue()]).unwrap();
         assert_eq!(outputs.len(), 1);
         let logits = outputs[0]

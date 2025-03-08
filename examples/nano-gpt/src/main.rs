@@ -76,7 +76,8 @@ impl Gpt2 {
             };
             let input_tensor = TensorPtr::from_array_view(
                 ArrayView2::from_shape((1, input_tokens.len()), input_tokens).unwrap(),
-            );
+            )
+            .unwrap();
 
             // Run the model. It will return a tensor of logits (log-probabilities).
             let model_outputs = self
