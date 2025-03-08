@@ -98,8 +98,6 @@ pub struct ArrayStorage<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> 
 impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> ArrayStorage<A, S, D> {
     /// Create a new [`ArrayStorage`] from an ndarray.
     pub fn new(array: ArrayBase<S, D>) -> Self {
-        use crate::util::DimArr;
-
         let ndim = array.ndim();
         let mut sizes = D::Arr::zeros(ndim);
         let mut dim_order = D::Arr::zeros(ndim);
@@ -177,14 +175,89 @@ pub trait Dimension: ndarray::Dimension {
     /// The array type that holds the sizes, dim order and strides of the tensor.
     ///
     /// Can be either a fixed size array (supported without alloc) or a dynamic array (vector).
-    type Arr<T: Clone + Copy + Default>: crate::util::DimArr<T>;
+    type Arr<T: Clone + Copy + Default>: DimArr<T>;
 }
-impl<D: crate::util::FixedSizeDim> Dimension for D {
+impl<D: FixedSizeDim> Dimension for D {
     type Arr<T: Clone + Copy + Default> = D::Arr<T>;
 }
 #[cfg(feature = "alloc")]
 impl Dimension for ndarray::IxDyn {
     type Arr<T: Clone + Copy + Default> = crate::alloc::Vec<T>;
+}
+
+/// An abstraction over fixed-size arrays and regular vectors if the `alloc` feature is enabled.
+pub trait DimArr<T>: AsRef<[T]> + AsMut<[T]> {
+    /// Create an array of zeros with the given number of dimensions.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the given number of dimensions is not supported by the array. For example, if the array is a fixed
+    /// size array of size 3, it will panic if the given number of dimensions is 4. Regular vectors will never panic.
+    fn zeros(ndim: usize) -> Self;
+}
+
+macro_rules! impl_dim_arr {
+    (0) => {
+        impl<T: Clone + Copy + Default> DimArr<T> for [T; 0] {
+            fn zeros(ndim: usize) -> Self {
+                assert_eq!(ndim, 0);
+                []
+            }
+        }
+    };
+    ($size:literal) => {
+        impl<T: Clone + Copy + Default> DimArr<T> for [T; $size] {
+            fn zeros(ndim: usize) -> Self {
+                assert_eq!(ndim, $size);
+                [T::default(); $size]
+            }
+        }
+    };
+}
+impl_dim_arr!(0);
+impl_dim_arr!(1);
+impl_dim_arr!(2);
+impl_dim_arr!(3);
+impl_dim_arr!(4);
+impl_dim_arr!(5);
+impl_dim_arr!(6);
+
+#[cfg(feature = "alloc")]
+impl<T: Clone + Copy + Default> DimArr<T> for crate::alloc::Vec<T> {
+    fn zeros(ndim: usize) -> Self {
+        crate::alloc::Vec::from_iter(std::iter::repeat(T::default()).take(ndim))
+    }
+}
+
+/// A marker trait for dimensions that have a fixed size.
+///
+/// This trait is useful for functions that avoid allocations and want to define additional arrays with the same size as
+/// a given dimension.
+#[cfg(feature = "ndarray")]
+pub trait FixedSizeDim: ndarray::Dimension {
+    /// An array with the same fixed size as the dimension.
+    type Arr<T: Clone + Copy + Default>: DimArr<T>;
+    private_decl! {}
+}
+#[cfg(feature = "ndarray")]
+mod fixed_dim_impl {
+    use super::*;
+
+    macro_rules! impl_fixed_size_dim {
+        ($size:expr) => {
+            impl FixedSizeDim for ndarray::Dim<[ndarray::Ix; $size]> {
+                type Arr<T: Clone + Copy + Default> = [T; $size];
+                private_impl! {}
+            }
+        };
+    }
+    impl_fixed_size_dim!(0);
+    impl_fixed_size_dim!(1);
+    impl_fixed_size_dim!(2);
+    impl_fixed_size_dim!(3);
+    impl_fixed_size_dim!(4);
+    impl_fixed_size_dim!(5);
+    impl_fixed_size_dim!(6);
 }
 
 #[cfg(test)]

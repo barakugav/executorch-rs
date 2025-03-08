@@ -134,16 +134,14 @@ pub use c_bridge::*;
 #[cfg(feature = "std")]
 mod cxx_bridge;
 
-/// Bindings to C/C++ wrapper functions and structs written by this crate around the Cpp `executorch` library.
+/// Bindings generated bt the `cxx` crate.
 #[cfg(feature = "std")]
 pub mod cpp {
     pub use crate::cxx_bridge::core::ffi::*;
 
-    /// Cpp bindings to the `Module` extension.
     #[cfg(feature = "module")]
     pub use crate::cxx_bridge::module::ffi::*;
 
-    /// Cpp bindings to the `TensorPtr` extension.
     #[cfg(feature = "tensor-ptr")]
     pub use crate::cxx_bridge::tensor_ptr::ffi::*;
 
