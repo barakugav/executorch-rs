@@ -119,12 +119,13 @@ namespace executorch_rs
     }
     static executorch::runtime::Error Module_execute_(executorch::extension::Module &self, rust::Str method_name, ArrayRefEValue inputs, VecEValue *outputs)
     {
+        auto method_name_ = (std::string)method_name;
         auto inputs_data = reinterpret_cast<const executorch::runtime::EValue *>(inputs.data.ptr);
         std::vector<executorch::runtime::EValue> inputs_vec(inputs_data, inputs_data + inputs.len);
-        auto err = self.set_inputs(inputs_vec);
+        auto err = self.set_inputs(method_name_, inputs_vec);
         if (err != executorch::runtime::Error::Ok)
             return err;
-        std::vector<executorch::runtime::EValue> outputs_ = ET_UNWRAP(self.execute((std::string)method_name));
+        std::vector<executorch::runtime::EValue> outputs_ = ET_UNWRAP(self.execute(method_name_));
         *outputs = VecEValue_new(std::move(outputs_));
         return executorch::runtime::Error::Ok;
     }
