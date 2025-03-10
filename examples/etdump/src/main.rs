@@ -28,8 +28,7 @@ fn main() {
 
     {
         let outputs = module.forward(&inputs).unwrap();
-        assert_eq!(outputs.len(), 1);
-        let output = outputs.into_iter().next().unwrap();
+        let [output] = outputs.try_into().expect("not a single tensor");
         let output = output.as_tensor().into_typed::<f32>();
 
         println!("Output tensor computed: {:?}", output);
