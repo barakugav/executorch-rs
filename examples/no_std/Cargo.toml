@@ -5,7 +5,7 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-executorch = { path = "../../", default-features = false, features = [
+executorch = { path = "../../executorch/", default-features = false, features = [
     "ndarray",
 ] }
 libc-print = "0.1.23"

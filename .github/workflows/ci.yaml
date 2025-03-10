@@ -39,7 +39,7 @@ jobs:
           toolchain: 1.77.0
           components: clippy
           cache-workspaces: |
-            ./
+            executorch
             executorch-sys
             examples/hello_world
             examples/no_ndarray
@@ -75,12 +75,12 @@ jobs:
         working-directory: executorch-sys
       - name: Build executorch
         run: cargo build
-        working-directory: .
+        working-directory: executorch
 
       - name: cargo check executorch
         if: ${{ matrix.runner == 'ubuntu-latest' }}
         run: cargo hack check --feature-powerset --depth 2
-        working-directory: .
+        working-directory: executorch
       - name: cargo check executorch-sys
         if: ${{ matrix.runner == 'ubuntu-latest' }}
         run: cargo hack check --feature-powerset  --depth 2
@@ -96,7 +96,7 @@ jobs:
       - name: Clippy executorch
         uses: auguwu/clippy-action@1.4.0
         with:
-          working-directory: .
+          working-directory: executorch
           check-args: --all-features
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -106,7 +106,7 @@ jobs:
         working-directory: executorch-sys
       - name: Test executorch
         run: cargo test --all-features
-        working-directory: .
+        working-directory: executorch
         env:
           EXECUTORCH_RS_LINK_TEST_KERNELS: 1
 
@@ -155,24 +155,25 @@ jobs:
           fi
           echo "Rust version: '$rust_version'"
           echo "rust_version=$rust_version" >> "$GITHUB_OUTPUT"
+        working-directory: executorch
       - name: Install Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ steps.rust-version.outputs.rust_version }}
           components: clippy
           cache-workspaces: |
-            ./
+            executorch
             executorch-sys
 
       - name: cargo check executorch
         run: cargo check --all-features
-        working-directory: .
+        working-directory: executorch
         env:
           EXECUTORCH_RS_LINK: 0
       - name: cargo clippy executorch
         uses: auguwu/clippy-action@1.4.0
         with:
-          working-directory: .
+          working-directory: executorch
           check-args: --all-features
           token: ${{ secrets.GITHUB_TOKEN }}
         env:
