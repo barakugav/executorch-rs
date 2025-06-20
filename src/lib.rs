@@ -56,49 +56,49 @@
 //!
 //! ## Cargo Features
 //! - `data-loader`:
-//!     Includes additional structs in the [`data_loader`] module for loading data. Without this feature the only
-//!     available data loader is `BufferDataLoader. `The `libextension_data_loader.a` static library is
-//!     required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON`.
+//!   Includes additional structs in the [`data_loader`] module for loading data. Without this feature the only
+//!   available data loader is `BufferDataLoader. `The `libextension_data_loader.a` static library is
+//!   required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON`.
 //! - `module`:
-//!     Includes the [`module`] API, a high-level API for loading and executing PyTorch models. It is an alternative to
-//!     the lower-level [`Program`](crate::program::Program) API, which is more suitable for embedded systems.
-//!     The `libextension_module_static.a` static library is required, compile C++ `executorch` with
-//!     `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`. Also includes the `std` feature.
+//!   Includes the [`module`] API, a high-level API for loading and executing PyTorch models. It is an alternative to
+//!   the lower-level [`Program`](crate::program::Program) API, which is more suitable for embedded systems.
+//!   The `libextension_module_static.a` static library is required, compile C++ `executorch` with
+//!   `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`. Also includes the `std` feature.
 //! - `tensor-ptr`:
-//!     Includes the [`tensor::TensorPtr`] struct, a smart pointer for tensors that manage the lifetime of the tensor
-//!     object alongside the lifetimes of the data buffer and additional metadata. The `extension_tensor.a`
-//!     static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_TENSOR=ON`.
-//!     Also includes the `std` feature.
+//!   Includes the [`tensor::TensorPtr`] struct, a smart pointer for tensors that manage the lifetime of the tensor
+//!   object alongside the lifetimes of the data buffer and additional metadata. The `extension_tensor.a`
+//!   static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_TENSOR=ON`.
+//!   Also includes the `std` feature.
 //! - `etdump`
-//!     Includes the `ETDumpGen` struct, an implementation of an `EventTracer`, used for debugging and profiling.
-//!     The `libetdump.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_DEVTOOLS=ON` and
-//!     `EXECUTORCH_ENABLE_EVENT_TRACER=ON`.
-//!     In addition, the `flatcc` (or `flatcc_d`) library is required, available at `{CPP_EXECUTORCH_DIR}/third-party/flatcc/lib/`,
-//!     and should be linked by the user.
+//!   Includes the `ETDumpGen` struct, an implementation of an `EventTracer`, used for debugging and profiling.
+//!   The `libetdump.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_DEVTOOLS=ON` and
+//!   `EXECUTORCH_ENABLE_EVENT_TRACER=ON`.
+//!   In addition, the `flatcc` (or `flatcc_d`) library is required, available at `{CPP_EXECUTORCH_DIR}/third-party/flatcc/lib/`,
+//!   and should be linked by the user.
 //! - `ndarray`:
-//!     Conversions between `executorch` tensors and `ndarray` arrays.
-//!     Adds a dependency to the `ndarray` crate.
-//!     This feature is enabled by default.
+//!   Conversions between `executorch` tensors and `ndarray` arrays.
+//!   Adds a dependency to the `ndarray` crate.
+//!   This feature is enabled by default.
 //! - `f16`:
-//!     Adds a dependency to the `half` crate, which provides a fully capable `f16` and `bf16` types.
-//!     Without this feature enabled, both of these types are available with a simple conversions to/from `u16` only.
-//!     Note that this only affect input/output tensors, the internal computations always have the capability to operate on such scalars.
+//!   Adds a dependency to the `half` crate, which provides a fully capable `f16` and `bf16` types.
+//!   Without this feature enabled, both of these types are available with a simple conversions to/from `u16` only.
+//!   Note that this only affect input/output tensors, the internal computations always have the capability to operate on such scalars.
 //! - `num-complex`:
-//!     Adds a dependency to the `num-complex` crate, which provides a fully capable complex number type.
-//!     Without this feature enabled, complex numbers are available as a simple struct with two public fields without any operations.
-//!     Note that this only affect input/output tensors, the internal computations always have the capability to operate on such scalars.
+//!   Adds a dependency to the `num-complex` crate, which provides a fully capable complex number type.
+//!   Without this feature enabled, complex numbers are available as a simple struct with two public fields without any operations.
+//!   Note that this only affect input/output tensors, the internal computations always have the capability to operate on such scalars.
 //! - `std`:
-//!     Enable the standard library. This feature is enabled by default, but can be disabled to build [`executorch`](crate)
-//!     in a `no_std` environment.
-//!     See the `examples/no_std` example.
-//!     Also includes the `alloc` feature.
-//!     NOTE: no_std is still WIP, see <https://github.com/pytorch/executorch/issues/4561>
+//!   Enable the standard library. This feature is enabled by default, but can be disabled to build [`executorch`](crate)
+//!   in a `no_std` environment.
+//!   See the `examples/no_std` example.
+//!   Also includes the `alloc` feature.
+//!   NOTE: no_std is still WIP, see <https://github.com/pytorch/executorch/issues/4561>
 //! - `alloc`:
-//!     Enable allocations.
-//!     When this feature is disabled, all methods that require allocations will not be compiled.
-//!     This feature is enabled by the `std` feature, which is enabled by default.
-//!     Its possible to enable this feature without the `std` feature, and the allocations will be done using the
-//!     [`alloc`](https://doc.rust-lang.org/alloc/) crate, that requires a global allocator to be set.
+//!   Enable allocations.
+//!   When this feature is disabled, all methods that require allocations will not be compiled.
+//!   This feature is enabled by the `std` feature, which is enabled by default.
+//!   Its possible to enable this feature without the `std` feature, and the allocations will be done using the
+//!   [`alloc`](https://doc.rust-lang.org/alloc/) crate, that requires a global allocator to be set.
 //!
 //! By default the `std` and `ndarray` features are enabled.
 //!

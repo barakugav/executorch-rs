@@ -96,24 +96,24 @@
 //! ## Cargo Features
 //! By default the `std` feature is enabled.
 //! - `data-loader`: Includes the [`FileDataLoader`] and [`MmapDataLoader`] structs. Without this feature the only available
-//!     data loader is [`BufferDataLoader`]. The `libextension_data_loader.a` static library is required, compile C++
-//!     `executorch` with `EXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON`.
+//!   data loader is [`BufferDataLoader`]. The `libextension_data_loader.a` static library is required, compile C++
+//!   `executorch` with `EXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON`.
 //! - `module`: Includes the [`Module`] struct. The `libextension_module_static.a` static library is required, compile C++
-//!     `executorch` with `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`.
+//!   `executorch` with `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`.
 //! - `tensor-ptr`:
-//!     Includes a few functions creating `cxx::SharedPtr<Tensor>` pointers, that manage the lifetime of the tensor
-//!     object alongside the lifetimes of the data buffer and additional metadata. The `libextension_tensor.a`
-//!     static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_TENSOR=ON`.
-//!     Also includes the `std` feature.
+//!   Includes a few functions creating `cxx::SharedPtr<Tensor>` pointers, that manage the lifetime of the tensor
+//!   object alongside the lifetimes of the data buffer and additional metadata. The `libextension_tensor.a`
+//!   static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_TENSOR=ON`.
+//!   Also includes the `std` feature.
 //! - `etdump`
-//!     Includes the `ETDumpGen` struct, an implementation of an `EventTracer`, used for debugging and profiling.
-//!     The `libetdump.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_DEVTOOLS=ON` and
-//!     `EXECUTORCH_ENABLE_EVENT_TRACER=ON`.
-//!     In addition, the `flatcc` (or `flatcc_d`) library is required, available at `{CPP_EXECUTORCH_DIR}/third-party/flatcc/lib/`,
-//!     and should be linked by the user.
+//!   Includes the `ETDumpGen` struct, an implementation of an `EventTracer`, used for debugging and profiling.
+//!   The `libetdump.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_DEVTOOLS=ON` and
+//!   `EXECUTORCH_ENABLE_EVENT_TRACER=ON`.
+//!   In addition, the `flatcc` (or `flatcc_d`) library is required, available at `{CPP_EXECUTORCH_DIR}/third-party/flatcc/lib/`,
+//!   and should be linked by the user.
 //! - `std`:
-//!     Enable the standard library. This feature is enabled by default, but can be disabled to build `executorch` in a `no_std` environment.
-//!     NOTE: no_std is still WIP, see <https://github.com/pytorch/executorch/issues/4561>
+//!   Enable the standard library. This feature is enabled by default, but can be disabled to build `executorch` in a `no_std` environment.
+//!   NOTE: no_std is still WIP, see <https://github.com/pytorch/executorch/issues/4561>
 //!
 //! [`FileDataLoader`]: crate::FileDataLoader
 //! [`MmapDataLoader`]: crate::MmapDataLoader

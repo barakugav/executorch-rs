@@ -2,15 +2,15 @@
 //!
 //! The two core structs are [`TensorImplBase`] and [`TensorBase`]:
 //! - [`TensorImplBase`] is a container for the tensor's data/shape/strides/etc, and a concrete tensor point to such
-//!     container. It does not own the data, only holds reference to it.
-//!     It is templated with immutable/mutable and typed/erased marker types, and usually not instantiated directly,
-//!     rather through [`TensorImpl`] and [`TensorImplMut`] type aliases.
+//!   container. It does not own the data, only holds reference to it.
+//!   It is templated with immutable/mutable and typed/erased marker types, and usually not instantiated directly,
+//!   rather through [`TensorImpl`] and [`TensorImplMut`] type aliases.
 //! - [`TensorBase`] is a "base" class for all immutable/mutable/typed/type-erased tensors though generics of marker
-//!     types. It points to a a tensor implementation and does not own it.
-//!     Usually it is not instantiated directly, rather through type aliases:
-//!     - [`Tensor`] typed immutable tensor.
-//!     - [`TensorMut`] typed mutable tensor.
-//!     - [`TensorAny`] type-erased immutable tensor.
+//!   types. It points to a a tensor implementation and does not own it.
+//!   Usually it is not instantiated directly, rather through type aliases:
+//!   - [`Tensor`] typed immutable tensor.
+//!   - [`TensorMut`] typed mutable tensor.
+//!   - [`TensorAny`] type-erased immutable tensor.
 //!
 //! A [`ScalarType`] enum represents the possible scalar types of a typed-erased tensor, which can be converted into a
 //! typed tensor and visa-versa using the
@@ -684,9 +684,9 @@ impl<'a, S: Scalar> TensorImpl<'a, S> {
     /// # Arguments
     ///
     /// * `sizes` - The sizes (dimensions) of the tensor. The length of this slice is the number of dimensions of
-    ///     the tensor. The slice must be valid for the lifetime of the TensorImpl.
+    ///   the tensor. The slice must be valid for the lifetime of the TensorImpl.
     /// * `data` - A pointer to the data of the tensor. The caller must ensure that the data is valid for the
-    ///     lifetime of the TensorImpl.
+    ///   lifetime of the TensorImpl.
     /// * `dim_order` - The order of the dimensions of the tensor, must have the same length as `sizes`.
     /// * `strides` - The strides of the tensor, must have the same length as `sizes`.
     ///
@@ -718,9 +718,9 @@ impl<'a, S: Scalar> TensorImpl<'a, S> {
     /// # Arguments
     ///
     /// * `sizes` - The sizes (dimensions) of the tensor. The length of this slice is the number of dimensions of
-    ///     the tensor. The slice must be valid for the lifetime of the TensorImpl.
+    ///   the tensor. The slice must be valid for the lifetime of the TensorImpl.
     /// * `data` - The data of the tensor. The slice may be bigger than expected (according to the sizes and strides)
-    ///     but not smaller.
+    ///   but not smaller.
     /// * `dim_order` - The order of the dimensions of the tensor, must have the same length as `sizes`.
     /// * `strides` - The strides of the tensor, must have the same length as `sizes`.
     ///
@@ -759,10 +759,10 @@ impl<'a, S: Scalar> TensorImplMut<'a, S> {
     /// # Arguments
     ///
     /// * `sizes` - The sizes (dimensions) of the tensor. The length of this slice is the number of dimensions of
-    ///     the tensor. The slice must be valid for the lifetime of the TensorImplMut.
+    ///   the tensor. The slice must be valid for the lifetime of the TensorImplMut.
     /// * `data` - A pointer to the data of the tensor. The caller must ensure that the data is valid for the
-    ///     lifetime of the TensorImplMut, and that there is not more references to the data (as the passed pointer
-    ///     will be used to mutate the data).
+    ///   lifetime of the TensorImplMut, and that there is not more references to the data (as the passed pointer
+    ///   will be used to mutate the data).
     /// * `dim_order` - The order of the dimensions of the tensor, must have the same length as `sizes`.
     /// * `strides` - The strides of the tensor, must have the same length as `sizes`.
     ///
@@ -793,7 +793,7 @@ impl<'a, S: Scalar> TensorImplMut<'a, S> {
     /// # Arguments
     ///
     /// * `sizes` - The sizes (dimensions) of the tensor. The length of this slice is the number of dimensions of
-    ///    the tensor. The slice must be valid for the lifetime of the TensorImplMut.
+    ///   the tensor. The slice must be valid for the lifetime of the TensorImplMut.
     /// * `data` - The data of the tensor. The slice may be bigger than expected (according to the sizes and strides)
     ///   but not smaller.
     /// * `dim_order` - The order of the dimensions of the tensor, must have the same length as `sizes`.
@@ -1427,7 +1427,7 @@ mod tests {
         assert_eq!(tensor.sizes(), &[]);
         assert_eq!(tensor.dim_order(), &[]);
         assert_eq!(tensor.strides(), &[]);
-        assert_eq!(unsafe { *(tensor.as_ptr() as *const i32) }, 42);
+        assert_eq!(unsafe { *tensor.as_ptr() }, 42);
         assert_eq!(tensor[&[]], 42);
 
         let mut scalar = 17;
@@ -1442,10 +1442,10 @@ mod tests {
         assert_eq!(tensor.sizes(), &[]);
         assert_eq!(tensor.dim_order(), &[]);
         assert_eq!(tensor.strides(), &[]);
-        assert_eq!(unsafe { *(tensor.as_ptr() as *const i32) }, 17);
+        assert_eq!(unsafe { *tensor.as_ptr() }, 17);
         assert_eq!(tensor[&[]], 17);
         tensor[&[]] = 6;
-        assert_eq!(unsafe { *(tensor.as_ptr() as *const i32) }, 6);
+        assert_eq!(unsafe { *tensor.as_ptr() }, 6);
         assert_eq!(tensor[&[]], 6);
     }
 }

@@ -72,7 +72,7 @@ impl<'a> EValue<'a> {
     /// # Arguments
     ///
     /// * `init` - A closure that initializes the value. This is intended to be a call to a Cpp function that constructs
-    ///     the value.
+    ///   the value.
     ///
     /// # Safety
     ///
@@ -100,7 +100,7 @@ impl<'a> EValue<'a> {
     /// # Arguments
     ///
     /// * `init` - A closure that initializes the value. This is intended to be a call to a Cpp function that constructs
-    ///     the value.
+    ///   the value.
     /// * `storage` - The storage in which the value will be allocated.
     ///
     /// # Safety

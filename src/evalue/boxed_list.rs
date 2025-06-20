@@ -26,10 +26,10 @@ use super::{EValue, Tag};
 /// by the Cpp library :).
 /// The struct consist of two lists:
 /// - `wrapped_vals`: a list of `[*const EValue]`, which contain the actual values of
-///     list, boxed in `EValue`.
+///   list, boxed in `EValue`.
 /// - `unwrapped_vals`: a list of `[T]`, initially uninitialized but when a reference
-///     to the actual `T` values is required the values are "unwrapped" from the boxed
-///     `EValue` into this array, and returned to the user as a slice.
+///   to the actual `T` values is required the values are "unwrapped" from the boxed
+///   `EValue` into this array, and returned to the user as a slice.
 ///
 /// This struct is used to represent lists of `i64`, `Tensor` and `Option<Tensor>`
 /// within an `EValue`, and it is used to initialize such EValues, but rarely should
@@ -57,9 +57,9 @@ impl<'a, T: BoxedEvalueListElement<'a>> BoxedEvalueList<'a, T> {
     ///
     /// # Arguments
     /// - `wrapped_vals`: a list of `EValue` that contain the actual values of the list. The inner values
-    ///     within the `EValue` must match the type `T`.
+    ///   within the `EValue` must match the type `T`.
     /// - `unwrapped_vals`: an allocation of the unwrapped values. The length of the allocation must
-    ///    match the length of the `wrapped_vals`.
+    ///   match the length of the `wrapped_vals`.
     ///
     /// # Returns
     /// A new boxed list with the given values, or an error:
