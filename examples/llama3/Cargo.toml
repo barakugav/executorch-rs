@@ -7,7 +7,7 @@ publish = false
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
-executorch = { path = "../../", features = [
+executorch = { path = "../../executorch/", features = [
     "ndarray",
     "data-loader",
     "module",

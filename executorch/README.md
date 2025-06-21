@@ -38,13 +38,14 @@ use executorch::module::Module;
 use executorch::tensor_ptr;
 use ndarray::array;
 
-let mut module = Module::new("model.pte", None, None);
+let mut module = Module::new("model.pte", None);
 
 let (tensor1, tensor2) = (tensor_ptr![1.0_f32], tensor_ptr![1.0_f32]);
 let inputs = [tensor1.into_evalue(), tensor2.into_evalue()];
 
 let outputs = module.forward(&inputs).unwrap();
-let [output]: [_EValue_; 1] = outputs.try_into().expect("not a single tensor");
+assert_eq!(outputs.len(), 1);
+let output = outputs.into_iter().next().unwrap();
 let output = output.as_tensor().into_typed::<f32>();
 
 println!("Output tensor computed: {:?}", output);

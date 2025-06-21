@@ -37,4 +37,4 @@ jobs:
       - name: Audit
         run: cargo audit -D warnings
         # its enough to only check the top level Cargo.lock because we are in a workspace
-        working-directory: ./
+        working-directory: executorch

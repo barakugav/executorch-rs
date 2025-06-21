@@ -6,7 +6,7 @@ publish = false
 
 
 [dependencies]
-executorch = { path = "../../", features = [
+executorch = { path = "../../executorch/", features = [
     "ndarray",
     "data-loader",
     "module",
