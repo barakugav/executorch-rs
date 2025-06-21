@@ -103,9 +103,10 @@ namespace executorch_rs
     {
         return static_cast<Error>(Module_method_names_(self, method_names_out));
     }
-    Error Module_load_method(executorch::extension::Module &self, rust::Str method_name, executorch::runtime::EventTracer *event_tracer)
+    Error Module_load_method(executorch::extension::Module &self, rust::Str method_name, HierarchicalAllocator *planned_memory, executorch::runtime::EventTracer *event_tracer)
     {
-        auto ret = self.load_method((std::string)method_name, event_tracer);
+        auto planned_memory_ = checked_reinterpret_cast<executorch::runtime::HierarchicalAllocator>(planned_memory);
+        auto ret = self.load_method((std::string)method_name, planned_memory_, event_tracer);
         return static_cast<Error>(ret);
     }
     bool Module_is_method_loaded(const executorch::extension::Module &self, rust::Str method_name)

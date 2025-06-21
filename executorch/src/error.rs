@@ -71,6 +71,10 @@ pub enum CError {
     AccessFailed = RawCError::Error_AccessFailed as u8,
     /// Error caused by the contents of a program.
     InvalidProgram = RawCError::Error_InvalidProgram as u8,
+    /// Error caused by the contents of external data.
+    InvalidExternalData = RawCError::Error_InvalidExternalData as u8,
+    /// Does not have enough resources to perform the requested operation.
+    OutOfResources = RawCError::Error_OutOfResources as u8,
 
     /* Delegate errors */
     //
@@ -106,6 +110,8 @@ impl IntoRust for RawCError {
             RawCError::Error_MemoryAllocationFailed => CError::MemoryAllocationFailed,
             RawCError::Error_AccessFailed => CError::AccessFailed,
             RawCError::Error_InvalidProgram => CError::InvalidProgram,
+            RawCError::Error_InvalidExternalData => CError::InvalidExternalData,
+            RawCError::Error_OutOfResources => CError::OutOfResources,
             RawCError::Error_DelegateInvalidCompatibility => CError::DelegateInvalidCompatibility,
             RawCError::Error_DelegateMemoryAllocationFailed => {
                 CError::DelegateMemoryAllocationFailed
@@ -183,6 +189,14 @@ mod tests {
         assert!(matches!(
             RawCError::Error_InvalidProgram.rs(),
             Err(Error::CError(CError::InvalidProgram))
+        ));
+        assert!(matches!(
+            RawCError::Error_InvalidExternalData.rs(),
+            Err(Error::CError(CError::InvalidExternalData))
+        ));
+        assert!(matches!(
+            RawCError::Error_OutOfResources.rs(),
+            Err(Error::CError(CError::OutOfResources))
         ));
         assert!(matches!(
             RawCError::Error_DelegateInvalidCompatibility.rs(),

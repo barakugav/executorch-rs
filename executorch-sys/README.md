@@ -10,7 +10,7 @@ In the following example we build the C++ library with the necessary flags to ru
 ```bash
 # Clone the C++ library
 cd ${EXECUTORCH_CPP_DIR}
-git clone --depth 1 --branch v0.5.0 https://github.com/pytorch/executorch.git .
+git clone --depth 1 --branch v0.6.0 https://github.com/pytorch/executorch.git .
 git submodule sync --recursive
 git submodule update --init --recursive
 

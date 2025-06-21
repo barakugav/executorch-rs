@@ -121,6 +121,7 @@ impl<'a> Module<'a> {
             et_c::cpp::Module_load_method(
                 self.0.as_mut().unwrap(),
                 method_name.as_ref(),
+                std::ptr::null_mut(), // TODO
                 event_tracer,
             )
             .rs()

@@ -57,7 +57,7 @@ using TensorShapeDynamism = executorch::runtime::TensorShapeDynamism;
 using Tensor = at::Tensor;
 using TensorList = at::TensorList;
 using TensorImpl = at::TensorImpl;
-using string_view = c10::string_view;
+using string_view = std::string_view;
 template <typename T>
 using ArrayRef = c10::ArrayRef<T>;
 template <typename T>
@@ -106,7 +106,7 @@ template <typename T>
 using optional = torch::executor::optional<T>;
 using nullopt_t = torch::executor::nullopt_t;
 // NOLINTNEXTLINE(facebook-hte-NamespaceScopedStaticDeclaration)
-static constexpr nullopt_t nullopt{0};
+using std::nullopt;
 using ScalarType = torch::executor::ScalarType;
 using TensorList = ArrayRef<Tensor>;
 using Scalar = torch::executor::Scalar;
@@ -149,6 +149,6 @@ namespace exec_aten = executorch::aten;
 
 namespace torch {
 namespace executor {
-using TensorList = exec_aten::TensorList;
+using TensorList = ::executorch::aten::TensorList;
 } // namespace executor
 } // namespace torch
