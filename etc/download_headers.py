@@ -51,6 +51,7 @@ def main():
             "runtime/executor/platform_memory_allocator.h",
             "runtime/platform/compat_unistd.h",
             "runtime/core/exec_aten/util/tensor_shape_to_c_string.h",
+            "runtime/core/defines.h",
             "extension/data_loader/file_descriptor_data_loader.h",
             "extension/data_loader/mman.h",
             "extension/data_loader/mman_windows.h",
