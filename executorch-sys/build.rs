@@ -89,18 +89,7 @@ fn generate_bindings() {
     bindings_h_content.push_str("#include \"executorch_rs/c_bridge.h\"\n");
     std::fs::write(&bindings_h, bindings_h_content).expect("Unable to write bindings.h");
 
-    let [_, minor, patch]: [u64; 3] = env!("CARGO_PKG_RUST_VERSION")
-        .split('.')
-        .map(|v| v.parse::<u64>().expect("Invalid rust version"))
-        .collect::<Vec<_>>()
-        .try_into()
-        .expect("Rust version is not in the format MAJOR.MINOR.PATCH");
-    let rust_version = bindgen::RustTarget::stable(minor, patch)
-        .map_err(|e| format!("{}", e))
-        .expect("Rust version not supported by bindgen");
-
     let builder = bindgen::Builder::default()
-        .rust_target(rust_version)
         .clang_arg(format!("-I{}", cpp_dir().to_str().unwrap()))
         .use_core()
         .header(bindings_h.as_os_str().to_str().unwrap())
