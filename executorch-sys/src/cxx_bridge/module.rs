@@ -68,6 +68,14 @@ pub(crate) mod ffi {
         #[namespace = "executorch_rs"]
         fn Module_load(self_: Pin<&mut Module>, verification: ProgramVerification) -> Error;
 
+        /// Get the number of methods available in the loaded program.
+        ///
+        /// # Safety
+        ///
+        /// The `method_num_out` is valid only if the function returns `Error::Ok`.
+        #[namespace = "executorch_rs"]
+        unsafe fn Module_num_methods(self_: Pin<&mut Module>, method_num_out: &mut usize) -> Error;
+
         /// Get a list of method names available in the loaded program.
         ///
         /// Loads the program and method if needed.

@@ -105,6 +105,15 @@ namespace executorch_rs
         auto ret = self.load(verification_);
         return static_cast<Error>(ret);
     }
+    static executorch::runtime::Error Module_num_methods_(executorch::extension::Module &self, size_t &method_num_out)
+    {
+        method_num_out = ET_UNWRAP(self.num_methods());
+        return executorch::runtime::Error::Ok;
+    }
+    Error Module_num_methods(executorch::extension::Module &self, size_t &method_num_out)
+    {
+        return static_cast<Error>(Module_num_methods_(self, method_num_out));
+    }
     static executorch::runtime::Error Module_method_names_(executorch::extension::Module &self, rust::Vec<rust::String> &method_names_out)
     {
         std::unordered_set<std::string> method_names = ET_UNWRAP(self.method_names());

@@ -95,6 +95,13 @@ impl<'a> Module<'a> {
         et_c::cpp::Module_load(self.0.as_mut().unwrap(), verification).rs()
     }
 
+    /// Get the number of methods available in the loaded program.
+    pub fn num_methods(&mut self) -> Result<usize> {
+        let mut num_methods = 0;
+        unsafe { et_c::cpp::Module_num_methods(self.0.as_mut().unwrap(), &mut num_methods).rs()? };
+        Ok(num_methods)
+    }
+
     // /// Checks if the program is loaded.
     // ///
     // /// # Returns
@@ -325,6 +332,16 @@ mod tests {
 
         let mut module = Module::from_file_path("non-existing-file.pte2");
         assert!(module.method_names().is_err());
+    }
+
+    #[test]
+    fn num_methods() {
+        let mut module = Module::from_file_path(add_model_path());
+        let num_methods = module.num_methods().unwrap();
+        assert_eq!(num_methods, 1);
+
+        let mut module = Module::from_file_path("non-existing-file.pte2");
+        assert!(module.num_methods().is_err());
     }
 
     #[cfg(tests_with_kernels)]
