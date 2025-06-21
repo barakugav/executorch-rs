@@ -20,7 +20,7 @@ fn main() {
 
     let mut etdump_gen = ETDumpGen::new();
     module
-        .load_method("forward", Some(etdump_gen.as_mut()))
+        .load_method("forward", None, Some(etdump_gen.as_mut()))
         .unwrap();
 
     let (tensor1, tensor2) = (tensor_ptr![1.0_f32], tensor_ptr![1.0_f32]);

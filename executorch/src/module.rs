@@ -14,6 +14,7 @@ use std::path::Path;
 
 use crate::evalue::EValue;
 use crate::event_tracer::{EventTracer, EventTracerPtr};
+use crate::memory::HierarchicalAllocator;
 use crate::program::{MethodMeta, ProgramVerification};
 use crate::util::{try_c_new, ArrayRef, IntoCpp, IntoRust, NonTriviallyMovableVec};
 use crate::{Error, Result};
@@ -100,7 +101,9 @@ impl<'a> Module<'a> {
     /// # Arguments
     ///
     /// * `method_name` - The name of the method to load.
-    /// * `event_tracer` - The event tracer to use for this method run.
+    /// * `planned_memory` - The memory-planned buffers to use for mutable tensor data when executing a method.
+    /// * `event_tracer` - Per-method event tracer to profile/trace methods individually. When not given, the event
+    ///   tracer passed to the Module constructor is used. Otherwise, this per-method event tracer takes precedence.
     ///
     /// # Returns
     ///
@@ -112,16 +115,20 @@ impl<'a> Module<'a> {
     pub fn load_method(
         &mut self,
         method_name: impl AsRef<str>,
+        planned_memory: Option<&'a mut HierarchicalAllocator>,
         event_tracer: Option<&'a mut EventTracer>,
     ) -> Result<()> {
         let event_tracer = event_tracer
             .map(|tracer| tracer as *mut EventTracer as *mut et_c::cpp::EventTracer)
             .unwrap_or(std::ptr::null_mut());
+        let planned_memory = planned_memory
+            .map(|allocator| (&mut allocator.0) as *mut et_c::cpp::HierarchicalAllocator)
+            .unwrap_or(std::ptr::null_mut());
         unsafe {
             et_c::cpp::Module_load_method(
                 self.0.as_mut().unwrap(),
                 method_name.as_ref(),
-                std::ptr::null_mut(), // TODO
+                planned_memory,
                 event_tracer,
             )
             .rs()
@@ -303,13 +310,15 @@ mod tests {
     fn load_method() {
         let mut module = Module::new(add_model_path(), None, None);
         assert!(!module.is_method_loaded("forward"));
-        assert!(module.load_method("forward", None).is_ok());
+        assert!(module.load_method("forward", None, None).is_ok());
         assert!(module.is_method_loaded("forward"));
-        assert!(module.load_method("non-existing-method", None).is_err());
+        assert!(module
+            .load_method("non-existing-method", None, None)
+            .is_err());
         assert!(!module.is_method_loaded("non-existing-method"));
 
         let mut module = Module::new("non-existing-file.pte2", None, None);
-        assert!(module.load_method("forward", None).is_err());
+        assert!(module.load_method("forward", None, None).is_err());
     }
 
     #[cfg(tests_with_kernels)]
