@@ -128,6 +128,9 @@ extern crate core as std;
 #[cfg(all(feature = "std", link_cxx))]
 extern crate link_cplusplus;
 
+/// The version of the ExecuTorch C++ library that this crate is compatible and linked with.
+pub const EXECUTORCH_CPP_VERSION: &str = "0.5.0";
+
 mod c_bridge;
 pub use c_bridge::*;
 

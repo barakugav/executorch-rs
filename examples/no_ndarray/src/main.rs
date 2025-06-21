@@ -31,8 +31,9 @@ fn main() {
     let input_evalue2 = Tensor::new(&input_tensor2).into_evalue();
 
     let outputs = module.forward(&[input_evalue1, input_evalue2]).unwrap();
-    assert_eq!(outputs.len(), 1);
-    let output = outputs.into_iter().next().unwrap();
+    let [output] = outputs
+        .try_into()
+        .unwrap_or_else(|_| panic!("not a single tensor"));
     let output = output.as_tensor().into_typed::<f32>();
 
     assert_eq!(output.dim(), 1);
