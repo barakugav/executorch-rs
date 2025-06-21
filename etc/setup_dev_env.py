@@ -35,10 +35,7 @@ def main():
     subprocess.check_call([sys.executable, "-m", "ensurepip"])
     if not args.skip_executorch_python:
         subprocess.check_call(
-            [
-                "./install_requirements.sh",
-                *["--pybind", "xnnpack"],
-            ],
+            ["./install_requirements.sh"],
             cwd=DEV_EXECUTORCH_DIR,
         )
     else:
@@ -61,7 +58,6 @@ def main():
 def clone_executorch():
     if not DEV_EXECUTORCH_DIR.exists():
         DEV_EXECUTORCH_DIR.mkdir(parents=True, exist_ok=True)
-        # git clone --depth 1 --branch v0.5.0 https://github.com/pytorch/executorch.git
         subprocess.check_call(
             [
                 "git",
@@ -69,7 +65,7 @@ def clone_executorch():
                 "--depth",
                 "1",
                 "--branch",
-                "v0.5.0",  # TODO: parse from somewhere
+                "v0.6.0",
                 "https://github.com/pytorch/executorch.git",
                 ".",
             ],

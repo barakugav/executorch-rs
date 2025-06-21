@@ -70,6 +70,12 @@ extern "C"
         /// Error caused by the contents of a program.
         Error_InvalidProgram = 0x23,
 
+        /// Error caused by the contents of external data.
+        Error_InvalidExternalData = 0x24,
+
+        /// Does not have enough resources to perform the requested operation.
+        Error_OutOfResources = 0x25,
+
         /*
          * Delegate errors.
          */
@@ -277,7 +283,36 @@ extern "C"
     };
     struct Program
     {
-        size_t _blob[11];
+
+        // program_data_ (4)
+        //   free_fn_
+        //   free_fn_context_
+        //   data_
+        //   size_
+        // loader_
+        // internal_program_
+        // segment_base_offset_
+        // constant_segment_data_ (4)
+        //   free_fn_
+        //   free_fn_context_
+        //   data_
+        //   size_
+        size_t _blob1[11];
+        // pte_data_map_
+        struct // optional<PteDataMap>
+        {
+            union
+            {
+                char _blob2_opt_dummy;
+                // vtable
+                // loader_
+                // segment_base_offset_
+                // named_data_
+                // segments_
+                size_t _blob2_opt_val[5];
+            };
+            bool _blob2_opt_flag;
+        };
     };
     struct TensorInfo
     {
@@ -289,7 +324,24 @@ extern "C"
     };
     struct Method
     {
-        size_t _blob[14];
+
+        // step_state_ (2)
+        // program_
+        // memory_manager_
+        // temp_allocator_
+        // serialization_plan_
+        // event_tracer_
+        // n_value_
+        // values_
+        // n_delegate_
+        // delegates_
+        // n_chains_
+        // chains_
+        // external_constants_
+        // n_external_constants_
+        size_t _blob1[15];
+        // init_state_;
+        uint8_t _blob2[1];
     };
     struct DataLoaderRefMut
     {
@@ -328,9 +380,12 @@ extern "C"
 
     struct OptionalTensorStorage
     {
-        char _blob1[1];
-        size_t _blob2[1];
-        bool _blob3[1];
+        union
+        {
+            char _dummy;
+            struct TensorStorage _val;
+        };
+        bool _flag;
     };
     struct OptionalTensorRef
     {
@@ -490,12 +545,31 @@ extern "C"
 #if defined(EXECUTORCH_RS_ETDUMP)
     struct ETDumpGen
     {
+        // vtable
         size_t _blob0[1];
+        // kUnsetChainId
+        // debug_handle_
         int _blob1[2];
+        // event_tracer_enable_debugging_
+        // log_intermediate_tensors_
         bool _blob2[2];
+        // bundled_input_index_
+        // event_tracer_debug_level_
+        // event_tracer_profiling_level_
         int _blob3[3];
-        size_t _blob4[5];
+        // builder_
+        // num_blocks_
+        // data_sink_
+        // buffer_data_sink_ (5)
+        //   DataSinkBase vtable
+        //   BufferDataSink::debug_buffer_ (2)
+        //   BufferDataSink::offset_
+        //   BufferDataSink::alignment_
+        size_t _blob4[8];
+        // bundled_input_index_
+        // state_
         int _blob5[2];
+        // alloc_ (6)
         size_t _blob6[6];
     };
 #endif

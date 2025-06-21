@@ -7,7 +7,7 @@
 
 `executorch` is a Rust library for executing PyTorch models in Rust.
 It is a Rust wrapper around the [ExecuTorch C++ API](https://pytorch.org/executorch).
-It depends on version `0.5.0` of the Cpp API, but will advance as the API does.
+It depends on version `0.6.0` of the Cpp API, but will advance as the API does.
 The underlying C++ library is still in Beta, and its API is subject to change together with the Rust API.
 
 ## Usage
@@ -24,10 +24,9 @@ class Add(torch.nn.Module):
     def forward(self, x: torch.Tensor, y: torch.Tensor):
         return x + y
 
-
-aten_dialect = export(Add(), (torch.ones(1), torch.ones(1)))
-edge_program = to_edge(aten_dialect)
-executorch_program = edge_program.to_executorch()
+model = Add()
+exported_program = export(model, (torch.ones(1), torch.ones(1)))
+executorch_program = to_edge_transform_and_lower(exported_program).to_executorch()
 with open("model.pte", "wb") as file:
     file.write(executorch_program.buffer)
 ```
@@ -60,7 +59,7 @@ In the following example we build the C++ library with the necessary flags to ru
 ```bash
 # Clone the C++ library
 cd ${EXECUTORCH_CPP_DIR}
-git clone --depth 1 --branch v0.5.0 https://github.com/pytorch/executorch.git .
+git clone --depth 1 --branch v0.6.0 https://github.com/pytorch/executorch.git .
 git submodule sync --recursive
 git submodule update --init --recursive
 

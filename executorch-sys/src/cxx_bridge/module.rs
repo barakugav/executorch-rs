@@ -39,6 +39,9 @@ pub(crate) mod ffi {
         #[namespace = "executorch::runtime"]
         type EventTracer;
 
+        /// Redefinition of the [`HierarchicalAllocator`](crate::HierarchicalAllocator).
+        type HierarchicalAllocator = crate::HierarchicalAllocator;
+
         /// Constructs an instance by loading a program from a file with specified
         /// memory locking behavior.
         ///
@@ -95,6 +98,7 @@ pub(crate) mod ffi {
         unsafe fn Module_load_method(
             self_: Pin<&mut Module>,
             method_name: &str,
+            planned_memory: *mut HierarchicalAllocator,
             event_tracer: *mut EventTracer,
         ) -> Error;
 
@@ -151,6 +155,11 @@ pub(crate) mod ffi {
             outputs: *mut VecEValue,
         ) -> Error;
     }
+}
+
+unsafe impl ExternType for crate::HierarchicalAllocator {
+    type Id = type_id!("HierarchicalAllocator");
+    type Kind = cxx::kind::Trivial;
 }
 
 unsafe impl ExternType for crate::ModuleLoadMode {

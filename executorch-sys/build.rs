@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-// const EXECUTORCH_VERSION: &str = "0.5.0";
+// const EXECUTORCH_VERSION: &str = "0.6.0";
 
 fn main() {
     // TODO: verify on runtime we use the correct version of executorch
@@ -38,8 +38,7 @@ fn build_c_bridge() {
     common_cc(&mut builder);
     builder
         .files([sources_dir.join("c_bridge.cpp")])
-        .include(cpp_dir())
-        .include(third_party_dir());
+        .includes(cpp_includes());
     builder.compile(&format!(
         "executorch_rs_c_bridge_{}",
         env!("CARGO_PKG_VERSION")
@@ -61,8 +60,7 @@ fn build_cxx_bridge() {
     common_cc(&mut builder);
     builder
         .files([sources_dir.join("cxx_bridge.cpp")])
-        .include(cpp_dir())
-        .include(third_party_dir());
+        .includes(cpp_includes());
     builder.compile(&format!(
         "executorch_rs_cxx_bridge_{}",
         env!("CARGO_PKG_VERSION")
@@ -194,8 +192,21 @@ fn third_party_dir() -> PathBuf {
     Path::new(&env!("CARGO_MANIFEST_DIR")).join("third-party")
 }
 
+fn cpp_includes() -> Vec<PathBuf> {
+    let third_party_dir = third_party_dir();
+    let c10_dir = std::env::var_os("EXECUTORCH_RS_C10_HEADERS_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| third_party_dir.join("executorch/runtime/core/portable_type/c10"));
+    assert!(
+        c10_dir.exists(),
+        "C10 directory does not exist: {}",
+        c10_dir.display()
+    );
+    vec![cpp_dir(), third_party_dir.clone(), c10_dir]
+}
+
 fn cpp_defines() -> Vec<&'static str> {
-    let mut defines = vec![];
+    let mut defines = vec!["C10_USING_CUSTOM_GENERATED_MACROS"];
     if cfg!(feature = "data-loader") {
         defines.push("EXECUTORCH_RS_DATA_LOADER");
     }

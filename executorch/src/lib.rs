@@ -26,9 +26,9 @@
 //!         return x + y
 //!
 //!
-//! aten_dialect = export(Add(), (torch.ones(1), torch.ones(1)))
-//! edge_program = to_edge(aten_dialect)
-//! executorch_program = edge_program.to_executorch()
+//! model = Add()
+//! exported_program = export(model, (torch.ones(1), torch.ones(1)))
+//! executorch_program = to_edge_transform_and_lower(exported_program).to_executorch()
 //! with open("model.pte", "wb") as file:
 //!     file.write(executorch_program.buffer)
 //! ```
@@ -115,7 +115,7 @@
 //!
 //! ## API Stability
 //! The C++ API is still in Beta, and this Rust lib will continue to change with it. Currently the supported
-//! executorch version is `0.5.0`.
+//! executorch version is `0.6.0`.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 

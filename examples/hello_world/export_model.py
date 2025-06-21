@@ -1,11 +1,12 @@
 from pathlib import Path
 
 import torch
-from executorch.exir import to_edge
 from torch.export import export
 
+from executorch.exir import to_edge_transform_and_lower
 
-# Start with a PyTorch model that adds two input tensors (matrices)
+
+# A simple PyTorch model that adds two input tensors
 class Add(torch.nn.Module):
     def __init__(self):
         super(Add, self).__init__()
@@ -14,16 +15,11 @@ class Add(torch.nn.Module):
         return x + y
 
 
-# 1. torch.export: Defines the program with the ATen operator set.
-aten_dialect = export(Add(), (torch.ones(1), torch.ones(1)))
+model = Add()
 
-# 2. to_edge: Make optimizations for Edge devices
-edge_program = to_edge(aten_dialect)
+exported_program = export(model, (torch.ones(1), torch.ones(1)))
+executorch_program = to_edge_transform_and_lower(exported_program).to_executorch()
 
-# 3. to_executorch: Convert the graph to an ExecuTorch program
-executorch_program = edge_program.to_executorch()
-
-# 4. Save the compiled .pte program
 model_path = Path(__file__).parent.parent / "models" / "add.pte"
 with open(model_path, "wb") as file:
     file.write(executorch_program.buffer)
