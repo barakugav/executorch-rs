@@ -681,6 +681,9 @@ extern "C"
     enum Error executorch_MethodMeta_input_tensor_meta(const struct MethodMeta *self, size_t index, struct TensorInfo *tensor_info_out);
     enum Error executorch_MethodMeta_output_tensor_meta(const struct MethodMeta *self, size_t index, struct TensorInfo *tensor_info_out);
     enum Error executorch_MethodMeta_memory_planned_buffer_size(const struct MethodMeta *self, size_t index, int64_t *size_out);
+    bool executorch_MethodMeta_uses_backend(const struct MethodMeta *self, const char *backend_name);
+    size_t executorch_MethodMeta_num_backends(const struct MethodMeta *self);
+    enum Error executorch_MethodMeta_get_backend_name(const struct MethodMeta *self, size_t index, const char **backend_name_out);
 
     // TensorInfo
     struct ArrayRefI32 executorch_TensorInfo_sizes(const struct TensorInfo *self);

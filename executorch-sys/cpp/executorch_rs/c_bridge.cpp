@@ -784,6 +784,21 @@ enum Error executorch_MethodMeta_memory_planned_buffer_size(const struct MethodM
     auto self_ = checked_reinterpret_cast<executorch::runtime::MethodMeta>(self);
     return extract_result(self_->memory_planned_buffer_size(index), size_out);
 }
+bool executorch_MethodMeta_uses_backend(const struct MethodMeta *self, const char *backend_name)
+{
+    auto self_ = checked_reinterpret_cast<executorch::runtime::MethodMeta>(self);
+    return self_->uses_backend(backend_name);
+}
+size_t executorch_MethodMeta_num_backends(const struct MethodMeta *self)
+{
+    auto self_ = checked_reinterpret_cast<executorch::runtime::MethodMeta>(self);
+    return self_->num_backends();
+}
+enum Error executorch_MethodMeta_get_backend_name(const struct MethodMeta *self, size_t index, const char **backend_name_out)
+{
+    auto self_ = checked_reinterpret_cast<executorch::runtime::MethodMeta>(self);
+    return extract_result(self_->get_backend_name(index), backend_name_out);
+}
 
 // TensorInfo
 struct ArrayRefI32 executorch_TensorInfo_sizes(const struct TensorInfo *self)
