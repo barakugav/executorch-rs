@@ -343,6 +343,25 @@ impl MethodMeta<'_> {
         })?;
         Ok(size as usize)
     }
+
+    /// Check to see if a backend is used in this method.
+    pub fn uses_backend(&self, backend_name: &CStr) -> bool {
+        unsafe { et_c::executorch_MethodMeta_uses_backend(&self.0, backend_name.as_ptr()) }
+    }
+
+    /// Get the number of backends used in this method.
+    pub fn num_backends(&self) -> usize {
+        unsafe { et_c::executorch_MethodMeta_num_backends(&self.0) }
+    }
+
+    /// Get the backend name at the given index.
+    pub fn get_backend_name(&self, index: usize) -> Result<&str> {
+        let backend_name = try_c_new(|name| unsafe {
+            et_c::executorch_MethodMeta_get_backend_name(&self.0, index, name)
+        })?;
+        let backend_name = unsafe { CStr::from_ptr(backend_name) };
+        backend_name.to_str().map_err(|_| Error::FromCStr)
+    }
 }
 
 /// Metadata about a specific tensor of an ExecuTorch Program.
@@ -564,6 +583,16 @@ mod tests {
         assert!(method_meta
             .memory_planned_buffer_size(method_meta.num_memory_planned_buffers())
             .is_err());
+
+        for i in 0..method_meta.num_backends() {
+            let backend_name = method_meta.get_backend_name(i).unwrap();
+            assert!(!backend_name.is_empty());
+            #[cfg(feature = "alloc")]
+            assert!(
+                method_meta.uses_backend(std::ffi::CString::new(backend_name).unwrap().as_c_str())
+            );
+        }
+        assert!(!method_meta.uses_backend(cstr!("non-existing-backend")));
     }
 
     #[cfg(tests_with_kernels)]

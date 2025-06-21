@@ -77,11 +77,26 @@ namespace executorch_rs
 #if defined(EXECUTORCH_RS_MODULE)
     std::unique_ptr<executorch::extension::Module> Module_new(
         rust::Str file_path,
+        rust::Str data_map_path,
         const ModuleLoadMode load_mode,
         std::unique_ptr<executorch::runtime::EventTracer> event_tracer)
     {
         auto load_mode_ = static_cast<executorch::extension::Module::LoadMode>(load_mode);
-        return std::make_unique<executorch::extension::Module>((std::string)file_path, load_mode_, std::move(event_tracer));
+        if (data_map_path.empty())
+        {
+            return std::make_unique<executorch::extension::Module>(
+                (std::string)file_path,
+                load_mode_,
+                std::move(event_tracer));
+        }
+        else
+        {
+            return std::make_unique<executorch::extension::Module>(
+                (std::string)file_path,
+                (std::string)data_map_path,
+                load_mode_,
+                std::move(event_tracer));
+        }
     }
 
     Error Module_load(executorch::extension::Module &self, ProgramVerification verification)
@@ -89,6 +104,15 @@ namespace executorch_rs
         auto verification_ = static_cast<executorch::runtime::Program::Verification>(verification);
         auto ret = self.load(verification_);
         return static_cast<Error>(ret);
+    }
+    static executorch::runtime::Error Module_num_methods_(executorch::extension::Module &self, size_t &method_num_out)
+    {
+        method_num_out = ET_UNWRAP(self.num_methods());
+        return executorch::runtime::Error::Ok;
+    }
+    Error Module_num_methods(executorch::extension::Module &self, size_t &method_num_out)
+    {
+        return static_cast<Error>(Module_num_methods_(self, method_num_out));
     }
     static executorch::runtime::Error Module_method_names_(executorch::extension::Module &self, rust::Vec<rust::String> &method_names_out)
     {

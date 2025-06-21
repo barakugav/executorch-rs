@@ -40,7 +40,7 @@
 //! use executorch::tensor_ptr;
 //! use ndarray::array;
 //!
-//! let mut module = Module::new("model.pte", None, None);
+//! let mut module = Module::from_file_path("model.pte");
 //!
 //! let (tensor1, tensor2) = (tensor_ptr![1.0_f32], tensor_ptr![1.0_f32]);
 //! let inputs = [tensor1.into_evalue(), tensor2.into_evalue()];

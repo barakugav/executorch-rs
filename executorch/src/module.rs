@@ -14,6 +14,7 @@ use std::path::Path;
 
 use crate::evalue::EValue;
 use crate::event_tracer::{EventTracer, EventTracerPtr};
+use crate::memory::HierarchicalAllocator;
 use crate::program::{MethodMeta, ProgramVerification};
 use crate::util::{try_c_new, ArrayRef, IntoCpp, IntoRust, NonTriviallyMovableVec};
 use crate::{Error, Result};
@@ -33,6 +34,7 @@ impl<'a> Module<'a> {
     /// # Arguments
     ///
     /// * `file_path` - The path to the ExecuTorch program file to load.
+    /// - `data_map_path`: The path to a .ptd file.
     /// * `load_mode` - The loading mode to use. Defaults to `LoadMode::MmapUseMlock`.
     /// * `event_tracer` - A EventTracer used for tracking and logging events.
     ///
@@ -42,19 +44,40 @@ impl<'a> Module<'a> {
     ///
     /// # Panics
     ///
-    /// If the file path is not a valid UTF-8 string or contains a null character.
+    /// If any of the file path or the data map path are not a valid UTF-8 string or contains a null character.
     pub fn new(
         file_path: impl AsRef<Path>,
+        data_map_path: Option<&'_ Path>,
         load_mode: Option<LoadMode>,
         event_tracer: Option<EventTracerPtr<'a>>,
     ) -> Self {
         let file_path = file_path.as_ref().to_str().ok_or(Error::ToCStr).unwrap();
+        let data_map_path = data_map_path
+            .map(|path| path.to_str().ok_or(Error::ToCStr).unwrap())
+            .unwrap_or("");
         let load_mode = load_mode.unwrap_or(LoadMode::MmapUseMlock).cpp();
         let event_tracer = event_tracer
             .map(|tracer| tracer.0)
             .unwrap_or(et_c::cxx::UniquePtr::null());
-        let module = et_c::cpp::Module_new(file_path, load_mode, event_tracer);
+        let module = et_c::cpp::Module_new(file_path, data_map_path, load_mode, event_tracer);
         Self(module, PhantomData)
+    }
+
+    /// Constructs an instance by loading a program from a file.
+    ///
+    /// # Arguments
+    ///
+    /// * `file_path` - The path to the ExecuTorch program file to load.
+    ///
+    /// # Returns
+    ///
+    /// A new instance of Module.
+    ///
+    /// # Panics
+    ///
+    /// If the file path is not a valid UTF-8 string or contains a null character.
+    pub fn from_file_path(file_path: impl AsRef<Path>) -> Self {
+        Self::new(file_path, None, None, None)
     }
 
     /// Loads the program using the specified data loader and memory allocator.
@@ -70,6 +93,13 @@ impl<'a> Module<'a> {
     pub fn load(&mut self, verification: Option<ProgramVerification>) -> Result<()> {
         let verification = verification.unwrap_or(ProgramVerification::Minimal).cpp();
         et_c::cpp::Module_load(self.0.as_mut().unwrap(), verification).rs()
+    }
+
+    /// Get the number of methods available in the loaded program.
+    pub fn num_methods(&mut self) -> Result<usize> {
+        let mut num_methods = 0;
+        unsafe { et_c::cpp::Module_num_methods(self.0.as_mut().unwrap(), &mut num_methods).rs()? };
+        Ok(num_methods)
     }
 
     // /// Checks if the program is loaded.
@@ -100,7 +130,9 @@ impl<'a> Module<'a> {
     /// # Arguments
     ///
     /// * `method_name` - The name of the method to load.
-    /// * `event_tracer` - The event tracer to use for this method run.
+    /// * `planned_memory` - The memory-planned buffers to use for mutable tensor data when executing a method.
+    /// * `event_tracer` - Per-method event tracer to profile/trace methods individually. When not given, the event
+    ///   tracer passed to the Module constructor is used. Otherwise, this per-method event tracer takes precedence.
     ///
     /// # Returns
     ///
@@ -112,16 +144,20 @@ impl<'a> Module<'a> {
     pub fn load_method(
         &mut self,
         method_name: impl AsRef<str>,
+        planned_memory: Option<&'a mut HierarchicalAllocator>,
         event_tracer: Option<&'a mut EventTracer>,
     ) -> Result<()> {
         let event_tracer = event_tracer
             .map(|tracer| tracer as *mut EventTracer as *mut et_c::cpp::EventTracer)
             .unwrap_or(std::ptr::null_mut());
+        let planned_memory = planned_memory
+            .map(|allocator| (&mut allocator.0) as *mut et_c::cpp::HierarchicalAllocator)
+            .unwrap_or(std::ptr::null_mut());
         unsafe {
             et_c::cpp::Module_load_method(
                 self.0.as_mut().unwrap(),
                 method_name.as_ref(),
-                std::ptr::null_mut(), // TODO
+                planned_memory,
                 event_tracer,
             )
             .rs()
@@ -279,37 +315,49 @@ mod tests {
                 Some(ProgramVerification::Minimal),
                 Some(ProgramVerification::InternalConsistency),
             ] {
-                let mut module = Module::new(add_model_path(), load_mode, None);
+                let mut module = Module::new(add_model_path(), None, load_mode, None);
                 assert!(module.load(verification).is_ok());
             }
         }
 
-        let mut module = Module::new("non-existing-file.pte2", None, None);
+        let mut module = Module::from_file_path("non-existing-file.pte2");
         assert!(module.load(None).is_err());
     }
 
     #[test]
     fn method_names() {
-        let mut module = Module::new(add_model_path(), None, None);
+        let mut module = Module::from_file_path(add_model_path());
         let names = module.method_names().unwrap();
         assert_eq!(names, HashSet::from_iter(["forward".to_string()]));
 
-        let mut module = Module::new("non-existing-file.pte2", None, None);
+        let mut module = Module::from_file_path("non-existing-file.pte2");
         assert!(module.method_names().is_err());
+    }
+
+    #[test]
+    fn num_methods() {
+        let mut module = Module::from_file_path(add_model_path());
+        let num_methods = module.num_methods().unwrap();
+        assert_eq!(num_methods, 1);
+
+        let mut module = Module::from_file_path("non-existing-file.pte2");
+        assert!(module.num_methods().is_err());
     }
 
     #[cfg(tests_with_kernels)]
     #[test]
     fn load_method() {
-        let mut module = Module::new(add_model_path(), None, None);
+        let mut module = Module::from_file_path(add_model_path());
         assert!(!module.is_method_loaded("forward"));
-        assert!(module.load_method("forward", None).is_ok());
+        assert!(module.load_method("forward", None, None).is_ok());
         assert!(module.is_method_loaded("forward"));
-        assert!(module.load_method("non-existing-method", None).is_err());
+        assert!(module
+            .load_method("non-existing-method", None, None)
+            .is_err());
         assert!(!module.is_method_loaded("non-existing-method"));
 
-        let mut module = Module::new("non-existing-file.pte2", None, None);
-        assert!(module.load_method("forward", None).is_err());
+        let mut module = Module::from_file_path("non-existing-file.pte2");
+        assert!(module.load_method("forward", None, None).is_err());
     }
 
     #[cfg(tests_with_kernels)]
@@ -318,7 +366,7 @@ mod tests {
         use crate::evalue::Tag;
         use crate::tensor::ScalarType;
 
-        let mut module = Module::new(add_model_path(), None, None);
+        let mut module = Module::from_file_path(add_model_path());
         let method_meta = module.method_meta("forward").unwrap();
 
         assert_eq!(method_meta.name(), "forward");
@@ -353,7 +401,7 @@ mod tests {
             .memory_planned_buffer_size(method_meta.num_memory_planned_buffers())
             .is_err());
 
-        let mut module = Module::new("non-existing-file.pte2", None, None);
+        let mut module = Module::from_file_path("non-existing-file.pte2");
         assert!(module.method_meta("forward").is_err());
     }
 
@@ -363,7 +411,7 @@ mod tests {
         use crate::evalue::Tag;
         use crate::tensor::{Tensor, TensorImpl};
 
-        let mut module = Module::new(add_model_path(), None, None);
+        let mut module = Module::from_file_path(add_model_path());
 
         let sizes = [1];
         let data = [1.0_f32];
@@ -413,7 +461,7 @@ mod tests {
         assert!(module.execute("non-existing-method", &inputs).is_err());
 
         // non-existing file
-        let mut module = Module::new("non-existing-file.pte2", None, None);
+        let mut module = Module::from_file_path("non-existing-file.pte2");
         let inputs = [
             EValue::new(Tensor::new(&tensor1)),
             EValue::new(Tensor::new(&tensor2)),

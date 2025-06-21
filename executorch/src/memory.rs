@@ -256,7 +256,7 @@ mod malloc_allocator {
 }
 
 /// A group of buffers that can be used to represent a device's memory hierarchy.
-pub struct HierarchicalAllocator<'a>(et_c::HierarchicalAllocator, PhantomData<&'a ()>);
+pub struct HierarchicalAllocator<'a>(pub(crate) et_c::HierarchicalAllocator, PhantomData<&'a ()>);
 impl<'a> HierarchicalAllocator<'a> {
     /// Constructs a new HierarchicalAllocator.
     ///

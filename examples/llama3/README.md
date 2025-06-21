@@ -72,30 +72,3 @@ The llama model can be exported with many options, such as quantization, differe
 This example use a specific set of options, as specified above.
 Different options require different export commands and modifications to the code and build script which you can play around with.
 See the [llama README](https://github.com/pytorch/executorch/blob/v0.6.0/examples/models/llama/README.md) at the Cpp executorch repository for more details.
-
-### Known issues
-
-- There are error prints about an unexpected tensor type.
-    This seems to be caused due to a log print in the `executorch::runtime::tensor_is_type` function, that is called by the `check_tensor_dtype` that actually allow any of float/half/bfloat16 types.
-    ```bash
-    [E 00:00:04.561544 executorch:tensor_util.h:482] Check failed (t.scalar_type() == dtype): Expected to find Float type, but tensor has type BFloat16
-    [E 00:00:04.561558 executorch:tensor_util.h:482] Check failed (t.scalar_type() == dtype): Expected to find Half type, but tensor has type BFloat16
-    ```
-
-    ```cpp
-    bool check_tensor_dtype(/* .. */) {
-        switch (dtypes) {
-            // ..
-            case SupportedTensorDtypes::SAME_AS_COMMON: {
-                if (compute_type == ScalarType::Float) {
-                    return (
-                        executorch::runtime::tensor_is_type(t, ScalarType::Float) || // prints error
-                        executorch::runtime::tensor_is_type(t, ScalarType::Half) || // prints error
-                        executorch::runtime::tensor_is_type(t, ScalarType::BFloat16)); // actually OK
-                } else {
-                    // ..
-                }
-            }
-        }
-    }
-    ```
