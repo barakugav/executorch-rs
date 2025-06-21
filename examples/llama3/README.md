@@ -7,7 +7,7 @@ To run the example, follow these steps (note that some steps should run from the
 - Follow the [tutorial](https://pytorch.org/executorch/main/getting-started-setup) to set up Cpp ExecuTorch. For installation run
     ```bash
     cd executorch
-    source install_requirements.sh --pybind xnnpack
+    source install_requirements.sh
     source examples/models/llama/install_requirements.sh
     ```
 
@@ -71,7 +71,7 @@ To run the example, follow these steps (note that some steps should run from the
 The llama model can be exported with many options, such as quantization, different data types (f32, bf16), different backends, kv caching, etc.
 This example use a specific set of options, as specified above.
 Different options require different export commands and modifications to the code and build script which you can play around with.
-See the [llama README](https://github.com/pytorch/executorch/blob/v0.6.0/examples/models/llama/README.md) at the Cpp exeutorch repository for more details.
+See the [llama README](https://github.com/pytorch/executorch/blob/v0.6.0/examples/models/llama/README.md) at the Cpp executorch repository for more details.
 
 ### Known issues
 
