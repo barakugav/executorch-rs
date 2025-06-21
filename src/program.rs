@@ -76,10 +76,10 @@ impl<'a> Program<'a> {
     /// # Arguments
     ///
     /// * `data_loader` - The source to load program data from. The Program will
-    ///     hold a pointer to this loader, which must outlive the returned Program
-    ///     instance.
+    ///   hold a pointer to this loader, which must outlive the returned Program
+    ///   instance.
     /// * `verification` - The type of verification to do before returning success.
-    ///     Defaults to `ProgramVerification::Minimal`.
+    ///   Defaults to `ProgramVerification::Minimal`.
     ///
     /// # Returns
     ///
@@ -430,10 +430,10 @@ impl<'a> Execution<'a> {
     /// # Arguments
     ///
     /// * `input` - The evalue to copy into the method input. If the evalue is a tensor, the data is copied in most
-    ///     cases, so the tensor passed in here does not always need to outlive this call. But there is a case where the
-    ///     Method will keep a pointer to the tensor's data. Based on the memory plan of the method, the inputs may not
-    ///     have buffer space pre-allocated for them. In this case the executor will alias the memory of the tensors
-    ///     provided as inputs here rather then deepcopy the input into the memory planned arena.
+    ///   cases, so the tensor passed in here does not always need to outlive this call. But there is a case where the
+    ///   Method will keep a pointer to the tensor's data. Based on the memory plan of the method, the inputs may not
+    ///   have buffer space pre-allocated for them. In this case the executor will alias the memory of the tensors
+    ///   provided as inputs here rather then deepcopy the input into the memory planned arena.
     /// * `input_idx` - Zero-based index of the input to set. Must be less than the value returned by inputs_size().
     pub fn set_input(&mut self, input: &'a EValue, input_idx: usize) -> Result<()> {
         unsafe { et_c::executorch_Method_set_input(self.method, input.cpp(), input_idx) }.rs()?;

@@ -263,8 +263,8 @@ impl<'a> HierarchicalAllocator<'a> {
     /// # Arguments
     ///
     /// * `buffers` - The buffers to use for memory allocation.
-    ///     `buffers.size()` must be >= `MethodMeta::num_non_const_buffers()`.
-    ///     `buffers[N].size()` must be >= `MethodMeta::non_const_buffer_size(N)`.
+    ///   `buffers.size()` must be >= `MethodMeta::num_non_const_buffers()`.
+    ///   `buffers[N].size()` must be >= `MethodMeta::non_const_buffer_size(N)`.
     pub fn new(buffers: &'a mut [Span<'a, u8>]) -> Self {
         // Safety: safe because the memory layout of [Span<u8>] and [et_c::SpanU8] is the same.
         let buffers: &'a mut [et_c::SpanU8] = unsafe { std::mem::transmute(buffers) };
@@ -305,15 +305,15 @@ impl<'a> MemoryManager<'a> {
     /// # Arguments
     ///
     /// * `method_allocator` - The allocator to use when loading a Method and allocating its internal structures.
-    ///     Must outlive the Method that uses it.
+    ///   Must outlive the Method that uses it.
     /// * `planned_memory` - The memory-planned buffers to use for mutable tensor data when executing a Method.
-    ///     Must outlive the Method that uses it. May be [`None`] if the Method does not use any memory-planned tensor data.
-    ///     The sizes of the buffers in this HierarchicalAllocator must agree with the corresponding
-    ///     `MethodMeta::num_memory_planned_buffers()` and `MethodMeta::memory_planned_buffer_size(N)` values,
-    ///     which are embedded in the Program.
+    ///   Must outlive the Method that uses it. May be [`None`] if the Method does not use any memory-planned tensor data.
+    ///   The sizes of the buffers in this HierarchicalAllocator must agree with the corresponding
+    ///   `MethodMeta::num_memory_planned_buffers()` and `MethodMeta::memory_planned_buffer_size(N)` values,
+    ///   which are embedded in the Program.
     /// * `temp_allocator` - The allocator to use when allocating temporary data during kernel or delegate execution.
-    ///     Must outlive the Method that uses it. May be [`None`] if the Method does not use kernels or delegates that
-    ///     allocate temporary data. This allocator will be reset after every kernel or delegate call during execution.
+    ///   Must outlive the Method that uses it. May be [`None`] if the Method does not use kernels or delegates that
+    ///   allocate temporary data. This allocator will be reset after every kernel or delegate call during execution.
     pub fn new(
         method_allocator: &'a MemoryAllocator<'a>,
         planned_memory: Option<&'a mut HierarchicalAllocator>,
@@ -395,44 +395,44 @@ impl<'a> MemoryManager<'a> {
 /// For such structs, Rust structs don't have an in-place field of the underlying Cpp object, rather a pointer.
 /// The pointer can point to one of three, according to what the Rust struct owns:
 /// - Owns the memory, owns the object: the pointer points to an allocated Cpp object on the heap, owned by the Rust
-///     struct using a [`Box`]. The destructor of the Cpp object is called when the Rust object is dropped, and the [`Box`]
-///     is deallocated.
+///   struct using a [`Box`]. The destructor of the Cpp object is called when the Rust object is dropped, and the [`Box`]
+///   is deallocated.
 /// - Does not own the memory, owns the object: the pointer points to an allocated Cpp object in a [`Storage`], which is
-///     pinned in memory, possibly on the stack (see later example). The destructor of the Cpp object is called when
-///     Rust object is dropped, but the [`Storage`] is not deallocated.
+///   pinned in memory, possibly on the stack (see later example). The destructor of the Cpp object is called when
+///   Rust object is dropped, but the [`Storage`] is not deallocated.
 /// - Does not own the memory, does not own the object: the pointer points to a Cpp object that is owned by another
-///     entity, like a regular Rust reference. The destructor of the Cpp object is not called when the Rust object is
-///     dropped and no deallocation is done.
+///   entity, like a regular Rust reference. The destructor of the Cpp object is not called when the Rust object is
+///   dropped and no deallocation is done.
 ///
 /// Non-trivially movable objects such as [`Tensor`](crate::tensor::Tensor) and [`EValue`](crate::evalue::EValue) expose
 /// a straight forward `new` function that allocate the object on the heap which should be used in most cases.
 /// The `new` function is available when the `alloc` feature is enabled. When allocations are not available, the
 /// [`Storage`] struct should be used in one of two ways:
 /// - Create on the stack and pin a [`Storage`], and initialize the object in place through a variant of the `new` function such
-///     as `new_in_storage`:
-///     ```rust,ignore
-///     let tensor_impl: TensorImpl = ...;
+///   as `new_in_storage`:
+///   ```rust,ignore
+///   let tensor_impl: TensorImpl = ...;
 ///
-///     // Create a Tensor on the heap
-///     let tensor = Tensor::new(&tensor_impl);
+///   // Create a Tensor on the heap
+///   let tensor = Tensor::new(&tensor_impl);
 ///
-///     // Create a Tensor on the stack
-///     let storage = executorch::storage!(Tensor<f32>);
-///     // macro expands to:
-///     // let storage = pin::pin!(Storage::<Tensor<f32>>::default());
-///     let tensor = Tensor::new_in_storage(&tensor_impl, storage);
-///     ```
+///   // Create a Tensor on the stack
+///   let storage = executorch::storage!(Tensor<f32>);
+///   // macro expands to:
+///   // let storage = pin::pin!(Storage::<Tensor<f32>>::default());
+///   let tensor = Tensor::new_in_storage(&tensor_impl, storage);
+///   ```
 /// - Use a [`MemoryAllocator`] to allocate a [`Storage`] object, and use it to allocate the object in place:
-///     ```rust,ignore
-///     let tensor: Tensor = ...;
+///   ```rust,ignore
+///   let tensor: Tensor = ...;
 ///
-///     // Create am EValue on the heap
-///     let evalue = EValue::new(tensor);
+///   // Create am EValue on the heap
+///   let evalue = EValue::new(tensor);
 ///
-///     // Create an EValue in a memory allocated by the allocator
-///     let allocator: impl AsRef<MemoryAllocator> = ...; // usually global
-///     let evalue = EValue::new_in_storage(tensor, allocator.as_ref().allocate_pinned().unwrap());
-///     ```
+///   // Create an EValue in a memory allocated by the allocator
+///   let allocator: impl AsRef<MemoryAllocator> = ...; // usually global
+///   let evalue = EValue::new_in_storage(tensor, allocator.as_ref().allocate_pinned().unwrap());
+///   ```
 #[repr(transparent)]
 pub struct Storage<T: Storable>(MaybeUninit<T::__Storage>, PhantomPinned);
 impl<T: Storable> Default for Storage<T> {
@@ -461,7 +461,7 @@ impl<T: Storable> Storage<T> {
 /// - `storage!(T)` creates a single storage for type `T`, `Pin<&mut Storage<T>>`.
 /// - `storage!(T, [N])` creates an array on the stack, `Pin<&mut [Storage<T>, N]>`.
 /// - `storage!(T, (N))` creates a vector in the heap, `Pin<Box<[Storage<T>]>>`. Usually converted to
-///     `Pin<&mut [Storage<T>, N]>` with [`as_mut()`](Pin::as_mut).
+///   `Pin<&mut [Storage<T>, N]>` with [`as_mut()`](Pin::as_mut).
 ///
 /// ```rust,ignore
 /// let tensor_impl: TensorImpl = ...;

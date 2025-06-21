@@ -20,7 +20,7 @@ jobs:
         shell: bash
     strategy:
       matrix:
-        runner: [ubuntu-latest, macos-latest]
+        runner: [ubuntu-22.04, macos-latest]
     permissions:
       contents: read
       checks: write
