@@ -43,7 +43,7 @@ def main():
         )
     else:
         deps = [
-            "cmake",
+            "cmake>=3,<4",
             "pyyaml",
             "setuptools>=63",
             "tomli",
