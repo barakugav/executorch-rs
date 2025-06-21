@@ -16,7 +16,7 @@ fn main() {
         .unwrap()
         .join("models")
         .join("add.pte");
-    let mut module = Module::new(model_path, None, None);
+    let mut module = Module::from_file_path(model_path);
 
     let mut etdump_gen = ETDumpGen::new();
     module

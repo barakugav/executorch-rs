@@ -15,7 +15,7 @@ fn main() {
         .unwrap()
         .join("models")
         .join("add.pte");
-    let mut module = Module::new(model_path, None, None);
+    let mut module = Module::from_file_path(model_path);
 
     let (tensor1, tensor2) = (tensor_ptr![1.0_f32], tensor_ptr![1.0_f32]);
     let inputs = [tensor1.into_evalue(), tensor2.into_evalue()];

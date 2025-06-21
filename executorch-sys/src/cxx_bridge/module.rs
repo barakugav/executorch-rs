@@ -47,10 +47,13 @@ pub(crate) mod ffi {
         ///
         /// # Arguments
         /// - `file_path`: The path to the ExecuTorch program file to load.
+        /// - `data_map_path`: The path to a .ptd file, or an empty string if no data map is needed.
         /// - `load_mode`: The loading mode to use.
+        /// - `event_tracer`: An EventTracer used for tracking and logging events, or null if not needed.
         #[namespace = "executorch_rs"]
         fn Module_new(
             file_path: &str,
+            data_map_path: &str,
             load_mode: ModuleLoadMode,
             event_tracer: UniquePtr<EventTracer>,
         ) -> UniquePtr<Module>;
