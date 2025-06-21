@@ -24,10 +24,9 @@ class Add(torch.nn.Module):
     def forward(self, x: torch.Tensor, y: torch.Tensor):
         return x + y
 
-
-aten_dialect = export(Add(), (torch.ones(1), torch.ones(1)))
-edge_program = to_edge(aten_dialect)
-executorch_program = edge_program.to_executorch()
+model = Add()
+exported_program = export(model, (torch.ones(1), torch.ones(1)))
+executorch_program = to_edge_transform_and_lower(exported_program).to_executorch()
 with open("model.pte", "wb") as file:
     file.write(executorch_program.buffer)
 ```
