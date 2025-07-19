@@ -39,6 +39,7 @@ impl MemoryAllocator<'_> {
     ///
     /// A mutable reference to the allocated memory, or [`None`] if allocation failed due to insufficient memory or
     /// an alignment that is not a power of 2.
+    #[allow(clippy::mut_from_ref)]
     pub fn allocate_raw(&self, size: usize, alignment: usize) -> Option<&mut [u8]> {
         let ptr =
             unsafe { et_c::executorch_MemoryAllocator_allocate(self.0.get(), size, alignment) };
@@ -57,6 +58,7 @@ impl MemoryAllocator<'_> {
     /// # Returns
     ///
     /// A mutable reference to the allocated memory, or [`None`] if allocation failed due to insufficient memory.
+    #[allow(clippy::mut_from_ref)]
     pub fn allocate_uninit<T>(&self) -> Option<&mut MaybeUninit<T>> {
         let ptr = self.allocate_raw(std::mem::size_of::<T>(), std::mem::align_of::<T>())?;
         let ptr = ptr.as_mut_ptr() as *mut MaybeUninit<T>;
@@ -71,6 +73,7 @@ impl MemoryAllocator<'_> {
     /// # Returns
     ///
     /// A mutable reference to the allocated memory, or [`None`] if allocation failed due to insufficient memory.
+    #[allow(clippy::mut_from_ref)]
     pub fn allocate<T>(&self) -> Option<&mut T>
     where
         T: NoDrop + Default,
@@ -88,6 +91,7 @@ impl MemoryAllocator<'_> {
     /// # Returns
     ///
     /// A pinned mutable reference to the allocated memory, or [`None`] if allocation failed due to insufficient memory.
+    #[allow(clippy::mut_from_ref)]
     pub fn allocate_pinned<T>(&self) -> Option<Pin<&mut T>>
     where
         T: NoDrop + Default,
@@ -109,6 +113,7 @@ impl MemoryAllocator<'_> {
     /// # Returns
     ///
     /// A mutable reference to the allocated array, or [`None`] if allocation failed due to insufficient memory.
+    #[allow(clippy::mut_from_ref)]
     pub fn allocate_arr<T>(&self, len: usize) -> Option<&mut [T]>
     where
         T: NoDrop + Default,
@@ -129,6 +134,7 @@ impl MemoryAllocator<'_> {
     /// # Returns
     ///
     /// A mutable reference to the allocated array, or [`None`] if allocation failed due to insufficient memory.
+    #[allow(clippy::mut_from_ref)]
     pub fn allocate_arr_fn<T>(&self, len: usize, f: impl Fn(usize) -> T) -> Option<&mut [T]>
     where
         T: NoDrop,
@@ -560,10 +566,7 @@ mod tests {
         let allocator = allocator_init(raw_allocations_size);
         for (size, alignment) in allocations.clone() {
             let allocation = allocator.allocate_raw(size, alignment).unwrap_or_else(|| {
-                panic!(
-                    "Failed to allocate {} bytes with alignment {}",
-                    size, alignment
-                )
+                panic!("Failed to allocate {size} bytes with alignment {alignment}")
             });
             assert_eq!(allocation.len(), size);
             assert_eq!(allocation.as_ptr() as usize % alignment, 0);

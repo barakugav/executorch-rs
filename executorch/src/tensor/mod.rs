@@ -392,7 +392,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     }
 
     /// Safety: the caller must ensure that type `S` is the correct scalar type of the tensor.
-    unsafe fn get_without_type_check_mut<S: Scalar>(&self, index: &[usize]) -> Option<&mut S>
+    unsafe fn get_without_type_check_mut<S: Scalar>(&mut self, index: &[usize]) -> Option<&mut S>
     where
         D: DataMut,
     {
@@ -473,7 +473,7 @@ impl<D: DataTyped + DataMut> TensorBase<'_, D> {
     }
 
     /// Get a mutable reference to the element at `index`, or `None` if the index is out of bounds.
-    pub fn get_mut(&self, index: &[usize]) -> Option<&mut D::Scalar> {
+    pub fn get_mut(&mut self, index: &[usize]) -> Option<&mut D::Scalar> {
         debug_assert_eq!(self.scalar_type(), D::Scalar::TYPE);
         // Safety: the scalar type is checked
         unsafe { self.get_without_type_check_mut(index) }
