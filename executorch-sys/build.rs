@@ -90,6 +90,7 @@ fn generate_bindings() {
     let builder = bindgen::Builder::default()
         .clang_arg(format!("-I{}", cpp_dir().to_str().unwrap()))
         .use_core()
+        .generate_cstr(true)
         .header(bindings_h.as_os_str().to_str().unwrap())
         .allowlist_file(format!(
             "{}/executorch_rs/c_bridge.h",
