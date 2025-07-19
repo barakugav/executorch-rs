@@ -142,6 +142,12 @@ pub mod __private {
 #[allow(unused_imports)]
 use crate::__private::alloc;
 
+/// The version of the crate.
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// The version of the ExecuTorch C++ library that this crate is compatible and linked with.
+pub const EXECUTORCH_CPP_VERSION: &str = executorch_sys::EXECUTORCH_CPP_VERSION;
+
 #[macro_use]
 mod private;
 pub mod data_loader;
