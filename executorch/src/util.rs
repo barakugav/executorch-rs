@@ -456,19 +456,7 @@ macro_rules! impl_span {
 impl_span!(u8, et_c::SpanU8);
 
 pub(crate) fn cstr2chars(s: &CStr) -> &[std::ffi::c_char] {
-    let ptr = s.as_ptr();
-    let len = unsafe { strlen(ptr) };
-    unsafe { std::slice::from_raw_parts(ptr, len) }
-}
-
-unsafe fn strlen(ptr: *const i8) -> usize {
-    let mut len = 0;
-    unsafe {
-        while *ptr.add(len) != 0 {
-            len += 1;
-        }
-    }
-    len
+    unsafe { std::slice::from_raw_parts(s.as_ptr(), s.to_bytes().len()) }
 }
 
 #[cfg(feature = "std")]

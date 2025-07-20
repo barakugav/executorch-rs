@@ -993,7 +993,7 @@ mod tests {
 
     #[test]
     fn string() {
-        let string = cstr::cstr!("hello world!");
+        let string = c"hello world!";
         let chars = crate::util::cstr2chars(string);
 
         #[cfg(feature = "alloc")]
@@ -1476,7 +1476,7 @@ mod tests {
                         TensorImpl::from_slice(&sizes, &data, &dim_order, &strides).unwrap();
                     check_evalue(EValue::new(Tensor::new(&tensor_impl)));
                 }
-                Tag::String => check_evalue(EValue::new(cstr::cstr!("hello world!"))),
+                Tag::String => check_evalue(EValue::new(c"hello world!")),
                 Tag::Double => check_evalue(EValue::new(42.6)),
                 Tag::Int => check_evalue(EValue::new(17)),
                 Tag::Bool => check_evalue(EValue::new(true)),
