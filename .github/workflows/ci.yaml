@@ -144,13 +144,17 @@ jobs:
         rust-version: ["msrv", "stable"]
     steps:
       - uses: actions/checkout@v4
+      - name: Install toml-cli using cargo
+        uses: baptiste0928/cargo-install@v3
+        with:
+          crate: toml-cli
+          version: "^0.2"
       - name: Determine Rust version
         id: rust-version
         run: |
           if [ "${{ matrix.rust-version }}" = "stable" ]; then
             rust_version="stable"
           else
-            cargo install toml-cli
             rust_version=$(toml get Cargo.toml package.rust-version --raw)
           fi
           echo "Rust version: '$rust_version'"

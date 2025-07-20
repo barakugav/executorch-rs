@@ -82,7 +82,7 @@ fn generate_bindings() {
     let bindings_h = PathBuf::from(std::env::var("OUT_DIR").unwrap()).join("c_bindings.h");
     let mut bindings_h_content = String::from("#pragma once\n");
     for define in cpp_defines() {
-        bindings_h_content.push_str(&format!("#define {}\n", define));
+        bindings_h_content.push_str(&format!("#define {define}\n"));
     }
     bindings_h_content.push_str("#include \"executorch_rs/c_bridge.h\"\n");
     std::fs::write(&bindings_h, bindings_h_content).expect("Unable to write bindings.h");
@@ -90,6 +90,7 @@ fn generate_bindings() {
     let builder = bindgen::Builder::default()
         .clang_arg(format!("-I{}", cpp_dir().to_str().unwrap()))
         .use_core()
+        .generate_cstr(true)
         .header(bindings_h.as_os_str().to_str().unwrap())
         .allowlist_file(format!(
             "{}/executorch_rs/c_bridge.h",

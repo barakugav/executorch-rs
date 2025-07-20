@@ -1,4 +1,6 @@
 #![cfg_attr(deny_warnings, deny(warnings))]
+// some new clippy::lint annotations are supported in latest Rust but not recognized by older versions
+#![cfg_attr(deny_warnings, allow(unknown_lints))]
 #![cfg_attr(deny_warnings, deny(missing_docs))]
 #![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 
@@ -139,6 +141,12 @@ pub mod __private {
 
 #[allow(unused_imports)]
 use crate::__private::alloc;
+
+/// The version of the crate.
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// The version of the ExecuTorch C++ library that this crate is compatible and linked with.
+pub const EXECUTORCH_CPP_VERSION: &str = executorch_sys::EXECUTORCH_CPP_VERSION;
 
 #[macro_use]
 mod private;
