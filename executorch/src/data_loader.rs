@@ -83,11 +83,8 @@ mod file_data_loader {
         ///
         /// Panics if `file_name` is not a valid UTF-8 string or if it contains a null byte.
         #[cfg(feature = "std")]
-        pub fn from_path(
-            file_name: impl AsRef<std::path::Path>,
-            alignment: Option<usize>,
-        ) -> Result<Self> {
-            let file_name = file_name.as_ref().as_os_str().as_encoded_bytes();
+        pub fn from_path(file_name: &std::path::Path, alignment: Option<usize>) -> Result<Self> {
+            let file_name = file_name.as_os_str().as_encoded_bytes();
             let file_name = std::ffi::CString::new(file_name).map_err(|_| crate::Error::ToCStr)?;
             Self::from_path_cstr(&file_name, alignment)
         }
@@ -160,10 +157,10 @@ mod file_data_loader {
         /// Panics if `file_name` is not a valid UTF-8 string or if it contains a null byte.
         #[cfg(feature = "std")]
         pub fn from_path(
-            file_name: impl AsRef<std::path::Path>,
+            file_name: &std::path::Path,
             mlock_config: Option<MlockConfig>,
         ) -> Result<Self> {
-            let file_name = file_name.as_ref().as_os_str().as_encoded_bytes();
+            let file_name = file_name.as_os_str().as_encoded_bytes();
             let file_name = std::ffi::CString::new(file_name).map_err(|_| crate::Error::ToCStr)?;
             Self::from_path_cstr(&file_name, mlock_config)
         }
@@ -253,9 +250,9 @@ mod tests {
     #[cfg(all(feature = "data-loader", feature = "std"))]
     #[test]
     fn file_loader_from_path() {
-        assert!(FileDataLoader::from_path(add_model_path(), None).is_ok());
+        assert!(FileDataLoader::from_path(&add_model_path(), None).is_ok());
         for alignment in [1, 2, 4, 8, 16, 32, 64] {
-            assert!(FileDataLoader::from_path(add_model_path(), Some(alignment)).is_ok());
+            assert!(FileDataLoader::from_path(&add_model_path(), Some(alignment)).is_ok());
         }
     }
 
@@ -271,11 +268,11 @@ mod tests {
     #[cfg(all(feature = "data-loader", feature = "std"))]
     #[test]
     fn mmap_loader_from_path() {
-        assert!(MmapDataLoader::from_path(add_model_path(), None).is_ok());
-        assert!(MmapDataLoader::from_path(add_model_path(), Some(MlockConfig::NoMlock)).is_ok());
-        assert!(MmapDataLoader::from_path(add_model_path(), Some(MlockConfig::UseMlock)).is_ok());
+        assert!(MmapDataLoader::from_path(&add_model_path(), None).is_ok());
+        assert!(MmapDataLoader::from_path(&add_model_path(), Some(MlockConfig::NoMlock)).is_ok());
+        assert!(MmapDataLoader::from_path(&add_model_path(), Some(MlockConfig::UseMlock)).is_ok());
         assert!(MmapDataLoader::from_path(
-            add_model_path(),
+            &add_model_path(),
             Some(MlockConfig::UseMlockIgnoreErrors)
         )
         .is_ok());
