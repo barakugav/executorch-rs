@@ -32,7 +32,7 @@ with open("model.pte", "wb") as file:
 ```
 Execute the model in Rust:
 ```rust
-use executorch::evalue::IntoEValue;
+use executorch::evalue::{EValue, IntoEValue};
 use executorch::module::Module;
 use executorch::tensor_ptr;
 use ndarray::array;
@@ -43,7 +43,7 @@ let (tensor1, tensor2) = (tensor_ptr![1.0_f32], tensor_ptr![1.0_f32]);
 let inputs = [tensor1.into_evalue(), tensor2.into_evalue()];
 
 let outputs = module.forward(&inputs).unwrap();
-let [output]: [_EValue_; 1] = outputs.try_into().expect("not a single tensor");
+let [output]: [EValue; 1] = outputs.try_into().expect("not a single tensor");
 let output = output.as_tensor().into_typed::<f32>();
 
 println!("Output tensor computed: {:?}", output);

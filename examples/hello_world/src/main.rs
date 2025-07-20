@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use executorch::evalue::IntoEValue;
+use executorch::evalue::{EValue, IntoEValue};
 use executorch::module::Module;
 use executorch::tensor_ptr;
 use ndarray::array;
@@ -21,7 +21,7 @@ fn main() {
     let inputs = [tensor1.into_evalue(), tensor2.into_evalue()];
 
     let outputs = module.forward(&inputs).unwrap();
-    let [output]: [_; 1] = outputs.try_into().expect("not a single tensor");
+    let [output]: [EValue; 1] = outputs.try_into().expect("not a single tensor");
     let output = output.as_tensor().into_typed::<f32>();
 
     println!("Output tensor computed: {:?}", output);
