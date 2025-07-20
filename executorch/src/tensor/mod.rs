@@ -52,28 +52,19 @@ pub type StridesType = et_c::StridesType;
 
 pub use scalar::{Scalar, ScalarType};
 
-/// A minimal Tensor type whose API is a source compatible subset of at::Tensor.
-///
-/// This class is a base class for all immutable/mutable/typed/type-erased tensors and is not meant to be
-/// used directly.
-/// Use the aliases such as [`Tensor`], [`TensorAny`] or [`TensorMut`] instead.
-/// It is used to provide a common API for all of them.
-pub struct TensorBase<'a, D: Data>(
+struct RawTensor<'a>(
     NonTriviallyMovable<'a, et_c::TensorStorage>,
-    PhantomData<(
-        // phantom for the lifetime of the TensorImpl we depends on
-        &'a (),
-        D,
-    )>,
+    // phantom for the lifetime of the TensorImpl we depends on
+    PhantomData<&'a ()>,
 );
-impl<'a, D: Data> TensorBase<'a, D> {
+impl<'a> RawTensor<'a> {
     /// Create a new tensor in a boxed heap memory.
     ///
     /// # Safety
     ///
     /// The caller must obtain a mutable reference to `tensor_impl` if the tensor is mutable.
     #[cfg(feature = "alloc")]
-    unsafe fn new_boxed(tensor_impl: &'a TensorImplBase<D>) -> Self {
+    unsafe fn new_boxed(tensor_impl: &'a RawTensorImpl) -> Self {
         let impl_ = &tensor_impl.0 as *const et_c::TensorImpl;
         let impl_ = impl_.cast_mut();
         // Safety: the closure init the pointer
@@ -92,8 +83,8 @@ impl<'a, D: Data> TensorBase<'a, D> {
     ///
     /// The caller must ensure that the new tensor is compatible with the given storage.
     unsafe fn new_in_storage_impl(
-        tensor_impl: &'a TensorImplBase<D>,
-        storage: Pin<&'a mut Storage<TensorBase<D>>>,
+        tensor_impl: &'a RawTensorImpl,
+        storage: Pin<&'a mut Storage<RawTensor<'_>>>,
     ) -> Self {
         let impl_ = &tensor_impl.0 as *const et_c::TensorImpl;
         let impl_ = impl_.cast_mut();
@@ -136,43 +127,6 @@ impl<'a, D: Data> TensorBase<'a, D> {
         Self(NonTriviallyMovable::from_mut_ref(tensor), PhantomData)
     }
 
-    /// Create a new tensor with the same internal data as the given tensor, but with different data generic.
-    ///
-    /// # Safety
-    ///
-    /// The caller must ensure that the new data generic is compatible with the data of the given tensor.
-    pub(crate) unsafe fn convert_from<D2: Data>(tensor: TensorBase<'a, D2>) -> Self {
-        Self(tensor.0, PhantomData)
-    }
-
-    /// Create a new tensor referencing the same internal data as the given tensor, but with different data generic.
-    ///
-    /// # Safety
-    ///
-    /// The caller must ensure that the new data generic is compatible with the data of the given tensor.
-    /// `D2` must be immutable as we take immutable reference to the given tensor.
-    pub(crate) unsafe fn convert_from_ref<D2: Data>(tensor: &'a TensorBase<D2>) -> Self {
-        let inner = tensor.as_cpp();
-        let inner = &*(inner.ptr as *const et_c::TensorStorage);
-        Self(NonTriviallyMovable::from_ref(inner), PhantomData)
-    }
-
-    /// Create a new mutable tensor referencing the same internal data as the given tensor, but with different data
-    /// generic.
-    ///
-    /// # Safety
-    ///
-    /// The caller must ensure that the new data generic is compatible with the data of the given tensor.
-    pub(crate) unsafe fn convert_from_mut_ref<D2>(tensor: &'a mut TensorBase<D2>) -> Self
-    where
-        D2: DataMut,
-    {
-        // Safety: we are not moving out of the mut reference of the inner tensor
-        let inner = unsafe { tensor.as_cpp_mut() };
-        let inner = &mut *(inner.ptr as *mut et_c::TensorStorage);
-        Self(NonTriviallyMovable::from_mut_ref(inner), PhantomData)
-    }
-
     /// Get the underlying Cpp tensor.
     pub(crate) fn as_cpp(&self) -> et_c::TensorRef {
         et_c::TensorRef {
@@ -185,14 +139,13 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// # Safety
     ///
     /// The caller can not move out of the returned mut reference.
-    pub(crate) unsafe fn as_cpp_mut(&mut self) -> et_c::TensorRefMut
-    where
-        D: DataMut,
-    {
+    ///
+    /// TODO: mutability
+    pub(crate) unsafe fn as_cpp_mut(&mut self) -> Option<et_c::TensorRefMut> {
         // Safety: the caller does not move out of the returned mut reference.
-        et_c::TensorRefMut {
-            ptr: unsafe { self.0.as_mut() }.unwrap() as *mut et_c::TensorStorage as *mut _,
-        }
+        Some(et_c::TensorRefMut {
+            ptr: unsafe { self.0.as_mut()? } as *mut et_c::TensorStorage as *mut _,
+        })
     }
 
     /// Returns the size of the tensor in bytes.
@@ -270,6 +223,332 @@ impl<'a, D: Data> TensorBase<'a, D> {
         let ptr = unsafe { et_c::executorch_Tensor_const_data_ptr(self.as_cpp()) };
         debug_assert!(!ptr.is_null());
         ptr as *const ()
+    }
+
+    /// Returns a mutable pointer to the underlying data blob.
+    ///
+    /// # Safety
+    ///
+    /// The caller must access the values in the returned pointer according to the type, sizes, dim order and strides
+    /// of the tensor.
+    ///
+    /// TODO: mutability
+    pub fn as_mut_ptr_raw(&mut self) -> Option<*mut ()> {
+        let tensor = unsafe { self.as_cpp_mut()? };
+        let tensor = et_c::TensorRef { ptr: tensor.ptr };
+        let ptr = unsafe { et_c::executorch_Tensor_mutable_data_ptr(tensor) };
+        debug_assert!(!ptr.is_null());
+        Some(ptr as *mut ())
+    }
+
+    fn coordinate_to_index(&self, coordinate: &[usize]) -> Option<usize> {
+        let index = unsafe {
+            et_c::executorch_Tensor_coordinate_to_index(
+                self.as_cpp(),
+                et_c::ArrayRefUsizeType::from_slice(coordinate),
+            )
+        };
+        if index < 0 {
+            None
+        } else {
+            Some(index as usize)
+        }
+    }
+
+    /// Safety: the caller must ensure that type `S` is the correct scalar type of the tensor.
+    unsafe fn get_without_type_check<S: Scalar>(&self, index: &[usize]) -> Option<&S> {
+        let index = self.coordinate_to_index(index)?;
+        let base_ptr = self.as_ptr_raw() as *const S;
+        debug_assert!(!base_ptr.is_null());
+        Some(unsafe { &*base_ptr.add(index) })
+    }
+
+    /// Safety: the caller must ensure that type `S` is the correct scalar type of the tensor.
+    ///
+    /// TODO: mutability
+    unsafe fn get_without_type_check_mut<S: Scalar>(&mut self, index: &[usize]) -> Option<&mut S> {
+        let index = self.coordinate_to_index(index)?;
+        let base_ptr = self.as_mut_ptr_raw()? as *mut S;
+        debug_assert!(!base_ptr.is_null());
+        Some(unsafe { &mut *base_ptr.add(index) })
+    }
+
+    /// Get a reference to the element at `index`, or `None` if the scalar type of the tensor does not
+    /// match `S` or the index is out of bounds.
+    pub fn try_get<S: Scalar>(&self, index: &[usize]) -> Option<&S> {
+        if self.scalar_type() == S::TYPE {
+            // Safety: the scalar type is checked
+            unsafe { self.get_without_type_check(index) }
+        } else {
+            None
+        }
+    }
+
+    /// Get a mutable reference to the element at `index`, or `None` if the scalar type of the tensor does not
+    /// match `S` or the index is out of bounds.
+    pub unsafe fn try_get_mut<S: Scalar>(&mut self, index: &[usize]) -> Option<&mut S> {
+        if self.scalar_type() == S::TYPE {
+            // Safety: the scalar type is checked
+            unsafe { self.get_without_type_check_mut(index) }
+        } else {
+            None
+        }
+    }
+}
+impl Destroy for et_c::TensorStorage {
+    unsafe fn destroy(&mut self) {
+        unsafe {
+            et_c::executorch_Tensor_destructor(et_c::TensorRefMut {
+                ptr: self as *mut Self as *mut _,
+            })
+        }
+    }
+}
+impl Storable for RawTensor<'_> {
+    type __Storage = et_c::TensorStorage;
+}
+
+/// A minimal Tensor type whose API is a source compatible subset of at::Tensor.
+///
+/// This class is a base class for all immutable/mutable/typed/type-erased tensors and is not meant to be
+/// used directly.
+/// Use the aliases such as [`Tensor`], [`TensorAny`] or [`TensorMut`] instead.
+/// It is used to provide a common API for all of them.
+pub struct TensorBase<'a, D: Data>(RawTensor<'a>, PhantomData<D>);
+impl<'a, D: Data> TensorBase<'a, D> {
+    /// Create a new tensor in a boxed heap memory.
+    ///
+    /// # Safety
+    ///
+    /// The caller must obtain a mutable reference to `tensor_impl` if the tensor is mutable.
+    #[cfg(feature = "alloc")]
+    unsafe fn new_boxed(tensor_impl: &'a TensorImplBase<D>) -> Self {
+        Self(RawTensor::new_boxed(&tensor_impl.0), PhantomData)
+    }
+
+    /// Create a new tensor in the given storage.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the new tensor is compatible with the given storage.
+    unsafe fn new_in_storage_impl(
+        tensor_impl: &'a TensorImplBase<D>,
+        storage: Pin<&'a mut Storage<TensorBase<'_, D>>>,
+    ) -> Self {
+        // Safety: the storage is identical
+        let storage = unsafe {
+            std::mem::transmute::<
+                Pin<&'a mut Storage<TensorBase<'_, D>>>,
+                Pin<&'a mut Storage<RawTensor<'_>>>,
+            >(storage)
+        };
+        Self(
+            RawTensor::new_in_storage_impl(&tensor_impl.0, storage),
+            PhantomData,
+        )
+    }
+
+    /// Create a new tensor from an immutable Cpp reference.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the given tensor is valid for the lifetime of the new tensor,
+    /// and that the tensor is compatible with the data generic. `D` must be immutable as we take immutable reference
+    /// to the given tensor.
+    pub(crate) unsafe fn from_inner_ref(tensor: et_c::TensorRef) -> Self {
+        Self(RawTensor::from_inner_ref(tensor), PhantomData)
+    }
+
+    /// Create a new mutable tensor from a mutable Cpp reference.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the given tensor is valid for the lifetime of the new tensor,
+    /// and that the tensor is compatible with the data generic.
+    #[allow(dead_code)]
+    pub(crate) unsafe fn from_inner_ref_mut(tensor: et_c::TensorRefMut) -> Self {
+        Self(RawTensor::from_inner_ref_mut(tensor), PhantomData)
+    }
+
+    /// Create a new tensor with the same internal data as the given tensor, but with different data generic.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the new data generic is compatible with the data of the given tensor.
+    pub(crate) unsafe fn convert_from<D2: Data>(tensor: TensorBase<'a, D2>) -> Self {
+        Self(tensor.0, PhantomData)
+    }
+
+    /// Create a new tensor referencing the same internal data as the given tensor, but with different data generic.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the new data generic is compatible with the data of the given tensor.
+    /// `D2` must be immutable as we take immutable reference to the given tensor.
+    pub(crate) unsafe fn convert_from_ref<D2: Data>(tensor: &'a TensorBase<D2>) -> Self {
+        Self::from_inner_ref(tensor.as_cpp())
+    }
+
+    /// Create a new mutable tensor referencing the same internal data as the given tensor, but with different data
+    /// generic.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the new data generic is compatible with the data of the given tensor.
+    pub(crate) unsafe fn convert_from_mut_ref<D2>(tensor: &'a mut TensorBase<D2>) -> Self
+    where
+        D2: DataMut,
+    {
+        // Safety: we are not moving out of the mut reference of the inner tensor
+        let inner = unsafe { tensor.as_cpp_mut() };
+        Self::from_inner_ref_mut(inner)
+    }
+
+    /// Get the underlying Cpp tensor.
+    pub(crate) fn as_cpp(&self) -> et_c::TensorRef {
+        self.0.as_cpp()
+    }
+
+    /// Get a mutable reference to the underlying Cpp tensor.
+    ///
+    /// # Safety
+    ///
+    /// The caller can not move out of the returned mut reference.
+    pub(crate) unsafe fn as_cpp_mut(&mut self) -> et_c::TensorRefMut
+    where
+        D: DataMut,
+    {
+        let tensor = self.0.as_cpp_mut();
+        unsafe { tensor.unwrap_unchecked() }
+    }
+
+    /// Returns the size of the tensor in bytes.
+    ///
+    /// NOTE: Only the alive space is returned not the total capacity of the
+    /// underlying data blob.
+    pub fn nbytes(&self) -> usize {
+        self.0.nbytes()
+    }
+
+    /// Returns the size of the tensor at the given dimension.
+    ///
+    /// NOTE: that size() intentionally does not return SizeType even though it
+    /// returns an element of an array of SizeType. This is to help make calls of
+    /// this method more compatible with at::Tensor, and more consistent with the
+    /// rest of the methods on this class and in ETensor.
+    pub fn size(&self, dim: usize) -> usize {
+        self.0.size(dim)
+    }
+
+    /// Returns the tensor's number of dimensions.
+    pub fn dim(&self) -> usize {
+        self.0.dim()
+    }
+
+    /// Returns the number of elements in the tensor.
+    pub fn numel(&self) -> usize {
+        self.0.numel()
+    }
+
+    /// Returns the type of the elements in the tensor (int32, float, bool, etc).
+    pub fn scalar_type(&self) -> ScalarType {
+        self.0.scalar_type()
+    }
+
+    /// Returns the size in bytes of one element of the tensor.
+    pub fn element_size(&self) -> usize {
+        self.0.element_size()
+    }
+
+    /// Returns the sizes of the tensor at each dimension.
+    pub fn sizes(&self) -> &[SizesType] {
+        self.0.sizes()
+    }
+
+    /// Returns the order the dimensions are laid out in memory.
+    pub fn dim_order(&self) -> &[DimOrderType] {
+        self.0.dim_order()
+    }
+
+    /// Returns the strides of the tensor at each dimension.
+    pub fn strides(&self) -> &[StridesType] {
+        self.0.strides()
+    }
+
+    /// Returns a pointer to the constant underlying data blob.
+    ///
+    /// # Safety
+    ///
+    /// The caller must access the values in the returned pointer according to the type, sizes, dim order and strides
+    /// of the tensor.
+    pub fn as_ptr_raw(&self) -> *const () {
+        self.0.as_ptr_raw()
+    }
+
+    /// Returns a pointer to the constant underlying data blob.
+    pub fn as_ptr(&self) -> *const D::Scalar
+    where
+        D: DataTyped,
+    {
+        debug_assert_eq!(self.scalar_type(), D::Scalar::TYPE);
+        self.as_ptr_raw() as *const D::Scalar
+    }
+    /// Returns a mutable pointer to the underlying data blob.
+    ///
+    /// # Safety
+    ///
+    /// The caller must access the values in the returned pointer according to the type, sizes, dim order and strides
+    /// of the tensor.
+    pub fn as_mut_ptr_raw(&mut self) -> *mut ()
+    where
+        D: DataMut,
+    {
+        let ptr = self.0.as_mut_ptr_raw();
+        unsafe { ptr.unwrap_unchecked() }
+    }
+
+    /// Returns a mutable pointer of type S to the underlying data blob.
+    pub fn as_mut_ptr(&mut self) -> *mut D::Scalar
+    where
+        D: DataTyped + DataMut,
+    {
+        debug_assert_eq!(self.scalar_type(), D::Scalar::TYPE);
+        self.as_mut_ptr_raw().cast()
+    }
+
+    /// Get a reference to the element at `index`, or `None` if the index is out of bounds.
+    pub fn get(&self, index: &[usize]) -> Option<&D::Scalar>
+    where
+        D: DataTyped,
+    {
+        debug_assert_eq!(self.scalar_type(), D::Scalar::TYPE);
+        // Safety: the scalar type is checked
+        unsafe { self.0.get_without_type_check(index) }
+    }
+
+    /// Get a mutable reference to the element at `index`, or `None` if the index is out of bounds.
+    pub fn get_mut(&mut self, index: &[usize]) -> Option<&mut D::Scalar>
+    where
+        D: DataTyped + DataMut,
+    {
+        debug_assert_eq!(self.scalar_type(), D::Scalar::TYPE);
+        // Safety: the scalar type is checked
+        unsafe { self.0.get_without_type_check_mut(index) }
+    }
+
+    /// Get a reference to the element at `index`, or `None` if the scalar type of the tensor does not
+    /// match `S` or the index is out of bounds.
+    pub fn try_get<S: Scalar>(&self, index: &[usize]) -> Option<&S> {
+        self.0.try_get(index)
+    }
+
+    /// Get a mutable reference to the element at `index`, or `None` if the scalar type of the tensor does not
+    /// match `S` or the index is out of bounds.
+    pub fn try_get_mut<S: Scalar>(&mut self, index: &[usize]) -> Option<&mut S>
+    where
+        D: DataMut,
+    {
+        unsafe { self.0.try_get_mut(index) }
     }
 
     /// Converts this tensor into a type-erased tensor.
@@ -368,139 +647,23 @@ impl<'a, D: Data> TensorBase<'a, D> {
             .ok_or(Error::CError(CError::InvalidType))
             .unwrap()
     }
-
-    fn coordinate_to_index(&self, coordinate: &[usize]) -> Option<usize> {
-        let index = unsafe {
-            et_c::executorch_Tensor_coordinate_to_index(
-                self.as_cpp(),
-                et_c::ArrayRefUsizeType::from_slice(coordinate),
-            )
-        };
-        if index < 0 {
-            None
-        } else {
-            Some(index as usize)
-        }
-    }
-
-    /// Safety: the caller must ensure that type `S` is the correct scalar type of the tensor.
-    unsafe fn get_without_type_check<S: Scalar>(&self, index: &[usize]) -> Option<&S> {
-        let index = self.coordinate_to_index(index)?;
-        let base_ptr = self.as_ptr_raw() as *const S;
-        debug_assert!(!base_ptr.is_null());
-        Some(unsafe { &*base_ptr.add(index) })
-    }
-
-    /// Safety: the caller must ensure that type `S` is the correct scalar type of the tensor.
-    unsafe fn get_without_type_check_mut<S: Scalar>(&mut self, index: &[usize]) -> Option<&mut S>
-    where
-        D: DataMut,
-    {
-        let index = self.coordinate_to_index(index)?;
-        let base_ptr = self.as_mut_ptr_raw() as *mut S;
-        debug_assert!(!base_ptr.is_null());
-        Some(unsafe { &mut *base_ptr.add(index) })
-    }
-
-    /// Get a reference to the element at `index`, or `None` if the scalar type of the tensor does not
-    /// match `S` or the index is out of bounds.
-    pub fn try_get<S: Scalar>(&self, index: &[usize]) -> Option<&S> {
-        if self.scalar_type() == S::TYPE {
-            // Safety: the scalar type is checked
-            unsafe { self.get_without_type_check(index) }
-        } else {
-            None
-        }
-    }
-}
-impl Destroy for et_c::TensorStorage {
-    unsafe fn destroy(&mut self) {
-        unsafe {
-            et_c::executorch_Tensor_destructor(et_c::TensorRefMut {
-                ptr: self as *mut Self as *mut _,
-            })
-        }
-    }
 }
 impl<D: Data> Storable for TensorBase<'_, D> {
     type __Storage = et_c::TensorStorage;
-}
-
-impl<D: DataTyped> TensorBase<'_, D> {
-    /// Returns a pointer to the constant underlying data blob.
-    pub fn as_ptr(&self) -> *const D::Scalar {
-        debug_assert_eq!(self.scalar_type(), D::Scalar::TYPE);
-        self.as_ptr_raw() as *const D::Scalar
-    }
-
-    /// Get a reference to the element at `index`, or `None` if the index is out of bounds.
-    pub fn get(&self, index: &[usize]) -> Option<&D::Scalar> {
-        debug_assert_eq!(self.scalar_type(), D::Scalar::TYPE);
-        // Safety: the scalar type is checked
-        unsafe { self.get_without_type_check(index) }
-    }
-}
-
-impl<D: DataMut> TensorBase<'_, D> {
-    /// Returns a mutable pointer to the underlying data blob.
-    ///
-    /// # Safety
-    ///
-    /// The caller must access the values in the returned pointer according to the type, sizes, dim order and strides
-    /// of the tensor.
-    pub fn as_mut_ptr_raw(&self) -> *mut () {
-        let ptr = unsafe { et_c::executorch_Tensor_mutable_data_ptr(self.as_cpp()) };
-        debug_assert!(!ptr.is_null());
-        ptr as *mut ()
-    }
-
-    /// Get a mutable reference to the element at `index`, or `None` if the scalar type of the tensor does not
-    /// match `S` or the index is out of bounds.
-    pub fn try_get_mut<S: Scalar>(&mut self, index: &[usize]) -> Option<&mut S> {
-        if self.scalar_type() == S::TYPE {
-            // Safety: the scalar type is checked
-            unsafe { self.get_without_type_check_mut(index) }
-        } else {
-            None
-        }
-    }
-}
-impl<D: DataTyped + DataMut> TensorBase<'_, D> {
-    /// Returns a mutable pointer of type S to the underlying data blob.
-    pub fn as_mut_ptr(&self) -> *mut D::Scalar {
-        debug_assert_eq!(self.scalar_type(), D::Scalar::TYPE);
-        self.as_mut_ptr_raw().cast()
-    }
-
-    /// Get a mutable reference to the element at `index`, or `None` if the index is out of bounds.
-    pub fn get_mut(&mut self, index: &[usize]) -> Option<&mut D::Scalar> {
-        debug_assert_eq!(self.scalar_type(), D::Scalar::TYPE);
-        // Safety: the scalar type is checked
-        unsafe { self.get_without_type_check_mut(index) }
-    }
 }
 
 impl<D: DataTyped> Index<&[usize]> for TensorBase<'_, D> {
     type Output = D::Scalar;
 
     fn index(&self, index: &[usize]) -> &Self::Output {
-        let index = self
-            .coordinate_to_index(index)
-            .ok_or(Error::InvalidIndex)
-            .unwrap();
-        let base_ptr = self.as_ptr();
-        debug_assert!(!base_ptr.is_null());
-        unsafe { &*base_ptr.add(index) }
+        let value = unsafe { self.0.get_without_type_check::<D::Scalar>(index) };
+        value.ok_or(Error::InvalidIndex).unwrap()
     }
 }
 impl<D: DataTyped + DataMut> IndexMut<&[usize]> for TensorBase<'_, D> {
     fn index_mut(&mut self, index: &[usize]) -> &mut Self::Output {
-        let index = self
-            .coordinate_to_index(index)
-            .ok_or(Error::InvalidIndex)
-            .unwrap();
-        let base_ptr = self.as_mut_ptr();
-        unsafe { &mut *base_ptr.add(index) }
+        let value = unsafe { self.0.get_without_type_check_mut::<D::Scalar>(index) };
+        value.ok_or(Error::InvalidIndex).unwrap()
     }
 }
 
@@ -616,12 +779,8 @@ impl<'a, S: Scalar> TensorMut<'a, S> {
 /// A type-erased immutable tensor that does not own the underlying data.
 pub type TensorAny<'a> = TensorBase<'a, ViewAny>;
 
-/// A tensor implementation that does not own the underlying data.
-///
-/// This is a base class for [`TensorImpl`] and [`TensorImplMut`] and is not meant to be
-/// used directly. It is used to provide a common API for both of them.
-pub struct TensorImplBase<'a, D: Data>(et_c::TensorImpl, PhantomData<(&'a (), D)>);
-impl<'a, D: Data> TensorImplBase<'a, D> {
+struct RawTensorImpl<'a>(et_c::TensorImpl, PhantomData<&'a ()>);
+impl<'a> RawTensorImpl<'a> {
     /// Create a new TensorImpl from a pointer to the data.
     ///
     /// # Errors
@@ -672,6 +831,33 @@ impl<'a, D: Data> TensorImplBase<'a, D> {
                 )
             })
         };
+        Ok(Self(impl_, PhantomData))
+    }
+}
+
+/// A tensor implementation that does not own the underlying data.
+///
+/// This is a base class for [`TensorImpl`] and [`TensorImplMut`] and is not meant to be
+/// used directly. It is used to provide a common API for both of them.
+pub struct TensorImplBase<'a, D: Data>(RawTensorImpl<'a>, PhantomData<D>);
+impl<'a, D: Data> TensorImplBase<'a, D> {
+    /// Create a new TensorImpl from a pointer to the data.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if dim order is invalid, or if it doesn't match the strides, or if the strides are not dense,
+    /// i.e. if the strides are not the default strides of some permutation of the sizes.
+    ///
+    /// # Panics
+    ///
+    /// If the sizes, dim_order or strides slices are of different lengths.
+    unsafe fn from_ptr_impl<S: Scalar>(
+        sizes: &'a [SizesType],
+        data: *mut S,
+        dim_order: &'a [DimOrderType],
+        strides: &'a [StridesType],
+    ) -> Result<Self> {
+        let impl_ = RawTensorImpl::from_ptr_impl(sizes, data, dim_order, strides)?;
         Ok(Self(impl_, PhantomData))
     }
 }
@@ -1268,7 +1454,7 @@ mod tests {
         let tensor = tensor_ptr.as_tensor_mut();
         let tensor = tensor.into_type_erased();
         assert_eq!(tensor.scalar_type(), ScalarType::Int);
-        let tensor = tensor.into_typed::<i32>();
+        let mut tensor = tensor.into_typed::<i32>();
         // as_mut_ptr_raw is available only if the tensor is mutable
         assert!(!tensor.as_mut_ptr_raw().is_null());
     }
@@ -1288,7 +1474,7 @@ mod tests {
         let mut tensor = tensor_ptr.as_tensor_mut();
         let mut tensor = tensor.as_type_erased_mut();
         assert_eq!(tensor.scalar_type(), ScalarType::Int);
-        let tensor = tensor.as_typed_mut::<i32>();
+        let mut tensor = tensor.as_typed_mut::<i32>();
         // as_mut_ptr_raw is available only if the tensor is mutable
         assert!(!tensor.as_mut_ptr_raw().is_null());
     }
