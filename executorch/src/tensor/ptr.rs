@@ -1,6 +1,16 @@
-use executorch_sys::cxx::{self, vector::VectorElement, ExternType, SharedPtr, UniquePtr};
+use std::marker::PhantomData;
 
-use super::*;
+use executorch_sys as et_c;
+use executorch_sys::cxx::vector::VectorElement;
+use executorch_sys::cxx::{self, ExternType, SharedPtr, UniquePtr};
+
+use super::{
+    Data, DataMut, DataTyped, DimOrderType, Scalar, SizesType, StridesType, TensorBase, View,
+    ViewMut,
+};
+use crate::error::CError;
+use crate::util::{IntoCpp, IntoRust};
+use crate::{Error, Result};
 
 /// A smart pointer type for managing the lifetime of a Tensor.
 ///
