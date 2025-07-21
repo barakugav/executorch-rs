@@ -10,7 +10,7 @@
 //! let data_loader = BufferDataLoader::new(ADD_MODEL_BYTES);
 //! let program = Program::load(&data_loader, None).unwrap();
 //!
-//! let method_meta = program.method_meta(cstr::cstr!("forward")).unwrap();
+//! let method_meta = program.method_meta(c"forward").unwrap();
 //!
 //! let num_memory_planned_buffers = method_meta.num_memory_planned_buffers();
 //! let planned_arenas = allocator
@@ -25,7 +25,7 @@
 //! let memory_manager = MemoryManager::new(&allocator, Some(&mut planned_memory), None);
 //!
 //! let mut method = program
-//!     .load_method(cstr::cstr!("forward"), &memory_manager, None)
+//!     .load_method(c"forward", &memory_manager, None)
 //!     .unwrap();
 //!
 //! let input_array1 = ArrayStorage::new(array!(1.0_f32)).unwrap();
@@ -507,7 +507,6 @@ impl<'a> Outputs<'a> {
 mod tests {
     use crate::data_loader::BufferDataLoader;
     use crate::tests::ADD_MODEL_BYTES;
-    use cstr::cstr;
 
     use super::*;
 
@@ -549,8 +548,8 @@ mod tests {
     fn method_meta() {
         let loader = BufferDataLoader::new(ADD_MODEL_BYTES);
         let program = Program::load(&loader, None).unwrap();
-        let method_meta = program.method_meta(cstr!("forward")).unwrap();
-        assert!(program.method_meta(cstr!("non-existing-method")).is_err());
+        let method_meta = program.method_meta(c"forward").unwrap();
+        assert!(program.method_meta(c"non-existing-method").is_err());
 
         assert_eq!(method_meta.name(), "forward");
 
@@ -592,7 +591,7 @@ mod tests {
                 method_meta.uses_backend(std::ffi::CString::new(backend_name).unwrap().as_c_str())
             );
         }
-        assert!(!method_meta.uses_backend(cstr!("non-existing-backend")));
+        assert!(!method_meta.uses_backend(c"non-existing-backend"));
     }
 
     #[cfg(tests_with_kernels)]
@@ -608,7 +607,7 @@ mod tests {
         let program =
             Program::load(&data_loader, Some(ProgramVerification::InternalConsistency)).unwrap();
 
-        let method_meta = program.method_meta(cstr!("forward")).unwrap();
+        let method_meta = program.method_meta(c"forward").unwrap();
         let num_memory_planned_buffers = method_meta.num_memory_planned_buffers();
         let planned_arenas = allocator
             .allocate_arr_fn(num_memory_planned_buffers, |idx| {
@@ -621,10 +620,10 @@ mod tests {
         let memory_manager = MemoryManager::new(&allocator, Some(&mut planned_memory), None);
 
         assert!(program
-            .load_method(cstr!("non-existing-method"), &memory_manager, None)
+            .load_method(c"non-existing-method", &memory_manager, None)
             .is_err());
         assert!(program
-            .load_method(cstr!("forward"), &memory_manager, None)
+            .load_method(c"forward", &memory_manager, None)
             .is_ok());
     }
 
@@ -655,7 +654,7 @@ mod tests {
         let program =
             Program::load(&data_loader, Some(ProgramVerification::InternalConsistency)).unwrap();
 
-        let method_meta = program.method_meta(cstr!("forward")).unwrap();
+        let method_meta = program.method_meta(c"forward").unwrap();
         let num_memory_planned_buffers = method_meta.num_memory_planned_buffers();
         let planned_arenas = allocator
             .allocate_arr_fn(num_memory_planned_buffers, |idx| {
@@ -668,7 +667,7 @@ mod tests {
         let memory_manager = MemoryManager::new(&allocator, Some(&mut planned_memory), None);
 
         let mut method = program
-            .load_method(cstr!("forward"), &memory_manager, None)
+            .load_method(c"forward", &memory_manager, None)
             .unwrap();
         assert_eq!(method.inputs_size(), 2);
         let execution = method.start_execution();

@@ -414,13 +414,23 @@ int64_t executorch_Tensor_coordinate_to_index(struct TensorRef self, struct Arra
         dim_order.data() == nullptr || executorch::runtime::is_contiguous_dim_order(dim_order.data(), ndim),
         "Only contiguous dim order is supported for now");
 
-    size_t index = 0;
     for (size_t d = 0; d < ndim; d++)
     {
         if (coordinate.data[d] >= (size_t)sizes[d])
         {
             return -1;
         }
+    }
+    return executorch_Tensor_coordinate_to_index_unchecked(self, coordinate);
+}
+int64_t executorch_Tensor_coordinate_to_index_unchecked(struct TensorRef self, struct ArrayRefUsizeType coordinate)
+{
+    auto self_ = cast_tensor(self);
+    auto ndim = (size_t)self_->dim();
+    auto strides = self_->strides();
+    size_t index = 0;
+    for (size_t d = 0; d < ndim; d++)
+    {
         index += coordinate.data[d] * strides[d];
     }
     return index;

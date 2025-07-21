@@ -31,7 +31,7 @@ fn real_main() {
     let program =
         Program::load(&data_loader, Some(ProgramVerification::InternalConsistency)).unwrap();
 
-    let method_meta = program.method_meta(cstr::cstr!("forward")).unwrap();
+    let method_meta = program.method_meta(c"forward").unwrap();
 
     let num_memory_planned_buffers = method_meta.num_memory_planned_buffers();
     let planned_arenas = allocator
@@ -49,7 +49,7 @@ fn real_main() {
     let memory_manager = MemoryManager::new(&allocator, Some(&mut planned_memory), None);
 
     let mut method = program
-        .load_method(cstr::cstr!("forward"), &memory_manager, None)
+        .load_method(c"forward", &memory_manager, None)
         .unwrap();
 
     let input_array1 = ArrayStorage::new(array!(1.0_f32)).unwrap();

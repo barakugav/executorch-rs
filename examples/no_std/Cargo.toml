@@ -9,7 +9,6 @@ executorch = { path = "../../executorch/", default-features = false, features = 
     "ndarray",
 ] }
 libc-print = "0.1.23"
-cstr = "0.2.12"
 
 # Unfortunately, no_std is still WIP, see https://github.com/pytorch/executorch/issues/4561
 link-cplusplus = "1.0"

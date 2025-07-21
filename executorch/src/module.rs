@@ -46,12 +46,12 @@ impl<'a> Module<'a> {
     ///
     /// If any of the file path or the data map path are not a valid UTF-8 string or contains a null character.
     pub fn new(
-        file_path: impl AsRef<Path>,
-        data_map_path: Option<&'_ Path>,
+        file_path: &Path,
+        data_map_path: Option<&Path>,
         load_mode: Option<LoadMode>,
         event_tracer: Option<EventTracerPtr<'a>>,
     ) -> Self {
-        let file_path = file_path.as_ref().to_str().ok_or(Error::ToCStr).unwrap();
+        let file_path = file_path.to_str().ok_or(Error::ToCStr).unwrap();
         let data_map_path = data_map_path
             .map(|path| path.to_str().ok_or(Error::ToCStr).unwrap())
             .unwrap_or("");
@@ -77,7 +77,7 @@ impl<'a> Module<'a> {
     ///
     /// If the file path is not a valid UTF-8 string or contains a null character.
     pub fn from_file_path(file_path: impl AsRef<Path>) -> Self {
-        Self::new(file_path, None, None, None)
+        Self::new(file_path.as_ref(), None, None, None)
     }
 
     /// Loads the program using the specified data loader and memory allocator.
@@ -143,7 +143,7 @@ impl<'a> Module<'a> {
     /// If the method name is not a valid UTF-8 string or contains a null character.
     pub fn load_method(
         &mut self,
-        method_name: impl AsRef<str>,
+        method_name: &str,
         planned_memory: Option<&'a mut HierarchicalAllocator>,
         event_tracer: Option<&'a mut EventTracer>,
     ) -> Result<()> {
@@ -156,7 +156,7 @@ impl<'a> Module<'a> {
         unsafe {
             et_c::cpp::Module_load_method(
                 self.0.as_mut().unwrap(),
-                method_name.as_ref(),
+                method_name,
                 planned_memory,
                 event_tracer,
             )
@@ -177,8 +177,8 @@ impl<'a> Module<'a> {
     /// # Panics
     ///
     /// If the method name is not a valid UTF-8 string or contains a null character.
-    pub fn is_method_loaded(&self, method_name: impl AsRef<str>) -> bool {
-        et_c::cpp::Module_is_method_loaded(self.0.as_ref().unwrap(), method_name.as_ref())
+    pub fn is_method_loaded(&self, method_name: &str) -> bool {
+        et_c::cpp::Module_is_method_loaded(self.0.as_ref().unwrap(), method_name)
     }
 
     /// Get a method metadata struct by method name.
@@ -195,9 +195,9 @@ impl<'a> Module<'a> {
     /// # Panics
     ///
     /// If the method name is not a valid UTF-8 string or contains a null character.
-    pub fn method_meta(&mut self, method_name: impl AsRef<str>) -> Result<MethodMeta> {
+    pub fn method_meta(&mut self, method_name: &str) -> Result<MethodMeta> {
         let meta = try_c_new(|meta| unsafe {
-            et_c::cpp::Module_method_meta(self.0.as_mut().unwrap(), method_name.as_ref(), meta)
+            et_c::cpp::Module_method_meta(self.0.as_mut().unwrap(), method_name, meta)
         })?;
         Ok(unsafe { MethodMeta::new(meta) })
     }
@@ -219,7 +219,7 @@ impl<'a> Module<'a> {
     /// If the method name is not a valid UTF-8 string or contains a null character.
     pub fn execute<'b>(
         &'b mut self,
-        method_name: impl AsRef<str>,
+        method_name: &str,
         inputs: &[EValue],
     ) -> Result<Vec<EValue<'b>>> {
         let inputs = unsafe {
@@ -236,7 +236,7 @@ impl<'a> Module<'a> {
         let mut outputs = try_c_new(|outputs| unsafe {
             et_c::cpp::Module_execute(
                 self.0.as_mut().unwrap(),
-                method_name.as_ref(),
+                method_name,
                 inputs.0,
                 outputs,
             )
@@ -315,7 +315,7 @@ mod tests {
                 Some(ProgramVerification::Minimal),
                 Some(ProgramVerification::InternalConsistency),
             ] {
-                let mut module = Module::new(add_model_path(), None, load_mode, None);
+                let mut module = Module::new(&add_model_path(), None, load_mode, None);
                 assert!(module.load(verification).is_ok());
             }
         }

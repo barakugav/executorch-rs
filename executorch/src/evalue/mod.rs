@@ -7,7 +7,7 @@ use std::ffi::CStr;
 use std::pin::Pin;
 
 use crate::memory::{MemoryAllocator, Storable, Storage};
-use crate::tensor::{self, TensorAny, TensorBase};
+use crate::tensor::{self, RawTensor, TensorAny, TensorBase};
 use crate::util::{ArrayRef, Destroy, IntoCpp, IntoRust, NonTriviallyMovable, __ArrayRefImpl};
 use crate::{CError, Error, Result};
 use executorch_sys as et_c;
@@ -502,7 +502,7 @@ impl<'a> IntoEValue<'a> for &'a CStr {
         crate::util::cstr2chars(self).into_evalue_in_storage(storage)
     }
 }
-impl<'a, D: tensor::Data> IntoEValue<'a> for TensorBase<'a, D> {
+impl<'a> IntoEValue<'a> for RawTensor<'a> {
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a> {
         // Safety: the closure init the pointer
@@ -519,7 +519,7 @@ impl<'a, D: tensor::Data> IntoEValue<'a> for TensorBase<'a, D> {
         }
     }
 }
-impl<'a, D: tensor::Data> IntoEValue<'a> for &'a TensorBase<'_, D> {
+impl<'a> IntoEValue<'a> for &'a RawTensor<'_> {
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a> {
         unsafe { EValue::new_impl(|p| et_c::executorch_EValue_new_from_tensor(p, self.as_cpp())) }
@@ -533,6 +533,26 @@ impl<'a, D: tensor::Data> IntoEValue<'a> for &'a TensorBase<'_, D> {
                 storage,
             )
         }
+    }
+}
+impl<'a, D: tensor::Data> IntoEValue<'a> for TensorBase<'a, D> {
+    #[cfg(feature = "alloc")]
+    fn into_evalue(self) -> EValue<'a> {
+        self.0.into_evalue()
+    }
+
+    fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
+        self.0.into_evalue_in_storage(storage)
+    }
+}
+impl<'a, D: tensor::Data> IntoEValue<'a> for &'a TensorBase<'_, D> {
+    #[cfg(feature = "alloc")]
+    fn into_evalue(self) -> EValue<'a> {
+        (&self.0).into_evalue()
+    }
+
+    fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
+        (&self.0).into_evalue_in_storage(storage)
     }
 }
 #[cfg(feature = "tensor-ptr")]
@@ -993,7 +1013,7 @@ mod tests {
 
     #[test]
     fn string() {
-        let string = cstr::cstr!("hello world!");
+        let string = c"hello world!";
         let chars = crate::util::cstr2chars(string);
 
         #[cfg(feature = "alloc")]
@@ -1476,7 +1496,7 @@ mod tests {
                         TensorImpl::from_slice(&sizes, &data, &dim_order, &strides).unwrap();
                     check_evalue(EValue::new(Tensor::new(&tensor_impl)));
                 }
-                Tag::String => check_evalue(EValue::new(cstr::cstr!("hello world!"))),
+                Tag::String => check_evalue(EValue::new(c"hello world!")),
                 Tag::Double => check_evalue(EValue::new(42.6)),
                 Tag::Int => check_evalue(EValue::new(17)),
                 Tag::Bool => check_evalue(EValue::new(true)),

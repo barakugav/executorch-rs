@@ -624,6 +624,7 @@ extern "C"
     const void *executorch_Tensor_const_data_ptr(struct TensorRef self);
     void *executorch_Tensor_mutable_data_ptr(struct TensorRef self);
     int64_t executorch_Tensor_coordinate_to_index(struct TensorRef self, struct ArrayRefUsizeType coordinate);
+    int64_t executorch_Tensor_coordinate_to_index_unchecked(struct TensorRef self, struct ArrayRefUsizeType coordinate);
     void executorch_Tensor_destructor(struct TensorRefMut self);
 
     // OptionalTensor
