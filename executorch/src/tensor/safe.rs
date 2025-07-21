@@ -4,6 +4,7 @@ use std::pin::Pin;
 
 use super::{DimOrderType, RawTensor, RawTensorImpl, Scalar, ScalarType, SizesType, StridesType};
 use crate::memory::{MemoryAllocator, Storable, Storage};
+use crate::tensor::{TensorAccessor, TensorAccessorMut};
 use crate::{CError, Error, Result};
 use executorch_sys as et_c;
 
@@ -116,6 +117,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
         D: DataMut,
     {
         let tensor = self.0.as_cpp_mut();
+        // Safety: D: DataMut meaning the Tensor (and the TensorImpl) are mutable
         unsafe { tensor.unwrap_unchecked() }
     }
 
@@ -201,6 +203,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
         D: DataMut,
     {
         let ptr = self.0.as_mut_ptr_raw();
+        // Safety: D: DataMut meaning the Tensor (and the TensorImpl) are mutable
         unsafe { ptr.unwrap_unchecked() }
     }
 
@@ -229,7 +232,8 @@ impl<'a, D: Data> TensorBase<'a, D> {
         D: DataTyped + DataMut,
     {
         debug_assert_eq!(self.scalar_type(), D::Scalar::TYPE);
-        // Safety: the scalar type is checked
+        // Safety: the scalar type is checked, and D: DataMut meaning the Tensor (and the TensorImpl) are mutable
+
         unsafe { self.0.get_without_type_check_mut(index) }
     }
 
@@ -245,7 +249,40 @@ impl<'a, D: Data> TensorBase<'a, D> {
     where
         D: DataMut,
     {
+        // Safety: D: DataMut meaning the Tensor (and the TensorImpl) are mutable
         unsafe { self.0.get_as_typed_mut(index) }
+    }
+
+    /// Get an immutable accessor for the tensor.
+    ///
+    /// An accessor is a utility struct, templated over the type of the tensor elements and the number
+    /// of dimensions, which make it very efficient to access tensor elements by index.
+    /// See the [`TensorAccessor`] for more details.
+    ///
+    /// # Returns
+    ///
+    /// Returns an accessor if the scalar type of the tensor matches `S` and the number of dimensions
+    /// matches `N`, otherwise returns `None`.
+    pub fn accessor<S: Scalar, const N: usize>(&self) -> Option<TensorAccessor<'_, S, N>> {
+        self.0.accessor()
+    }
+
+    /// Get a mutable accessor for the tensor.
+    ///
+    /// An accessor is a utility struct, templated over the type of the tensor elements and the number
+    /// of dimensions, which make it very efficient to access tensor elements by index.
+    /// See the [`TensorAccessorMut`] for more details.
+    ///
+    /// # Returns
+    ///
+    /// Returns an accessor if the scalar type of the tensor matches `S` and the number of dimensions
+    /// matches `N`, otherwise returns `None`.
+    pub fn accessor_mut<S: Scalar, const N: usize>(&mut self) -> Option<TensorAccessorMut<'_, S, N>>
+    where
+        D: DataMut,
+    {
+        // Safety: D: DataMut meaning the Tensor (and the TensorImpl) are mutable
+        unsafe { self.0.accessor_mut() }
     }
 
     /// Converts this tensor into a type-erased tensor.
@@ -353,11 +390,13 @@ impl<D: DataTyped> Index<&[usize]> for TensorBase<'_, D> {
     type Output = D::Scalar;
 
     fn index(&self, index: &[usize]) -> &Self::Output {
+        // Safety: D: DataTyped, meaning we know the type is correct
         let value = unsafe { self.0.get_without_type_check::<D::Scalar>(index) };
         value.ok_or(Error::InvalidIndex).unwrap()
     }
 }
 impl<D: DataTyped + DataMut> IndexMut<&[usize]> for TensorBase<'_, D> {
+    // Safety: D: DataTyped, meaning we know the type is correct
     fn index_mut(&mut self, index: &[usize]) -> &mut Self::Output {
         let value = unsafe { self.0.get_without_type_check_mut::<D::Scalar>(index) };
         value.ok_or(Error::InvalidIndex).unwrap()

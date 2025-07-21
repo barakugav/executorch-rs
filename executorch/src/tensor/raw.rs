@@ -351,6 +351,11 @@ impl<'a> RawTensor<'a> {
     /// An accessor is a utility struct, templated over the type of the tensor elements and the number
     /// of dimensions, which make it very efficient to access tensor elements by index.
     /// See the [`TensorAccessor`] for more details.
+    ///
+    /// # Returns
+    ///
+    /// Returns an accessor if the scalar type of the tensor matches `S` and the number of dimensions
+    /// matches `N`, otherwise returns `None`.
     pub fn accessor<S: Scalar, const N: usize>(&self) -> Option<TensorAccessor<'_, S, N>> {
         Some(TensorAccessor(self.accessor_inner()?))
     }
@@ -360,6 +365,11 @@ impl<'a> RawTensor<'a> {
     /// An accessor is a utility struct, templated over the type of the tensor elements and the number
     /// of dimensions, which make it very efficient to access tensor elements by index.
     /// See the [`TensorAccessorMut`] for more details.
+    ///
+    /// # Returns
+    ///
+    /// Returns an accessor if the scalar type of the tensor matches `S` and the number of dimensions
+    /// matches `N`, otherwise returns `None`.
     ///
     /// # Safety
     ///

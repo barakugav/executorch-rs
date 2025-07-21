@@ -24,6 +24,11 @@
 //! The [`TensorPtr`] is a smart pointer to a tensor that also manage the lifetime of the [`TensorImpl`], the
 //! underlying data buffer and the metadata (sizes/strides/etc arrays) of the tensor.
 //! It has the most user-friendly API, but can not be used in `no_std` environments.
+//!
+//! In addition to all of the above safe tensors, the [`RawTensor`] and [`RawTensorImpl`] structs exists,
+//! which match the Cpp `Tensor` and `TensorImpl` as close as possible. These struct do not enforce mutability
+//! guarantees at all, and expose unsafe API, but may be useful to low level users who want to avoid code size
+//! overhead (avoiding the regular tensor structs generics) of the safe API.
 
 mod scalar;
 
