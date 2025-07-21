@@ -42,6 +42,7 @@ jobs:
             executorch
             executorch-sys
             examples/hello_world
+            examples/raw_tensor
             examples/no_ndarray
             examples/no_std
             examples/nano-gpt
@@ -115,6 +116,10 @@ jobs:
         # python export_model.py
         run: cargo run
         working-directory: examples/hello_world
+      - name: Run 'raw tensor' example
+        # python export_model.py
+        run: cargo run
+        working-directory: examples/raw_tensor
       - name: Run 'no_ndarray' example
         # python export_model.py
         run: cargo run

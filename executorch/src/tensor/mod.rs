@@ -28,10 +28,13 @@
 mod scalar;
 
 mod raw;
-use raw::*;
+pub use raw::*;
 
 mod safe;
 pub use safe::*;
+
+mod accessor;
+pub use accessor::*;
 
 #[cfg(feature = "ndarray")]
 mod array;

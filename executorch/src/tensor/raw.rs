@@ -2,12 +2,25 @@ use std::marker::PhantomData;
 use std::pin::Pin;
 
 use crate::memory::{Storable, Storage};
-use crate::tensor::{DimOrderType, Scalar, ScalarType, SizesType, StridesType};
+use crate::tensor::{
+    DimOrderType, Scalar, ScalarType, SizesType, StridesType, TensorAccessor, TensorAccessorInner,
+    TensorAccessorMut,
+};
 use crate::util::{Destroy, IntoCpp, IntoRust, NonTriviallyMovable, __ArrayRefImpl, c_new};
 use crate::{CError, Error, Result};
 use executorch_sys as et_c;
 
-pub(crate) struct RawTensor<'a>(
+/// A raw tensor that does not own the underlying data.
+///
+/// This struct is a low-level match to the C++ `Tensor` class. The tensor does not own its data,
+/// but rather point to a [`RawTensorImpl`]. A [`Tensor`](crate::tensor::Tensor) or any of its
+/// variants (`TensorAny`, `TensorMut`, etc) is preferred for most use cases, but this struct
+/// is exposed for low level users who need to avoid code size overhead (avoiding the regular
+/// tensor generics).
+///
+/// The struct does not enforce any mutability rules, and the caller must ensure that the tensor
+/// is used correctly according to its mutability.
+pub struct RawTensor<'a>(
     NonTriviallyMovable<'a, et_c::TensorStorage>,
     // phantom for the lifetime of the TensorImpl we depends on
     PhantomData<&'a ()>,
@@ -17,9 +30,11 @@ impl<'a> RawTensor<'a> {
     ///
     /// # Safety
     ///
-    /// The caller must obtain a mutable reference to `tensor_impl` if the tensor is mutable.
+    /// The returned tensor will allow to mutate the underlying data (which is owned by the
+    /// `RawTensorImpl`), so the caller must ensure that the tensor is used correctly according to
+    /// its mutability.
     #[cfg(feature = "alloc")]
-    pub(super) unsafe fn new_boxed(tensor_impl: &'a RawTensorImpl) -> Self {
+    pub unsafe fn new(tensor_impl: &'a RawTensorImpl) -> Self {
         let impl_ = &tensor_impl.0 as *const et_c::TensorImpl;
         let impl_ = impl_.cast_mut();
         // Safety: the closure init the pointer
@@ -36,8 +51,10 @@ impl<'a> RawTensor<'a> {
     ///
     /// # Safety
     ///
-    /// The caller must ensure that the new tensor is compatible with the given storage.
-    pub(super) unsafe fn new_in_storage_impl(
+    /// The returned tensor will allow to mutate the underlying data (which is owned by the
+    /// `RawTensorImpl`), so the caller must ensure that the tensor is used correctly according to
+    /// its mutability.
+    pub unsafe fn new_in_storage(
         tensor_impl: &'a RawTensorImpl,
         storage: Pin<&'a mut Storage<RawTensor<'_>>>,
     ) -> Self {
@@ -61,8 +78,9 @@ impl<'a> RawTensor<'a> {
     /// # Safety
     ///
     /// The caller must ensure that the given tensor is valid for the lifetime of the new tensor,
-    /// and that the tensor is compatible with the data generic. `D` must be immutable as we take immutable reference
-    /// to the given tensor.
+    /// and that the tensor is compatible with the data generic.
+    /// The created tensor should not be modified as we take an immutable reference to the given
+    /// Cpp tensor reference.
     pub(crate) unsafe fn from_inner_ref(tensor: et_c::TensorRef) -> Self {
         debug_assert!(!tensor.ptr.is_null());
         let tensor = unsafe { &*(tensor.ptr as *const et_c::TensorStorage) };
@@ -73,8 +91,7 @@ impl<'a> RawTensor<'a> {
     ///
     /// # Safety
     ///
-    /// The caller must ensure that the given tensor is valid for the lifetime of the new tensor,
-    /// and that the tensor is compatible with the data generic.
+    /// The caller must ensure that the given tensor is valid for the lifetime of the new tensor.
     #[allow(dead_code)]
     pub(crate) unsafe fn from_inner_ref_mut(tensor: et_c::TensorRefMut) -> Self {
         debug_assert!(!tensor.ptr.is_null());
@@ -93,9 +110,8 @@ impl<'a> RawTensor<'a> {
     ///
     /// # Safety
     ///
-    /// The caller can not move out of the returned mut reference.
-    ///
-    /// TODO: mutability
+    /// The caller can not move out of the returned mut reference, and should use this function only
+    /// if the tensor was created with a mutable tensor impl.
     pub(crate) unsafe fn as_cpp_mut(&mut self) -> Option<et_c::TensorRefMut> {
         // Safety: the caller does not move out of the returned mut reference.
         Some(et_c::TensorRefMut {
@@ -182,12 +198,19 @@ impl<'a> RawTensor<'a> {
 
     /// Returns a mutable pointer to the underlying data blob.
     ///
+    /// # Returns
+    ///
+    /// Returns a mutable pointer to the underlying data blob, and sometimes `None` if the tensor is not mutable.
+    /// `Some` may be returned in cases the tensor itself is mutable (owned or created by a mutable reference),
+    /// but the underlying data is not mutable (e.g. a tensor created from a immutable tensor impl).
+    /// In such cases, the caller should not call this function.
+    /// This is why this function is marked as `unsafe`.
+    ///
     /// # Safety
     ///
     /// The caller must access the values in the returned pointer according to the type, sizes, dim order and strides
     /// of the tensor.
-    ///
-    /// TODO: mutability
+    /// The caller should call this function only if the tensor was created with a mutable tensor impl.
     pub fn as_mut_ptr_raw(&mut self) -> Option<*mut ()> {
         let tensor = unsafe { self.as_cpp_mut()? };
         let tensor = et_c::TensorRef { ptr: tensor.ptr };
@@ -209,6 +232,45 @@ impl<'a> RawTensor<'a> {
             Some(index as usize)
         }
     }
+    unsafe fn coordinate_to_index_unchecked(&self, coordinate: &[usize]) -> usize {
+        cfg_if::cfg_if! { if #[cfg(debug_assertions)] {
+            let index = self.coordinate_to_index(coordinate);
+            unsafe { index.unwrap_unchecked() }
+        } else {
+            let index = unsafe {
+                et_c::executorch_Tensor_coordinate_to_index_unchecked(
+                    self.as_cpp(),
+                    et_c::ArrayRefUsizeType::from_slice(coordinate),
+                )
+            };
+            index as usize
+        } }
+    }
+
+    /// Get a reference to the element at `index`, without bounds checking.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the index is within bounds.
+    pub unsafe fn get_unchecked<S: Scalar>(&self, index: &[usize]) -> &S {
+        let index = unsafe { self.coordinate_to_index_unchecked(index) };
+        let base_ptr = self.as_ptr_raw() as *const S;
+        debug_assert!(!base_ptr.is_null());
+        unsafe { &*base_ptr.add(index) }
+    }
+
+    /// Get a mutable reference to the element at `index`, without bounds checking.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the index is within bounds.
+    /// The caller must ensure that the tensor was created with a mutable tensor impl.
+    pub unsafe fn get_unchecked_mut<S: Scalar>(&mut self, index: &[usize]) -> &mut S {
+        let index = unsafe { self.coordinate_to_index_unchecked(index) };
+        let base_ptr = unsafe { self.as_mut_ptr_raw().unwrap_unchecked() } as *mut S;
+        debug_assert!(!base_ptr.is_null());
+        unsafe { &mut *base_ptr.add(index) }
+    }
 
     /// Safety: the caller must ensure that type `S` is the correct scalar type of the tensor.
     pub(super) unsafe fn get_without_type_check<S: Scalar>(&self, index: &[usize]) -> Option<&S> {
@@ -220,7 +282,19 @@ impl<'a> RawTensor<'a> {
 
     /// Safety: the caller must ensure that type `S` is the correct scalar type of the tensor.
     ///
-    /// TODO: mutability
+    /// # Returns
+    ///
+    /// Returns a mutable reference to the element at `index`, or `None` if the index is out of bounds.
+    /// The caller must ensure that the tensor was created with a mutable tensor impl.
+    /// `Some` may be returned in cases the tensor itself is mutable (owned or created by a mutable reference),
+    /// but the underlying data is not mutable (e.g. a tensor created from a immutable tensor impl).
+    /// In such cases, the caller should not call this function.
+    /// This is why this function is marked as `unsafe`.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the type `S` is the correct scalar type of the tensor,
+    /// and that the tensor was created with a mutable tensor impl.
     pub(super) unsafe fn get_without_type_check_mut<S: Scalar>(
         &mut self,
         index: &[usize],
@@ -233,7 +307,7 @@ impl<'a> RawTensor<'a> {
 
     /// Get a reference to the element at `index`, or `None` if the scalar type of the tensor does not
     /// match `S` or the index is out of bounds.
-    pub fn try_get<S: Scalar>(&self, index: &[usize]) -> Option<&S> {
+    pub fn get_as_typed<S: Scalar>(&self, index: &[usize]) -> Option<&S> {
         if self.scalar_type() == S::TYPE {
             // Safety: the scalar type is checked
             unsafe { self.get_without_type_check(index) }
@@ -243,14 +317,57 @@ impl<'a> RawTensor<'a> {
     }
 
     /// Get a mutable reference to the element at `index`, or `None` if the scalar type of the tensor does not
-    /// match `S` or the index is out of bounds.
-    pub unsafe fn try_get_mut<S: Scalar>(&mut self, index: &[usize]) -> Option<&mut S> {
+    /// match `S` or the index is out of bounds or the tensor is not mutable.
+    ///
+    /// `Some` may be returned in cases the tensor itself is mutable (owned or created by a mutable reference),
+    /// but the underlying data is not mutable (e.g. a tensor created from a immutable tensor impl).
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure the tensor was created with a mutable tensor impl,
+    pub unsafe fn get_as_typed_mut<S: Scalar>(&mut self, index: &[usize]) -> Option<&mut S> {
         if self.scalar_type() == S::TYPE {
             // Safety: the scalar type is checked
             unsafe { self.get_without_type_check_mut(index) }
         } else {
             None
         }
+    }
+
+    fn accessor_inner<S: Scalar, const N: usize>(&self) -> Option<TensorAccessorInner<'_, S, N>> {
+        if self.scalar_type() != S::TYPE || self.dim() != N {
+            return None;
+        }
+        if !self.dim_order().iter().map(|d| *d as usize).eq(0..) {
+            panic!("Non-default dim order is not supported for TensorAccessorInner");
+        }
+        let data = self.as_ptr_raw() as *const S;
+        let accessor = unsafe { TensorAccessorInner::new(data, self.sizes(), self.strides()) };
+        Some(accessor)
+    }
+
+    /// Get an immutable accessor for the tensor.
+    ///
+    /// An accessor is a utility struct, templated over the type of the tensor elements and the number
+    /// of dimensions, which make it very efficient to access tensor elements by index.
+    /// See the [`TensorAccessor`] for more details.
+    pub fn accessor<S: Scalar, const N: usize>(&self) -> Option<TensorAccessor<'_, S, N>> {
+        Some(TensorAccessor(self.accessor_inner()?))
+    }
+
+    /// Get a mutable accessor for the tensor.
+    ///
+    /// An accessor is a utility struct, templated over the type of the tensor elements and the number
+    /// of dimensions, which make it very efficient to access tensor elements by index.
+    /// See the [`TensorAccessorMut`] for more details.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the tensor was created with a mutable tensor impl.
+    pub unsafe fn accessor_mut<S: Scalar, const N: usize>(
+        &mut self,
+    ) -> Option<TensorAccessorMut<'_, S, N>> {
+        Some(TensorAccessorMut(self.accessor_inner()?))
     }
 }
 impl Destroy for et_c::TensorStorage {
@@ -266,7 +383,16 @@ impl Storable for RawTensor<'_> {
     type __Storage = et_c::TensorStorage;
 }
 
-pub(crate) struct RawTensorImpl<'a>(et_c::TensorImpl, PhantomData<&'a ()>);
+/// A raw tensor implementation.
+///
+/// This struct is a low-level match to the C++ `TensorImpl` class.
+/// A [`TensorImpl`](crate::tensor::TensorImpl) or any of its
+/// variants (`TensorImplAny`, `TensorImplMut`, etc) is preferred for most uses, but this struct
+/// is exposed for low level users who need to avoid code size overhead (avoiding the regular
+/// tensor generics).
+/// The struct does not enforce any mutability rules, and the caller must ensure that the tensor
+/// is used correctly according to its mutability.
+pub struct RawTensorImpl<'a>(et_c::TensorImpl, PhantomData<&'a ()>);
 impl<'a> RawTensorImpl<'a> {
     /// Create a new TensorImpl from a pointer to the data.
     ///
@@ -278,7 +404,13 @@ impl<'a> RawTensorImpl<'a> {
     /// # Panics
     ///
     /// If the sizes, dim_order or strides slices are of different lengths.
-    pub(super) unsafe fn from_ptr_impl<S: Scalar>(
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure elements in the data can be safely accessed according to the scalar type, sizes,
+    /// dim order and strides of the tensor.
+    /// The caller must ensure that the data is valid for the lifetime of the TensorImpl.
+    pub unsafe fn from_ptr<S: Scalar>(
         sizes: &'a [SizesType],
         data: *mut S,
         dim_order: &'a [DimOrderType],

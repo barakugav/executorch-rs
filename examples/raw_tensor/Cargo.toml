@@ -1,0 +1,14 @@
+[package]
+publish = false
+name = "example-hello-world"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+executorch = { path = "../../executorch/", features = [
+    "ndarray",
+    "data-loader",
+    "module",
+    "tensor-ptr",
+] }
+ndarray = { version = "0.16.0", default-features = false }

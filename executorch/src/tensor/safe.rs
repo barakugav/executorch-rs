@@ -13,7 +13,7 @@ use executorch_sys as et_c;
 /// used directly.
 /// Use the aliases such as [`Tensor`], [`TensorAny`] or [`TensorMut`] instead.
 /// It is used to provide a common API for all of them.
-pub struct TensorBase<'a, D: Data>(RawTensor<'a>, PhantomData<D>);
+pub struct TensorBase<'a, D: Data>(pub(crate) RawTensor<'a>, PhantomData<D>);
 impl<'a, D: Data> TensorBase<'a, D> {
     /// Create a new tensor in a boxed heap memory.
     ///
@@ -22,7 +22,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// The caller must obtain a mutable reference to `tensor_impl` if the tensor is mutable.
     #[cfg(feature = "alloc")]
     unsafe fn new_boxed(tensor_impl: &'a TensorImplBase<D>) -> Self {
-        Self(RawTensor::new_boxed(&tensor_impl.0), PhantomData)
+        Self(RawTensor::new(&tensor_impl.0), PhantomData)
     }
 
     /// Create a new tensor in the given storage.
@@ -41,7 +41,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
                 Pin<&'a mut Storage<RawTensor<'_>>>,
             >(storage)
         };
-        let tensor = RawTensor::new_in_storage_impl(&tensor_impl.0, storage);
+        let tensor = RawTensor::new_in_storage(&tensor_impl.0, storage);
         Self(tensor, PhantomData)
     }
 
@@ -235,17 +235,17 @@ impl<'a, D: Data> TensorBase<'a, D> {
 
     /// Get a reference to the element at `index`, or `None` if the scalar type of the tensor does not
     /// match `S` or the index is out of bounds.
-    pub fn try_get<S: Scalar>(&self, index: &[usize]) -> Option<&S> {
-        self.0.try_get(index)
+    pub fn get_as_typed<S: Scalar>(&self, index: &[usize]) -> Option<&S> {
+        self.0.get_as_typed(index)
     }
 
     /// Get a mutable reference to the element at `index`, or `None` if the scalar type of the tensor does not
     /// match `S` or the index is out of bounds.
-    pub fn try_get_mut<S: Scalar>(&mut self, index: &[usize]) -> Option<&mut S>
+    pub fn get_as_typed_mut<S: Scalar>(&mut self, index: &[usize]) -> Option<&mut S>
     where
         D: DataMut,
     {
-        unsafe { self.0.try_get_mut(index) }
+        unsafe { self.0.get_as_typed_mut(index) }
     }
 
     /// Converts this tensor into a type-erased tensor.
@@ -492,13 +492,19 @@ impl<'a, D: Data> TensorImplBase<'a, D> {
     /// # Panics
     ///
     /// If the sizes, dim_order or strides slices are of different lengths.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure elements in the data can be safely accessed according to the scalar type, sizes,
+    /// dim order and strides of the tensor.
+    /// The caller must ensure that the data is valid for the lifetime of the TensorImpl.
     unsafe fn from_ptr_impl<S: Scalar>(
         sizes: &'a [SizesType],
         data: *mut S,
         dim_order: &'a [DimOrderType],
         strides: &'a [StridesType],
     ) -> Result<Self> {
-        let impl_ = RawTensorImpl::from_ptr_impl(sizes, data, dim_order, strides)?;
+        let impl_ = RawTensorImpl::from_ptr(sizes, data, dim_order, strides)?;
         Ok(Self(impl_, PhantomData))
     }
 }
@@ -967,14 +973,14 @@ mod tests {
         assert!(tensor.get(&[4, 0, 0]).is_none());
         assert!(tensor.get(&[0, 5, 0]).is_none());
         assert!(tensor.get(&[0, 0, 3]).is_none());
-        assert!(tensor.try_get::<i32>(&[4, 0, 0]).is_none());
-        assert!(tensor.try_get::<i32>(&[0, 5, 0]).is_none());
-        assert!(tensor.try_get::<i32>(&[0, 0, 3]).is_none());
+        assert!(tensor.get_as_typed::<i32>(&[4, 0, 0]).is_none());
+        assert!(tensor.get_as_typed::<i32>(&[0, 5, 0]).is_none());
+        assert!(tensor.get_as_typed::<i32>(&[0, 0, 3]).is_none());
 
         for (x, y, z) in indices.clone() {
             let actual1 = tensor[&[x, y, z]];
             let actual2 = tensor.get(&[x, y, z]).unwrap();
-            let actual3 = tensor.try_get::<i32>(&[x, y, z]).unwrap();
+            let actual3 = tensor.get_as_typed::<i32>(&[x, y, z]).unwrap();
             let expected = x as i32 * 1337 - y as i32 * 87 + z as i32 * 13;
             assert_eq!(actual1, expected);
             assert_eq!(*actual2, expected);
@@ -983,10 +989,10 @@ mod tests {
 
         let tensor = tensor.as_type_erased();
         for (x, y, z) in indices.clone() {
-            let actual = tensor.try_get::<i32>(&[x, y, z]).unwrap();
+            let actual = tensor.get_as_typed::<i32>(&[x, y, z]).unwrap();
             assert_eq!(*actual, x as i32 * 1337 - y as i32 * 87 + z as i32 * 13);
         }
-        assert!(tensor.try_get::<f32>(&[0, 0, 0]).is_none())
+        assert!(tensor.get_as_typed::<f32>(&[0, 0, 0]).is_none())
     }
 
     #[cfg(feature = "alloc")]
@@ -1006,9 +1012,9 @@ mod tests {
         assert!(tensor.get_mut(&[4, 0, 0]).is_none());
         assert!(tensor.get_mut(&[0, 5, 0]).is_none());
         assert!(tensor.get_mut(&[0, 0, 3]).is_none());
-        assert!(tensor.try_get_mut::<i32>(&[4, 0, 0]).is_none());
-        assert!(tensor.try_get_mut::<i32>(&[0, 5, 0]).is_none());
-        assert!(tensor.try_get_mut::<i32>(&[0, 0, 3]).is_none());
+        assert!(tensor.get_as_typed_mut::<i32>(&[4, 0, 0]).is_none());
+        assert!(tensor.get_as_typed_mut::<i32>(&[0, 5, 0]).is_none());
+        assert!(tensor.get_as_typed_mut::<i32>(&[0, 0, 3]).is_none());
 
         // IndexMut
         for (x, y, z) in indices.clone() {
@@ -1045,7 +1051,7 @@ mod tests {
             assert_eq!(tensor[&[x, y, z]], 0);
         }
         for (x, y, z) in indices.clone() {
-            *tensor.try_get_mut::<i32>(&[x, y, z]).unwrap() =
+            *tensor.get_as_typed_mut::<i32>(&[x, y, z]).unwrap() =
                 x as i32 * 1337 - y as i32 * 87 + z as i32 * 13;
         }
         for (x, y, z) in indices.clone() {
@@ -1053,26 +1059,29 @@ mod tests {
             assert_eq!(tensor[&[x, y, z]], expected);
         }
         for (x, y, z) in indices.clone() {
-            *tensor.try_get_mut::<i32>(&[x, y, z]).unwrap() = 0;
+            *tensor.get_as_typed_mut::<i32>(&[x, y, z]).unwrap() = 0;
         }
 
         // try_get_mut of type-erased tensor
         let mut tensor = tensor.as_type_erased_mut();
         for (x, y, z) in indices.clone() {
-            assert_eq!(*tensor.try_get_mut::<i32>(&[x, y, z]).unwrap(), 0);
+            assert_eq!(*tensor.get_as_typed_mut::<i32>(&[x, y, z]).unwrap(), 0);
         }
         for (x, y, z) in indices.clone() {
-            *tensor.try_get_mut::<i32>(&[x, y, z]).unwrap() =
+            *tensor.get_as_typed_mut::<i32>(&[x, y, z]).unwrap() =
                 x as i32 * 1337 - y as i32 * 87 + z as i32 * 13;
         }
         for (x, y, z) in indices.clone() {
             let expected = x as i32 * 1337 - y as i32 * 87 + z as i32 * 13;
-            assert_eq!(*tensor.try_get_mut::<i32>(&[x, y, z]).unwrap(), expected);
+            assert_eq!(
+                *tensor.get_as_typed_mut::<i32>(&[x, y, z]).unwrap(),
+                expected
+            );
         }
         for (x, y, z) in indices.clone() {
-            *tensor.try_get_mut::<i32>(&[x, y, z]).unwrap() = 0;
+            *tensor.get_as_typed_mut::<i32>(&[x, y, z]).unwrap() = 0;
         }
-        assert!(tensor.try_get_mut::<f32>(&[0, 0, 0]).is_none())
+        assert!(tensor.get_as_typed_mut::<f32>(&[0, 0, 0]).is_none())
     }
 
     #[cfg(feature = "tensor-ptr")]
