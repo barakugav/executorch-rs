@@ -338,7 +338,7 @@ impl<'a> RawTensor<'a> {
         if self.scalar_type() != S::TYPE || self.dim() != N {
             return None;
         }
-        if !self.dim_order().iter().map(|d| *d as usize).eq(0..) {
+        if !self.dim_order().iter().map(|d| *d as usize).eq(0..N) {
             panic!("Non-default dim order is not supported for TensorAccessorInner");
         }
         let data = self.as_ptr_raw() as *const S;

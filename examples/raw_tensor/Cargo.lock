@@ -186,7 +186,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "60b1af1c220855b6ceac025d3f6ecdd2b7c4894bfe9cd9bda4fbb4bc7c0d4cf0"
 
 [[package]]
-name = "example-hello-world"
+name = "example-raw-tensor"
 version = "0.0.0"
 dependencies = [
  "executorch",
@@ -195,7 +195,7 @@ dependencies = [
 
 [[package]]
 name = "executorch"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "cfg-if",
  "executorch-sys",
@@ -204,7 +204,7 @@ dependencies = [
 
 [[package]]
 name = "executorch-sys"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "bindgen",
  "cc",

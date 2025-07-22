@@ -154,3 +154,87 @@ impl<'a, T, const N: usize> IndexMut<[usize; N]> for TensorAccessorMut<'a, T, N>
         self.get_mut(index).unwrap()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::tensor::{RawTensor, RawTensorImpl};
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn get() {
+        let sizes = [2, 3];
+        let data: [i32; 6] = [1, 2, 3, 4, 5, 6];
+        let dim_order = [0, 1];
+        let strides = [3, 1];
+        let tensor_impl = unsafe {
+            RawTensorImpl::from_ptr(&sizes, data.as_ptr().cast_mut(), &dim_order, &strides).unwrap()
+        };
+        let tensor = unsafe { RawTensor::new(&tensor_impl) };
+
+        assert!(tensor.accessor::<i8, 2>().is_none());
+        assert!(tensor.accessor::<i16, 2>().is_none());
+        assert!(tensor.accessor::<i64, 2>().is_none());
+        assert!(tensor.accessor::<f32, 2>().is_none());
+        assert!(tensor.accessor::<f64, 2>().is_none());
+        assert!(tensor.accessor::<i32, 1>().is_none());
+        assert!(tensor.accessor::<i32, 3>().is_none());
+        assert!(tensor.accessor::<i32, 4>().is_none());
+        let accessor = tensor.accessor::<i32, 2>().unwrap();
+        assert_eq!(accessor.get([0, 0]), Some(&1));
+        assert_eq!(accessor.get([0, 1]), Some(&2));
+        assert_eq!(accessor.get([0, 2]), Some(&3));
+        assert_eq!(accessor.get([0, 3]), None);
+        assert_eq!(accessor.get([1, 0]), Some(&4));
+        assert_eq!(accessor.get([1, 1]), Some(&5));
+        assert_eq!(accessor.get([1, 2]), Some(&6));
+        assert_eq!(accessor.get([2, 0]), None);
+        assert_eq!(accessor[[0, 0]], 1);
+        assert_eq!(accessor[[0, 1]], 2);
+        assert_eq!(accessor[[0, 2]], 3);
+        assert_eq!(accessor[[1, 0]], 4);
+        assert_eq!(accessor[[1, 1]], 5);
+        assert_eq!(accessor[[1, 2]], 6);
+    }
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn get_mut() {
+        let sizes = [2, 3];
+        let mut data: [i32; 6] = [1, 2, 3, 4, 5, 6];
+        let dim_order = [0, 1];
+        let strides = [3, 1];
+        let mut tensor_impl = unsafe {
+            RawTensorImpl::from_ptr(&sizes, data.as_mut_ptr(), &dim_order, &strides).unwrap()
+        };
+        let mut tensor = unsafe { RawTensor::new(&mut tensor_impl) };
+
+        unsafe {
+            assert!(tensor.accessor_mut::<i8, 2>().is_none());
+            assert!(tensor.accessor_mut::<i16, 2>().is_none());
+            assert!(tensor.accessor_mut::<i64, 2>().is_none());
+            assert!(tensor.accessor_mut::<f32, 2>().is_none());
+            assert!(tensor.accessor_mut::<f64, 2>().is_none());
+            assert!(tensor.accessor_mut::<i32, 1>().is_none());
+            assert!(tensor.accessor_mut::<i32, 3>().is_none());
+            assert!(tensor.accessor_mut::<i32, 4>().is_none());
+            let mut accessor = tensor.accessor_mut::<i32, 2>().unwrap();
+            assert_eq!(accessor.get([0, 0]), Some(&1));
+            assert_eq!(accessor.get([0, 1]), Some(&2));
+            assert_eq!(accessor.get([0, 2]), Some(&3));
+            assert_eq!(accessor.get([0, 3]), None);
+            assert_eq!(accessor.get([1, 0]), Some(&4));
+            assert_eq!(accessor.get([1, 1]), Some(&5));
+            assert_eq!(accessor.get([1, 2]), Some(&6));
+            assert_eq!(accessor.get([2, 0]), None);
+
+            *accessor.get_mut([0, 0]).unwrap() = 10;
+            accessor[[1, 1]] = 25;
+            assert_eq!(accessor[[0, 0]], 10);
+            assert_eq!(accessor[[0, 1]], 2);
+            assert_eq!(accessor[[0, 2]], 3);
+            assert_eq!(accessor[[1, 0]], 4);
+            assert_eq!(accessor[[1, 1]], 25);
+            assert_eq!(accessor[[1, 2]], 6);
+        }
+    }
+}
