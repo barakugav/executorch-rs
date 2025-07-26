@@ -316,7 +316,17 @@ extern "C"
     };
     struct TensorInfo
     {
-        size_t _blob[6];
+
+        // sizes_ (2)
+        // dim_order_ (2)
+        // name_ (2)
+        size_t _blob1[6];
+        // scalar_type_
+        uint8_t _blob2;
+        // is_memory_planned_
+        bool _blob3;
+        // nbytes_
+        size_t _blob4;
     };
     struct MethodMeta
     {
@@ -337,7 +347,7 @@ extern "C"
         // delegates_
         // n_chains_
         // chains_
-        // external_constants_
+        // merged_data_map_
         // n_external_constants_
         size_t _blob1[15];
         // init_state_;
@@ -571,6 +581,8 @@ extern "C"
         int _blob5[2];
         // alloc_ (6)
         size_t _blob6[6];
+        // filter_
+        size_t _blob7;
     };
 #endif
 

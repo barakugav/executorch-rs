@@ -35,7 +35,7 @@ impl<'a> Module<'a> {
     ///
     /// * `file_path` - The path to the ExecuTorch program file to load.
     /// - `data_map_path`: The path to a .ptd file.
-    /// * `load_mode` - The loading mode to use. Defaults to `LoadMode::MmapUseMlock`.
+    /// * `load_mode` - The loading mode to use. Defaults to `LoadMode::File`.
     /// * `event_tracer` - A EventTracer used for tracking and logging events.
     ///
     /// # Returns
@@ -55,7 +55,7 @@ impl<'a> Module<'a> {
         let data_map_path = data_map_path
             .map(|path| path.to_str().ok_or(Error::ToCStr).unwrap())
             .unwrap_or("");
-        let load_mode = load_mode.unwrap_or(LoadMode::MmapUseMlock).cpp();
+        let load_mode = load_mode.unwrap_or(LoadMode::File).cpp();
         let event_tracer = event_tracer
             .map(|tracer| tracer.0)
             .unwrap_or(et_c::cxx::UniquePtr::null());
