@@ -65,7 +65,7 @@ def clone_executorch():
                 "--depth",
                 "1",
                 "--branch",
-                "v0.6.0",
+                "v0.7.0",
                 "https://github.com/pytorch/executorch.git",
                 ".",
             ],
