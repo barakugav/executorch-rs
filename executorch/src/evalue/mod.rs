@@ -1053,7 +1053,7 @@ mod tests {
         {
             let evalue = EValue::new(string);
             assert_eq!(evalue.tag(), Tag::String);
-            assert_eq!(evalue.to_cstr(), string);
+            assert_eq!(&evalue.to_cstr(), string);
             assert_eq!(evalue.as_str(), string.to_str().unwrap());
             assert_eq!(evalue.as_chars(), chars);
 

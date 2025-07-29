@@ -1,10 +1,10 @@
 //! Custom scalar types that can be used in tensors.
 //!
-//! Half precision floating point types are provided by the `half` feature if enabled, otherwise a simple wrappers
-//! around `u16` are provided without any arithmetic operations.
+//! Half precision floating point types are provided by the `half` crate if its feature is enabled,
+//! otherwise a simple wrappers around `u16` are provided without any arithmetic operations.
 //!
-//! Complex numbers are provided by the `num-complex` feature if enabled, otherwise a simple struct with real and
-//! imaginary parts is provided without any arithmetic operations.
+//! Complex numbers are provided by the `num-complex` crate if its feature is enabled,
+//! otherwise a simple struct with real and imaginary parts is provided without any arithmetic operations.
 
 macro_rules! scalar_type {
     ($(#[$outer:meta])* $name:ident, $repr:ty) => {
@@ -14,11 +14,11 @@ macro_rules! scalar_type {
         pub struct $name($repr);
         impl $name {
             #[doc = concat!("Creates a new `", stringify!($name), "` from its raw bit representation.")]
-            pub fn from_bits(bits: $repr) -> Self {
+            pub const fn from_bits(bits: $repr) -> Self {
                 Self(bits)
             }
             #[doc = concat!("Get the raw bit representation of the `", stringify!($name), "`.")]
-            pub fn bits(&self) -> $repr {
+            pub const fn to_bits(&self) -> $repr {
                 self.0
             }
         }
