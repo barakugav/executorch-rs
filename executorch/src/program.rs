@@ -61,7 +61,7 @@ use crate::evalue::{EValue, Tag};
 use crate::event_tracer::EventTracer;
 use crate::memory::MemoryManager;
 use crate::tensor::ScalarType;
-use crate::util::{try_c_new, ArrayRef, IntoCpp, IntoRust};
+use crate::util::{try_c_new, ArrayRef, IntoCpp, IntoRust, __ArrayRefImpl, chars2str};
 use crate::{CError, Error, Result};
 use executorch_sys as et_c;
 
@@ -375,13 +375,13 @@ impl<'a> TensorInfo<'a> {
     }
 
     /// Returns the sizes of the tensor.
-    pub fn sizes(&self) -> &'a [i32] {
+    pub fn sizes(&self) -> &[i32] {
         let span = unsafe { et_c::executorch_TensorInfo_sizes(&self.0) };
         unsafe { ArrayRef::from_inner(span) }.as_slice()
     }
 
     /// Returns the dim order of the tensor.
-    pub fn dim_order(&self) -> &'a [u8] {
+    pub fn dim_order(&self) -> &[u8] {
         let span = unsafe { et_c::executorch_TensorInfo_dim_order(&self.0) };
         unsafe { ArrayRef::from_inner(span) }.as_slice()
     }
@@ -395,10 +395,27 @@ impl<'a> TensorInfo<'a> {
     pub fn nbytes(&self) -> usize {
         unsafe { et_c::executorch_TensorInfo_nbytes(&self.0) }
     }
+
+    /// Returns the fully qualified name of the Tensor.
+    ///
+    /// Might be empty if the tensor is nameless.
+    ///
+    /// The function calls [`Self::name_chars`] internally, and tries to convert the returned bytes to a `&str`.
+    pub fn name(&self) -> Result<&str, std::str::Utf8Error> {
+        chars2str(self.name_chars())
+    }
+
+    /// Returns the fully qualified name of the Tensor as `[ffi::c_char]`.
+    ///
+    /// Might be empty if the tensor is nameless.
+    pub fn name_chars(&self) -> &[std::ffi::c_char] {
+        unsafe { et_c::executorch_TensorInfo_name(&self.0).as_slice() }
+    }
 }
 impl std::fmt::Debug for TensorInfo<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         f.debug_struct("TensorInfo")
+            .field("name", &self.name().unwrap_or("<invalid utf8>"))
             .field("sizes", &self.sizes())
             .field("dim_order", &self.dim_order())
             .field("scalar_type", &self.scalar_type())

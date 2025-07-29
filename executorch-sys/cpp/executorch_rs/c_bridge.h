@@ -703,6 +703,7 @@ extern "C"
     struct ArrayRefU8 executorch_TensorInfo_dim_order(const struct TensorInfo *self);
     enum ScalarType executorch_TensorInfo_scalar_type(const struct TensorInfo *self);
     size_t executorch_TensorInfo_nbytes(const struct TensorInfo *self);
+    struct ArrayRefChar executorch_TensorInfo_name(const struct TensorInfo *self);
 
 #if defined(EXECUTORCH_RS_ETDUMP)
     // ETDumpGen

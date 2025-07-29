@@ -840,6 +840,15 @@ size_t executorch_TensorInfo_nbytes(const struct TensorInfo *self)
     auto self_ = checked_reinterpret_cast<executorch::runtime::TensorInfo>(self);
     return self_->nbytes();
 }
+struct ArrayRefChar executorch_TensorInfo_name(const struct TensorInfo *self)
+{
+    auto self_ = checked_reinterpret_cast<executorch::runtime::TensorInfo>(self);
+    auto name = self_->name();
+    return ArrayRefChar{
+        .data = name.data(),
+        .len = name.size(),
+    };
+}
 
 #if defined(EXECUTORCH_RS_ETDUMP)
 // ETDumpGen
