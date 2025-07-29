@@ -52,8 +52,8 @@ pub(crate) mod ffi {
         /// - `event_tracer`: An EventTracer used for tracking and logging events, or null if not needed.
         #[namespace = "executorch_rs"]
         fn Module_new(
-            file_path: &str,
-            data_map_path: &str,
+            file_path: &CxxString,
+            data_map_path: &CxxString,
             load_mode: ModuleLoadMode,
             event_tracer: UniquePtr<EventTracer>,
         ) -> UniquePtr<Module>;
@@ -108,7 +108,7 @@ pub(crate) mod ffi {
         #[namespace = "executorch_rs"]
         unsafe fn Module_load_method(
             self_: Pin<&mut Module>,
-            method_name: &str,
+            method_name: &CxxString,
             planned_memory: *mut HierarchicalAllocator,
             event_tracer: *mut EventTracer,
         ) -> Error;
@@ -121,7 +121,7 @@ pub(crate) mod ffi {
         /// # Returns
         /// `true` if the method specified by `method_name` is loaded, `false` otherwise.
         #[namespace = "executorch_rs"]
-        fn Module_is_method_loaded(self_: &Module, method_name: &str) -> bool;
+        fn Module_is_method_loaded(self_: &Module, method_name: &CxxString) -> bool;
 
         /// Get a method metadata struct by method name.
         ///
@@ -140,7 +140,7 @@ pub(crate) mod ffi {
         #[namespace = "executorch_rs"]
         unsafe fn Module_method_meta(
             self_: Pin<&mut Module>,
-            method_name: &str,
+            method_name: &CxxString,
             method_meta_out: *mut MethodMeta,
         ) -> Error;
 
@@ -161,7 +161,7 @@ pub(crate) mod ffi {
         #[namespace = "executorch_rs"]
         unsafe fn Module_execute(
             self_: Pin<&mut Module>,
-            method_name: &str,
+            method_name: &CxxString,
             inputs: ArrayRefEValue,
             outputs: *mut VecEValue,
         ) -> Error;

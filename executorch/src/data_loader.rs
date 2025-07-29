@@ -84,8 +84,7 @@ mod file_data_loader {
         /// Panics if `file_name` is not a valid UTF-8 string or if it contains a null byte.
         #[cfg(feature = "std")]
         pub fn from_path(file_name: &std::path::Path, alignment: Option<usize>) -> Result<Self> {
-            let file_name = file_name.as_os_str().as_encoded_bytes();
-            let file_name = std::ffi::CString::new(file_name).map_err(|_| crate::Error::ToCStr)?;
+            let file_name = crate::util::path2cstring(file_name)?;
             Self::from_path_cstr(&file_name, alignment)
         }
 
@@ -160,8 +159,7 @@ mod file_data_loader {
             file_name: &std::path::Path,
             mlock_config: Option<MlockConfig>,
         ) -> Result<Self> {
-            let file_name = file_name.as_os_str().as_encoded_bytes();
-            let file_name = std::ffi::CString::new(file_name).map_err(|_| crate::Error::ToCStr)?;
+            let file_name = crate::util::path2cstring(file_name)?;
             Self::from_path_cstr(&file_name, mlock_config)
         }
 

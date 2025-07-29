@@ -458,6 +458,43 @@ impl_span!(u8, et_c::SpanU8);
 pub(crate) fn cstr2chars(s: &CStr) -> &[std::ffi::c_char] {
     unsafe { std::slice::from_raw_parts(s.as_ptr(), s.to_bytes().len()) }
 }
+pub(crate) fn str2chars(s: &str) -> &[std::ffi::c_char] {
+    assert_eq!(
+        core::alloc::Layout::new::<std::ffi::c_char>(),
+        core::alloc::Layout::new::<u8>()
+    );
+    unsafe { std::slice::from_raw_parts(s.as_ptr().cast(), s.len()) }
+}
+
+pub(crate) fn chars2str(s: &[std::ffi::c_char]) -> Result<&str, std::str::Utf8Error> {
+    assert_eq!(
+        core::alloc::Layout::new::<std::ffi::c_char>(),
+        core::alloc::Layout::new::<u8>()
+    );
+    let bytes = unsafe { std::mem::transmute::<&[std::ffi::c_char], &[u8]>(s) };
+    std::str::from_utf8(bytes)
+}
+
+#[cfg(feature = "alloc")]
+pub(crate) fn chars2cstring(s: &[std::ffi::c_char]) -> Option<std::ffi::CString> {
+    assert_eq!(
+        core::alloc::Layout::new::<std::ffi::c_char>(),
+        core::alloc::Layout::new::<u8>()
+    );
+    let s = unsafe { std::mem::transmute::<&[std::ffi::c_char], &[u8]>(s) };
+
+    let mut buf = alloc::Vec::with_capacity(s.len() + 1);
+    buf.extend_from_slice(s);
+    buf.push(0); // null terminator
+
+    std::ffi::CString::from_vec_with_nul(buf).ok()
+}
+
+#[cfg(feature = "alloc")]
+pub(crate) fn path2cstring(path: &std::path::Path) -> Result<std::ffi::CString, crate::Error> {
+    let path_bytes = path.as_os_str().as_encoded_bytes();
+    std::ffi::CString::new(path_bytes).map_err(|_| crate::Error::ToCStr)
+}
 
 #[cfg(feature = "std")]
 #[allow(dead_code)]

@@ -8,7 +8,9 @@ use std::pin::Pin;
 
 use crate::memory::{MemoryAllocator, Storable, Storage};
 use crate::tensor::{self, RawTensor, TensorAny, TensorBase};
-use crate::util::{ArrayRef, Destroy, IntoCpp, IntoRust, NonTriviallyMovable, __ArrayRefImpl};
+use crate::util::{
+    ArrayRef, Destroy, IntoCpp, IntoRust, NonTriviallyMovable, __ArrayRefImpl, chars2str,
+};
 use crate::{CError, Error, Result};
 use executorch_sys as et_c;
 
@@ -283,14 +285,27 @@ impl<'a> EValue<'a> {
         self.try_into().unwrap()
     }
 
-    /// Get a reference to the value as a `CStr`.
+    /// Get a reference to the value as a `&str`.
     ///
     /// # Panics
     ///
-    /// Panics if the value is of different type.
+    /// Panics if the value is not of type string, or the string is not a valid UTF-8.
     /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
     /// [`tag`][Self::tag] method.
-    pub fn as_cstr(&self) -> &CStr {
+    #[track_caller]
+    pub fn as_str(&self) -> &str {
+        self.try_into().unwrap()
+    }
+
+    /// Get a reference to the value as a `CString`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is not of type string, or the string contains null bytes.
+    /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
+    /// [`tag`][Self::tag] method.
+    #[cfg(feature = "alloc")]
+    pub fn to_cstr(&self) -> std::ffi::CString {
         self.try_into().unwrap()
     }
 
@@ -492,6 +507,16 @@ impl<'a> IntoEValue<'a> for &'a [std::ffi::c_char] {
         }
     }
 }
+impl<'a> IntoEValue<'a> for &'a str {
+    #[cfg(feature = "alloc")]
+    fn into_evalue(self) -> EValue<'a> {
+        crate::util::str2chars(self).into_evalue()
+    }
+
+    fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
+        crate::util::str2chars(self).into_evalue_in_storage(storage)
+    }
+}
 impl<'a> IntoEValue<'a> for &'a CStr {
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a> {
@@ -683,11 +708,19 @@ impl<'a> TryFrom<&'a EValue<'_>> for &'a [std::ffi::c_char] {
         }
     }
 }
-impl<'a> TryFrom<&'a EValue<'_>> for &'a CStr {
+impl<'a> TryFrom<&'a EValue<'_>> for &'a str {
     type Error = Error;
     fn try_from(value: &'a EValue) -> Result<Self> {
         let chars: &[std::ffi::c_char] = value.try_into()?;
-        Ok(unsafe { CStr::from_ptr(chars.as_ptr()) })
+        chars2str(chars).map_err(|_| Error::FromCStr)
+    }
+}
+#[cfg(feature = "alloc")]
+impl<'a> TryFrom<&'a EValue<'_>> for std::ffi::CString {
+    type Error = Error;
+    fn try_from(value: &'a EValue) -> Result<Self> {
+        let chars: &[std::ffi::c_char] = value.try_into()?;
+        crate::util::chars2cstring(chars).ok_or(Error::FromCStr)
     }
 }
 impl<'a> TryFrom<&'a EValue<'_>> for TensorAny<'a> {
@@ -1020,7 +1053,8 @@ mod tests {
         {
             let evalue = EValue::new(string);
             assert_eq!(evalue.tag(), Tag::String);
-            assert_eq!(evalue.as_cstr(), string);
+            assert_eq!(evalue.to_cstr(), string);
+            assert_eq!(evalue.as_str(), string.to_str().unwrap());
             assert_eq!(evalue.as_chars(), chars);
 
             test_try_from_evalue(Tag::String);
@@ -1029,7 +1063,7 @@ mod tests {
             let storage = storage!(EValue);
             let evalue = EValue::new_in_storage(string, storage);
             assert_eq!(evalue.tag(), Tag::String);
-            assert_eq!(evalue.as_cstr(), string);
+            assert_eq!(evalue.as_str(), string.to_str().unwrap());
             assert_eq!(evalue.as_chars(), chars);
         }
     }
@@ -1447,7 +1481,11 @@ mod tests {
                         );
                         assert_eq!(
                             same_tag,
-                            <&CStr as TryFrom<&EValue>>::try_from(&evalue).is_ok()
+                            <&str as TryFrom<&EValue>>::try_from(&evalue).is_ok()
+                        );
+                        assert_eq!(
+                            same_tag,
+                            <std::ffi::CString as TryFrom<&EValue>>::try_from(&evalue).is_ok()
                         );
                     }
                     Tag::Double => assert_eq!(

@@ -17,7 +17,7 @@ use crate::event_tracer::{EventTracer, EventTracerPtr};
 use crate::memory::HierarchicalAllocator;
 use crate::program::{MethodMeta, ProgramVerification};
 use crate::util::{try_c_new, ArrayRef, IntoCpp, IntoRust, NonTriviallyMovableVec};
-use crate::{Error, Result};
+use crate::Result;
 use executorch_sys as et_c;
 
 /// A facade class for loading programs and executing methods within them.
@@ -51,15 +51,17 @@ impl<'a> Module<'a> {
         load_mode: Option<LoadMode>,
         event_tracer: Option<EventTracerPtr<'a>>,
     ) -> Self {
-        let file_path = file_path.to_str().ok_or(Error::ToCStr).unwrap();
         let data_map_path = data_map_path
-            .map(|path| path.to_str().ok_or(Error::ToCStr).unwrap())
-            .unwrap_or("");
+            .map(|p| p.as_os_str().as_encoded_bytes())
+            .unwrap_or(&[]);
+        et_c::cxx::let_cxx_string!(file_path = file_path.as_os_str().as_encoded_bytes());
+        et_c::cxx::let_cxx_string!(data_map_path = data_map_path);
+
         let load_mode = load_mode.unwrap_or(LoadMode::File).cpp();
         let event_tracer = event_tracer
             .map(|tracer| tracer.0)
             .unwrap_or(et_c::cxx::UniquePtr::null());
-        let module = et_c::cpp::Module_new(file_path, data_map_path, load_mode, event_tracer);
+        let module = et_c::cpp::Module_new(&file_path, &data_map_path, load_mode, event_tracer);
         Self(module, PhantomData)
     }
 
@@ -147,6 +149,7 @@ impl<'a> Module<'a> {
         planned_memory: Option<&'a mut HierarchicalAllocator>,
         event_tracer: Option<&'a mut EventTracer>,
     ) -> Result<()> {
+        et_c::cxx::let_cxx_string!(method_name = method_name);
         let event_tracer = event_tracer
             .map(|tracer| tracer as *mut EventTracer as *mut et_c::cpp::EventTracer)
             .unwrap_or(std::ptr::null_mut());
@@ -156,7 +159,7 @@ impl<'a> Module<'a> {
         unsafe {
             et_c::cpp::Module_load_method(
                 self.0.as_mut().unwrap(),
-                method_name,
+                &method_name,
                 planned_memory,
                 event_tracer,
             )
@@ -178,7 +181,8 @@ impl<'a> Module<'a> {
     ///
     /// If the method name is not a valid UTF-8 string or contains a null character.
     pub fn is_method_loaded(&self, method_name: &str) -> bool {
-        et_c::cpp::Module_is_method_loaded(self.0.as_ref().unwrap(), method_name)
+        et_c::cxx::let_cxx_string!(method_name = method_name);
+        et_c::cpp::Module_is_method_loaded(self.0.as_ref().unwrap(), &method_name)
     }
 
     /// Get a method metadata struct by method name.
@@ -196,8 +200,9 @@ impl<'a> Module<'a> {
     ///
     /// If the method name is not a valid UTF-8 string or contains a null character.
     pub fn method_meta(&mut self, method_name: &str) -> Result<MethodMeta<'a>> {
+        et_c::cxx::let_cxx_string!(method_name = method_name);
         let meta = try_c_new(|meta| unsafe {
-            et_c::cpp::Module_method_meta(self.0.as_mut().unwrap(), method_name, meta)
+            et_c::cpp::Module_method_meta(self.0.as_mut().unwrap(), &method_name, meta)
         })?;
         Ok(unsafe { MethodMeta::new(meta) })
     }
@@ -222,6 +227,7 @@ impl<'a> Module<'a> {
         method_name: &str,
         inputs: &[EValue],
     ) -> Result<Vec<EValue<'b>>> {
+        et_c::cxx::let_cxx_string!(method_name = method_name);
         let inputs = unsafe {
             NonTriviallyMovableVec::<et_c::EValueStorage>::new(inputs.len(), |i, p| {
                 et_c::executorch_EValue_copy(
@@ -234,7 +240,7 @@ impl<'a> Module<'a> {
         };
         let inputs = ArrayRef::from_slice(inputs.as_slice());
         let mut outputs = try_c_new(|outputs| unsafe {
-            et_c::cpp::Module_execute(self.0.as_mut().unwrap(), method_name, inputs.0, outputs)
+            et_c::cpp::Module_execute(self.0.as_mut().unwrap(), &method_name, inputs.0, outputs)
         })?
         .rs();
         Ok(outputs
