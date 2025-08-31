@@ -350,7 +350,7 @@ impl<'a> EValuePtrList<'a> {
 /// let wrapped_vals_storage = executorch::storage!(EValuePtrListElement, [3]);
 /// let wrapped_vals = EValuePtrList::new_in_storage([&evalue1, &evalue2, &evalue3], wrapped_vals_storage);
 /// ```
-pub struct EValuePtrListElem(#[allow(dead_code)] et_c::EValueRef);
+pub struct EValuePtrListElem(#[allow(unused)] et_c::EValueRef);
 impl Storable for EValuePtrListElem {
     type __Storage = et_c::EValueRef;
 }

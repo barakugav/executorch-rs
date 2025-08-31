@@ -165,10 +165,10 @@ impl<T: Destroy> NonTriviallyMovable<'_, T> {
 }
 
 #[cfg(feature = "alloc")]
-#[allow(dead_code)]
+#[allow(unused)]
 pub(crate) struct NonTriviallyMovableVec<T: Destroy>(Pin<alloc::Box<(PhantomPinned, [T])>>);
 #[cfg(feature = "alloc")]
-#[allow(dead_code)]
+#[allow(unused)]
 impl<T: Destroy> NonTriviallyMovableVec<T> {
     pub(crate) unsafe fn new(len: usize, init: impl Fn(usize, &mut MaybeUninit<T>)) -> Self {
         let vec = (0..len)
@@ -245,7 +245,7 @@ pub(crate) trait IntoCpp {
 ///
 /// This is intended to be trivially copyable, so it should be passed by
 /// value.
-#[allow(dead_code)]
+#[allow(unused)]
 pub(crate) struct ArrayRef<'a, T: ArrayRefElement>(
     pub(crate) T::__ArrayRefImpl,
     PhantomData<&'a ()>,
@@ -373,7 +373,7 @@ impl __ArrayRefImpl for et_c::ArrayRefEValue {
 ///
 /// This is intended to be trivially copyable, so it should be passed by
 /// value.
-#[allow(dead_code)]
+#[allow(unused)]
 pub struct Span<'a, T: SpanElement>(pub(crate) T::__SpanImpl, PhantomData<&'a T>);
 impl<'a, T: SpanElement> Span<'a, T> {
     // pub(crate) unsafe fn new(span: T::SpanImpl) -> Self {
@@ -490,14 +490,15 @@ pub(crate) fn chars2cstring(s: &[std::ffi::c_char]) -> Option<std::ffi::CString>
     std::ffi::CString::from_vec_with_nul(buf).ok()
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
+#[allow(unused)]
 pub(crate) fn path2cstring(path: &std::path::Path) -> Result<std::ffi::CString, crate::Error> {
     let path_bytes = path.as_os_str().as_encoded_bytes();
     std::ffi::CString::new(path_bytes).map_err(|_| crate::Error::ToCStr)
 }
 
 #[cfg(feature = "std")]
-#[allow(dead_code)]
+#[allow(unused)]
 pub(crate) mod cpp_vec {
     use super::IntoRust;
     use executorch_sys as et_c;
@@ -602,7 +603,7 @@ pub(crate) mod cpp_vec {
 }
 
 // Debug func
-#[allow(dead_code)]
+#[allow(unused)]
 #[cfg(feature = "std")]
 pub(crate) fn to_bytes<T>(val: &T) -> Vec<u8> {
     (0..std::mem::size_of_val(val))

@@ -56,7 +56,7 @@ cfg_if::cfg_if! { if #[cfg(feature = "num-complex")] {
     ///
     /// Doesn't provide any arithmetic operations, but expose the real and imaginary parts.
     /// Enable the `num-complex` feature to get a fully functional `Complex` type.
-    #[derive(Copy, Clone, Debug, Default)]
+    #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
     #[repr(C)]
     pub struct Complex<T> {
         /// Real portion of the complex number

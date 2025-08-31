@@ -92,7 +92,7 @@ impl<'a> RawTensor<'a> {
     /// # Safety
     ///
     /// The caller must ensure that the given tensor is valid for the lifetime of the new tensor.
-    #[allow(dead_code)]
+    #[allow(unused)]
     pub(crate) unsafe fn from_inner_ref_mut(tensor: et_c::TensorRefMut) -> Self {
         debug_assert!(!tensor.ptr.is_null());
         let tensor = unsafe { &mut *(tensor.ptr as *mut et_c::TensorStorage) };

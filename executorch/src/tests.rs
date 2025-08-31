@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(unused)]
 
 use core::ffi::CStr;
 #[cfg(feature = "std")]

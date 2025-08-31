@@ -63,7 +63,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     ///
     /// The caller must ensure that the given tensor is valid for the lifetime of the new tensor,
     /// and that the tensor is compatible with the data generic.
-    #[allow(dead_code)]
+    #[allow(unused)]
     pub(crate) unsafe fn from_inner_ref_mut(tensor: et_c::TensorRefMut) -> Self {
         Self(RawTensor::from_inner_ref_mut(tensor), PhantomData)
     }
@@ -729,7 +729,7 @@ pub trait Data {
     private_decl! {}
 }
 /// A marker trait extending [`Data`] that indicate that the data is mutable.
-#[allow(dead_code)]
+#[allow(unused)]
 pub trait DataMut: Data {}
 /// A marker trait extending [`Data`] that provide information about the scalar type of the data.
 pub trait DataTyped: Data {

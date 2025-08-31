@@ -8,7 +8,7 @@ pub mod cxx_util {
     /// This struct is useful to pass any Rust object to C++ code as `Box<RustAny>`, and the C++ code will call
     /// the destructor of the object when the `RustAny` object is dropped.
     pub struct RustAny {
-        #[allow(dead_code)]
+        #[allow(unused)]
         inner: Box<dyn std::any::Any>,
     }
     impl RustAny {

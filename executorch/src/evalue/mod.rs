@@ -174,7 +174,7 @@ impl<'a> EValue<'a> {
     ///
     /// The given value should not be used after this function is called, and its Cpp destructor should be called.
     #[cfg(feature = "alloc")]
-    #[allow(dead_code)]
+    #[allow(unused)]
     pub(crate) unsafe fn move_from(value: et_c::EValueRefMut) -> Self {
         Self(unsafe {
             NonTriviallyMovable::new_boxed(|p: *mut et_c::EValueStorage| {
@@ -1053,7 +1053,7 @@ mod tests {
         {
             let evalue = EValue::new(string);
             assert_eq!(evalue.tag(), Tag::String);
-            assert_eq!(&evalue.to_cstr(), string);
+            assert_eq!(evalue.to_cstr().as_c_str(), string);
             assert_eq!(evalue.as_str(), string.to_str().unwrap());
             assert_eq!(evalue.as_chars(), chars);
 

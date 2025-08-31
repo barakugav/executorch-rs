@@ -1,5 +1,5 @@
 mod c_link {
-    #![allow(dead_code)]
+    #![allow(unused)]
     #![allow(unused_imports)]
     #![allow(clippy::upper_case_acronyms)]
     #![allow(clippy::missing_safety_doc)]
