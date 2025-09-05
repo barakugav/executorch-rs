@@ -2,37 +2,21 @@ version: 2
 updates:
   # Cargo
   - package-ecosystem: cargo
-    directory: ./
+    directories:
+      - executorch/
+      - executorch-sys/
+      - examples/hello_world/
+      - examples/raw_tensor/
+      - examples/no_ndarray/
+      - examples/no_std/
+      - examples/nano-gpt/
+      - examples/llama3/
     schedule:
       interval: monthly
-  - package-ecosystem: cargo
-    directory: executorch-sys/
-    schedule:
-      interval: monthly
-  - package-ecosystem: cargo
-    directory: examples/hello_world/
-    schedule:
-      interval: monthly
-  - package-ecosystem: cargo
-    directory: examples/raw_tensor/
-    schedule:
-      interval: monthly
-  - package-ecosystem: cargo
-    directory: examples/no_ndarray/
-    schedule:
-      interval: monthly
-  - package-ecosystem: cargo
-    directory: examples/no_std/
-    schedule:
-      interval: monthly
-  - package-ecosystem: cargo
-    directory: examples/nano-gpt/
-    schedule:
-      interval: monthly
-  - package-ecosystem: cargo
-    directory: examples/llama3/
-    schedule:
-      interval: monthly
+    groups:
+      rust-patch-updates:
+        update-types:
+          - "patch"
 
   # Actions
   - package-ecosystem: github-actions
