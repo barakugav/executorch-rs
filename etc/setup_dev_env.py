@@ -36,7 +36,8 @@ def main():
     subprocess.check_call([sys.executable, "-m", "ensurepip"])
     if not args.skip_executorch_python:
         subprocess.check_call(
-            [sys.executable, "install_requirements.py"], cwd=DEV_EXECUTORCH_DIR
+            [sys.executable, "install_executorch.py", "--use-pt-pinned-commit"],
+            cwd=DEV_EXECUTORCH_DIR,
         )
     else:
         subprocess.check_call(
@@ -47,6 +48,9 @@ def main():
                 "install",
                 "-r",
                 DEV_EXECUTORCH_DIR / "requirements-dev.txt",
+                "torch==2.8.0",
+                "--extra-index-url",
+                "https://download.pytorch.org/whl/test/cpu",
             ]
         )
     build_executorch_with_dev_cfg()
