@@ -57,10 +57,12 @@ impl<'a, T: Destroy> NonTriviallyMovable<'a, T> {
     ///
     /// The inner value must be initialized by the given closure.
     #[cfg(feature = "alloc")]
-    pub(crate) unsafe fn new_boxed(init: impl FnOnce(*mut T)) -> Self {
+    pub(crate) unsafe fn try_new_boxed<E>(
+        init: impl FnOnce(*mut T) -> Result<(), E>,
+    ) -> Result<Self, E> {
         let mut p = alloc::Box::pin(MaybeUninit::<T>::uninit());
         // Safety: we get a mut ref out of the pin, but we dont move out of it
-        init(unsafe { p.as_mut().get_unchecked_mut().as_mut_ptr() });
+        init(unsafe { p.as_mut().get_unchecked_mut().as_mut_ptr() })?;
         // Safety: MaybeUninit<T> and (T, PhantomPinned) have the same memory layout, and the `init` closure should have
         // initialized the value.
         let p = unsafe {
@@ -69,7 +71,26 @@ impl<'a, T: Destroy> NonTriviallyMovable<'a, T> {
                 Pin<alloc::Box<(T, PhantomPinned)>>,
             >(p)
         };
-        NonTriviallyMovable::Boxed(p)
+        Ok(NonTriviallyMovable::Boxed(p))
+    }
+
+    /// Create a new [`NonTriviallyMovable`] object with an inner value in a box.
+    ///
+    /// # Safety
+    ///
+    /// The inner value must be initialized by the given closure.
+    #[cfg(feature = "alloc")]
+    pub(crate) unsafe fn new_boxed(init: impl FnOnce(*mut T)) -> Self {
+        use core::convert::Infallible;
+
+        let res = Self::try_new_boxed::<Infallible>(|p| {
+            init(p);
+            Ok(())
+        });
+        match res {
+            Ok(p) => p,
+            Err(_) => unsafe { std::hint::unreachable_unchecked() },
+        }
     }
 
     /// Create a new [`NonTriviallyMovable`] object with an inner value in a [`Storage`].
@@ -165,10 +186,10 @@ impl<T: Destroy> NonTriviallyMovable<'_, T> {
 }
 
 #[cfg(feature = "alloc")]
-#[allow(dead_code)]
+#[allow(unused)]
 pub(crate) struct NonTriviallyMovableVec<T: Destroy>(Pin<alloc::Box<(PhantomPinned, [T])>>);
 #[cfg(feature = "alloc")]
-#[allow(dead_code)]
+#[allow(unused)]
 impl<T: Destroy> NonTriviallyMovableVec<T> {
     pub(crate) unsafe fn new(len: usize, init: impl Fn(usize, &mut MaybeUninit<T>)) -> Self {
         let vec = (0..len)
@@ -245,7 +266,7 @@ pub(crate) trait IntoCpp {
 ///
 /// This is intended to be trivially copyable, so it should be passed by
 /// value.
-#[allow(dead_code)]
+#[allow(unused)]
 pub(crate) struct ArrayRef<'a, T: ArrayRefElement>(
     pub(crate) T::__ArrayRefImpl,
     PhantomData<&'a ()>,
@@ -373,7 +394,7 @@ impl __ArrayRefImpl for et_c::ArrayRefEValue {
 ///
 /// This is intended to be trivially copyable, so it should be passed by
 /// value.
-#[allow(dead_code)]
+#[allow(unused)]
 pub struct Span<'a, T: SpanElement>(pub(crate) T::__SpanImpl, PhantomData<&'a T>);
 impl<'a, T: SpanElement> Span<'a, T> {
     // pub(crate) unsafe fn new(span: T::SpanImpl) -> Self {
@@ -458,9 +479,47 @@ impl_span!(u8, et_c::SpanU8);
 pub(crate) fn cstr2chars(s: &CStr) -> &[std::ffi::c_char] {
     unsafe { std::slice::from_raw_parts(s.as_ptr(), s.to_bytes().len()) }
 }
+pub(crate) fn str2chars(s: &str) -> &[std::ffi::c_char] {
+    assert_eq!(
+        core::alloc::Layout::new::<std::ffi::c_char>(),
+        core::alloc::Layout::new::<u8>()
+    );
+    unsafe { std::slice::from_raw_parts(s.as_ptr().cast(), s.len()) }
+}
+
+pub(crate) fn chars2str(s: &[std::ffi::c_char]) -> Result<&str, std::str::Utf8Error> {
+    assert_eq!(
+        core::alloc::Layout::new::<std::ffi::c_char>(),
+        core::alloc::Layout::new::<u8>()
+    );
+    let bytes = unsafe { std::mem::transmute::<&[std::ffi::c_char], &[u8]>(s) };
+    std::str::from_utf8(bytes)
+}
+
+#[cfg(feature = "alloc")]
+pub(crate) fn chars2cstring(s: &[std::ffi::c_char]) -> Option<std::ffi::CString> {
+    assert_eq!(
+        core::alloc::Layout::new::<std::ffi::c_char>(),
+        core::alloc::Layout::new::<u8>()
+    );
+    let s = unsafe { std::mem::transmute::<&[std::ffi::c_char], &[u8]>(s) };
+
+    let mut buf = alloc::Vec::with_capacity(s.len() + 1);
+    buf.extend_from_slice(s);
+    buf.push(0); // null terminator
+
+    std::ffi::CString::from_vec_with_nul(buf).ok()
+}
 
 #[cfg(feature = "std")]
-#[allow(dead_code)]
+#[allow(unused)]
+pub(crate) fn path2cstring(path: &std::path::Path) -> Result<std::ffi::CString, crate::Error> {
+    let path_bytes = path.as_os_str().as_encoded_bytes();
+    std::ffi::CString::new(path_bytes).map_err(|_| crate::Error::ToCStr)
+}
+
+#[cfg(feature = "std")]
+#[allow(unused)]
 pub(crate) mod cpp_vec {
     use super::IntoRust;
     use executorch_sys as et_c;
@@ -565,7 +624,7 @@ pub(crate) mod cpp_vec {
 }
 
 // Debug func
-#[allow(dead_code)]
+#[allow(unused)]
 #[cfg(feature = "std")]
 pub(crate) fn to_bytes<T>(val: &T) -> Vec<u8> {
     (0..std::mem::size_of_val(val))

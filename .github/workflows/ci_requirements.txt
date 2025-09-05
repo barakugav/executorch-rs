@@ -1,0 +1,12 @@
+# Copy of executorch/requirements-dev.txt as of v0.7.0
+cmake>=3.29, <4.0.0
+pip>=23
+pyyaml
+setuptools>=63
+tomli
+wheel
+zstd
+certifi
+lintrunner==0.12.7
+lintrunner-adapters==0.12.4
+torch==2.8.0

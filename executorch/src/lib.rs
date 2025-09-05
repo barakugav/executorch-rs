@@ -117,7 +117,7 @@
 //!
 //! ## API Stability
 //! The C++ API is still in Beta, and this Rust lib will continue to change with it. Currently the supported
-//! executorch version is `0.6.0`.
+//! executorch version is `0.7.0`.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 

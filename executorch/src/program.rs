@@ -61,7 +61,7 @@ use crate::evalue::{EValue, Tag};
 use crate::event_tracer::EventTracer;
 use crate::memory::MemoryManager;
 use crate::tensor::ScalarType;
-use crate::util::{try_c_new, ArrayRef, IntoCpp, IntoRust};
+use crate::util::{try_c_new, ArrayRef, IntoCpp, IntoRust, __ArrayRefImpl, chars2str};
 use crate::{CError, Error, Result};
 use executorch_sys as et_c;
 
@@ -323,6 +323,27 @@ impl MethodMeta<'_> {
         Ok(unsafe { TensorInfo::new(info) })
     }
 
+    /// Get the number of attribute tensors in this method.
+    pub fn num_attributes(&self) -> usize {
+        unsafe { et_c::executorch_MethodMeta_num_attributes(&self.0) }
+    }
+
+    /// Get metadata about the specified attribute tensor.
+    ///
+    /// # Arguments
+    ///
+    /// * `idx` - The index of the attribute tensor to look up. Must be in range `0..num_attributes()`.
+    ///
+    /// # Returns
+    ///
+    /// The metadata on success, or an error on failure.
+    pub fn attribute_tensor_meta(&self, idx: usize) -> Result<TensorInfo<'_>> {
+        let info = try_c_new(|info| unsafe {
+            et_c::executorch_MethodMeta_attribute_tensor_meta(&self.0, idx, info)
+        })?;
+        Ok(unsafe { TensorInfo::new(info) })
+    }
+
     /// Get the number of memory-planned buffers this method requires.
     pub fn num_memory_planned_buffers(&self) -> usize {
         unsafe { et_c::executorch_MethodMeta_num_memory_planned_buffers(&self.0) }
@@ -375,13 +396,13 @@ impl<'a> TensorInfo<'a> {
     }
 
     /// Returns the sizes of the tensor.
-    pub fn sizes(&self) -> &'a [i32] {
+    pub fn sizes(&self) -> &[i32] {
         let span = unsafe { et_c::executorch_TensorInfo_sizes(&self.0) };
         unsafe { ArrayRef::from_inner(span) }.as_slice()
     }
 
     /// Returns the dim order of the tensor.
-    pub fn dim_order(&self) -> &'a [u8] {
+    pub fn dim_order(&self) -> &[u8] {
         let span = unsafe { et_c::executorch_TensorInfo_dim_order(&self.0) };
         unsafe { ArrayRef::from_inner(span) }.as_slice()
     }
@@ -395,10 +416,27 @@ impl<'a> TensorInfo<'a> {
     pub fn nbytes(&self) -> usize {
         unsafe { et_c::executorch_TensorInfo_nbytes(&self.0) }
     }
+
+    /// Returns the fully qualified name of the Tensor.
+    ///
+    /// Might be empty if the tensor is nameless.
+    ///
+    /// The function calls [`Self::name_chars`] internally, and tries to convert the returned bytes to a `&str`.
+    pub fn name(&self) -> Result<&str, std::str::Utf8Error> {
+        chars2str(self.name_chars())
+    }
+
+    /// Returns the fully qualified name of the Tensor as `[ffi::c_char]`.
+    ///
+    /// Might be empty if the tensor is nameless.
+    pub fn name_chars(&self) -> &[std::ffi::c_char] {
+        unsafe { et_c::executorch_TensorInfo_name(&self.0).as_slice() }
+    }
 }
 impl std::fmt::Debug for TensorInfo<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         f.debug_struct("TensorInfo")
+            .field("name", &self.name().unwrap_or("<invalid utf8>"))
             .field("sizes", &self.sizes())
             .field("dim_order", &self.dim_order())
             .field("scalar_type", &self.scalar_type())
@@ -419,6 +457,35 @@ impl Method<'_> {
     /// Returns the number of inputs the Method expects.
     pub fn inputs_size(&self) -> usize {
         unsafe { et_c::executorch_Method_inputs_size(&self.0) }
+    }
+
+    /// Retrieves the attribute tensor associated with the given name.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the attribute tensor to retrieve.
+    ///
+    /// # Returns
+    ///
+    /// Result containing the attribute tensor on success, non-Ok on failure.
+    #[cfg(feature = "alloc")]
+    pub fn get_attribute<'b>(&'b mut self, name: &str) -> Result<crate::tensor::TensorAny<'b>> {
+        let name = ArrayRef::from_slice(crate::util::str2chars(name));
+
+        // Safety: et_c::executorch_Method_get_attribute writes to the tensor pointer.
+        let tensor = unsafe {
+            crate::util::NonTriviallyMovable::try_new_boxed(|tensor: *mut et_c::TensorStorage| {
+                let tensor = et_c::TensorRefMut { ptr: tensor.cast() };
+                et_c::executorch_Method_get_attribute(&mut self.0, name.0, tensor).rs()
+            })?
+        };
+
+        // Safety: The created tensor is immutable, therefore there is no risk for UB
+        unsafe {
+            Ok(crate::tensor::TensorAny::from_raw_tensor(
+                crate::tensor::RawTensor::new_impl(tensor),
+            ))
+        }
     }
 }
 impl Drop for Method<'_> {
@@ -576,6 +643,9 @@ mod tests {
         assert_eq!(tinfo.nbytes(), 4);
         assert!(method_meta.output_tensor_meta(1).is_err());
 
+        assert_eq!(method_meta.num_attributes(), 0);
+        assert!(method_meta.attribute_tensor_meta(0).is_err());
+
         for i in 0..method_meta.num_memory_planned_buffers() {
             assert!(method_meta.memory_planned_buffer_size(i).is_ok());
         }
@@ -670,6 +740,7 @@ mod tests {
             .load_method(c"forward", &memory_manager, None)
             .unwrap();
         assert_eq!(method.inputs_size(), 2);
+        assert!(method.get_attribute("non-existing-attr").is_err());
         let execution = method.start_execution();
         assert!(matches!(
             execution.execute(), // inputs not set

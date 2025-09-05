@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-// const EXECUTORCH_VERSION: &str = "0.6.0";
+// const EXECUTORCH_VERSION: &str = "0.7.0";
 
 fn main() {
     // TODO: verify on runtime we use the correct version of executorch
@@ -166,8 +166,10 @@ fn link_executorch() {
     if cfg!(feature = "module") {
         if let Some(libs_dir) = &libs_dir {
             println!("cargo::rustc-link-search=native={libs_dir}/extension/module/");
+            println!("cargo::rustc-link-search=native={libs_dir}/extension/flat_tensor/");
         }
         println!("cargo::rustc-link-lib=static:+whole-archive=extension_module_static");
+        println!("cargo::rustc-link-lib=static:+whole-archive=extension_flat_tensor");
     }
 
     if cfg!(feature = "tensor-ptr") {
@@ -179,7 +181,7 @@ fn link_executorch() {
 
     if cfg!(feature = "etdump") {
         if let Some(libs_dir) = &libs_dir {
-            println!("cargo::rustc-link-search=native={libs_dir}/devtools/");
+            println!("cargo::rustc-link-search=native={libs_dir}/devtools/etdump/");
         }
         println!("cargo::rustc-link-lib=static:+whole-archive=etdump");
     }

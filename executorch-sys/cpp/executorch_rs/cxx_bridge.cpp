@@ -76,8 +76,8 @@ namespace executorch_rs
 
 #if defined(EXECUTORCH_RS_MODULE)
     std::unique_ptr<executorch::extension::Module> Module_new(
-        rust::Str file_path,
-        rust::Str data_map_path,
+        const std::string &file_path,
+        const std::string &data_map_path,
         const ModuleLoadMode load_mode,
         std::unique_ptr<executorch::runtime::EventTracer> event_tracer)
     {
@@ -85,15 +85,15 @@ namespace executorch_rs
         if (data_map_path.empty())
         {
             return std::make_unique<executorch::extension::Module>(
-                (std::string)file_path,
+                file_path,
                 load_mode_,
                 std::move(event_tracer));
         }
         else
         {
             return std::make_unique<executorch::extension::Module>(
-                (std::string)file_path,
-                (std::string)data_map_path,
+                file_path,
+                data_map_path,
                 load_mode_,
                 std::move(event_tracer));
         }
@@ -127,34 +127,33 @@ namespace executorch_rs
     {
         return static_cast<Error>(Module_method_names_(self, method_names_out));
     }
-    Error Module_load_method(executorch::extension::Module &self, rust::Str method_name, HierarchicalAllocator *planned_memory, executorch::runtime::EventTracer *event_tracer)
+    Error Module_load_method(executorch::extension::Module &self, const std::string &method_name, HierarchicalAllocator *planned_memory, executorch::runtime::EventTracer *event_tracer)
     {
         auto planned_memory_ = checked_reinterpret_cast<executorch::runtime::HierarchicalAllocator>(planned_memory);
-        auto ret = self.load_method((std::string)method_name, planned_memory_, event_tracer);
+        auto ret = self.load_method(method_name, planned_memory_, event_tracer);
         return static_cast<Error>(ret);
     }
-    bool Module_is_method_loaded(const executorch::extension::Module &self, rust::Str method_name)
+    bool Module_is_method_loaded(const executorch::extension::Module &self, const std::string &method_name)
     {
-        return self.is_method_loaded((std::string)method_name);
+        return self.is_method_loaded(method_name);
     }
-    Error Module_method_meta(executorch::extension::Module &self, rust::Str method_name, MethodMeta *method_meta_out)
+    Error Module_method_meta(executorch::extension::Module &self, const std::string &method_name, MethodMeta *method_meta_out)
     {
         auto method_meta_out_ = checked_reinterpret_cast<executorch::runtime::MethodMeta>(method_meta_out);
-        return extract_result(self.method_meta((std::string)method_name), method_meta_out_);
+        return extract_result(self.method_meta(method_name), method_meta_out_);
     }
-    static executorch::runtime::Error Module_execute_(executorch::extension::Module &self, rust::Str method_name, ArrayRefEValue inputs, VecEValue *outputs)
+    static executorch::runtime::Error Module_execute_(executorch::extension::Module &self, const std::string &method_name, ArrayRefEValue inputs, VecEValue *outputs)
     {
-        auto method_name_ = (std::string)method_name;
         auto inputs_data = reinterpret_cast<const executorch::runtime::EValue *>(inputs.data.ptr);
         std::vector<executorch::runtime::EValue> inputs_vec(inputs_data, inputs_data + inputs.len);
-        auto err = self.set_inputs(method_name_, inputs_vec);
+        auto err = self.set_inputs(method_name, inputs_vec);
         if (err != executorch::runtime::Error::Ok)
             return err;
-        std::vector<executorch::runtime::EValue> outputs_ = ET_UNWRAP(self.execute(method_name_));
+        std::vector<executorch::runtime::EValue> outputs_ = ET_UNWRAP(self.execute(method_name));
         *outputs = VecEValue_new(std::move(outputs_));
         return executorch::runtime::Error::Ok;
     }
-    Error Module_execute(executorch::extension::Module &self, rust::Str method_name, ArrayRefEValue inputs, VecEValue *outputs)
+    Error Module_execute(executorch::extension::Module &self, const std::string &method_name, ArrayRefEValue inputs, VecEValue *outputs)
     {
         return static_cast<Error>(Module_execute_(self, method_name, inputs, outputs));
     }

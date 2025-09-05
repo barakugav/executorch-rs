@@ -16,6 +16,15 @@ use executorch_sys as et_c;
 /// It is used to provide a common API for all of them.
 pub struct TensorBase<'a, D: Data>(pub(crate) RawTensor<'a>, PhantomData<D>);
 impl<'a, D: Data> TensorBase<'a, D> {
+    /// Create a new tensor from a raw tensor.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the D generic is compatible with the data of the given raw tensor.
+    pub(crate) unsafe fn from_raw_tensor(tensor: RawTensor<'a>) -> Self {
+        Self(tensor, PhantomData)
+    }
+
     /// Create a new tensor in a boxed heap memory.
     ///
     /// # Safety
@@ -23,7 +32,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// The caller must obtain a mutable reference to `tensor_impl` if the tensor is mutable.
     #[cfg(feature = "alloc")]
     unsafe fn new_boxed(tensor_impl: &'a TensorImplBase<D>) -> Self {
-        Self(RawTensor::new(&tensor_impl.0), PhantomData)
+        Self::from_raw_tensor(RawTensor::new(&tensor_impl.0))
     }
 
     /// Create a new tensor in the given storage.
@@ -43,7 +52,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
             >(storage)
         };
         let tensor = RawTensor::new_in_storage(&tensor_impl.0, storage);
-        Self(tensor, PhantomData)
+        Self::from_raw_tensor(tensor)
     }
 
     /// Create a new tensor from an immutable Cpp reference.
@@ -54,7 +63,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// and that the tensor is compatible with the data generic. `D` must be immutable as we take immutable reference
     /// to the given tensor.
     pub(crate) unsafe fn from_inner_ref(tensor: et_c::TensorRef) -> Self {
-        Self(RawTensor::from_inner_ref(tensor), PhantomData)
+        Self::from_raw_tensor(RawTensor::from_inner_ref(tensor))
     }
 
     /// Create a new mutable tensor from a mutable Cpp reference.
@@ -63,9 +72,9 @@ impl<'a, D: Data> TensorBase<'a, D> {
     ///
     /// The caller must ensure that the given tensor is valid for the lifetime of the new tensor,
     /// and that the tensor is compatible with the data generic.
-    #[allow(dead_code)]
+    #[allow(unused)]
     pub(crate) unsafe fn from_inner_ref_mut(tensor: et_c::TensorRefMut) -> Self {
-        Self(RawTensor::from_inner_ref_mut(tensor), PhantomData)
+        Self::from_raw_tensor(RawTensor::from_inner_ref_mut(tensor))
     }
 
     /// Create a new tensor with the same internal data as the given tensor, but with different data generic.
@@ -74,7 +83,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     ///
     /// The caller must ensure that the new data generic is compatible with the data of the given tensor.
     pub(crate) unsafe fn convert_from<D2: Data>(tensor: TensorBase<'a, D2>) -> Self {
-        Self(tensor.0, PhantomData)
+        Self::from_raw_tensor(tensor.0)
     }
 
     /// Create a new tensor referencing the same internal data as the given tensor, but with different data generic.
@@ -729,7 +738,7 @@ pub trait Data {
     private_decl! {}
 }
 /// A marker trait extending [`Data`] that indicate that the data is mutable.
-#[allow(dead_code)]
+#[allow(unused)]
 pub trait DataMut: Data {}
 /// A marker trait extending [`Data`] that provide information about the scalar type of the data.
 pub trait DataTyped: Data {

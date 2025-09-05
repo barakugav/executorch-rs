@@ -26,6 +26,10 @@ pub struct RawTensor<'a>(
     PhantomData<&'a ()>,
 );
 impl<'a> RawTensor<'a> {
+    pub(crate) fn new_impl(tensor: NonTriviallyMovable<'a, et_c::TensorStorage>) -> Self {
+        Self(tensor, PhantomData)
+    }
+
     /// Create a new tensor in a boxed heap memory.
     ///
     /// # Safety
@@ -44,7 +48,7 @@ impl<'a> RawTensor<'a> {
                 et_c::executorch_Tensor_new(p, impl_)
             })
         };
-        Self(tensor, PhantomData)
+        Self::new_impl(tensor)
     }
 
     /// Create a new tensor in the given storage.
@@ -70,7 +74,7 @@ impl<'a> RawTensor<'a> {
                 storage,
             )
         };
-        Self(tensor, PhantomData)
+        Self::new_impl(tensor)
     }
 
     /// Create a new tensor from an immutable Cpp reference.
@@ -84,7 +88,7 @@ impl<'a> RawTensor<'a> {
     pub(crate) unsafe fn from_inner_ref(tensor: et_c::TensorRef) -> Self {
         debug_assert!(!tensor.ptr.is_null());
         let tensor = unsafe { &*(tensor.ptr as *const et_c::TensorStorage) };
-        Self(NonTriviallyMovable::from_ref(tensor), PhantomData)
+        Self::new_impl(NonTriviallyMovable::from_ref(tensor))
     }
 
     /// Create a new mutable tensor from a mutable Cpp reference.
@@ -92,11 +96,11 @@ impl<'a> RawTensor<'a> {
     /// # Safety
     ///
     /// The caller must ensure that the given tensor is valid for the lifetime of the new tensor.
-    #[allow(dead_code)]
+    #[allow(unused)]
     pub(crate) unsafe fn from_inner_ref_mut(tensor: et_c::TensorRefMut) -> Self {
         debug_assert!(!tensor.ptr.is_null());
         let tensor = unsafe { &mut *(tensor.ptr as *mut et_c::TensorStorage) };
-        Self(NonTriviallyMovable::from_mut_ref(tensor), PhantomData)
+        Self::new_impl(NonTriviallyMovable::from_mut_ref(tensor))
     }
 
     /// Get the underlying Cpp tensor.

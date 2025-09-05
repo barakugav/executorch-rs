@@ -19,7 +19,7 @@
 //! ```bash
 //! # Clone the C++ library
 //! cd ${EXECUTORCH_CPP_DIR}
-//! git clone --depth 1 --branch v0.6.0 https://github.com/pytorch/executorch.git .
+//! git clone --depth 1 --branch v0.7.0 https://github.com/pytorch/executorch.git .
 //! git submodule sync --recursive
 //! git submodule update --init --recursive
 //!
@@ -34,6 +34,7 @@
 //!     -DEXECUTORCH_BUILD_EXTENSION_RUNNER_UTIL=OFF \
 //!     -DBUILD_EXECUTORCH_PORTABLE_OPS=ON \
 //!     -DEXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON \
+//~     -DEXECUTORCH_BUILD_EXTENSION_FLAT_TENSOR=ON \
 //!     -DEXECUTORCH_BUILD_EXTENSION_MODULE=ON \
 //!     -DEXECUTORCH_BUILD_EXTENSION_TENSOR=ON \
 //!     -DEXECUTORCH_ENABLE_PROGRAM_VERIFICATION=ON \
@@ -131,7 +132,7 @@ extern crate core as std;
 extern crate link_cplusplus;
 
 /// The version of the ExecuTorch C++ library that this crate is compatible and linked with.
-pub const EXECUTORCH_CPP_VERSION: &str = "0.6.0";
+pub const EXECUTORCH_CPP_VERSION: &str = "0.7.0";
 
 mod c_bridge;
 pub use c_bridge::*;

@@ -26,6 +26,7 @@ To run the example, follow these steps (note that some steps should run from the
         -DEXECUTORCH_ENABLE_LOGGING=1 \
         -DCMAKE_BUILD_TYPE=Release \
         -DEXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON \
+        -DEXECUTORCH_BUILD_EXTENSION_FLAT_TENSOR=ON \
         -DEXECUTORCH_BUILD_EXTENSION_MODULE=ON \
         -DBUILD_EXECUTORCH_PORTABLE_OPS=ON \
         -DEXECUTORCH_BUILD_EXTENSION_TENSOR=ON \

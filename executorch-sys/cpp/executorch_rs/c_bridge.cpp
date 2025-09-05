@@ -733,6 +733,13 @@ struct EValueRef executorch_Method_get_output(const struct Method *self, size_t 
     const executorch::runtime::EValue *output = &self_->get_output(i);
     return cast_evalue(output);
 }
+enum Error executorch_Method_get_attribute(struct Method *self, struct ArrayRefChar name, struct TensorRefMut out)
+{
+    auto self_ = checked_reinterpret_cast<executorch::runtime::Method>(self);
+    auto out_ = cast_tensor_mut(out);
+    std::string_view name_(name.data, name.len);
+    return extract_result(self_->get_attribute(name_), out_);
+}
 enum Error executorch_Method_execute(struct Method *self)
 {
     auto self_ = checked_reinterpret_cast<executorch::runtime::Method>(self);
@@ -789,6 +796,17 @@ enum Error executorch_MethodMeta_output_tensor_meta(const struct MethodMeta *sel
     auto tensor_info_out_ = checked_reinterpret_cast<executorch::runtime::TensorInfo>(tensor_info_out);
     return extract_result(self_->output_tensor_meta(index), tensor_info_out_);
 }
+size_t executorch_MethodMeta_num_attributes(const struct MethodMeta *self)
+{
+    auto self_ = checked_reinterpret_cast<executorch::runtime::MethodMeta>(self);
+    return self_->num_attributes();
+}
+enum Error executorch_MethodMeta_attribute_tensor_meta(const struct MethodMeta *self, size_t index, struct TensorInfo *tensor_info_out)
+{
+    auto self_ = checked_reinterpret_cast<executorch::runtime::MethodMeta>(self);
+    auto tensor_info_out_ = checked_reinterpret_cast<executorch::runtime::TensorInfo>(tensor_info_out);
+    return extract_result(self_->attribute_tensor_meta(index), tensor_info_out_);
+}
 enum Error executorch_MethodMeta_memory_planned_buffer_size(const struct MethodMeta *self, size_t index, int64_t *size_out)
 {
     auto self_ = checked_reinterpret_cast<executorch::runtime::MethodMeta>(self);
@@ -839,6 +857,15 @@ size_t executorch_TensorInfo_nbytes(const struct TensorInfo *self)
 {
     auto self_ = checked_reinterpret_cast<executorch::runtime::TensorInfo>(self);
     return self_->nbytes();
+}
+struct ArrayRefChar executorch_TensorInfo_name(const struct TensorInfo *self)
+{
+    auto self_ = checked_reinterpret_cast<executorch::runtime::TensorInfo>(self);
+    auto name = self_->name();
+    return ArrayRefChar{
+        .data = name.data(),
+        .len = name.size(),
+    };
 }
 
 #if defined(EXECUTORCH_RS_ETDUMP)

@@ -316,7 +316,17 @@ extern "C"
     };
     struct TensorInfo
     {
-        size_t _blob[6];
+
+        // sizes_ (2)
+        // dim_order_ (2)
+        // name_ (2)
+        size_t _blob1[6];
+        // scalar_type_
+        uint8_t _blob2;
+        // is_memory_planned_
+        bool _blob3;
+        // nbytes_
+        size_t _blob4;
     };
     struct MethodMeta
     {
@@ -337,7 +347,7 @@ extern "C"
         // delegates_
         // n_chains_
         // chains_
-        // external_constants_
+        // merged_data_map_
         // n_external_constants_
         size_t _blob1[15];
         // init_state_;
@@ -571,6 +581,8 @@ extern "C"
         int _blob5[2];
         // alloc_ (6)
         size_t _blob6[6];
+        // filter_
+        size_t _blob7;
     };
 #endif
 
@@ -671,6 +683,7 @@ extern "C"
     size_t executorch_Method_outputs_size(const struct Method *self);
     enum Error executorch_Method_set_input(struct Method *self, struct EValueRef input_evalue, size_t input_idx);
     struct EValueRef executorch_Method_get_output(const struct Method *self, size_t i);
+    enum Error executorch_Method_get_attribute(struct Method *self, struct ArrayRefChar name, struct TensorRefMut out);
     enum Error executorch_Method_execute(struct Method *self);
     void executorch_Method_destructor(struct Method *self);
     const char *executorch_MethodMeta_name(const struct MethodMeta *self);
@@ -681,6 +694,8 @@ extern "C"
     enum Error executorch_MethodMeta_output_tag(const struct MethodMeta *self, size_t index, enum Tag *tag_out);
     enum Error executorch_MethodMeta_input_tensor_meta(const struct MethodMeta *self, size_t index, struct TensorInfo *tensor_info_out);
     enum Error executorch_MethodMeta_output_tensor_meta(const struct MethodMeta *self, size_t index, struct TensorInfo *tensor_info_out);
+    size_t executorch_MethodMeta_num_attributes(const struct MethodMeta *self);
+    enum Error executorch_MethodMeta_attribute_tensor_meta(const struct MethodMeta *self, size_t index, struct TensorInfo *tensor_info_out);
     enum Error executorch_MethodMeta_memory_planned_buffer_size(const struct MethodMeta *self, size_t index, int64_t *size_out);
     bool executorch_MethodMeta_uses_backend(const struct MethodMeta *self, const char *backend_name);
     size_t executorch_MethodMeta_num_backends(const struct MethodMeta *self);
@@ -691,6 +706,7 @@ extern "C"
     struct ArrayRefU8 executorch_TensorInfo_dim_order(const struct TensorInfo *self);
     enum ScalarType executorch_TensorInfo_scalar_type(const struct TensorInfo *self);
     size_t executorch_TensorInfo_nbytes(const struct TensorInfo *self);
+    struct ArrayRefChar executorch_TensorInfo_name(const struct TensorInfo *self);
 
 #if defined(EXECUTORCH_RS_ETDUMP)
     // ETDumpGen

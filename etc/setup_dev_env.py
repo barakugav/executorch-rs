@@ -1,5 +1,6 @@
 import argparse
 import multiprocessing
+import platform
 import shutil
 import subprocess
 import sys
@@ -35,19 +36,23 @@ def main():
     subprocess.check_call([sys.executable, "-m", "ensurepip"])
     if not args.skip_executorch_python:
         subprocess.check_call(
-            ["./install_requirements.sh"],
+            [sys.executable, "install_executorch.py", "--use-pt-pinned-commit"],
             cwd=DEV_EXECUTORCH_DIR,
         )
     else:
-        deps = [
-            "cmake>=3,<4",
-            "pyyaml",
-            "setuptools>=63",
-            "tomli",
-            "wheel",
-            "zstd",
-        ]
-        subprocess.check_call([sys.executable, "-m", "pip", "install", *deps])
+        subprocess.check_call(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "-r",
+                DEV_EXECUTORCH_DIR / "requirements-dev.txt",
+                "torch==2.8.0",
+                "--extra-index-url",
+                "https://download.pytorch.org/whl/test/cpu",
+            ]
+        )
     build_executorch_with_dev_cfg()
 
     subprocess.check_call(
@@ -65,18 +70,34 @@ def clone_executorch():
                 "--depth",
                 "1",
                 "--branch",
-                "v0.6.0",
+                "v0.7.0",
                 "https://github.com/pytorch/executorch.git",
                 ".",
             ],
             cwd=DEV_EXECUTORCH_DIR,
         )
 
+        if platform.system() == "Darwin":
+            # Clone coremltools repo
+            # Required on apple when EXECUTORCH_BUILD_DEVTOOLS=ON
+            subprocess.check_call(
+                [
+                    "git",
+                    "clone",
+                    "--depth",
+                    "1",
+                    "--branch",
+                    "8.3",
+                    "https://github.com/apple/coremltools.git",
+                ],
+                cwd=DEV_EXECUTORCH_DIR / "backends" / "apple" / "coreml" / "scripts",
+            )
+
     subprocess.check_call(
-        ["git", "submodule", "sync", "--recursive"], cwd=DEV_EXECUTORCH_DIR
+        ["git", "submodule", "update", "--init", "--recursive"], cwd=DEV_EXECUTORCH_DIR
     )
     subprocess.check_call(
-        ["git", "submodule", "update", "--init"], cwd=DEV_EXECUTORCH_DIR
+        ["git", "submodule", "sync", "--recursive"], cwd=DEV_EXECUTORCH_DIR
     )
 
 
@@ -94,6 +115,7 @@ def build_executorch_with_dev_cfg():
             "-DEXECUTORCH_ENABLE_LOGGING=ON",
             "-DBUILD_EXECUTORCH_PORTABLE_OPS=ON",
             "-DEXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON",
+            "-DEXECUTORCH_BUILD_EXTENSION_FLAT_TENSOR=ON",
             "-DEXECUTORCH_BUILD_EXTENSION_MODULE=ON",
             "-DEXECUTORCH_BUILD_EXTENSION_TENSOR=ON",
             "-DEXECUTORCH_BUILD_XNNPACK=ON",
@@ -102,7 +124,6 @@ def build_executorch_with_dev_cfg():
             "-DEXECUTORCH_BUILD_KERNELS_CUSTOM=ON",
             "-DEXECUTORCH_BUILD_DEVTOOLS=ON",
             "-DEXECUTORCH_ENABLE_EVENT_TRACER=ON",
-            # TODO check USE_ATEN_LIB=true/false in CI
             "..",
         ],
         cwd=DEV_EXECUTORCH_DIR / "cmake-out",

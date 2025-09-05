@@ -48,16 +48,15 @@ jobs:
             examples/nano-gpt
             examples/llama3
       - uses: taiki-e/install-action@cargo-hack
-      - name: Install Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Install uv
         uses: astral-sh/setup-uv@v6
+        with:
+          python-version: 3.12
+          activate-environment: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Install Python requirements
-        run: uv pip install -r etc/requirements.txt --system
+        run: uv pip install -r ci_requirements.txt --torch-backend cpu
+        working-directory: .github/workflows
 
       ############ Install executorch deps ############
       - name: Cache Cpp ExecuTorch compiled libraries
