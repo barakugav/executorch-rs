@@ -292,13 +292,13 @@ impl<'a, D: Data> TensorBase<'a, D> {
     }
 
     /// Get a type erased tensor referencing the same internal data as this tensor.
-    pub fn as_type_erased(&self) -> TensorBase<<D::Immutable as Data>::TypeErased> {
+    pub fn as_type_erased(&self) -> TensorBase<'_, <D::Immutable as Data>::TypeErased> {
         // Safety: <D::Immutable as Data>::TypeErased is compatible with D and its immutable (we took &self)
         unsafe { TensorBase::<<D::Immutable as Data>::TypeErased>::convert_from_ref(self) }
     }
 
     /// Get a type erased mutable tensor referencing the same internal data as this tensor.
-    pub fn as_type_erased_mut(&mut self) -> TensorBase<D::TypeErased>
+    pub fn as_type_erased_mut(&mut self) -> TensorBase<'_, D::TypeErased>
     where
         D: DataMut,
     {
@@ -332,7 +332,9 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// Try to get a typed tensor with scalar type `S` referencing the same internal data as this tensor.
     ///
     /// Fails if the scalar type of the tensor does not match the required one.
-    pub fn try_as_typed<S: Scalar>(&self) -> Option<TensorBase<<D::Immutable as Data>::Typed<S>>> {
+    pub fn try_as_typed<S: Scalar>(
+        &self,
+    ) -> Option<TensorBase<'_, <D::Immutable as Data>::Typed<S>>> {
         if self.scalar_type() != S::TYPE {
             return None;
         }
@@ -347,7 +349,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     ///
     /// If the scalar type of the tensor does not match the required one.
     #[track_caller]
-    pub fn as_typed<S: Scalar>(&self) -> TensorBase<<D::Immutable as Data>::Typed<S>> {
+    pub fn as_typed<S: Scalar>(&self) -> TensorBase<'_, <D::Immutable as Data>::Typed<S>> {
         self.try_as_typed()
             .ok_or(Error::CError(CError::InvalidType))
             .unwrap()
@@ -356,7 +358,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// Try to get a mutable typed tensor with scalar type `S` referencing the same internal data as this tensor.
     ///
     /// Fails if the scalar type of the tensor does not match the required one.
-    pub fn try_as_typed_mut<S: Scalar>(&mut self) -> Option<TensorBase<D::Typed<S>>>
+    pub fn try_as_typed_mut<S: Scalar>(&mut self) -> Option<TensorBase<'_, D::Typed<S>>>
     where
         D: DataMut,
     {
@@ -373,7 +375,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     ///
     /// If the scalar type of the tensor does not match the required one.
     #[track_caller]
-    pub fn as_typed_mut<S: Scalar>(&mut self) -> TensorBase<D::Typed<S>>
+    pub fn as_typed_mut<S: Scalar>(&mut self) -> TensorBase<'_, D::Typed<S>>
     where
         D: DataMut,
     {

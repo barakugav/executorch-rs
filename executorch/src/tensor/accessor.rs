@@ -206,6 +206,7 @@ mod tests {
         let mut tensor_impl = unsafe {
             RawTensorImpl::from_ptr(&sizes, data.as_mut_ptr(), &dim_order, &strides).unwrap()
         };
+        #[allow(clippy::unnecessary_mut_passed)]
         let mut tensor = unsafe { RawTensor::new(&mut tensor_impl) };
 
         unsafe {

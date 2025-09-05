@@ -159,7 +159,7 @@ impl<'a> Program<'a> {
     /// # Arguments
     ///
     /// * `method_name` - The name of the method to get metadata for.
-    pub fn method_meta(&self, method_name: &CStr) -> Result<MethodMeta> {
+    pub fn method_meta(&self, method_name: &CStr) -> Result<MethodMeta<'_>> {
         let meta = try_c_new(|meta| unsafe {
             et_c::executorch_Program_method_meta(&self.0, method_name.as_ptr(), meta)
         })?;
@@ -281,7 +281,7 @@ impl MethodMeta<'_> {
     /// # Returns
     ///
     /// The metadata on success, or an error on failure. Only valid for `Tag::Tensor`
-    pub fn input_tensor_meta(&self, idx: usize) -> Result<TensorInfo> {
+    pub fn input_tensor_meta(&self, idx: usize) -> Result<TensorInfo<'_>> {
         let info = try_c_new(|info| unsafe {
             et_c::executorch_MethodMeta_input_tensor_meta(&self.0, idx, info)
         })?;
@@ -316,7 +316,7 @@ impl MethodMeta<'_> {
     /// # Returns
     ///
     /// The metadata on success, or an error on failure. Only valid for `Tag::Tensor`
-    pub fn output_tensor_meta(&self, idx: usize) -> Result<TensorInfo> {
+    pub fn output_tensor_meta(&self, idx: usize) -> Result<TensorInfo<'_>> {
         let info = try_c_new(|info| unsafe {
             et_c::executorch_MethodMeta_output_tensor_meta(&self.0, idx, info)
         })?;
@@ -412,7 +412,7 @@ impl std::fmt::Debug for TensorInfo<'_> {
 pub struct Method<'a>(et_c::Method, PhantomData<&'a ()>);
 impl Method<'_> {
     /// Starts the execution of the method.
-    pub fn start_execution(&mut self) -> Execution {
+    pub fn start_execution(&mut self) -> Execution<'_> {
         Execution::new(&mut self.0)
     }
 
@@ -497,7 +497,7 @@ impl<'a> Outputs<'a> {
     /// # Panics
     ///
     /// Panics if the index is out of bounds.
-    pub fn get(&self, index: usize) -> EValue {
+    pub fn get(&self, index: usize) -> EValue<'_> {
         let value = unsafe { et_c::executorch_Method_get_output(self.method as *const _, index) };
         unsafe { EValue::from_inner_ref(value) }
     }

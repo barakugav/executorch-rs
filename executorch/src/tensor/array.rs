@@ -16,7 +16,7 @@ impl<D: DataTyped> TensorBase<'_, D> {
     /// # Panics
     ///
     /// If the number of dimensions of the tensor does not match the number of dimensions of the type `Dim`
-    pub fn as_array<Dim: Dimension>(&self) -> ArrayView<D::Scalar, Dim> {
+    pub fn as_array<Dim: Dimension>(&self) -> ArrayView<'_, D::Scalar, Dim> {
         if let Some(arr_ndim) = Dim::NDIM {
             let tensor_ndim = self.dim();
             assert_eq!(
@@ -43,7 +43,7 @@ impl<D: DataTyped> TensorBase<'_, D> {
 
     /// Get an array view of the tensor with dynamic number of dimensions.
     #[cfg(feature = "alloc")]
-    pub fn as_array_dyn(&self) -> ArrayView<D::Scalar, ndarray::IxDyn> {
+    pub fn as_array_dyn(&self) -> ArrayView<'_, D::Scalar, ndarray::IxDyn> {
         self.as_array()
     }
 }
@@ -145,7 +145,7 @@ impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> ArrayStorage<A, S, 
     ///
     /// The [`TensorImpl`] does not own the data or the sizes, dim order and strides of the tensor. This struct
     /// must outlive the [`TensorImpl`] created from it.
-    pub fn as_tensor_impl(&self) -> TensorImpl<A> {
+    pub fn as_tensor_impl(&self) -> TensorImpl<'_, A> {
         unsafe {
             TensorImpl::from_ptr(
                 self.sizes.as_ref(),
@@ -172,7 +172,7 @@ impl<A: Scalar, S: ndarray::RawDataMut<Elem = A>, D: Dimension> ArrayStorage<A, 
     ///
     /// The [`TensorImplMut`] does not own the data or the sizes, dim order and strides of the tensor. This struct
     /// must outlive the [`TensorImplMut`] created from it.
-    pub fn as_tensor_impl_mut(&mut self) -> TensorImplMut<A> {
+    pub fn as_tensor_impl_mut(&mut self) -> TensorImplMut<'_, A> {
         let tensor = self.as_tensor_impl();
         // Safety: TensorImpl has the same memory layout as TensorImplBase
         unsafe { std::mem::transmute::<TensorImpl<A>, TensorImplMut<A>>(tensor) }
