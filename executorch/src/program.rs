@@ -323,6 +323,27 @@ impl MethodMeta<'_> {
         Ok(unsafe { TensorInfo::new(info) })
     }
 
+    /// Get the number of attribute tensors in this method.
+    pub fn num_attributes(&self) -> usize {
+        unsafe { et_c::executorch_MethodMeta_num_attributes(&self.0) }
+    }
+
+    /// Get metadata about the specified attribute tensor.
+    ///
+    /// # Arguments
+    ///
+    /// * `idx` - The index of the attribute tensor to look up. Must be in range `0..num_attributes()`.
+    ///
+    /// # Returns
+    ///
+    /// The metadata on success, or an error on failure.
+    pub fn attribute_tensor_meta(&self, idx: usize) -> Result<TensorInfo<'_>> {
+        let info = try_c_new(|info| unsafe {
+            et_c::executorch_MethodMeta_attribute_tensor_meta(&self.0, idx, info)
+        })?;
+        Ok(unsafe { TensorInfo::new(info) })
+    }
+
     /// Get the number of memory-planned buffers this method requires.
     pub fn num_memory_planned_buffers(&self) -> usize {
         unsafe { et_c::executorch_MethodMeta_num_memory_planned_buffers(&self.0) }
@@ -592,6 +613,9 @@ mod tests {
         assert_eq!(tinfo.scalar_type(), ScalarType::Float);
         assert_eq!(tinfo.nbytes(), 4);
         assert!(method_meta.output_tensor_meta(1).is_err());
+
+        assert_eq!(method_meta.num_attributes(), 0);
+        assert!(method_meta.attribute_tensor_meta(0).is_err());
 
         for i in 0..method_meta.num_memory_planned_buffers() {
             assert!(method_meta.memory_planned_buffer_size(i).is_ok());

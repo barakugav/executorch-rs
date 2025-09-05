@@ -186,7 +186,8 @@ impl<'a> Module<'a> {
     }
 
     /// Get a method metadata struct by method name.
-    /// Loads the program and method if needed.
+    ///
+    /// Loads the program if needed.
     ///
     /// # Arguments
     ///

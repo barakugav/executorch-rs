@@ -789,6 +789,17 @@ enum Error executorch_MethodMeta_output_tensor_meta(const struct MethodMeta *sel
     auto tensor_info_out_ = checked_reinterpret_cast<executorch::runtime::TensorInfo>(tensor_info_out);
     return extract_result(self_->output_tensor_meta(index), tensor_info_out_);
 }
+size_t executorch_MethodMeta_num_attributes(const struct MethodMeta *self)
+{
+    auto self_ = checked_reinterpret_cast<executorch::runtime::MethodMeta>(self);
+    return self_->num_attributes();
+}
+enum Error executorch_MethodMeta_attribute_tensor_meta(const struct MethodMeta *self, size_t index, struct TensorInfo *tensor_info_out)
+{
+    auto self_ = checked_reinterpret_cast<executorch::runtime::MethodMeta>(self);
+    auto tensor_info_out_ = checked_reinterpret_cast<executorch::runtime::TensorInfo>(tensor_info_out);
+    return extract_result(self_->attribute_tensor_meta(index), tensor_info_out_);
+}
 enum Error executorch_MethodMeta_memory_planned_buffer_size(const struct MethodMeta *self, size_t index, int64_t *size_out)
 {
     auto self_ = checked_reinterpret_cast<executorch::runtime::MethodMeta>(self);
