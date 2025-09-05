@@ -166,8 +166,10 @@ fn link_executorch() {
     if cfg!(feature = "module") {
         if let Some(libs_dir) = &libs_dir {
             println!("cargo::rustc-link-search=native={libs_dir}/extension/module/");
+            println!("cargo::rustc-link-search=native={libs_dir}/extension/flat_tensor/");
         }
         println!("cargo::rustc-link-lib=static:+whole-archive=extension_module_static");
+        println!("cargo::rustc-link-lib=static:+whole-archive=extension_flat_tensor");
     }
 
     if cfg!(feature = "tensor-ptr") {
