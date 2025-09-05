@@ -683,6 +683,7 @@ extern "C"
     size_t executorch_Method_outputs_size(const struct Method *self);
     enum Error executorch_Method_set_input(struct Method *self, struct EValueRef input_evalue, size_t input_idx);
     struct EValueRef executorch_Method_get_output(const struct Method *self, size_t i);
+    enum Error executorch_Method_get_attribute(struct Method *self, struct ArrayRefChar name, struct TensorRefMut out);
     enum Error executorch_Method_execute(struct Method *self);
     void executorch_Method_destructor(struct Method *self);
     const char *executorch_MethodMeta_name(const struct MethodMeta *self);

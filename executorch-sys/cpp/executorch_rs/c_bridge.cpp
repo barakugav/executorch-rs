@@ -733,6 +733,13 @@ struct EValueRef executorch_Method_get_output(const struct Method *self, size_t 
     const executorch::runtime::EValue *output = &self_->get_output(i);
     return cast_evalue(output);
 }
+enum Error executorch_Method_get_attribute(struct Method *self, struct ArrayRefChar name, struct TensorRefMut out)
+{
+    auto self_ = checked_reinterpret_cast<executorch::runtime::Method>(self);
+    auto out_ = cast_tensor_mut(out);
+    std::string_view name_(name.data, name.len);
+    return extract_result(self_->get_attribute(name_), out_);
+}
 enum Error executorch_Method_execute(struct Method *self)
 {
     auto self_ = checked_reinterpret_cast<executorch::runtime::Method>(self);

@@ -458,6 +458,35 @@ impl Method<'_> {
     pub fn inputs_size(&self) -> usize {
         unsafe { et_c::executorch_Method_inputs_size(&self.0) }
     }
+
+    /// Retrieves the attribute tensor associated with the given name.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the attribute tensor to retrieve.
+    ///
+    /// # Returns
+    ///
+    /// Result containing the attribute tensor on success, non-Ok on failure.
+    #[cfg(feature = "alloc")]
+    pub fn get_attribute<'b>(&'b mut self, name: &str) -> Result<crate::tensor::TensorAny<'b>> {
+        let name = ArrayRef::from_slice(crate::util::str2chars(name));
+
+        // Safety: et_c::executorch_Method_get_attribute writes to the tensor pointer.
+        let tensor = unsafe {
+            crate::util::NonTriviallyMovable::try_new_boxed(|tensor: *mut et_c::TensorStorage| {
+                let tensor = et_c::TensorRefMut { ptr: tensor.cast() };
+                et_c::executorch_Method_get_attribute(&mut self.0, name.0, tensor).rs()
+            })?
+        };
+
+        // Safety: The created tensor is immutable, therefore there is no risk for UB
+        unsafe {
+            Ok(crate::tensor::TensorAny::from_raw_tensor(
+                crate::tensor::RawTensor::new_impl(tensor),
+            ))
+        }
+    }
 }
 impl Drop for Method<'_> {
     fn drop(&mut self) {
@@ -711,6 +740,7 @@ mod tests {
             .load_method(c"forward", &memory_manager, None)
             .unwrap();
         assert_eq!(method.inputs_size(), 2);
+        assert!(method.get_attribute("non-existing-attr").is_err());
         let execution = method.start_execution();
         assert!(matches!(
             execution.execute(), // inputs not set

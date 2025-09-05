@@ -57,10 +57,12 @@ impl<'a, T: Destroy> NonTriviallyMovable<'a, T> {
     ///
     /// The inner value must be initialized by the given closure.
     #[cfg(feature = "alloc")]
-    pub(crate) unsafe fn new_boxed(init: impl FnOnce(*mut T)) -> Self {
+    pub(crate) unsafe fn try_new_boxed<E>(
+        init: impl FnOnce(*mut T) -> Result<(), E>,
+    ) -> Result<Self, E> {
         let mut p = alloc::Box::pin(MaybeUninit::<T>::uninit());
         // Safety: we get a mut ref out of the pin, but we dont move out of it
-        init(unsafe { p.as_mut().get_unchecked_mut().as_mut_ptr() });
+        init(unsafe { p.as_mut().get_unchecked_mut().as_mut_ptr() })?;
         // Safety: MaybeUninit<T> and (T, PhantomPinned) have the same memory layout, and the `init` closure should have
         // initialized the value.
         let p = unsafe {
@@ -69,7 +71,26 @@ impl<'a, T: Destroy> NonTriviallyMovable<'a, T> {
                 Pin<alloc::Box<(T, PhantomPinned)>>,
             >(p)
         };
-        NonTriviallyMovable::Boxed(p)
+        Ok(NonTriviallyMovable::Boxed(p))
+    }
+
+    /// Create a new [`NonTriviallyMovable`] object with an inner value in a box.
+    ///
+    /// # Safety
+    ///
+    /// The inner value must be initialized by the given closure.
+    #[cfg(feature = "alloc")]
+    pub(crate) unsafe fn new_boxed(init: impl FnOnce(*mut T)) -> Self {
+        use core::convert::Infallible;
+
+        let res = Self::try_new_boxed::<Infallible>(|p| {
+            init(p);
+            Ok(())
+        });
+        match res {
+            Ok(p) => p,
+            Err(_) => unsafe { std::hint::unreachable_unchecked() },
+        }
     }
 
     /// Create a new [`NonTriviallyMovable`] object with an inner value in a [`Storage`].
