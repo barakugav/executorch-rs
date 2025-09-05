@@ -39,15 +39,16 @@ def main():
             [sys.executable, "install_requirements.py"], cwd=DEV_EXECUTORCH_DIR
         )
     else:
-        deps = [
-            "cmake>=3,<4",
-            "pyyaml",
-            "setuptools>=63",
-            "tomli",
-            "wheel",
-            "zstd",
-        ]
-        subprocess.check_call([sys.executable, "-m", "pip", "install", *deps])
+        subprocess.check_call(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "-r",
+                DEV_EXECUTORCH_DIR / "requirements-dev.txt",
+            ]
+        )
     build_executorch_with_dev_cfg()
 
     subprocess.check_call(
