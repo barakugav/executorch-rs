@@ -179,7 +179,7 @@ fn link_executorch() {
 
     if cfg!(feature = "etdump") {
         if let Some(libs_dir) = &libs_dir {
-            println!("cargo::rustc-link-search=native={libs_dir}/devtools/");
+            println!("cargo::rustc-link-search=native={libs_dir}/devtools/etdump/");
         }
         println!("cargo::rustc-link-lib=static:+whole-archive=etdump");
     }
