@@ -7,7 +7,7 @@
 
 `executorch` is a Rust library for executing PyTorch models in Rust.
 It is a Rust wrapper around the [ExecuTorch C++ API](https://pytorch.org/executorch).
-It depends on version `0.6.0` of the Cpp API, but will advance as the API does.
+It depends on version `0.7.0` of the Cpp API, but will advance as the API does.
 The underlying C++ library is still in Beta, and its API is subject to change together with the Rust API.
 
 ## Usage
@@ -59,7 +59,7 @@ In the following example we build the C++ library with the necessary flags to ru
 ```bash
 # Clone the C++ library
 cd ${EXECUTORCH_CPP_DIR}
-git clone --depth 1 --branch v0.6.0 https://github.com/pytorch/executorch.git .
+git clone --depth 1 --branch v0.7.0 https://github.com/pytorch/executorch.git .
 git submodule sync --recursive
 git submodule update --init --recursive
 
