@@ -333,7 +333,7 @@ impl<'a> EValuePtrList<'a> {
 
     /// Returns None if index is out of range.
     /// Returns Some(None) if the pointer at the given entry is null.
-    fn get(&self, index: usize) -> Option<Option<EValue>> {
+    fn get(&self, index: usize) -> Option<Option<EValue<'_>>> {
         let ptr = *self.as_slice().get(index)?;
         Some(if ptr.ptr.is_null() {
             None

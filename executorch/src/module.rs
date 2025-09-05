@@ -195,7 +195,7 @@ impl<'a> Module<'a> {
     /// # Panics
     ///
     /// If the method name is not a valid UTF-8 string or contains a null character.
-    pub fn method_meta(&mut self, method_name: &str) -> Result<MethodMeta> {
+    pub fn method_meta(&mut self, method_name: &str) -> Result<MethodMeta<'a>> {
         let meta = try_c_new(|meta| unsafe {
             et_c::cpp::Module_method_meta(self.0.as_mut().unwrap(), method_name, meta)
         })?;
@@ -234,12 +234,7 @@ impl<'a> Module<'a> {
         };
         let inputs = ArrayRef::from_slice(inputs.as_slice());
         let mut outputs = try_c_new(|outputs| unsafe {
-            et_c::cpp::Module_execute(
-                self.0.as_mut().unwrap(),
-                method_name,
-                inputs.0,
-                outputs,
-            )
+            et_c::cpp::Module_execute(self.0.as_mut().unwrap(), method_name, inputs.0, outputs)
         })?
         .rs();
         Ok(outputs

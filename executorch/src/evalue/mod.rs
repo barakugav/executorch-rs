@@ -302,7 +302,7 @@ impl<'a> EValue<'a> {
     /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
     /// [`tag`][Self::tag] method.
     #[track_caller]
-    pub fn as_tensor(&self) -> TensorAny {
+    pub fn as_tensor(&self) -> TensorAny<'_> {
         self.try_into().unwrap()
     }
 
@@ -313,7 +313,7 @@ impl<'a> EValue<'a> {
     /// Panics if the value is of different type.
     /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
     /// [`tag`][Self::tag] method.
-    pub fn as_tensor_list(&self) -> TensorList {
+    pub fn as_tensor_list(&self) -> TensorList<'_> {
         self.try_into().unwrap()
     }
 
@@ -324,7 +324,7 @@ impl<'a> EValue<'a> {
     /// Panics if the value is of different type.
     /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
     /// [`tag`][Self::tag] method.
-    pub fn as_optional_tensor_list(&self) -> OptionalTensorList {
+    pub fn as_optional_tensor_list(&self) -> OptionalTensorList<'_> {
         self.try_into().unwrap()
     }
 
@@ -779,7 +779,7 @@ impl TensorList<'_> {
     }
 
     /// Get the tensor at the given index.
-    pub fn get(&self, index: usize) -> Option<TensorAny> {
+    pub fn get(&self, index: usize) -> Option<TensorAny<'_>> {
         self.0.get(index).map(|t| unsafe {
             TensorAny::from_inner_ref(et_c::TensorRef {
                 ptr: t as *const et_c::TensorStorage as *const _,
@@ -824,7 +824,7 @@ impl OptionalTensorList<'_> {
     /// - `None` if the index is out of bounds.
     /// - `Some(None)` if the tensor at the index is `None`.
     /// - `Some(Some(tensor))` if the tensor at the index is not `None`.
-    pub fn get(&self, index: usize) -> Option<Option<TensorAny>> {
+    pub fn get(&self, index: usize) -> Option<Option<TensorAny<'_>>> {
         self.0.get(index).map(|tensor| {
             let tensor = et_c::OptionalTensorRef {
                 ptr: tensor as *const et_c::OptionalTensorStorage as *const _,
