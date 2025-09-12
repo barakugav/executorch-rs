@@ -422,7 +422,7 @@ impl<'a> RawTensorImpl<'a> {
     /// # Errors
     ///
     /// Returns an error if dim order is invalid, or if it doesn't match the strides, or if the strides are not dense,
-    /// i.e. if the strides are not the default strides of some permutation of the sizes.
+    /// i.e. if the strides are not the standard layout strides of some permutation of the sizes.
     ///
     /// # Panics
     ///
@@ -439,18 +439,27 @@ impl<'a> RawTensorImpl<'a> {
         dim_order: &'a [DimOrderType],
         strides: &'a [StridesType],
     ) -> Result<Self> {
+        Self::from_ptr_impl(sizes, data, None, dim_order, strides, false)
+    }
+
+    pub(crate) unsafe fn from_ptr_impl<S: Scalar>(
+        sizes: &'a [SizesType],
+        data: *mut S,
+        data_len: Option<usize>,
+        dim_order: &'a [DimOrderType],
+        strides: &'a [StridesType],
+        mutable: bool,
+    ) -> Result<Self> {
+        Self::check_shape_strides(sizes, data_len, dim_order, strides, mutable)?;
+
         let dim = sizes.len();
-        assert_eq!(dim, dim_order.len());
-        assert_eq!(dim, strides.len());
+        debug_assert_eq!(dim, dim_order.len());
+        debug_assert_eq!(dim, strides.len());
 
         let sizes = sizes.as_ptr();
         let dim_order = dim_order.as_ptr();
         let strides = strides.as_ptr();
-
-        debug_assert!(!sizes.is_null());
         debug_assert!(!data.is_null());
-        debug_assert!(!dim_order.is_null());
-        debug_assert!(!strides.is_null());
 
         let valid_strides = unsafe {
             et_c::executorch_is_valid_dim_order_and_strides(dim, sizes, dim_order, strides)
@@ -475,5 +484,137 @@ impl<'a> RawTensorImpl<'a> {
             })
         };
         Ok(Self(impl_, PhantomData))
+    }
+
+    fn check_shape_strides(
+        sizes: &[SizesType],
+        data_len: Option<usize>,
+        dim_order: &[DimOrderType],
+        strides: &[StridesType],
+        mutable: bool,
+    ) -> Result<()> {
+        enum TensorError {
+            ShapeStridesDimOrderLenNotEq,
+            Overflow,
+            OutOfBounds,
+            MultipleMutReferences,
+            TooManyDimensions,
+        }
+
+        fn check_shape_strides_impl(
+            sizes: &[SizesType],
+            data_len: Option<usize>,
+            dim_order: &[DimOrderType],
+            strides: &[StridesType],
+            mutable: bool,
+        ) -> Result<(), TensorError> {
+            // This function is based on code from the `ndarray` crate.
+
+            if sizes.len() != strides.len() || sizes.len() != dim_order.len() {
+                return Err(TensorError::ShapeStridesDimOrderLenNotEq);
+            }
+
+            // The product of non-zero axis lengths must not exceed `isize::MAX`.
+            let size_nonzero = sizes
+                .iter()
+                .filter(|&&d| d != 0)
+                .try_fold(1usize, |acc, &d| acc.checked_mul(d as usize))
+                .ok_or(TensorError::Overflow)?;
+            if size_nonzero > isize::MAX as usize {
+                return Err(TensorError::Overflow);
+            }
+
+            // The absolute difference between least and greatest address accessible by moving along all axes.
+            let max_offset: usize = sizes
+                .iter()
+                .zip(strides.iter())
+                .try_fold(0usize, |acc, (&d, &s)| {
+                    // Calculate maximum possible absolute movement along this axis.
+                    let off = (d as usize)
+                        .saturating_sub(1)
+                        .checked_mul((s as isize).unsigned_abs())?;
+                    acc.checked_add(off)
+                })
+                .ok_or(TensorError::Overflow)?;
+            if max_offset > isize::MAX as usize {
+                return Err(TensorError::Overflow);
+            }
+
+            // If the array will be empty (any axes are zero-length), the difference
+            // between the least address and greatest address accessible by moving
+            // along all axes must be ≤ `data.len()`. (It's fine in this case to move
+            // one byte past the end of the slice since the pointers will be offset but
+            // never dereferenced.)
+            //
+            // If the array will not be empty, the difference between the least address
+            // and greatest address accessible by moving along all axes must be <
+            // `data.len()`. This and #3 ensure that all dereferenceable pointers point
+            // to elements within the slice.
+            let is_empty = sizes.contains(&0);
+            if let Some(data_len) = data_len {
+                if is_empty && max_offset > data_len {
+                    return Err(TensorError::OutOfBounds);
+                }
+                if !is_empty && max_offset >= data_len {
+                    return Err(TensorError::OutOfBounds);
+                }
+            }
+
+            // The strides must not allow any element to be referenced by two different indices.
+            if !is_empty && mutable {
+                // The axis ordering corresponding to the fastest variation (in ascending order).
+                // Assumes that no stride value appears twice.
+                const MAX_DIMS: usize = 16;
+                if sizes.len() > MAX_DIMS {
+                    // This is just a sanity check, the C++ code also limits the number of dimensions.
+                    return Err(TensorError::TooManyDimensions);
+                }
+                let mut order_buf = [(0usize, 0isize); MAX_DIMS];
+                let order_buf = &mut order_buf[..sizes.len()];
+                for (i, stride) in strides.iter().enumerate() {
+                    order_buf[i] = (i, *stride as isize);
+                }
+                order_buf.sort_by_key(|&(_, stride)| stride.abs());
+                let order = order_buf.iter().take(sizes.len()).map(|&(i, _)| i);
+
+                // There is overlap if, when iterating through the dimensions in order of
+                // increasing stride, the current stride is less than or equal to the maximum
+                // possible offset along the preceding axes. (Axes of length ≤1 are ignored.)
+                let mut sum_prev_offsets = 0;
+                for index in order {
+                    match sizes[index] {
+                        0 => unreachable!(), // !is_empty
+                        1 => {}
+                        d => {
+                            let s = strides[index].unsigned_abs() as usize;
+                            if s <= sum_prev_offsets {
+                                return Err(TensorError::MultipleMutReferences);
+                            }
+                            sum_prev_offsets += (d as usize - 1) * s;
+                        }
+                    }
+                }
+            }
+
+            Ok(())
+        }
+
+        if let Err(err) = check_shape_strides_impl(sizes, data_len, dim_order, strides, mutable) {
+            let err_msg = match err {
+                TensorError::ShapeStridesDimOrderLenNotEq => {
+                                "Sizes, strides, and dim_order must have the same length"
+                            },
+                TensorError::Overflow => "shape product or strides max (abs) offset overflowed",
+                TensorError::OutOfBounds => "shape and strides lead to out-of-bounds accesses",
+                TensorError::MultipleMutReferences => {
+                                "shape and strides allow to reference the same element with two different indices, invalid for mutable arrays"
+                            }
+                TensorError::TooManyDimensions => "too many dimensions, maximum supported is 16",
+            };
+            crate::log::error!("{err_msg}");
+            return Err(Error::CError(CError::InvalidArgument));
+        }
+
+        Ok(())
     }
 }

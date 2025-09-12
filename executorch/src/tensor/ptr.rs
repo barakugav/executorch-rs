@@ -30,8 +30,8 @@ use crate::{Error, Result};
 /// // Alternatively, manage the lifetimes yourself:
 ///
 /// // Create a Tensor from an ndarray and manage the lifetime of the TensorImpl on the stack
-/// let array_storate = ArrayStorage::new(array![1.0_f32]).unwrap();
-/// let tensor_impl = array_storate.as_tensor_impl();
+/// let array_storage = ArrayStorage::new(array![1.0_f32]).unwrap();
+/// let tensor_impl = array_storage.as_tensor_impl();
 /// let tensor = Tensor::new(&tensor_impl);
 /// let outputs = module.forward(&[tensor.into_evalue()]).unwrap();
 ///
@@ -52,8 +52,8 @@ impl<S: Scalar> TensorPtr<'static, View<S>> {
     ///
     /// # Errors
     ///
-    /// Returns an error if the array is not dense, i.e. if the strides are not the default strides of some permutation
-    /// of the dimensions.
+    /// Returns an error if the array is not dense, i.e. if the strides are not the standard layout strides of some
+    /// permutation of the dimensions.
     #[cfg(feature = "ndarray")]
     pub fn from_array<D: ndarray::Dimension>(array: ndarray::Array<S, D>) -> Result<Self> {
         TensorPtrBuilder::<View<S>>::from_array(array).build()
@@ -73,8 +73,8 @@ impl<'a, S: Scalar> TensorPtr<'a, View<S>> {
     ///
     /// # Errors
     ///
-    /// Returns an error if the array is not dense, i.e. if the strides are not the default strides of some permutation
-    /// of the dimensions.
+    /// Returns an error if the array is not dense, i.e. if the strides are not the standard layout strides of some
+    /// permutation of the dimensions.
     #[cfg(feature = "ndarray")]
     pub fn from_array_view<D: ndarray::Dimension>(
         array: ndarray::ArrayView<'a, S, D>,
@@ -324,7 +324,7 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
     /// # Errors
     ///
     /// Returns an error if dim order is invalid, or if it doesn't match the strides, or if the strides are not dense,
-    /// i.e. if the strides are not the default strides of some permutation of the sizes.
+    /// i.e. if the strides are not the standard layout strides of some permutation of the sizes.
     /// The function may return an error if the sizes and strides do not make sense with respect to the data buffer,
     /// but this is not guaranteed.
     ///
@@ -334,7 +334,9 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
     #[track_caller]
     pub fn build(self) -> Result<TensorPtr<'a, View<D::Scalar>>> {
         let ndim = self.sizes.len();
-        let strides = self.strides.unwrap_or_else(|| default_strides(&self.sizes));
+        let strides = self
+            .strides
+            .unwrap_or_else(|| standard_layout_strides(&self.sizes));
         assert_eq!(ndim, strides.len(), "Invalid strides length");
         let mut dim_order = cxx_vec(std::iter::repeat(0 as DimOrderType).take(ndim));
         unsafe {
@@ -395,7 +397,7 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
     /// # Errors
     ///
     /// Returns an error if dim order is invalid, or if it doesn't match the strides, or if the strides are not dense,
-    /// i.e. if the strides are not the default strides of some permutation of the sizes.
+    /// i.e. if the strides are not the standard layout strides of some permutation of the sizes.
     /// The function may return an error if the sizes and strides do not make sense with respect to the data buffer,
     /// but this is not guaranteed.
     ///
@@ -409,7 +411,9 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
     {
         let ndim = self.sizes.len();
         let dim_order = cxx_vec((0..ndim).map(|s| s as DimOrderType));
-        let strides = self.strides.unwrap_or_else(|| default_strides(&self.sizes));
+        let strides = self
+            .strides
+            .unwrap_or_else(|| standard_layout_strides(&self.sizes));
         assert_eq!(ndim, dim_order.len(), "Invalid dim order length");
         assert_eq!(ndim, strides.len(), "Invalid strides length");
 
@@ -472,7 +476,7 @@ where
     vec
 }
 
-fn default_strides(sizes: &cxx::Vector<SizesType>) -> UniquePtr<cxx::Vector<StridesType>> {
+fn standard_layout_strides(sizes: &cxx::Vector<SizesType>) -> UniquePtr<cxx::Vector<StridesType>> {
     let mut strides = cxx_vec(std::iter::repeat(0 as SizesType).take(sizes.len()));
     let mut stride = 1;
     for i in (0..sizes.len()).rev() {
