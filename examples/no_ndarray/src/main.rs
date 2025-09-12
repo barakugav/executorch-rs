@@ -33,7 +33,7 @@ fn main() {
     let outputs = module.forward(&[input_evalue1, input_evalue2]).unwrap();
     let [output] = outputs
         .try_into()
-        .unwrap_or_else(|_| panic!("not a single tensor"));
+        .unwrap_or_else(|_| panic!("not a single output"));
     let output = output.as_tensor().into_typed::<f32>();
 
     assert_eq!(output.dim(), 1);

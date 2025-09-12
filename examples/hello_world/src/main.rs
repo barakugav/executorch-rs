@@ -21,7 +21,7 @@ fn main() {
     let inputs = [tensor1.into_evalue(), tensor2.into_evalue()];
 
     let outputs = module.forward(&inputs).unwrap();
-    let [output]: [EValue; 1] = outputs.try_into().expect("not a single tensor");
+    let [output]: [EValue; 1] = outputs.try_into().expect("not a single output");
     let output = output.as_tensor().into_typed::<f32>();
 
     println!("Output tensor computed: {:?}", output);

@@ -17,8 +17,8 @@
 //! Create a model in Python and export it:
 //! ```ignore
 //! import torch
-//! from executorch.exir import to_edge
 //! from torch.export import export
+//! from executorch.exir import to_edge_transform_and_lower
 //!
 //! class Add(torch.nn.Module):
 //!     def __init__(self):
@@ -48,7 +48,7 @@
 //! let inputs = [tensor1.into_evalue(), tensor2.into_evalue()];
 //!
 //! let outputs = module.forward(&inputs).unwrap();
-//! let [output]: [EValue; 1] = outputs.try_into().expect("not a single tensor");
+//! let [output]: [EValue; 1] = outputs.try_into().expect("not a single output");
 //! let output = output.as_tensor().into_typed::<f32>();
 //!
 //! println!("Output tensor computed: {:?}", output);
@@ -74,7 +74,7 @@
 //!   Includes the `ETDumpGen` struct, an implementation of an `EventTracer`, used for debugging and profiling.
 //!   The `libetdump.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_DEVTOOLS=ON` and
 //!   `EXECUTORCH_ENABLE_EVENT_TRACER=ON`.
-//!   In addition, the `flatcc` (or `flatcc_d`) library is required, available at `{CPP_EXECUTORCH_DIR}/third-party/flatcc/lib/`,
+//!   In addition, the `flatcc` (or `flatcc_d`) library is required, available at `{CMAKE_DIR}/third-party/flatcc_external_project/lib/`,
 //!   and should be linked by the user.
 //! - `ndarray`:
 //!   Conversions between `executorch` tensors and `ndarray` arrays.
@@ -116,8 +116,8 @@
 //! example.
 //!
 //! ## API Stability
-//! The C++ API is still in Beta, and this Rust lib will continue to change with it. Currently the supported
-//! executorch version is `0.7.0`.
+//! The C++ API is still in development, and this Rust lib will continue to change with it.
+//! Currently the supported executorch version is `0.7.0`.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -154,6 +154,7 @@ pub mod data_loader;
 mod error;
 pub mod evalue;
 pub mod event_tracer;
+pub(crate) mod log;
 pub mod memory;
 #[cfg(feature = "module")]
 pub mod module;

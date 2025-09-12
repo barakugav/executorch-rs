@@ -8,14 +8,14 @@
 `executorch` is a Rust library for executing PyTorch models in Rust.
 It is a Rust wrapper around the [ExecuTorch C++ API](https://pytorch.org/executorch).
 It depends on version `0.7.0` of the Cpp API, but will advance as the API does.
-The underlying C++ library is still in Beta, and its API is subject to change together with the Rust API.
+The underlying C++ library is still in development, and its API is subject to change together with the Rust API.
 
 ## Usage
 Create a model in Python and export it:
 ```python
 import torch
-from executorch.exir import to_edge
 from torch.export import export
+from executorch.exir import to_edge_transform_and_lower
 
 class Add(torch.nn.Module):
     def __init__(self):
@@ -43,7 +43,7 @@ let (tensor1, tensor2) = (tensor_ptr![1.0_f32], tensor_ptr![1.0_f32]);
 let inputs = [tensor1.into_evalue(), tensor2.into_evalue()];
 
 let outputs = module.forward(&inputs).unwrap();
-let [output]: [EValue; 1] = outputs.try_into().expect("not a single tensor");
+let [output]: [EValue; 1] = outputs.try_into().expect("not a single output");
 let output = output.as_tensor().into_typed::<f32>();
 
 println!("Output tensor computed: {:?}", output);
@@ -72,7 +72,7 @@ cmake \
     -DDEXECUTORCH_SELECT_OPS_LIST=aten::add.out \
     -DEXECUTORCH_BUILD_EXECUTOR_RUNNER=OFF \
     -DEXECUTORCH_BUILD_EXTENSION_RUNNER_UTIL=OFF \
-    -DBUILD_EXECUTORCH_PORTABLE_OPS=ON \
+    -DEXECUTORCH_BUILD_PORTABLE_OPS=ON \
     -DEXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON \
     -DEXECUTORCH_BUILD_EXTENSION_FLAT_TENSOR=ON \
     -DEXECUTORCH_BUILD_EXTENSION_MODULE=ON \
@@ -150,7 +150,7 @@ The build (and library) is tested on Ubuntu and MacOS, not on Windows.
     Includes the `ETDumpGen` struct, an implementation of an `EventTracer`, used for debugging and profiling.
     The `libetdump.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_DEVTOOLS=ON` and
     `EXECUTORCH_ENABLE_EVENT_TRACER=ON`.
-    In addition, the `flatcc` (or `flatcc_d`) library is required, available at `{CPP_EXECUTORCH_DIR}/third-party/flatcc/lib/`,
+    In addition, the `flatcc` (or `flatcc_d`) library is required, available at `{CMAKE_DIR}/third-party/flatcc_external_project/lib/`,
     and should be linked by the user.
 
 - `ndarray`

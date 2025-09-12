@@ -99,8 +99,8 @@ impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> ArrayStorage<A, S, 
     ///
     /// # Errors
     ///
-    /// Returns an error if the array is not dense, i.e. if the strides are not the default strides of some permutation
-    /// of the dimensions.
+    /// Returns an error if the array is not dense, i.e. if the strides are not the standard layout strides of some
+    /// permutation of the dimensions.
     pub fn new(array: ArrayBase<S, D>) -> Result<Self> {
         let ndim = array.ndim();
         let mut sizes = D::Arr::zeros(ndim);
@@ -130,6 +130,7 @@ impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> ArrayStorage<A, S, 
             )
         };
         if !valid_strides {
+            crate::log::error!("Invalid strides");
             return Err(Error::CError(CError::InvalidArgument));
         }
 

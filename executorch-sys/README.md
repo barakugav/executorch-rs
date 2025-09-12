@@ -23,7 +23,7 @@ cmake \
     -DDEXECUTORCH_SELECT_OPS_LIST=aten::add.out \
     -DEXECUTORCH_BUILD_EXECUTOR_RUNNER=OFF \
     -DEXECUTORCH_BUILD_EXTENSION_RUNNER_UTIL=OFF \
-    -DBUILD_EXECUTORCH_PORTABLE_OPS=ON \
+    -DEXECUTORCH_BUILD_PORTABLE_OPS=ON \
     -DEXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON \
     -DEXECUTORCH_BUILD_EXTENSION_FLAT_TENSOR=ON \
     -DEXECUTORCH_BUILD_EXTENSION_MODULE=ON \
@@ -106,7 +106,7 @@ the crate will not link to any library and not modify the linker search path.
     Includes the `ETDumpGen` struct, an implementation of an `EventTracer`, used for debugging and profiling.
     The `libetdump.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_DEVTOOLS=ON` and
     `EXECUTORCH_ENABLE_EVENT_TRACER=ON`.
-    In addition, the `flatcc` (or `flatcc_d`) library is required, available at `{CPP_EXECUTORCH_DIR}/third-party/flatcc/lib/`,
+    In addition, the `flatcc` (or `flatcc_d`) library is required, available at `{CMAKE_DIR}/third-party/flatcc_external_project/lib/`,
     and should be linked by the user.
 
 - `std`

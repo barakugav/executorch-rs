@@ -179,6 +179,8 @@ impl<'a, D: Data> TensorBase<'a, D> {
     }
 
     /// Returns the strides of the tensor at each dimension.
+    ///
+    /// Strides are in units of the elements size, not in bytes.
     pub fn strides(&self) -> &[StridesType] {
         self.0.strides()
     }
@@ -534,10 +536,17 @@ pub struct TensorImplBase<'a, D: Data>(RawTensorImpl<'a>, PhantomData<D>);
 impl<'a, D: Data> TensorImplBase<'a, D> {
     /// Create a new TensorImpl from a pointer to the data.
     ///
+    /// # Arguments
+    ///
+    /// * `sizes` - The shape of the tensor.
+    /// * `data` - A pointer to the data buffer.
+    /// * `dim_order` - The order of the dimensions of the tensor, must have the same length as `sizes`.
+    /// * `strides` - The strides of the tensor, in units of elements (not bytes), must have the same length as `sizes`.
+    ///
     /// # Errors
     ///
     /// Returns an error if dim order is invalid, or if it doesn't match the strides, or if the strides are not dense,
-    /// i.e. if the strides are not the default strides of some permutation of the sizes.
+    /// i.e. if the strides are not the standard layout strides of some permutation of the sizes.
     ///
     /// # Panics
     ///
@@ -551,10 +560,13 @@ impl<'a, D: Data> TensorImplBase<'a, D> {
     unsafe fn from_ptr_impl<S: Scalar>(
         sizes: &'a [SizesType],
         data: *mut S,
+        data_len: Option<usize>,
         dim_order: &'a [DimOrderType],
         strides: &'a [StridesType],
+        mutable: bool,
     ) -> Result<Self> {
-        let impl_ = RawTensorImpl::from_ptr(sizes, data, dim_order, strides)?;
+        let impl_ =
+            RawTensorImpl::from_ptr_impl(sizes, data, data_len, dim_order, strides, mutable)?;
         Ok(Self(impl_, PhantomData))
     }
 }
@@ -571,12 +583,12 @@ impl<'a, S: Scalar> TensorImpl<'a, S> {
     /// * `data` - A pointer to the data of the tensor. The caller must ensure that the data is valid for the
     ///   lifetime of the TensorImpl.
     /// * `dim_order` - The order of the dimensions of the tensor, must have the same length as `sizes`.
-    /// * `strides` - The strides of the tensor, must have the same length as `sizes`.
+    /// * `strides` - The strides of the tensor, in units of elements (not bytes), must have the same length as `sizes`.
     ///
     /// # Errors
     ///
     /// Returns an error if dim order is invalid, or if it doesn't match the strides, or if the strides are not dense,
-    /// i.e. if the strides are not the default strides of some permutation of the sizes.
+    /// i.e. if the strides are not the standard layout strides of some permutation of the sizes.
     ///
     /// # Panics
     ///
@@ -593,7 +605,7 @@ impl<'a, S: Scalar> TensorImpl<'a, S> {
         dim_order: &'a [DimOrderType],
         strides: &'a [StridesType],
     ) -> Result<Self> {
-        unsafe { Self::from_ptr_impl(sizes, data as *mut S, dim_order, strides) }
+        unsafe { Self::from_ptr_impl(sizes, data as *mut S, None, dim_order, strides, false) }
     }
 
     /// Create a new TensorImpl from a data slice.
@@ -605,12 +617,12 @@ impl<'a, S: Scalar> TensorImpl<'a, S> {
     /// * `data` - The data of the tensor. The slice may be bigger than expected (according to the sizes and strides)
     ///   but not smaller.
     /// * `dim_order` - The order of the dimensions of the tensor, must have the same length as `sizes`.
-    /// * `strides` - The strides of the tensor, must have the same length as `sizes`.
+    /// * `strides` - The strides of the tensor, in units of elements (not bytes), must have the same length as `sizes`.
     ///
     /// # Errors
     ///
     /// Returns an error if dim order is invalid, or if it doesn't match the strides, or if the strides are not dense,
-    /// i.e. if the strides are not the default strides of some permutation of the sizes.
+    /// i.e. if the strides are not the standard layout strides of some permutation of the sizes.
     ///
     /// # Panics
     ///
@@ -621,9 +633,8 @@ impl<'a, S: Scalar> TensorImpl<'a, S> {
         dim_order: &'a [DimOrderType],
         strides: &'a [StridesType],
     ) -> Result<Self> {
-        // TODO: verify the data length make sense with the sizes/dim_order/strides
         let data_ptr = data.as_ptr() as *mut S;
-        unsafe { Self::from_ptr_impl(sizes, data_ptr, dim_order, strides) }
+        unsafe { Self::from_ptr_impl(sizes, data_ptr, Some(data.len()), dim_order, strides, false) }
     }
 
     /// Create a new TensorImpl from a scalar.
@@ -647,12 +658,12 @@ impl<'a, S: Scalar> TensorImplMut<'a, S> {
     ///   lifetime of the TensorImplMut, and that there is not more references to the data (as the passed pointer
     ///   will be used to mutate the data).
     /// * `dim_order` - The order of the dimensions of the tensor, must have the same length as `sizes`.
-    /// * `strides` - The strides of the tensor, must have the same length as `sizes`.
+    /// * `strides` - The strides of the tensor, in units of elements (not bytes), must have the same length as `sizes`.
     ///
     /// # Errors
     ///
     /// Returns an error if dim order is invalid, or if it doesn't match the strides, or if the strides are not dense,
-    /// i.e. if the strides are not the default strides of some permutation of the sizes.
+    /// i.e. if the strides are not the standard layout strides of some permutation of the sizes.
     ///
     /// # Panics
     ///
@@ -668,7 +679,7 @@ impl<'a, S: Scalar> TensorImplMut<'a, S> {
         dim_order: &'a [DimOrderType],
         strides: &'a [StridesType],
     ) -> Result<Self> {
-        unsafe { Self::from_ptr_impl(sizes, data, dim_order, strides) }
+        unsafe { Self::from_ptr_impl(sizes, data, None, dim_order, strides, true) }
     }
 
     ///  Create a new TensorImplMut from a data slice.
@@ -680,12 +691,14 @@ impl<'a, S: Scalar> TensorImplMut<'a, S> {
     /// * `data` - The data of the tensor. The slice may be bigger than expected (according to the sizes and strides)
     ///   but not smaller.
     /// * `dim_order` - The order of the dimensions of the tensor, must have the same length as `sizes`.
-    /// * `strides` - The strides of the tensor, must have the same length as `sizes`.
+    /// * `strides` - The strides of the tensor, in units of elements (not bytes), must have the same length as `sizes`.
     ///
     /// # Errors
     ///
     /// Returns an error if dim order is invalid, or if it doesn't match the strides, or if the strides are not dense,
-    /// i.e. if the strides are not the default strides of some permutation of the sizes.
+    /// i.e. if the strides are not the standard layout strides of some permutation of the sizes.
+    /// Also returns an error if the strides allow to access the same element with two different indices,
+    /// aka broadcasted tensor, as it violates Rust aliasing rules.
     ///
     /// # Panics
     ///
@@ -696,9 +709,8 @@ impl<'a, S: Scalar> TensorImplMut<'a, S> {
         dim_order: &'a [DimOrderType],
         strides: &'a [StridesType],
     ) -> Result<Self> {
-        // TODO: verify the data length make sense with the sizes/dim_order/strides
         let data_ptr = data.as_ptr() as *mut S;
-        unsafe { Self::from_ptr_impl(sizes, data_ptr, dim_order, strides) }
+        unsafe { Self::from_ptr_impl(sizes, data_ptr, Some(data.len()), dim_order, strides, true) }
     }
 
     /// Create a new TensorImplMut from a scalar.
@@ -1292,6 +1304,10 @@ mod tests {
         assert!(TensorImplMut::from_slice(&[2, 3], &mut [0; 6], &[1, 0], &[1, 2]).is_ok());
         assert!(TensorImplMut::from_slice(&[2, 3], &mut [0; 6], &[0, 1], &[1, 2]).is_err());
         assert!(TensorImplMut::from_slice(&[2, 3], &mut [0; 12], &[1, 0], &[2, 4]).is_err());
+
+        // Too small slice
+        assert!(TensorImpl::from_slice(&[2, 3], &[0; 5], &[0, 1], &[3, 1]).is_err());
+        assert!(TensorImplMut::from_slice(&[2, 3], &mut [0; 5], &[0, 1], &[3, 1]).is_err());
     }
 
     #[test]
