@@ -25,7 +25,6 @@ fn main() {
     println!("cargo::rustc-link-search=native={libs_dir}/extension/threadpool/");
     println!("cargo::rustc-link-lib=static:+whole-archive=extension_threadpool");
 
-    // xnnpack
     println!("cargo::rustc-link-search=native={libs_dir}/backends/xnnpack/");
     println!("cargo::rustc-link-search=native={libs_dir}/backends/xnnpack/third-party/XNNPACK/");
     println!("cargo::rustc-link-search=native={libs_dir}/backends/xnnpack/third-party/cpuinfo/");
@@ -34,9 +33,14 @@ fn main() {
     );
     println!("cargo::rustc-link-lib=static:+whole-archive=xnnpack_backend");
     println!("cargo::rustc-link-lib=static:+whole-archive=XNNPACK");
-    println!("cargo::rustc-link-lib=static:+whole-archive=microkernels-prod");
+    println!("cargo::rustc-link-lib=static:+whole-archive=xnnpack-microkernels-prod");
     println!("cargo::rustc-link-lib=static:+whole-archive=cpuinfo");
     println!("cargo::rustc-link-lib=static:+whole-archive=pthreadpool");
+
+    if cfg!(target_arch = "arm") || cfg!(target_arch = "aarch64") {
+        println!("cargo::rustc-link-search=native={libs_dir}/kleidiai/");
+        println!("cargo::rustc-link-lib=static:+whole-archive=kleidiai");
+    }
 
     // println!("cargo::rustc-link-lib=static:+whole-archive=custom_ops");
 }

@@ -13,7 +13,7 @@ To run the example, follow these steps (note that some steps should run from the
 
 - Download `consolidated.00.pth` and `params.json` from [Llama website](https://www.llama.com/llama-downloads/) or [Hugging Face](https://huggingface.co/meta-llama/Llama-3.2-1B).
 
-- Download the vocablurary:
+- Download the vocabulary:
     ```bash
     cd executorch-rs/examples/llama3
     python download_vocab.py > vocab.json

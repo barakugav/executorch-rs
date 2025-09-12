@@ -17,8 +17,8 @@
 //! Create a model in Python and export it:
 //! ```ignore
 //! import torch
-//! from executorch.exir import to_edge
 //! from torch.export import export
+//! from executorch.exir import to_edge_transform_and_lower
 //!
 //! class Add(torch.nn.Module):
 //!     def __init__(self):

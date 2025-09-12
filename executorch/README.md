@@ -14,8 +14,8 @@ The underlying C++ library is still in Beta, and its API is subject to change to
 Create a model in Python and export it:
 ```python
 import torch
-from executorch.exir import to_edge
 from torch.export import export
+from executorch.exir import to_edge_transform_and_lower
 
 class Add(torch.nn.Module):
     def __init__(self):
@@ -72,7 +72,7 @@ cmake \
     -DDEXECUTORCH_SELECT_OPS_LIST=aten::add.out \
     -DEXECUTORCH_BUILD_EXECUTOR_RUNNER=OFF \
     -DEXECUTORCH_BUILD_EXTENSION_RUNNER_UTIL=OFF \
-    -DBUILD_EXECUTORCH_PORTABLE_OPS=ON \
+    -DEXECUTORCH_BUILD_PORTABLE_OPS=ON \
     -DEXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON \
     -DEXECUTORCH_BUILD_EXTENSION_FLAT_TENSOR=ON \
     -DEXECUTORCH_BUILD_EXTENSION_MODULE=ON \

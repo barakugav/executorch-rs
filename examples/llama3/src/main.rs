@@ -109,7 +109,7 @@ fn main() {
     let load_t0 = Instant::now();
     model.load_method("forward", None, None).unwrap();
     println!(
-        "'forward' method loaded in {}s",
+        "'forward' method loaded in {}ms",
         load_t0.elapsed().as_millis()
     );
 
