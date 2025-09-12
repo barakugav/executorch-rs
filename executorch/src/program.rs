@@ -531,6 +531,7 @@ impl<'a> Execution<'a> {
     pub fn execute(self) -> Result<Outputs<'a>> {
         if self.set_inputs != (1 << unsafe { et_c::executorch_Method_inputs_size(self.method) }) - 1
         {
+            crate::log::error!("Not all inputs were set before executing the method");
             return Err(Error::CError(CError::InvalidArgument));
         }
         unsafe { et_c::executorch_Method_execute(self.method) }.rs()?;

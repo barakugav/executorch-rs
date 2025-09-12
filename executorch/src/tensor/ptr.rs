@@ -370,6 +370,7 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
             )
         };
         if !valid_strides {
+            crate::log::error!("Invalid strides");
             return Err(Error::CError(CError::InvalidArgument));
         }
 
@@ -441,6 +442,7 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
             )
         };
         if !valid_strides {
+            crate::log::error!("Invalid strides");
             return Err(Error::CError(CError::InvalidArgument));
         }
 

@@ -71,15 +71,18 @@ impl<'a, T: BoxedEvalueListElement<'a>> BoxedEvalueList<'a, T> {
     ) -> Result<Self> {
         let wrapped_vals_slice = wrapped_vals.as_slice();
         if wrapped_vals_slice.len() != unwrapped_vals.len() {
+            crate::log::error!("wrapped and unwrapped lengths do not match");
             return Err(Error::CError(CError::InvalidArgument));
         }
         for i in 0..wrapped_vals_slice.len() {
             let elm = wrapped_vals.get(i).unwrap();
             if let Some(elm) = elm {
                 if elm.tag() != T::__ELEMENT_TAG {
+                    crate::log::error!("Value does not match T");
                     return Err(Error::CError(CError::InvalidType));
                 }
             } else if !T::__ALLOW_NULL_ELEMENT {
+                crate::log::error!("T does not allow null elements");
                 return Err(Error::CError(CError::InvalidType));
             }
         }

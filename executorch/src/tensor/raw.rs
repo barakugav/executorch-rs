@@ -456,6 +456,7 @@ impl<'a> RawTensorImpl<'a> {
             et_c::executorch_is_valid_dim_order_and_strides(dim, sizes, dim_order, strides)
         };
         if !valid_strides {
+            crate::log::error!("Invalid strides");
             return Err(Error::CError(CError::InvalidArgument));
         }
 

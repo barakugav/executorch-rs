@@ -154,6 +154,7 @@ pub mod data_loader;
 mod error;
 pub mod evalue;
 pub mod event_tracer;
+pub(crate) mod log;
 pub mod memory;
 #[cfg(feature = "module")]
 pub mod module;

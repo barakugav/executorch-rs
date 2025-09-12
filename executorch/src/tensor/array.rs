@@ -130,6 +130,7 @@ impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> ArrayStorage<A, S, 
             )
         };
         if !valid_strides {
+            crate::log::error!("Invalid strides");
             return Err(Error::CError(CError::InvalidArgument));
         }
 
