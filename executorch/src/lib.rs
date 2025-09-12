@@ -48,7 +48,7 @@
 //! let inputs = [tensor1.into_evalue(), tensor2.into_evalue()];
 //!
 //! let outputs = module.forward(&inputs).unwrap();
-//! let [output]: [EValue; 1] = outputs.try_into().expect("not a single tensor");
+//! let [output]: [EValue; 1] = outputs.try_into().expect("not a single output");
 //! let output = output.as_tensor().into_typed::<f32>();
 //!
 //! println!("Output tensor computed: {:?}", output);
@@ -116,8 +116,8 @@
 //! example.
 //!
 //! ## API Stability
-//! The C++ API is still in Beta, and this Rust lib will continue to change with it. Currently the supported
-//! executorch version is `0.7.0`.
+//! The C++ API is still in development, and this Rust lib will continue to change with it.
+//! Currently the supported executorch version is `0.7.0`.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 

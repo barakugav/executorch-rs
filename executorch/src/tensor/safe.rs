@@ -179,6 +179,8 @@ impl<'a, D: Data> TensorBase<'a, D> {
     }
 
     /// Returns the strides of the tensor at each dimension.
+    ///
+    /// Strides are in units of the elements size, not in bytes.
     pub fn strides(&self) -> &[StridesType] {
         self.0.strides()
     }
@@ -534,6 +536,13 @@ pub struct TensorImplBase<'a, D: Data>(RawTensorImpl<'a>, PhantomData<D>);
 impl<'a, D: Data> TensorImplBase<'a, D> {
     /// Create a new TensorImpl from a pointer to the data.
     ///
+    /// # Arguments
+    ///
+    /// * `sizes` - The shape of the tensor.
+    /// * `data` - A pointer to the data buffer.
+    /// * `dim_order` - The order of the dimensions of the tensor, must have the same length as `sizes`.
+    /// * `strides` - The strides of the tensor, in units of elements (not bytes), must have the same length as `sizes`.
+    ///
     /// # Errors
     ///
     /// Returns an error if dim order is invalid, or if it doesn't match the strides, or if the strides are not dense,
@@ -571,7 +580,7 @@ impl<'a, S: Scalar> TensorImpl<'a, S> {
     /// * `data` - A pointer to the data of the tensor. The caller must ensure that the data is valid for the
     ///   lifetime of the TensorImpl.
     /// * `dim_order` - The order of the dimensions of the tensor, must have the same length as `sizes`.
-    /// * `strides` - The strides of the tensor, must have the same length as `sizes`.
+    /// * `strides` - The strides of the tensor, in units of elements (not bytes), must have the same length as `sizes`.
     ///
     /// # Errors
     ///
@@ -605,7 +614,7 @@ impl<'a, S: Scalar> TensorImpl<'a, S> {
     /// * `data` - The data of the tensor. The slice may be bigger than expected (according to the sizes and strides)
     ///   but not smaller.
     /// * `dim_order` - The order of the dimensions of the tensor, must have the same length as `sizes`.
-    /// * `strides` - The strides of the tensor, must have the same length as `sizes`.
+    /// * `strides` - The strides of the tensor, in units of elements (not bytes), must have the same length as `sizes`.
     ///
     /// # Errors
     ///
@@ -647,7 +656,7 @@ impl<'a, S: Scalar> TensorImplMut<'a, S> {
     ///   lifetime of the TensorImplMut, and that there is not more references to the data (as the passed pointer
     ///   will be used to mutate the data).
     /// * `dim_order` - The order of the dimensions of the tensor, must have the same length as `sizes`.
-    /// * `strides` - The strides of the tensor, must have the same length as `sizes`.
+    /// * `strides` - The strides of the tensor, in units of elements (not bytes), must have the same length as `sizes`.
     ///
     /// # Errors
     ///
@@ -680,7 +689,7 @@ impl<'a, S: Scalar> TensorImplMut<'a, S> {
     /// * `data` - The data of the tensor. The slice may be bigger than expected (according to the sizes and strides)
     ///   but not smaller.
     /// * `dim_order` - The order of the dimensions of the tensor, must have the same length as `sizes`.
-    /// * `strides` - The strides of the tensor, must have the same length as `sizes`.
+    /// * `strides` - The strides of the tensor, in units of elements (not bytes), must have the same length as `sizes`.
     ///
     /// # Errors
     ///

@@ -55,6 +55,8 @@ pub type SizesType = et_c::SizesType;
 /// A type that represents the order of the dimensions of a tensor.
 pub type DimOrderType = et_c::DimOrderType;
 /// A type that represents the strides of a tensor.
+///
+/// Strides are in units of the elements size, not in bytes.
 pub type StridesType = et_c::StridesType;
 
 pub use scalar::{Scalar, ScalarType};

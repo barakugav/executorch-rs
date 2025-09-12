@@ -28,7 +28,7 @@ fn main() {
 
     {
         let outputs = module.forward(&inputs).unwrap();
-        let [output] = outputs.try_into().expect("not a single tensor");
+        let [output] = outputs.try_into().expect("not a single output");
         let output = output.as_tensor().into_typed::<f32>();
 
         println!("Output tensor computed: {:?}", output);

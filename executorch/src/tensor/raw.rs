@@ -180,6 +180,8 @@ impl<'a> RawTensor<'a> {
     }
 
     /// Returns the strides of the tensor at each dimension.
+    ///
+    /// Strides are in units of the elements size, not in bytes.
     pub fn strides(&self) -> &[StridesType] {
         unsafe {
             let arr = et_c::executorch_Tensor_strides(self.as_cpp());
@@ -409,6 +411,13 @@ impl Storable for RawTensor<'_> {
 pub struct RawTensorImpl<'a>(et_c::TensorImpl, PhantomData<&'a ()>);
 impl<'a> RawTensorImpl<'a> {
     /// Create a new TensorImpl from a pointer to the data.
+    ///
+    /// # Arguments
+    ///
+    /// * `sizes` - The shape of the tensor.
+    /// * `data` - A pointer to the data buffer.
+    /// * `dim_order` - The order of the dimensions of the tensor, must have the same length as `sizes`.
+    /// * `strides` - The strides of the tensor, in units of elements (not bytes), must have the same length as `sizes`.
     ///
     /// # Errors
     ///

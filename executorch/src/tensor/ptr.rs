@@ -15,8 +15,7 @@ use crate::{Error, Result};
 /// A smart pointer type for managing the lifetime of a Tensor.
 ///
 /// Under the hood this struct is a wrapper around a `cxx::SharedPtr<Tensor>`.
-/// In addition to the regular smart pointer functionality that allows to clone and drop the pointer,
-/// the Cpp `shared_ptr` is also used to manage the lifetime of allocations a Tensor is usually depends on,
+/// The Cpp `shared_ptr` is used to manage the lifetime of allocations a Tensor is usually depends on,
 /// such as [`TensorImpl`](super::TensorImpl), the data buffer and the sizes, dim order and strides arrays.
 /// This allows a much more user-friendly API for creating and managing Tensors:
 /// ```rust,ignore
@@ -45,7 +44,6 @@ use crate::{Error, Result};
 /// let tensor = Tensor::new(&tensor);
 /// let outputs = module.forward(&[tensor.into_evalue()]).unwrap();
 /// ```
-#[derive(Clone)]
 pub struct TensorPtr<'a, D: Data>(SharedPtr<et_c::cpp::Tensor>, PhantomData<(&'a (), D)>);
 impl<S: Scalar> TensorPtr<'static, View<S>> {
     /// Create a new [`TensorPtr`] from an [`Array`](ndarray::Array).
@@ -309,7 +307,7 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
         self
     }
 
-    /// Set the strides of the tensor.
+    /// Set the strides of the tensor, in units of elements (not bytes).
     ///
     /// # Safety
     ///

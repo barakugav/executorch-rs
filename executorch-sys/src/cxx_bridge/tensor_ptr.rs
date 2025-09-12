@@ -46,7 +46,7 @@ pub(crate) mod ffi {
         /// - `sizes`: The dimensions of the tensor.
         /// - `data`: A pointer to the beginning of the data buffer.
         /// - `dim_order`: The order of the dimensions.
-        /// - `strides`: The strides of the tensor.
+        /// - `strides`: The strides of the tensor, in units of elements (not bytes).
         /// - `scalar_type`: The scalar type of the tensor.
         /// - `dynamism`: The dynamism of the tensor.
         /// - `allocation`: A `Box<RustAny>` object that will be dropped when the tensor is dropped. Can be used to

@@ -8,7 +8,7 @@
 `executorch` is a Rust library for executing PyTorch models in Rust.
 It is a Rust wrapper around the [ExecuTorch C++ API](https://pytorch.org/executorch).
 It depends on version `0.7.0` of the Cpp API, but will advance as the API does.
-The underlying C++ library is still in Beta, and its API is subject to change together with the Rust API.
+The underlying C++ library is still in development, and its API is subject to change together with the Rust API.
 
 ## Usage
 Create a model in Python and export it:
@@ -43,7 +43,7 @@ let (tensor1, tensor2) = (tensor_ptr![1.0_f32], tensor_ptr![1.0_f32]);
 let inputs = [tensor1.into_evalue(), tensor2.into_evalue()];
 
 let outputs = module.forward(&inputs).unwrap();
-let [output]: [EValue; 1] = outputs.try_into().expect("not a single tensor");
+let [output]: [EValue; 1] = outputs.try_into().expect("not a single output");
 let output = output.as_tensor().into_typed::<f32>();
 
 println!("Output tensor computed: {:?}", output);
