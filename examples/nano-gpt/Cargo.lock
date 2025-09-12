@@ -260,7 +260,7 @@ dependencies = [
 
 [[package]]
 name = "executorch"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "cfg-if",
  "executorch-sys",
@@ -269,7 +269,7 @@ dependencies = [
 
 [[package]]
 name = "executorch-sys"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "bindgen",
  "cc",
