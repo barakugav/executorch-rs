@@ -145,11 +145,6 @@ static enum Error extract_result(const executorch::runtime::Result<T> &&result, 
     return static_cast<Error>(result.error());
 }
 
-void executorch_pal_init()
-{
-    et_pal_init();
-}
-
 struct MemoryAllocator executorch_MemoryAllocator_new(uint32_t size, uint8_t *base_address)
 {
     struct MemoryAllocator self;
@@ -890,3 +885,58 @@ struct EventTracerRefMut executorch_ETDumpGen_as_event_tracer_mut(struct ETDumpG
     return EventTracerRefMut{.ptr = tracer};
 }
 #endif
+
+// Platform structs and functions
+
+void executorch_pal_init()
+{
+    executorch::runtime::pal_init();
+}
+
+void executorch_pal_abort()
+{
+    executorch::runtime::pal_abort();
+}
+
+executorch_timestamp_t executorch_pal_current_ticks()
+{
+    return executorch::runtime::pal_current_ticks();
+}
+
+struct executorch_tick_ratio executorch_pal_ticks_to_ns_multiplier()
+{
+    auto ratio = executorch::runtime::pal_ticks_to_ns_multiplier();
+    return executorch_tick_ratio{
+        .numerator = ratio.numerator,
+        .denominator = ratio.denominator,
+    };
+}
+
+void executorch_pal_emit_log_message(
+    executorch_timestamp_t timestamp,
+    enum executorch_pal_log_level level,
+    const char *filename,
+    const char *function,
+    size_t line,
+    const char *message,
+    size_t length)
+{
+    executorch::runtime::pal_emit_log_message(
+        timestamp,
+        static_cast<et_pal_log_level_t>(level),
+        filename,
+        function,
+        line,
+        message,
+        length);
+}
+
+void *executorch_pal_allocate(size_t size)
+{
+    return executorch::runtime::pal_allocate(size);
+}
+
+void executorch_pal_free(void *ptr)
+{
+    executorch::runtime::pal_free(ptr);
+}

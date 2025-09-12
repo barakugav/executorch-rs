@@ -112,7 +112,7 @@
 //!   Includes the `ETDumpGen` struct, an implementation of an `EventTracer`, used for debugging and profiling.
 //!   The `libetdump.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_DEVTOOLS=ON` and
 //!   `EXECUTORCH_ENABLE_EVENT_TRACER=ON`.
-//!   In addition, the `flatcc` (or `flatcc_d`) library is required, available at `{CPP_EXECUTORCH_DIR}/third-party/flatcc/lib/`,
+//!   In addition, the `flatcc` (or `flatcc_d`) library is required, available at `{CMAKE_DIR}/third-party/flatcc_external_project/lib/`,
 //!   and should be linked by the user.
 //! - `std`:
 //!   Enable the standard library. This feature is enabled by default, but can be disabled to build `executorch` in a `no_std` environment.

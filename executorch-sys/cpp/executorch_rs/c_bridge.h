@@ -586,8 +586,6 @@ extern "C"
     };
 #endif
 
-    void executorch_pal_init();
-
     struct MemoryAllocator executorch_MemoryAllocator_new(uint32_t size, uint8_t *base_address);
     void *executorch_MemoryAllocator_allocate(struct MemoryAllocator *self, size_t size, size_t alignment);
     struct HierarchicalAllocator executorch_HierarchicalAllocator_new(struct SpanSpanU8 buffers);
@@ -714,6 +712,101 @@ extern "C"
     struct ArrayRefU8 executorch_ETDumpGen_get_etdump_data(struct ETDumpGen *self);
     struct EventTracerRefMut executorch_ETDumpGen_as_event_tracer_mut(struct ETDumpGen *self);
 #endif
+
+    // Platform structs and functions
+
+    /**
+     * Severity level of a log message. Values must map to printable 7-bit ASCII
+     * uppercase letters.
+     */
+    enum executorch_pal_log_level
+    {
+        EXECUTORCH_PAL_LOG_LEVEL_DEBUG = 'D',
+        EXECUTORCH_PAL_LOG_LEVEL_INFO = 'I',
+        EXECUTORCH_PAL_LOG_LEVEL_ERROR = 'E',
+        EXECUTORCH_PAL_LOG_LEVEL_FATAL = 'F',
+        EXECUTORCH_PAL_LOG_LEVEL_UNKNOWN = '?', // Exception to the "uppercase letter" rule.
+    };
+
+    /// Platform timestamp in system ticks.
+    typedef uint64_t executorch_timestamp_t;
+
+    /**
+     * Represents the conversion ratio from system ticks to nanoseconds.
+     * To convert, use nanoseconds = ticks * numerator / denominator.
+     */
+    struct executorch_tick_ratio
+    {
+        uint64_t numerator;
+        uint64_t denominator;
+    };
+
+    /**
+     * Initialize the platform abstraction layer.
+     *
+     * This function should be called before any other function provided by the PAL
+     * to initialize any global state. Typically overridden by PAL implementer.
+     */
+    void executorch_pal_init();
+
+    /**
+     * Immediately abort execution, setting the device into an error state, if
+     * available.
+     */
+    void executorch_pal_abort();
+
+    /**
+     * Return a monotonically non-decreasing timestamp in system ticks.
+     *
+     * @retval Timestamp value in system ticks.
+     */
+    executorch_timestamp_t executorch_pal_current_ticks();
+
+    /**
+     * Return the conversion rate from system ticks to nanoseconds as a fraction.
+     * To convert a system ticks to nanoseconds, multiply the tick count by the
+     * numerator and then divide by the denominator:
+     *   nanoseconds = ticks * numerator / denominator
+     *
+     * The utility method executorch::runtime::ticks_to_ns(executorch_timestamp_t) can also
+     * be used to perform the conversion for a given tick count. It is defined in
+     * torch/executor/runtime/platform/clock.h.
+     *
+     * @retval The ratio of nanoseconds to system ticks.
+     */
+    struct executorch_tick_ratio executorch_pal_ticks_to_ns_multiplier();
+
+    /**
+     * Severity level of a log message. Values must map to printable 7-bit ASCII
+     * uppercase letters.
+     */
+    void executorch_pal_emit_log_message(
+        executorch_timestamp_t timestamp,
+        enum executorch_pal_log_level level,
+        const char *filename,
+        const char *function,
+        size_t line,
+        const char *message,
+        size_t length);
+
+    /**
+     * NOTE: Core runtime code must not call this directly. It may only be called by
+     * a MemoryAllocator wrapper.
+     *
+     * Allocates size bytes of memory.
+     *
+     * @param[in] size Number of bytes to allocate.
+     * @returns the allocated memory, or nullptr on failure. Must be freed using
+     *     et_pal_free().
+     */
+    void *executorch_pal_allocate(size_t size);
+
+    /**
+     * Frees memory allocated by et_pal_allocate().
+     *
+     * @param[in] ptr Pointer to memory to free. May be nullptr.
+     */
+    void executorch_pal_free(void *ptr);
 
 #ifdef __cplusplus
 } // end of extern "C" block
