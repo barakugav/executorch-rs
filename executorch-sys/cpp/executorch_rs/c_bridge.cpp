@@ -109,6 +109,14 @@ namespace
 // static_assert(std::is_trivially_move_constructible_v<executorch::etdump::ETDumpGen>);
 #endif
 
+    static_assert(is_equal_layout<executorch_timestamp_t, et_timestamp_t>());
+    static_assert(std::is_trivially_move_constructible_v<et_timestamp_t>);
+    static_assert(is_equal_layout<executorch_tick_ratio, et_tick_ratio_t>());
+    static_assert(std::is_trivially_move_constructible_v<et_tick_ratio_t>);
+    static_assert(is_equal_layout<executorch_pal_log_level, et_pal_log_level_t>());
+    static_assert(std::is_trivially_move_constructible_v<et_pal_log_level_t>);
+    static_assert(is_equal_layout<ExecutorchPalImpl, executorch::runtime::PalImpl>());
+    static_assert(std::is_trivially_move_constructible_v<executorch::runtime::PalImpl>);
 }
 
 constexpr size_t MAX_DIM = 16;
@@ -887,6 +895,26 @@ struct EventTracerRefMut executorch_ETDumpGen_as_event_tracer_mut(struct ETDumpG
 #endif
 
 // Platform structs and functions
+
+bool executorch_register_pal(ExecutorchPalImpl impl)
+{
+    executorch::runtime::PalImpl pal_impl = executorch::runtime::PalImpl::create(
+        impl.init,
+        impl.abort,
+        impl.current_ticks,
+        reinterpret_cast<pal_ticks_to_ns_multiplier_method>(impl.ticks_to_ns_multiplier),
+        reinterpret_cast<pal_emit_log_message_method>(impl.emit_log_message),
+        impl.allocate,
+        impl.free,
+        impl.source_filename);
+    return executorch::runtime::register_pal(pal_impl);
+}
+
+const ExecutorchPalImpl *executorch_get_pal_impl()
+{
+    auto impl = executorch::runtime::get_pal_impl();
+    return impl ? checked_reinterpret_cast<ExecutorchPalImpl>(impl) : nullptr;
+}
 
 void executorch_pal_init()
 {
