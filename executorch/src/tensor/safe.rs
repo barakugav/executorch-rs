@@ -815,6 +815,7 @@ mod tests {
     use crate::storage;
     #[allow(unused_imports)]
     use crate::tensor::*;
+    use crate::tests::{check_send, check_sync};
 
     #[test]
     fn tensor_from_ptr() {
@@ -1344,5 +1345,23 @@ mod tests {
         tensor[&[]] = 6;
         assert_eq!(unsafe { *tensor.as_ptr() }, 6);
         assert_eq!(tensor[&[]], 6);
+    }
+
+    #[test]
+    fn tensor_send() {
+        check_send::<Tensor<'_, i32>>();
+    }
+    #[test]
+    fn tensor_sync() {
+        check_sync::<Tensor<'_, i32>>();
+    }
+
+    #[test]
+    fn tensor_impl_send() {
+        check_send::<TensorImpl<'_, i32>>();
+    }
+    #[test]
+    fn tensor_impl_sync() {
+        check_sync::<TensorImpl<'_, i32>>();
     }
 }

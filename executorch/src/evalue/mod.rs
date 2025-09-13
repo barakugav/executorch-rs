@@ -891,6 +891,7 @@ mod tests {
     #[cfg(feature = "tensor-ptr")]
     use crate::tensor::TensorPtr;
     use crate::tensor::{SizesType, Tensor, TensorImpl};
+    use crate::tests::{check_send, check_sync};
 
     use super::*;
 
@@ -1643,5 +1644,14 @@ mod tests {
         let evalue_float = EValue::new_in_allocator(42.6, &allocator);
         assert_eq!(evalue_int.as_i64(), 17);
         assert_eq!(evalue_float.as_f64(), 42.6);
+    }
+
+    #[test]
+    fn evalue_send() {
+        check_send::<EValue<'_>>();
+    }
+    #[test]
+    fn evalue_sync() {
+        check_sync::<EValue<'_>>();
     }
 }

@@ -31,3 +31,6 @@ const ADD_MODEL_BYTES_ALIGNED: AlignedBytes<
     { include_bytes!("../../examples/models/add.pte").len() },
 > = AlignedBytes(*include_bytes!("../../examples/models/add.pte"));
 pub const ADD_MODEL_BYTES: &[u8] = &ADD_MODEL_BYTES_ALIGNED.0;
+
+pub(crate) fn check_send<T: Send>() {}
+pub(crate) fn check_sync<T: Sync>() {}

@@ -618,3 +618,27 @@ impl<'a> RawTensorImpl<'a> {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::tensor::{RawTensor, RawTensorImpl};
+    use crate::tests::{check_send, check_sync};
+
+    #[test]
+    fn raw_tensor_send() {
+        check_send::<RawTensor<'_>>();
+    }
+    #[test]
+    fn raw_tensor_sync() {
+        check_sync::<RawTensor<'_>>();
+    }
+
+    #[test]
+    fn raw_tensor_impl_send() {
+        check_send::<RawTensorImpl<'_>>();
+    }
+    #[test]
+    fn raw_tensor_impl_sync() {
+        check_sync::<RawTensorImpl<'_>>();
+    }
+}
