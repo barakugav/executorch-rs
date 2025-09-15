@@ -44,7 +44,7 @@ use crate::{Error, Result};
 /// let tensor = Tensor::new(&tensor);
 /// let outputs = module.forward(&[tensor.into_evalue()]).unwrap();
 /// ```
-pub struct TensorPtr<'a, D: Data>(SharedPtr<et_c::cpp::Tensor>, PhantomData<(&'a (), D)>);
+pub struct TensorPtr<'a, D>(SharedPtr<et_c::cpp::Tensor>, PhantomData<(&'a (), D)>);
 impl<S: Scalar> TensorPtr<'static, View<S>> {
     /// Create a new [`TensorPtr`] from an [`Array`](ndarray::Array).
     ///
@@ -115,6 +115,7 @@ impl<D: Data> TensorPtr<'_, D> {
         unsafe { TensorBase::from_inner_ref_mut(tensor) }
     }
 }
+unsafe impl<D> Send for TensorPtr<'_, D> {}
 
 /// A builder for creating a [`TensorPtr`].
 pub struct TensorPtrBuilder<'a, D: DataTyped> {
@@ -466,6 +467,7 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
         Ok(TensorPtr(tensor, PhantomData))
     }
 }
+unsafe impl<D: DataTyped> Send for TensorPtrBuilder<'_, D> {}
 
 fn cxx_vec<T>(elms: impl IntoIterator<Item = T>) -> UniquePtr<cxx::Vector<T>>
 where

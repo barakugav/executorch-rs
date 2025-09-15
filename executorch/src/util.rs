@@ -496,7 +496,7 @@ pub(crate) fn chars2str(s: &[std::ffi::c_char]) -> Result<&str, std::str::Utf8Er
     std::str::from_utf8(bytes)
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub(crate) fn chars2cstring(s: &[std::ffi::c_char]) -> Option<std::ffi::CString> {
     assert_eq!(
         core::alloc::Layout::new::<std::ffi::c_char>(),

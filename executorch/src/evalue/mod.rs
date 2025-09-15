@@ -304,7 +304,7 @@ impl<'a> EValue<'a> {
     /// Panics if the value is not of type string, or the string contains null bytes.
     /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
     /// [`tag`][Self::tag] method.
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     pub fn to_cstr(&self) -> std::ffi::CString {
         self.try_into().unwrap()
     }
@@ -715,7 +715,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for &'a str {
         chars2str(chars).map_err(|_| Error::FromCStr)
     }
 }
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<'a> TryFrom<&'a EValue<'_>> for std::ffi::CString {
     type Error = Error;
     fn try_from(value: &'a EValue) -> Result<Self> {
@@ -891,6 +891,7 @@ mod tests {
     #[cfg(feature = "tensor-ptr")]
     use crate::tensor::TensorPtr;
     use crate::tensor::{SizesType, Tensor, TensorImpl};
+    use crate::tests::{check_send, check_sync};
 
     use super::*;
 
@@ -1643,5 +1644,14 @@ mod tests {
         let evalue_float = EValue::new_in_allocator(42.6, &allocator);
         assert_eq!(evalue_int.as_i64(), 17);
         assert_eq!(evalue_float.as_f64(), 42.6);
+    }
+
+    #[test]
+    fn evalue_send() {
+        check_send::<EValue<'_>>();
+    }
+    #[test]
+    fn evalue_sync() {
+        check_sync::<EValue<'_>>();
     }
 }

@@ -269,6 +269,7 @@ impl<'a> Module<'a> {
         self.execute("forward", inputs)
     }
 }
+unsafe impl Send for Module<'_> {}
 
 #[repr(u32)]
 #[doc = " Enum to define loading behavior."]

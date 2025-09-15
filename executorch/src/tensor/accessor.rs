@@ -157,6 +157,7 @@ impl<'a, T, const N: usize> IndexMut<[usize; N]> for TensorAccessorMut<'a, T, N>
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "alloc")]
     use crate::tensor::{RawTensor, RawTensorImpl};
 
     #[cfg(feature = "alloc")]
