@@ -715,6 +715,19 @@ extern "C"
 
     // Platform structs and functions
 
+    /// Platform timestamp in system ticks.
+    typedef uint64_t executorch_timestamp_t;
+
+    /**
+     * Represents the conversion ratio from system ticks to nanoseconds.
+     * To convert, use nanoseconds = ticks * numerator / denominator.
+     */
+    struct executorch_tick_ratio
+    {
+        uint64_t numerator;
+        uint64_t denominator;
+    };
+
     /**
      * Severity level of a log message. Values must map to printable 7-bit ASCII
      * uppercase letters.
@@ -728,18 +741,41 @@ extern "C"
         EXECUTORCH_PAL_LOG_LEVEL_UNKNOWN = '?', // Exception to the "uppercase letter" rule.
     };
 
-    /// Platform timestamp in system ticks.
-    typedef uint64_t executorch_timestamp_t;
+    struct ExecutorchPalImpl
+    {
+        void (*init)();
+        void (*abort)();
+        executorch_timestamp_t (*current_ticks)();
+        struct executorch_tick_ratio (*ticks_to_ns_multiplier)();
+        void (*emit_log_message)(
+            executorch_timestamp_t timestamp,
+            enum executorch_pal_log_level level,
+            const char *filename,
+            const char *function,
+            size_t line,
+            const char *message,
+            size_t length);
+        void *(*allocate)(size_t size);
+        void (*free)(void *ptr);
+
+        // An optional metadata field, indicating the name of the source
+        // file that registered the PAL implementation.
+        const char *source_filename;
+    };
 
     /**
-     * Represents the conversion ratio from system ticks to nanoseconds.
-     * To convert, use nanoseconds = ticks * numerator / denominator.
+     * Override the PAL functions with user implementations. Any null entries in the
+     * table are unchanged and will keep the default implementation.
+     *
+     * Returns true if the registration was successful, false otherwise.
      */
-    struct executorch_tick_ratio
-    {
-        uint64_t numerator;
-        uint64_t denominator;
-    };
+    bool executorch_register_pal(struct ExecutorchPalImpl impl);
+
+    /**
+     * Returns the PAL function table, which contains function pointers to the
+     * active implementation of each PAL function.
+     */
+    const struct ExecutorchPalImpl *executorch_get_pal_impl();
 
     /**
      * Initialize the platform abstraction layer.

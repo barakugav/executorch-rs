@@ -9,6 +9,14 @@ use core::ffi::CStr;
 ///
 /// This function should be called before any other function provided by the PAL
 /// to initialize any global state. Typically overridden by PAL implementer.
+///
+/// # Safety
+///
+/// This function should be called only once, before any accesses to the platform functions.
+/// This function changes global state, but does not provide any synchronization.
+/// Use this function carefully.
+///
+/// TODO: mark this function as unsafe
 pub fn pal_init() {
     unsafe { executorch_sys::executorch_pal_init() };
 }
