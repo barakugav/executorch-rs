@@ -90,11 +90,19 @@
 //! binary.
 //!
 //! The `EXECUTORCH_RS_EXECUTORCH_LIB_DIR` environment variable should be set to the path of the C++ build output.
-//! If its not provided, its the resposibility of the binary to add the libs directories to the linker search path, and
+//! If its not provided, its the responsibility of the binary to add the libs directories to the linker search path, and
 //! the crate will just link to the static libraries using `cargo::rustc-link-lib=...`.
 //!
 //! If you want to link to executorch libs yourself, set the environment variable `EXECUTORCH_RS_LINK` to `0`, and
 //! the crate will not link to any library and not modify the linker search path.
+//!
+//! The crate contains a small C/C++ bridge that uses the headers of the C++ library,
+//! and it is compiled using the `cc` crate (and the `cxx` crate, that uses `cc` under the hood).
+//! If custom compiler flags (for example `-DET_MIN_LOG_LEVEL=Debug`) are used when compiling the C++ library,
+//! you should set the matching environment variables that `cc` reads during `cargo build`
+//! (for example `CFLAGS=-DET_MIN_LOG_LEVEL=Debug CXXFLAGS=-DET_MIN_LOG_LEVEL=Debug`),
+//! see the [cc docs](https://docs.rs/cc/latest/cc/).
+//!
 //!
 //! ## Cargo Features
 //! By default the `std` feature is enabled.
