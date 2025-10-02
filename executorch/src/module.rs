@@ -276,13 +276,13 @@ unsafe impl Send for Module<'_> {}
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum LoadMode {
     #[doc = " Load the whole file as a buffer."]
-    File = 0,
+    File = et_c::ModuleLoadMode::ModuleLoadMode_File as u32,
     #[doc = " Use mmap to load pages into memory."]
-    Mmap = 1,
+    Mmap = et_c::ModuleLoadMode::ModuleLoadMode_Mmap as u32,
     #[doc = " Use memory locking and handle errors."]
-    MmapUseMlock = 2,
+    MmapUseMlock = et_c::ModuleLoadMode::ModuleLoadMode_MmapUseMlock as u32,
     #[doc = " Use memory locking and ignore errors."]
-    MmapUseMlockIgnoreErrors = 3,
+    MmapUseMlockIgnoreErrors = et_c::ModuleLoadMode::ModuleLoadMode_MmapUseMlockIgnoreErrors as u32,
 }
 impl IntoCpp for LoadMode {
     type CppType = et_c::ModuleLoadMode;

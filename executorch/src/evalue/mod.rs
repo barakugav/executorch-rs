@@ -19,29 +19,29 @@ use executorch_sys as et_c;
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum Tag {
     /// Tag for an empty EValue.
-    None = 0,
+    None = et_c::Tag::Tag_None as u32,
     /// Tag for value [`TensorAny`].
-    Tensor = 1,
+    Tensor = et_c::Tag::Tag_Tensor as u32,
     /// Tag for value `&[c_char]`.
-    String = 2,
+    String = et_c::Tag::Tag_String as u32,
     /// Tag for value `f64`.
-    Double = 3,
+    Double = et_c::Tag::Tag_Double as u32,
     /// Tag for value `i64`.
-    Int = 4,
+    Int = et_c::Tag::Tag_Int as u32,
     /// Tag for value `bool`.
-    Bool = 5,
+    Bool = et_c::Tag::Tag_Bool as u32,
     /// Tag for value `&[bool]`.
-    ListBool = 6,
+    ListBool = et_c::Tag::Tag_ListBool as u32,
     /// Tag for value `&[f64]`.
-    ListDouble = 7,
+    ListDouble = et_c::Tag::Tag_ListDouble as u32,
     /// Tag for value `&[i64]`.
-    ListInt = 8,
+    ListInt = et_c::Tag::Tag_ListInt as u32,
     /// Tag for value `&[TensorAny]`.
-    ListTensor = 9,
+    ListTensor = et_c::Tag::Tag_ListTensor as u32,
     /// unsupported at the moment.
-    ListScalar = 10,
+    ListScalar = et_c::Tag::Tag_ListScalar as u32,
     /// Tag for value `&[Option<TensorAny>]`.
-    ListOptionalTensor = 11,
+    ListOptionalTensor = et_c::Tag::Tag_ListOptionalTensor as u32,
 }
 
 impl IntoRust for et_c::Tag {

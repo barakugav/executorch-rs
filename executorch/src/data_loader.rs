@@ -206,13 +206,15 @@ mod file_data_loader {
     /// typically ensure that they are not swapped out. The actual behavior
     /// will depend on the host system.
     #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+    #[repr(u32)]
     pub enum MlockConfig {
         #[doc = " Do not call `mlock()` on loaded pages."]
-        NoMlock = 0,
+        NoMlock = et_c::MmapDataLoaderMlockConfig::ModuleLoadMode_NoMlock as u32,
         #[doc = " Call `mlock()` on loaded pages, failing if it fails."]
-        UseMlock = 1,
+        UseMlock = et_c::MmapDataLoaderMlockConfig::ModuleLoadMode_UseMlock as u32,
         #[doc = " Call `mlock()` on loaded pages, ignoring errors if it fails."]
-        UseMlockIgnoreErrors = 2,
+        UseMlockIgnoreErrors =
+            et_c::MmapDataLoaderMlockConfig::ModuleLoadMode_UseMlockIgnoreErrors as u32,
     }
     impl IntoCpp for MlockConfig {
         type CppType = et_c::MmapDataLoaderMlockConfig;

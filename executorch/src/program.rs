@@ -190,9 +190,9 @@ impl Drop for Program<'_> {
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum ProgramVerification {
     #[doc = " Do minimal verification of the data, ensuring that the header appears\n correct.\n\n Has minimal runtime overhead."]
-    Minimal = 0,
+    Minimal = et_c::ProgramVerification::ProgramVerification_Minimal as u32,
     #[doc = " Do full verification of the data, ensuring that internal pointers are\n self-consistent and that the data has not been truncated or obviously\n corrupted. May not catch all types of corruption, but should guard\n against illegal memory operations during parsing.\n\n Will have higher runtime overhead, scaling with the complexity of the\n proram data."]
-    InternalConsistency = 1,
+    InternalConsistency = et_c::ProgramVerification::ProgramVerification_InternalConsistency as u32,
 }
 impl IntoCpp for ProgramVerification {
     type CppType = et_c::ProgramVerification;
@@ -211,13 +211,13 @@ impl IntoCpp for ProgramVerification {
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum HeaderStatus {
     #[doc = " An ExecuTorch program header is present, and its version is compatible\n with this version of the runtime."]
-    CompatibleVersion = 0,
+    CompatibleVersion = et_c::ProgramHeaderStatus::ProgramHeaderStatus_CompatibleVersion as u32,
     #[doc = " An ExecuTorch program header is present, but its version is not\n compatible with this version of the runtime."]
-    IncompatibleVersion = 1,
+    IncompatibleVersion = et_c::ProgramHeaderStatus::ProgramHeaderStatus_IncompatibleVersion as u32,
     #[doc = " An ExecuTorch program header is not present."]
-    NotPresent = 2,
+    NotPresent = et_c::ProgramHeaderStatus::ProgramHeaderStatus_NotPresent as u32,
     #[doc = " The data provided was too short to find the program header."]
-    ShortData = 3,
+    ShortData = et_c::ProgramHeaderStatus::ProgramHeaderStatus_ShortData as u32,
 }
 impl IntoRust for et_c::ProgramHeaderStatus {
     type RsType = HeaderStatus;
