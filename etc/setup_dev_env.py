@@ -108,6 +108,7 @@ def build_executorch_with_dev_cfg():
     subprocess.check_call(
         [
             "cmake",
+            "-DCMAKE_BUILD_TYPE=Release",
             f"-DPYTHON_EXECUTABLE={sys.executable}",
             "-DEXECUTORCH_BUILD_EXECUTOR_RUNNER=OFF",
             "-DEXECUTORCH_BUILD_EXTENSION_RUNNER_UTIL=OFF",
