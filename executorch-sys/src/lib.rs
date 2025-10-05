@@ -2,7 +2,7 @@
 // some new clippy::lint annotations are supported in latest Rust but not recognized by older versions
 #![cfg_attr(deny_warnings, allow(unknown_lints))]
 #![cfg_attr(deny_warnings, deny(missing_docs))]
-#![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 //! Unsafe bindings for ExecuTorch - On-device AI across mobile, embedded and edge for PyTorch.
 //!
