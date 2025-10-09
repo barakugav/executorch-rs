@@ -404,7 +404,16 @@ impl<'a> TensorInfo<'a> {
     /// Returns the dim order of the tensor.
     pub fn dim_order(&self) -> &[u8] {
         let span = unsafe { et_c::executorch_TensorInfo_dim_order(&self.0) };
-        unsafe { ArrayRef::from_inner(span) }.as_slice()
+        #[cfg(not(all(target_os = "android", target_arch = "aarch64")))]
+        {
+            unsafe { ArrayRef::from_inner(span) }.as_slice()
+        }
+        #[cfg(all(target_os = "android", target_arch = "aarch64"))]
+        {
+            // On Android ARM64, ArrayRefU8 is actually ArrayRefChar, so transmute and cast
+            let char_span: et_c::ArrayRefChar = unsafe { std::mem::transmute(span) };
+            unsafe { std::slice::from_raw_parts(char_span.data.cast::<u8>(), char_span.len) }
+        }
     }
 
     /// Returns the scalar type of the input/output.

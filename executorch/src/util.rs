@@ -349,8 +349,16 @@ macro_rules! impl_array_ref {
         }
     };
 }
+// Conditional implementation to avoid conflicts when c_char == u8 (Android ARM64)
+#[cfg(not(all(target_os = "android", target_arch = "aarch64")))]
 impl_array_ref!(std::ffi::c_char, et_c::ArrayRefChar);
+#[cfg(not(all(target_os = "android", target_arch = "aarch64")))]
 impl_array_ref!(u8, et_c::ArrayRefU8);
+
+// On Android ARM64, c_char IS u8, so implement once with u8 pointing to ArrayRefChar
+#[cfg(all(target_os = "android", target_arch = "aarch64"))]
+impl_array_ref!(u8, et_c::ArrayRefChar);
+
 impl_array_ref!(i32, et_c::ArrayRefI32);
 impl_array_ref!(i64, et_c::ArrayRefI64);
 impl_array_ref!(f64, et_c::ArrayRefF64);
