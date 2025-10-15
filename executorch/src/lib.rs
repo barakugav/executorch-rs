@@ -148,6 +148,8 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// The version of the ExecuTorch C++ library that this crate is compatible and linked with.
 pub const EXECUTORCH_CPP_VERSION: &str = executorch_sys::EXECUTORCH_CPP_VERSION;
 
+pub use executorch_sys as sys;
+
 #[macro_use]
 mod private;
 pub mod data_loader;
