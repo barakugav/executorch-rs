@@ -16,10 +16,10 @@ updates:
     groups:
       rust-patch-updates:
         update-types:
-          - "patch"
+          - patch
 
   # Actions
   - package-ecosystem: github-actions
-    directory: ./
+    directory: /
     schedule:
       interval: monthly
