@@ -61,7 +61,7 @@ use crate::evalue::{EValue, Tag};
 use crate::event_tracer::EventTracer;
 use crate::memory::MemoryManager;
 use crate::tensor::ScalarType;
-use crate::util::{try_c_new, ArrayRef, IntoCpp, IntoRust, __ArrayRefImpl, chars2str};
+use crate::util::{try_c_new, ArrayRef, IntoCpp, IntoRust, __ArrayRefImpl, chars2str, FfiChar};
 use crate::{CError, Error, Result};
 use executorch_sys as et_c;
 
@@ -430,7 +430,8 @@ impl<'a> TensorInfo<'a> {
     ///
     /// Might be empty if the tensor is nameless.
     pub fn name_chars(&self) -> &[std::ffi::c_char] {
-        unsafe { et_c::executorch_TensorInfo_name(&self.0).as_slice() }
+        let chars = unsafe { et_c::executorch_TensorInfo_name(&self.0).as_slice() };
+        unsafe { std::mem::transmute::<&[FfiChar], &[std::ffi::c_char]>(chars) }
     }
 }
 impl std::fmt::Debug for TensorInfo<'_> {
@@ -470,7 +471,9 @@ impl Method<'_> {
     /// Result containing the attribute tensor on success, non-Ok on failure.
     #[cfg(feature = "alloc")]
     pub fn get_attribute<'b>(&'b mut self, name: &str) -> Result<crate::tensor::TensorAny<'b>> {
-        let name = ArrayRef::from_slice(crate::util::str2chars(name));
+        let name = crate::util::str2chars(name);
+        let name = unsafe { std::mem::transmute::<&[std::ffi::c_char], &[FfiChar]>(name) };
+        let name = ArrayRef::from_slice(name);
 
         // Safety: et_c::executorch_Method_get_attribute writes to the tensor pointer.
         let tensor = unsafe {

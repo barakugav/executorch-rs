@@ -328,6 +328,12 @@ pub(crate) trait __ArrayRefImpl {
     private_decl! {}
 }
 
+/// Equivalent to C's `char` type.
+///
+/// This type is used to avoid trait conflicts with `i8` and `u8` on different platforms (for example Android aarch64).
+#[repr(transparent)]
+pub(crate) struct FfiChar(#[allow(unused)] std::ffi::c_char);
+
 macro_rules! impl_array_ref {
     ($element:path, $span:path) => {
         impl ArrayRefElement for $element {
@@ -349,13 +355,31 @@ macro_rules! impl_array_ref {
         }
     };
 }
-impl_array_ref!(std::ffi::c_char, et_c::ArrayRefChar);
 impl_array_ref!(u8, et_c::ArrayRefU8);
 impl_array_ref!(i32, et_c::ArrayRefI32);
 impl_array_ref!(i64, et_c::ArrayRefI64);
 impl_array_ref!(f64, et_c::ArrayRefF64);
 impl_array_ref!(usize, et_c::ArrayRefUsizeType);
 impl_array_ref!(bool, et_c::ArrayRefBool);
+impl ArrayRefElement for FfiChar {
+    type __ArrayRefImpl = et_c::ArrayRefChar;
+    private_impl! {}
+}
+impl __ArrayRefImpl for et_c::ArrayRefChar {
+    type Element = FfiChar;
+    unsafe fn from_slice(slice: &[FfiChar]) -> Self {
+        let slice = unsafe { std::mem::transmute::<&[FfiChar], &[std::ffi::c_char]>(slice) };
+        Self {
+            data: slice.as_ptr(),
+            len: slice.len(),
+        }
+    }
+    unsafe fn as_slice(&self) -> &'static [FfiChar] {
+        let slice = unsafe { std::slice::from_raw_parts(self.data, self.len) };
+        unsafe { std::mem::transmute::<&[std::ffi::c_char], &[FfiChar]>(slice) }
+    }
+    private_impl! {}
+}
 // impl_array_ref!(et_c::Tensor, et_c::ArrayRefTensor);
 // impl_array_ref!(et_c::EValue, et_c::ArrayRefEValue);
 impl ArrayRefElement for et_c::EValueStorage {

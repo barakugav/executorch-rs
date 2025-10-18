@@ -9,7 +9,7 @@ use std::pin::Pin;
 use crate::memory::{MemoryAllocator, Storable, Storage};
 use crate::tensor::{self, RawTensor, TensorAny, TensorBase};
 use crate::util::{
-    ArrayRef, Destroy, IntoCpp, IntoRust, NonTriviallyMovable, __ArrayRefImpl, chars2str,
+    ArrayRef, Destroy, FfiChar, IntoCpp, IntoRust, NonTriviallyMovable, __ArrayRefImpl, chars2str,
 };
 use crate::{CError, Error, Result};
 use executorch_sys as et_c;
@@ -491,13 +491,15 @@ impl<'a> IntoEValue<'a> for &'a [bool] {
 impl<'a> IntoEValue<'a> for &'a [std::ffi::c_char] {
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a> {
-        let arr = ArrayRef::from_slice(self);
+        let self_ = unsafe { std::mem::transmute::<&[std::ffi::c_char], &[FfiChar]>(self) };
+        let arr = ArrayRef::from_slice(self_);
         // Safety: the closure init the pointer
         unsafe { EValue::new_impl(|p| et_c::executorch_EValue_new_from_string(p, arr.0)) }
     }
 
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
-        let arr = ArrayRef::from_slice(self);
+        let self_ = unsafe { std::mem::transmute::<&[std::ffi::c_char], &[FfiChar]>(self) };
+        let arr = ArrayRef::from_slice(self_);
         // Safety: the closure init the pointer
         unsafe {
             EValue::new_in_storage_impl(
@@ -702,7 +704,9 @@ impl<'a> TryFrom<&'a EValue<'_>> for &'a [std::ffi::c_char] {
     type Error = Error;
     fn try_from(value: &'a EValue) -> Result<Self> {
         if value.tag() == Tag::String {
-            Ok(unsafe { et_c::executorch_EValue_as_string(value.cpp()).as_slice() })
+            let chars = unsafe { et_c::executorch_EValue_as_string(value.cpp()).as_slice() };
+            let chars = unsafe { std::mem::transmute::<&[FfiChar], &[std::ffi::c_char]>(chars) };
+            Ok(chars)
         } else {
             Err(Error::CError(CError::InvalidType))
         }
