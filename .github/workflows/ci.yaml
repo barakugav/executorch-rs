@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  ci:
+  test:
     runs-on: ${{ matrix.runner }}
     defaults:
       run:
@@ -135,6 +135,119 @@ jobs:
       - name: Check llama3 example
         run: cargo check
         working-directory: examples/llama3
+        env:
+          EXECUTORCH_RS_LINK: 0
+
+  check:
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      matrix:
+        include:
+          # Linux
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-24.04
+          - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-24.04
+          - target: i686-unknown-linux-gnu
+            runner: ubuntu-24.04
+          - target: armv7-unknown-linux-gnueabihf
+            runner: ubuntu-24.04
+          # macOS
+          - target: aarch64-apple-darwin
+            runner: macos-latest
+          # Android
+          - target: x86_64-linux-android
+            runner: ubuntu-24.04
+          - target: i686-linux-android
+            runner: ubuntu-24.04
+          - target: aarch64-linux-android
+            runner: ubuntu-24.04
+          - target: armv7-linux-androideabi
+            runner: ubuntu-24.04
+          # iOS
+          - target: aarch64-apple-ios
+            runner: macos-latest
+          # - target: x86_64-apple-ios
+          #   runner: macos-latest
+    permissions:
+      contents: read
+      checks: write
+    steps:
+      - name: Repo checkout
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: 1.77.0
+          target: ${{ matrix.target }}
+          components: clippy
+          cache-workspaces: |
+            executorch
+            executorch-sys
+
+      - uses: cargo-bins/cargo-binstall@main
+      - name: Install cross dependencies
+        run: |
+          if [[ "${{ matrix.target }}" == *"android"* ]]; then
+            : # Run `cargo ndk-env`, capture the environment variables it sets,
+            : # and export them to GITHUB_ENV for subsequent steps.
+
+            cargo binstall cargo-ndk
+            cargo ndk-env --target ${{ matrix.target }} > ndk-env.sh
+            env | sort > env_before.txt
+            source ndk-env.sh
+            env | sort > env_after.txt
+            comm -13 env_before.txt env_after.txt >> $GITHUB_ENV
+          fi
+          if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
+            sudo apt-get install g++-aarch64-linux-gnu
+            echo "CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+            echo "CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++" >> $GITHUB_ENV
+            echo "AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar" >> $GITHUB_ENV
+          fi
+          if [[ "${{ matrix.target }}" == "armv7-unknown-linux-gnueabihf" ]]; then
+            sudo apt-get install g++-arm-linux-gnueabihf
+            echo "CC_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc" >> $GITHUB_ENV
+            echo "CXX_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-g++" >> $GITHUB_ENV
+            echo "AR_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-ar" >> $GITHUB_ENV
+          fi
+          if [[ "${{ matrix.target }}" == "i686-unknown-linux-gnu" ]]; then
+            sudo apt-get install g++-i686-linux-gnu
+            echo "CC_i686_unknown_linux_gnu=i686-linux-gnu-gcc" >> $GITHUB_ENV
+            echo "CXX_i686_unknown_linux_gnu=i686-linux-gnu-g++" >> $GITHUB_ENV
+            echo "AR_i686_unknown_linux_gnu=i686-linux-gnu-ar" >> $GITHUB_ENV
+          fi
+
+      - name: cargo check executorch-sys
+        run: cargo check --target ${{ matrix.target }} --all-features
+        working-directory: executorch-sys
+        env:
+          EXECUTORCH_RS_LINK: 0
+      - name: cargo check executorch
+        run: cargo check --target ${{ matrix.target }} --all-features
+        working-directory: executorch
+        env:
+          EXECUTORCH_RS_LINK: 0
+
+      - name: Clippy executorch-sys
+        uses: auguwu/clippy-action@1.4.0
+        with:
+          working-directory: executorch-sys
+          check-args: --target ${{ matrix.target }} --all-features
+          token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          EXECUTORCH_RS_LINK: 0
+      - name: Clippy executorch
+        uses: auguwu/clippy-action@1.4.0
+        with:
+          working-directory: executorch
+          check-args: --target ${{ matrix.target }} --all-features
+          token: ${{ secrets.GITHUB_TOKEN }}
         env:
           EXECUTORCH_RS_LINK: 0
 
