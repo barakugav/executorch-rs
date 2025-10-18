@@ -253,18 +253,6 @@ extern "C"
         TensorShapeDynamism_DYNAMIC_UNBOUND = 2,
     };
 
-    struct EValueStorage
-    {
-        size_t _blob[4];
-    };
-    struct EValueRef
-    {
-        const void *ptr;
-    };
-    struct EValueRefMut
-    {
-        void *ptr;
-    };
     struct TensorStorage
     {
         size_t _blob[1];
@@ -280,6 +268,42 @@ extern "C"
     struct TensorImpl
     {
         size_t _blob[8];
+    };
+    struct EValueStorage
+    {
+        union
+        {
+            // as_int
+            int64_t _blob1;
+            // as_double
+            double _blob2;
+            // as_bool
+            bool _blob3;
+            // as_string
+            size_t _blob4[2];
+            // as_double_list
+            size_t _blob5[2];
+            // as_bool_list
+            size_t _blob6[2];
+            // as_int_list
+            size_t _blob7[3];
+            // as_tensor_list
+            size_t _blob8[3];
+            // as_list_optional_tensor
+            size_t _blob9[3];
+            // as_tensor
+            struct TensorStorage _blob10;
+        };
+        // tag
+        uint32_t _blob11;
+    };
+    struct EValueRef
+    {
+        const void *ptr;
+    };
+    struct EValueRefMut
+    {
+        void *ptr;
     };
     struct Program
     {
