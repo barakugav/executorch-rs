@@ -77,14 +77,14 @@ jobs:
         run: cargo build
         working-directory: executorch
 
-      - name: cargo check executorch
-        if: ${{ matrix.runner == 'ubuntu-latest' }}
-        run: cargo hack check --feature-powerset --depth 2
-        working-directory: executorch
-      - name: cargo check executorch-sys
-        if: ${{ matrix.runner == 'ubuntu-latest' }}
+      - name: cargo check executorch-sys with feature powerset
+        if: runner.os == 'Linux'
         run: cargo hack check --feature-powerset  --depth 2
         working-directory: executorch-sys
+      - name: cargo check executorch with feature powerset
+        if: runner.os == 'Linux'
+        run: cargo hack check --feature-powerset --depth 2
+        working-directory: executorch
 
       ############ Linters ############
       - name: Clippy executorch-sys
