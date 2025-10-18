@@ -144,16 +144,12 @@ jobs:
           cargo run
         working-directory: examples/etdump
 
-      - name: Check nano-gpt example
-        run: cargo check
+      - name: Build nano-gpt example
+        run: cargo build
         working-directory: examples/nano-gpt
-        env:
-          EXECUTORCH_RS_LINK: 0
-      - name: Check llama3 example
-        run: cargo check
+      - name: Build llama3 example
+        run: cargo build
         working-directory: examples/llama3
-        env:
-          EXECUTORCH_RS_LINK: 0
 
   check:
     runs-on: ${{ matrix.runner }}
