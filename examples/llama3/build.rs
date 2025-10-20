@@ -19,9 +19,6 @@ fn main() {
     println!("cargo::rustc-link-lib=static:+whole-archive=quantized_kernels");
     println!("cargo::rustc-link-lib=static:+whole-archive=quantized_ops_lib");
 
-    println!("cargo::rustc-link-search=native={libs_dir}/extension/llm/custom_ops/");
-    println!("cargo::rustc-link-lib=static:+whole-archive=custom_ops");
-
     println!("cargo::rustc-link-search=native={libs_dir}/extension/threadpool/");
     println!("cargo::rustc-link-lib=static:+whole-archive=extension_threadpool");
 
@@ -41,6 +38,4 @@ fn main() {
         println!("cargo::rustc-link-search=native={libs_dir}/kleidiai/");
         println!("cargo::rustc-link-lib=static:+whole-archive=kleidiai");
     }
-
-    // println!("cargo::rustc-link-lib=static:+whole-archive=custom_ops");
 }

@@ -7,8 +7,7 @@
 
 `executorch` is a Rust library for executing PyTorch models in Rust.
 It is a Rust wrapper around the [ExecuTorch C++ API](https://pytorch.org/executorch).
-It depends on version `0.7.0` of the Cpp API, but will advance as the API does.
-The underlying C++ library is still in development, and its API is subject to change together with the Rust API.
+It depends on version `1.0.0` of the Cpp library, and will advance with it.
 
 ## Usage
 Create a model in Python and export it:
@@ -59,7 +58,7 @@ In the following example we build the C++ library with the necessary flags to ru
 ```bash
 # Clone the C++ library
 cd ${EXECUTORCH_CPP_DIR}
-git clone --depth 1 --branch v0.7.0 https://github.com/pytorch/executorch.git .
+git clone --depth 1 --branch v1.0.0 https://github.com/pytorch/executorch.git .
 git submodule sync --recursive
 git submodule update --init --recursive
 
@@ -150,7 +149,7 @@ The build (and library) is tested on Ubuntu and MacOS, not on Windows.
     Includes the `ETDumpGen` struct, an implementation of an `EventTracer`, used for debugging and profiling.
     The `libetdump.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_DEVTOOLS=ON` and
     `EXECUTORCH_ENABLE_EVENT_TRACER=ON`.
-    In addition, the `flatcc` (or `flatcc_d`) library is required, available at `{CMAKE_DIR}/third-party/flatcc_external_project/lib/`,
+    In addition, the `flatcc` (or `flatcc_d`) library is required, available at `{CMAKE_DIR}/third-party/flatcc_ep/lib/`,
     and should be linked by the user.
 
 - `ndarray`

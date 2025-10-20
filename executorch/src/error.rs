@@ -36,54 +36,58 @@ impl std::error::Error for Error {}
 
 /// Error codes returned by the Cpp library.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-#[repr(u8)]
+#[repr(u32)]
 #[non_exhaustive]
 pub enum CError {
     /* System errors */
     //
     /// An internal error occurred.
-    Internal = RawCError::Error_Internal as u8,
+    Internal = RawCError::Error_Internal as u32,
     /// Status indicating the executor is in an invalid state for a target
-    InvalidState = RawCError::Error_InvalidState as u8,
+    InvalidState = RawCError::Error_InvalidState as u32,
     /// Status indicating there are no more steps of execution to run
-    EndOfMethod = RawCError::Error_EndOfMethod as u8,
+    EndOfMethod = RawCError::Error_EndOfMethod as u32,
 
     /* Logical errors */
     //
     /// Operation is not supported in the current context.
-    NotSupported = RawCError::Error_NotSupported as u8,
+    NotSupported = RawCError::Error_NotSupported as u32,
     /// Operation is not yet implemented.
-    NotImplemented = RawCError::Error_NotImplemented as u8,
+    NotImplemented = RawCError::Error_NotImplemented as u32,
     /// User provided an invalid argument.
-    InvalidArgument = RawCError::Error_InvalidArgument as u8,
+    InvalidArgument = RawCError::Error_InvalidArgument as u32,
     /// Object is an invalid type for the operation.
-    InvalidType = RawCError::Error_InvalidType as u8,
+    InvalidType = RawCError::Error_InvalidType as u32,
     /// Operator(s) missing in the operator registry.
-    OperatorMissing = RawCError::Error_OperatorMissing as u8,
+    OperatorMissing = RawCError::Error_OperatorMissing as u32,
+    /// Registration error: Exceeding the maximum number of kernels.
+    RegistrationExceedingMaxKernels = RawCError::Error_RegistrationExceedingMaxKernels as u32,
+    /// Registration error: The kernel is already registered.
+    RegistrationAlreadyRegistered = RawCError::Error_RegistrationAlreadyRegistered as u32,
 
     /* Resource errors */
     //
     /// Requested resource could not be found.
-    NotFound = RawCError::Error_NotFound as u8,
+    NotFound = RawCError::Error_NotFound as u32,
     /// Could not allocate the requested memory.
-    MemoryAllocationFailed = RawCError::Error_MemoryAllocationFailed as u8,
+    MemoryAllocationFailed = RawCError::Error_MemoryAllocationFailed as u32,
     /// Could not access a resource.
-    AccessFailed = RawCError::Error_AccessFailed as u8,
+    AccessFailed = RawCError::Error_AccessFailed as u32,
     /// Error caused by the contents of a program.
-    InvalidProgram = RawCError::Error_InvalidProgram as u8,
+    InvalidProgram = RawCError::Error_InvalidProgram as u32,
     /// Error caused by the contents of external data.
-    InvalidExternalData = RawCError::Error_InvalidExternalData as u8,
+    InvalidExternalData = RawCError::Error_InvalidExternalData as u32,
     /// Does not have enough resources to perform the requested operation.
-    OutOfResources = RawCError::Error_OutOfResources as u8,
+    OutOfResources = RawCError::Error_OutOfResources as u32,
 
     /* Delegate errors */
     //
     /// Init stage: Backend receives an incompatible delegate version.
-    DelegateInvalidCompatibility = RawCError::Error_DelegateInvalidCompatibility as u8,
+    DelegateInvalidCompatibility = RawCError::Error_DelegateInvalidCompatibility as u32,
     /// Init stage: Backend fails to allocate memory.
-    DelegateMemoryAllocationFailed = RawCError::Error_DelegateMemoryAllocationFailed as u8,
+    DelegateMemoryAllocationFailed = RawCError::Error_DelegateMemoryAllocationFailed as u32,
     /// Execute stage: The handle is invalid.
-    DelegateInvalidHandle = RawCError::Error_DelegateInvalidHandle as u8,
+    DelegateInvalidHandle = RawCError::Error_DelegateInvalidHandle as u32,
 }
 impl std::fmt::Display for CError {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -106,6 +110,10 @@ impl IntoRust for RawCError {
             RawCError::Error_InvalidArgument => CError::InvalidArgument,
             RawCError::Error_InvalidType => CError::InvalidType,
             RawCError::Error_OperatorMissing => CError::OperatorMissing,
+            RawCError::Error_RegistrationExceedingMaxKernels => {
+                CError::RegistrationExceedingMaxKernels
+            }
+            RawCError::Error_RegistrationAlreadyRegistered => CError::RegistrationAlreadyRegistered,
             RawCError::Error_NotFound => CError::NotFound,
             RawCError::Error_MemoryAllocationFailed => CError::MemoryAllocationFailed,
             RawCError::Error_AccessFailed => CError::AccessFailed,

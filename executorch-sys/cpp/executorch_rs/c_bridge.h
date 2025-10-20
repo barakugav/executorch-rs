@@ -54,6 +54,12 @@ extern "C"
         /// Operator(s) missing in the operator registry.
         Error_OperatorMissing = 0x14,
 
+        /// Registration error: Exceeding the maximum number of kernels.
+        Error_RegistrationExceedingMaxKernels = 0x15,
+
+        /// Registration error: The kernel is already registered.
+        Error_RegistrationAlreadyRegistered = 0x16,
+
         /*
          * Resource errors.
          */
@@ -358,7 +364,6 @@ extern "C"
     };
     struct Method
     {
-
         // step_state_ (2)
         // program_
         // memory_manager_
@@ -367,13 +372,15 @@ extern "C"
         // event_tracer_
         // n_value_
         // values_
+        // input_set_
         // n_delegate_
         // delegates_
         // n_chains_
         // chains_
         // merged_data_map_
+        // external_constants_
         // n_external_constants_
-        size_t _blob1[15];
+        size_t _blob1[17];
         // init_state_;
         uint8_t _blob2[1];
     };

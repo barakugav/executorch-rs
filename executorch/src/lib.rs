@@ -74,7 +74,7 @@
 //!   Includes the `ETDumpGen` struct, an implementation of an `EventTracer`, used for debugging and profiling.
 //!   The `libetdump.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_DEVTOOLS=ON` and
 //!   `EXECUTORCH_ENABLE_EVENT_TRACER=ON`.
-//!   In addition, the `flatcc` (or `flatcc_d`) library is required, available at `{CMAKE_DIR}/third-party/flatcc_external_project/lib/`,
+//!   In addition, the `flatcc` (or `flatcc_d`) library is required, available at `{CMAKE_DIR}/third-party/flatcc_ep/lib/`,
 //!   and should be linked by the user.
 //! - `ndarray`:
 //!   Conversions between `executorch` tensors and `ndarray` arrays.
@@ -106,6 +106,7 @@
 //! ## Build
 //! To use the library you must compile the C++ executorch library yourself, as there are many configurations that
 //! determines which modules, backends, and operations are supported. See the `executorch-sys` crate for more info.
+//! Currently the supported Cpp executorch version is `1.0.0`.
 //!
 //! ## Embedded Systems
 //! The library is designed to be used both in `std` and `no_std` environments. The `no_std` environment is useful for
@@ -114,10 +115,6 @@
 //! Due to some difference between Cpp and Rust, it is not trivial to provide such API, and the interface may feel
 //! more verbose. See the `memory::Storage` struct for stack allocations of Cpp objects, and the `examples/no_std`
 //! example.
-//!
-//! ## API Stability
-//! The C++ API is still in development, and this Rust lib will continue to change with it.
-//! Currently the supported executorch version is `0.7.0`.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
