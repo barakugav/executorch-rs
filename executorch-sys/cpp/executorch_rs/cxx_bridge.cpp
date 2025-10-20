@@ -133,6 +133,10 @@ namespace executorch_rs
         auto ret = self.load_method(method_name, planned_memory_, event_tracer);
         return static_cast<Error>(ret);
     }
+    bool Module_unload_method(executorch::extension::Module &self, const std::string &method_name)
+    {
+        return self.unload_method(method_name);
+    }
     bool Module_is_method_loaded(const executorch::extension::Module &self, const std::string &method_name)
     {
         return self.is_method_loaded(method_name);

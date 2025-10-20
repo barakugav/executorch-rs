@@ -113,6 +113,16 @@ pub(crate) mod ffi {
             event_tracer: *mut EventTracer,
         ) -> Error;
 
+        /// Unload a specific method from the program.
+        ///
+        /// # Arguments
+        /// - `method_name`: The name of the method to unload.
+        ///
+        /// # Returns
+        /// True if the method is unloaded, false if no-op.
+        #[namespace = "executorch_rs"]
+        unsafe fn Module_unload_method(self_: Pin<&mut Module>, method_name: &CxxString) -> bool;
+
         /// Checks if a specific method is loaded.
         ///
         /// # Arguments

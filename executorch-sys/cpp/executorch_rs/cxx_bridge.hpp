@@ -47,6 +47,7 @@ namespace executorch_rs
     Error Module_num_methods(executorch::extension::Module &self, size_t &method_num_out);
     Error Module_method_names(executorch::extension::Module &self, rust::Vec<rust::String> &method_names_out);
     Error Module_load_method(executorch::extension::Module &self, const std::string &method_name, HierarchicalAllocator *planned_memory, executorch::runtime::EventTracer *event_tracer);
+    bool Module_unload_method(executorch::extension::Module &self, const std::string &method_name);
     bool Module_is_method_loaded(const executorch::extension::Module &self, const std::string &method_name);
     Error Module_method_meta(executorch::extension::Module &self, const std::string &method_name, MethodMeta *method_meta_out);
     Error Module_execute(executorch::extension::Module &self, const std::string &method_name, ArrayRefEValue inputs, VecEValue *outputs);

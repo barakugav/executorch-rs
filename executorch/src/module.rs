@@ -167,6 +167,18 @@ impl<'a> Module<'a> {
         }
     }
 
+    /// Unload a specific method from the program.
+    ///
+    /// # Arguments
+    /// - `method_name`: The name of the method to unload.
+    ///
+    /// # Returns
+    /// True if the method is unloaded, false if no-op.
+    pub fn unload_method(&mut self, method_name: &str) -> bool {
+        et_c::cxx::let_cxx_string!(method_name = method_name);
+        unsafe { et_c::cpp::Module_unload_method(self.0.as_mut().unwrap(), &method_name) }
+    }
+
     /// Checks if a specific method is loaded.
     ///
     /// # Arguments
@@ -361,6 +373,19 @@ mod tests {
 
         let mut module = Module::from_file_path("non-existing-file.pte2");
         assert!(module.load_method("forward", None, None).is_err());
+    }
+
+    #[cfg(tests_with_kernels)]
+    #[test]
+    fn unload_method() {
+        let mut module = Module::from_file_path(add_model_path());
+        assert!(!module.is_method_loaded("forward"));
+        assert!(module.load_method("forward", None, None).is_ok());
+        assert!(module.is_method_loaded("forward"));
+        assert!(!module.unload_method("non-existing-method"));
+        assert!(module.is_method_loaded("forward"));
+        assert!(module.unload_method("forward"));
+        assert!(!module.is_method_loaded("forward"));
     }
 
     #[cfg(tests_with_kernels)]
