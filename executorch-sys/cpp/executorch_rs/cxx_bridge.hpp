@@ -39,7 +39,7 @@ namespace executorch_rs
 #if defined(EXECUTORCH_RS_MODULE)
     std::unique_ptr<executorch::extension::Module> Module_new(
         const std::string &file_path,
-        const std::string &data_map_path,
+        rust::Slice<const rust::Str> data_files,
         const ModuleLoadMode load_mode,
         std::unique_ptr<executorch::runtime::EventTracer> event_tracer);
 

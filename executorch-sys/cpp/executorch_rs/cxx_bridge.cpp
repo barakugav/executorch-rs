@@ -77,26 +77,21 @@ namespace executorch_rs
 #if defined(EXECUTORCH_RS_MODULE)
     std::unique_ptr<executorch::extension::Module> Module_new(
         const std::string &file_path,
-        const std::string &data_map_path,
+        rust::Slice<const rust::Str> data_files,
         const ModuleLoadMode load_mode,
         std::unique_ptr<executorch::runtime::EventTracer> event_tracer)
     {
+        std::vector<std::string> data_files_;
+        for (const auto &data_file : data_files)
+        {
+            data_files_.emplace_back(data_file);
+        }
         auto load_mode_ = static_cast<executorch::extension::Module::LoadMode>(load_mode);
-        if (data_map_path.empty())
-        {
-            return std::make_unique<executorch::extension::Module>(
-                file_path,
-                load_mode_,
-                std::move(event_tracer));
-        }
-        else
-        {
-            return std::make_unique<executorch::extension::Module>(
-                file_path,
-                data_map_path,
-                load_mode_,
-                std::move(event_tracer));
-        }
+        return std::make_unique<executorch::extension::Module>(
+            file_path,
+            data_files_,
+            load_mode_,
+            std::move(event_tracer));
     }
 
     Error Module_load(executorch::extension::Module &self, ProgramVerification verification)

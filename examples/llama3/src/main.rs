@@ -53,7 +53,7 @@ fn main() {
 
     executorch::platform::pal_init();
 
-    let mut model = Module::new(&args.model, None, Some(LoadMode::File), None);
+    let mut model = Module::new(&args.model, &[], Some(LoadMode::File), None);
     let tokenizer = Tokenizer::from_json(&args.tokenizer);
     let mut rng = if let Some(seed) = args.seed {
         rand::rngs::StdRng::seed_from_u64(seed)

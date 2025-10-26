@@ -17,7 +17,7 @@ use crate::event_tracer::{EventTracer, EventTracerPtr};
 use crate::memory::HierarchicalAllocator;
 use crate::program::{MethodMeta, ProgramVerification};
 use crate::util::{try_c_new, ArrayRef, IntoCpp, IntoRust, NonTriviallyMovableVec};
-use crate::Result;
+use crate::{Error, Result};
 use executorch_sys as et_c;
 
 /// A facade class for loading programs and executing methods within them.
@@ -34,7 +34,7 @@ impl<'a> Module<'a> {
     /// # Arguments
     ///
     /// * `file_path` - The path to the ExecuTorch program file to load.
-    /// - `data_map_path`: The path to a .ptd file.
+    /// - `data_files` - The path to one or more .ptd file/s.
     /// * `load_mode` - The loading mode to use. Defaults to `LoadMode::File`.
     /// * `event_tracer` - A EventTracer used for tracking and logging events.
     ///
@@ -47,21 +47,21 @@ impl<'a> Module<'a> {
     /// If any of the file path or the data map path are not a valid UTF-8 string or contains a null character.
     pub fn new(
         file_path: &Path,
-        data_map_path: Option<&Path>,
+        data_files: &[&Path],
         load_mode: Option<LoadMode>,
         event_tracer: Option<EventTracerPtr<'a>>,
     ) -> Self {
-        let data_map_path = data_map_path
-            .map(|p| p.as_os_str().as_encoded_bytes())
-            .unwrap_or(&[]);
+        let data_files = data_files
+            .iter()
+            .map(|f| f.as_os_str().to_str().ok_or(Error::ToCStr).unwrap())
+            .collect::<Vec<_>>();
         et_c::cxx::let_cxx_string!(file_path = file_path.as_os_str().as_encoded_bytes());
-        et_c::cxx::let_cxx_string!(data_map_path = data_map_path);
 
         let load_mode = load_mode.unwrap_or(LoadMode::File).cpp();
         let event_tracer = event_tracer
             .map(|tracer| tracer.0)
             .unwrap_or(et_c::cxx::UniquePtr::null());
-        let module = et_c::cpp::Module_new(&file_path, &data_map_path, load_mode, event_tracer);
+        let module = et_c::cpp::Module_new(&file_path, &data_files, load_mode, event_tracer);
         Self(module, PhantomData)
     }
 
@@ -79,7 +79,7 @@ impl<'a> Module<'a> {
     ///
     /// If the file path is not a valid UTF-8 string or contains a null character.
     pub fn from_file_path(file_path: impl AsRef<Path>) -> Self {
-        Self::new(file_path.as_ref(), None, None, None)
+        Self::new(file_path.as_ref(), &[], None, None)
     }
 
     /// Loads the program using the specified data loader and memory allocator.
@@ -330,7 +330,8 @@ mod tests {
                 Some(ProgramVerification::Minimal),
                 Some(ProgramVerification::InternalConsistency),
             ] {
-                let mut module = Module::new(&add_model_path(), None, load_mode, None);
+                // TODO: test with data files (.ptd)
+                let mut module = Module::new(&add_model_path(), &[], load_mode, None);
                 assert!(module.load(verification).is_ok());
             }
         }

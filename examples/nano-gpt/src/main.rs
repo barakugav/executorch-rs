@@ -55,7 +55,7 @@ impl Gpt2 {
     pub fn new(model_path: &Path, vocab_file: &Path) -> Self {
         let model = Module::new(
             model_path,
-            None,
+            &[],
             Some(executorch::module::LoadMode::MmapUseMlockIgnoreErrors),
             None,
         );
