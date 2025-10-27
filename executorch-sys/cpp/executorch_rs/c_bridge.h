@@ -384,6 +384,18 @@ extern "C"
         // init_state_;
         uint8_t _blob2[1];
     };
+
+    struct TensorLayout
+    {
+        // sizes_ (2)
+        // dim_order_ (2)
+        size_t _blob1[4];
+        // scalar_type_
+        int8_t _blob2;
+        // nbytes_
+        size_t _blob3;
+    };
+
     struct DataLoaderRefMut
     {
         void *ptr;
@@ -543,11 +555,6 @@ extern "C"
         struct SpanU8 *data;
         size_t len;
     };
-    // struct SpanEValue
-    // {
-    //     EValue *data;
-    //     size_t len;
-    // };
     struct SpanI64
     {
         int64_t *data;
@@ -563,6 +570,11 @@ extern "C"
         struct OptionalTensorRefMut data;
         size_t len;
     };
+    // struct SpanEValue
+    // {
+    //     EValue *data;
+    //     size_t len;
+    // };
     struct BoxedEvalueListI64
     {
         struct ArrayRefEValuePtr wrapped_vals;
@@ -670,6 +682,17 @@ extern "C"
 
     // OptionalTensor
     struct TensorRef executorch_OptionalTensor_get(struct OptionalTensorRef self);
+
+    // TensorLayout
+    // enum Error executorch_TensorLayout_create(
+    //     struct ArrayRefI32 sizes,
+    //     struct ArrayRefU8 dim_order,
+    //     enum ScalarType scalar_type,
+    //     struct TensorLayout *out);
+    struct ArrayRefI32 executorch_TensorLayout_sizes(const struct TensorLayout *self);
+    struct ArrayRefU8 executorch_TensorLayout_dim_order(const struct TensorLayout *self);
+    enum ScalarType executorch_TensorLayout_scalar_type(const struct TensorLayout *self);
+    size_t executorch_TensorLayout_nbytes(const struct TensorLayout *self);
 
     // EValue
     void executorch_EValue_new_none(struct EValueRefMut self);

@@ -55,6 +55,9 @@ namespace
     static_assert(is_equal_layout<TensorInfo, executorch::runtime::TensorInfo>());
     static_assert(std::is_trivially_move_constructible_v<executorch::runtime::TensorInfo>);
 
+    static_assert(is_equal_layout<TensorLayout, executorch::runtime::TensorLayout>());
+    static_assert(std::is_trivially_move_constructible_v<executorch::runtime::TensorLayout>);
+
     static_assert(is_equal_layout<MethodMeta, executorch::runtime::MethodMeta>());
     static_assert(std::is_trivially_move_constructible_v<executorch::runtime::MethodMeta>);
 
@@ -460,6 +463,57 @@ struct TensorRef executorch_OptionalTensor_get(struct OptionalTensorRef self)
         return TensorRef{.ptr = nullptr};
     const executorch::aten::Tensor *tensor = &self_->value();
     return cast_tensor(tensor);
+}
+
+// TensorLayout
+// enum Error executorch_TensorLayout_create(
+//     struct ArrayRefI32 sizes,
+//     struct ArrayRefU8 dim_order,
+//     enum ScalarType scalar_type,
+//     struct TensorLayout *out)
+// {
+//     auto sizes_ = *checked_reinterpret_cast<executorch::runtime::Span<const int32_t>>(&sizes);
+//     auto dim_order_ = *checked_reinterpret_cast<executorch::runtime::Span<const uint8_t>>(&dim_order);
+//     auto out_ = checked_reinterpret_cast<executorch::runtime::TensorLayout>(out);
+//     auto scalar_type_ = static_cast<executorch::aten::ScalarType>(scalar_type);
+//     auto res = executorch::runtime::TensorLayout::create(
+//         sizes_,
+//         dim_order_,
+//         scalar_type_);
+//     if (!res.ok())
+//         return static_cast<Error>(res.error());
+//     auto &layout = res.get();
+//     new (out_) executorch::runtime::TensorLayout(std::move(layout));
+//     return Error::Error_Ok;
+// }
+struct ArrayRefI32 executorch_TensorLayout_sizes(const struct TensorLayout *self)
+{
+    auto self_ = checked_reinterpret_cast<executorch::runtime::TensorLayout>(self);
+    auto sizes = self_->sizes();
+    return ArrayRefI32{
+        .data = sizes.data(),
+        .len = sizes.size(),
+    };
+}
+struct ArrayRefU8 executorch_TensorLayout_dim_order(const struct TensorLayout *self)
+{
+    auto self_ = checked_reinterpret_cast<executorch::runtime::TensorLayout>(self);
+    auto dim_order = self_->dim_order();
+    return ArrayRefU8{
+        .data = dim_order.data(),
+        .len = dim_order.size(),
+    };
+}
+enum ScalarType executorch_TensorLayout_scalar_type(const struct TensorLayout *self)
+{
+    auto self_ = checked_reinterpret_cast<executorch::runtime::TensorLayout>(self);
+    auto scalar_type = self_->scalar_type();
+    return static_cast<ScalarType>(scalar_type);
+}
+size_t executorch_TensorLayout_nbytes(const struct TensorLayout *self)
+{
+    auto self_ = checked_reinterpret_cast<executorch::runtime::TensorLayout>(self);
+    return self_->nbytes();
 }
 
 // EValue

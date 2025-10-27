@@ -32,6 +32,9 @@
 
 mod scalar;
 
+mod layout;
+pub use layout::*;
+
 mod raw;
 pub use raw::*;
 
