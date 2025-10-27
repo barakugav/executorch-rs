@@ -268,6 +268,39 @@ struct DataLoaderRefMut executorch_MmapDataLoader_as_data_loader_mut(struct Mmap
 }
 #endif
 
+// NamedDataMap
+enum Error executorch_NamedDataMap_get_tensor_layout(
+    struct NamedDataMapRef self,
+    struct ArrayRefChar key,
+    struct TensorLayout *out)
+{
+    auto self_ = reinterpret_cast<const executorch::runtime::NamedDataMap *>(self.ptr);
+    std::string_view key_(key.data, key.len);
+    auto res = self_->get_tensor_layout(key_);
+    auto out_ = checked_reinterpret_cast<executorch::runtime::TensorLayout>(out);
+    if (!res.ok())
+        return static_cast<Error>(res.error());
+    memcpy(out_, &res.get(), sizeof(executorch::runtime::TensorLayout));
+    return Error::Error_Ok;
+}
+enum Error executorch_NamedDataMap_get_num_keys(struct NamedDataMapRef self, uint32_t *out)
+{
+    auto self_ = reinterpret_cast<const executorch::runtime::NamedDataMap *>(self.ptr);
+    return extract_result(self_->get_num_keys(), out);
+}
+enum Error executorch_NamedDataMap_get_key(
+    struct NamedDataMapRef self,
+    uint32_t index,
+    const char **out_data)
+{
+    auto self_ = reinterpret_cast<const executorch::runtime::NamedDataMap *>(self.ptr);
+    auto res = self_->get_key(index);
+    if (!res.ok())
+        return static_cast<Error>(res.error());
+    *out_data = res.get();
+    return Error::Error_Ok;
+}
+
 // Tensor
 static const executorch::aten::Tensor *cast_tensor(struct TensorRef tensor)
 {
@@ -748,6 +781,15 @@ enum Error executorch_Program_get_method_name(const struct Program *self, size_t
 {
     auto self_ = checked_reinterpret_cast<executorch::runtime::Program>(self);
     return extract_result(self_->get_method_name(method_index), out);
+}
+enum Error executorch_Program_get_named_data_map(const struct Program *self, struct NamedDataMapRef *out)
+{
+    auto self_ = checked_reinterpret_cast<executorch::runtime::Program>(self);
+    auto res = self_->get_named_data_map();
+    if (!res.ok())
+        return static_cast<Error>(res.error());
+    *out = NamedDataMapRef{.ptr = res.get()};
+    return Error::Error_Ok;
 }
 enum Error executorch_Program_method_meta(const struct Program *self, const char *method_name, struct MethodMeta *method_meta_out)
 {

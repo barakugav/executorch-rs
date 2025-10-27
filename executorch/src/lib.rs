@@ -150,6 +150,7 @@ pub use executorch_sys as sys;
 #[macro_use]
 mod private;
 pub mod data_loader;
+pub mod data_map;
 mod error;
 pub mod evalue;
 pub mod event_tracer;

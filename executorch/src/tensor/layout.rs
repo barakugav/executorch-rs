@@ -9,6 +9,10 @@ use crate::util::{IntoRust, __ArrayRefImpl};
 #[repr(transparent)]
 pub struct TensorLayout<'a>(et_c::TensorLayout, PhantomData<&'a ()>);
 impl<'a> TensorLayout<'a> {
+    pub(crate) unsafe fn from_raw(raw: et_c::TensorLayout) -> TensorLayout<'a> {
+        Self(raw, PhantomData)
+    }
+
     /// Returns the sizes of the tensor.
     pub fn sizes(&self) -> &[i32] {
         unsafe { et_c::executorch_TensorLayout_sizes(&self.0 as *const _).as_slice() }

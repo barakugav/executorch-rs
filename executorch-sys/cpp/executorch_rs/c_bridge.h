@@ -400,6 +400,14 @@ extern "C"
     {
         void *ptr;
     };
+    struct NamedDataMapRef
+    {
+        const void *ptr;
+    };
+    struct NamedDataMapRefMut
+    {
+        void *ptr;
+    };
 
     struct BufferDataLoader
     {
@@ -654,6 +662,17 @@ extern "C"
     bool executorch_is_valid_dim_order_and_strides(size_t dim, const SizesType *sizes, const DimOrderType *dim_order, const StridesType *strides);
     enum Error executorch_stride_to_dim_order(const StridesType *strides, size_t dims, DimOrderType *dim_order);
 
+    // NamedDataMap
+    enum Error executorch_NamedDataMap_get_tensor_layout(
+        struct NamedDataMapRef self,
+        struct ArrayRefChar key,
+        struct TensorLayout *out);
+    enum Error executorch_NamedDataMap_get_num_keys(struct NamedDataMapRef self, uint32_t *out);
+    enum Error executorch_NamedDataMap_get_key(
+        struct NamedDataMapRef self,
+        uint32_t index,
+        const char **out_data);
+
     // Tensor
     void executorch_TensorImpl_new(
         struct TensorImpl *self,
@@ -726,6 +745,7 @@ extern "C"
     enum Error executorch_Program_load(struct DataLoaderRefMut loader, enum ProgramVerification verification, struct Program *out);
     enum Error executorch_Program_load_method(const struct Program *self, const char *method_name, struct MemoryManager *memory_manager, struct EventTracerRefMut event_tracer, struct Method *out);
     enum Error executorch_Program_get_method_name(const struct Program *self, size_t method_index, const char **out);
+    enum Error executorch_Program_get_named_data_map(const struct Program *self, struct NamedDataMapRef *out);
     enum Error executorch_Program_method_meta(const struct Program *self, const char *method_name, struct MethodMeta *method_meta_out);
     size_t executorch_Program_num_methods(const struct Program *self);
     void executorch_Program_destructor(struct Program *self);

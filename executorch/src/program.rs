@@ -57,6 +57,7 @@ use std::marker::PhantomData;
 use std::ptr;
 
 use crate::data_loader::DataLoader;
+use crate::data_map::{data_map_ptr2dyn, NamedDataMap};
 use crate::evalue::{EValue, Tag};
 use crate::event_tracer::EventTracer;
 use crate::memory::MemoryManager;
@@ -116,6 +117,14 @@ impl<'a> Program<'a> {
         })?;
         let method_name = unsafe { CStr::from_ptr(method_name) };
         method_name.to_str().map_err(|_| Error::FromCStr)
+    }
+
+    /// Get the named data map from the program.
+    pub fn get_named_data_map(&self) -> Result<&dyn NamedDataMap> {
+        let data_map = try_c_new(|data_map| unsafe {
+            et_c::executorch_Program_get_named_data_map(&self.0, data_map)
+        })?;
+        Ok(unsafe { data_map_ptr2dyn(data_map) })
     }
 
     /// Loads the named method and prepares it for execution.
