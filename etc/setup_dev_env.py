@@ -48,7 +48,7 @@ def main():
                 "install",
                 "-r",
                 DEV_EXECUTORCH_DIR / "requirements-dev.txt",
-                "torch==2.8.0",
+                "torch==2.9.0",
                 "--extra-index-url",
                 "https://download.pytorch.org/whl/test/cpu",
             ]
@@ -70,7 +70,7 @@ def clone_executorch():
                 "--depth",
                 "1",
                 "--branch",
-                "v0.7.0",
+                "v1.0.0",
                 "https://github.com/pytorch/executorch.git",
                 ".",
             ],
@@ -117,7 +117,8 @@ def build_executorch_with_dev_cfg():
             "-DEXECUTORCH_BUILD_PORTABLE_OPS=ON",
             "-DEXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON",
             "-DEXECUTORCH_BUILD_EXTENSION_FLAT_TENSOR=ON",
-            "-DEXECUTORCH_BUILD_EXTENSION_MODULE=ON",
+            "-DEXECUTORCH_BUILD_EXTENSION_NAMED_DATA_MAP=ON",
+            "-DEXECUTORCH_BUILD_EXTENSION_MODULE=ON", # require named_data_map
             "-DEXECUTORCH_BUILD_EXTENSION_TENSOR=ON",
             "-DEXECUTORCH_BUILD_XNNPACK=ON",
             "-DEXECUTORCH_BUILD_KERNELS_QUANTIZED=ON",

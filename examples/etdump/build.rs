@@ -7,7 +7,7 @@ fn main() {
     println!("cargo::rustc-link-lib=static:+whole-archive=portable_kernels");
     println!("cargo::rustc-link-lib=static:+whole-archive=portable_ops_lib");
 
-    let flatc_dir = format!("{libs_dir}/third-party/flatcc_external_project/lib");
+    let flatc_dir = format!("{libs_dir}/third-party/flatcc_ep/lib");
     let dir_files = std::fs::read_dir(&flatc_dir)
         .unwrap_or_else(|_| panic!("failed to read flatcc lib dir: {flatc_dir}"))
         .map(|entry| entry.unwrap())

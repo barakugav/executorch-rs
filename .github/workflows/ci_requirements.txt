@@ -1,12 +1,12 @@
-# Copy of executorch/requirements-dev.txt as of v0.7.0
+# Copy of executorch/requirements-dev.txt as of v1.0.0
 cmake>=3.29, <4.0.0
+packaging>=24.2
 pip>=23
 pyyaml
-setuptools>=63
-tomli
+setuptools>=77.0.3
 wheel
 zstd
 certifi
 lintrunner==0.12.7
-lintrunner-adapters==0.12.4
-torch==2.8.0
+lintrunner-adapters==0.12.6
+torch==2.9.0
