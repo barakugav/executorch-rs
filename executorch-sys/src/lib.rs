@@ -106,17 +106,26 @@
 //!
 //! ## Cargo Features
 //! By default the `std` feature is enabled.
-//! - `data-loader`: Includes the [`FileDataLoader`] and [`MmapDataLoader`] structs. Without this feature the only available
+//! - `data-loader`:
+//!   Includes the [`FileDataLoader`] and [`MmapDataLoader`] structs. Without this feature the only available
 //!   data loader is [`BufferDataLoader`]. The `libextension_data_loader.a` static library is required, compile C++
 //!   `executorch` with `EXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON`.
-//! - `module`: Includes the [`Module`] struct. The `libextension_module_static.a` static library is required, compile C++
-//!   `executorch` with `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`.
+//! - `module`:
+//!   Includes the `Module` struct, a high-level API for loading and executing PyTorch models. It is an alternative to
+//!   the lower-level `Program` API, which is more suitable for embedded systems.
+//!   The `libextension_module_static.a` static library is required, compile C++ `executorch` with
+//!   `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`.
+//!   Also includes the `std`, `data-loader` and `flat-tensor` features.
 //! - `tensor-ptr`:
 //!   Includes a few functions creating `cxx::SharedPtr<Tensor>` pointers, that manage the lifetime of the tensor
 //!   object alongside the lifetimes of the data buffer and additional metadata. The `libextension_tensor.a`
 //!   static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_TENSOR=ON`.
 //!   Also includes the `std` feature.
-//! - `etdump`
+//! - `flat-tensor`:
+//!   Includes the `FlatTensorDataMap` struct that can read `.ptd` files with external tensors for models.
+//!   The `libextension_flat_tensor.a` static library is required,
+//!   compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_FLAT_TENSOR=ON`.
+//! - `etdump`:
 //!   Includes the `ETDumpGen` struct, an implementation of an `EventTracer`, used for debugging and profiling.
 //!   The `libetdump.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_DEVTOOLS=ON` and
 //!   `EXECUTORCH_ENABLE_EVENT_TRACER=ON`.

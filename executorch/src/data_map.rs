@@ -92,3 +92,39 @@ pub(crate) unsafe fn data_map_ptr2dyn_mut<'a>(
     let ptr = ptr.ptr as *mut DynNamedDataMap;
     &mut *ptr
 }
+
+#[cfg(feature = "flat-tensor")]
+pub use flat_tensor::*;
+#[cfg(feature = "flat-tensor")]
+mod flat_tensor {
+    use crate::data_loader::DataLoader;
+
+    use super::*;
+
+    /// A NamedDataMap implementation for FlatTensor-serialized data.
+    pub struct FlatTensorDataMap<'a>(
+        #[allow(unused)] et_c::FlatTensorDataMap,
+        PhantomData<&'a ()>,
+    );
+    impl<'a> FlatTensorDataMap<'a> {
+        /// Creates a new DataMap that wraps FlatTensor data.
+        ///
+        /// # Arguments
+        ///
+        /// * `data_loader` - loader The DataLoader that wraps the FlatTensor file.
+        ///
+        pub fn load(data_loader: &'a dyn DataLoader) -> Result<Self> {
+            let data_map = try_c_new(|data_map| unsafe {
+                et_c::executorch_FlatTensorDataMap_load(data_loader.__data_loader_ptr(), data_map)
+            })?;
+            Ok(Self(data_map, PhantomData))
+        }
+    }
+    impl NamedDataMap for FlatTensorDataMap<'_> {
+        fn __named_data_map_ptr(&self) -> et_c::NamedDataMapRefMut {
+            et_c::NamedDataMapRefMut {
+                ptr: self as *const _ as *mut _,
+            }
+        }
+    }
+}

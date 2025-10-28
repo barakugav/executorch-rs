@@ -408,6 +408,20 @@ extern "C"
     {
         void *ptr;
     };
+#if defined(EXECUTORCH_RS_FLAT_TENSOR)
+    struct FlatTensorDataMap
+    {
+
+        // vtable
+        size_t _blob0[1];
+        // header_
+        uint64_t _blob1[4];
+        // flat_tensor_data_ (4)
+        // flat_tensor_
+        // loader_
+        size_t _blob2[6];
+    };
+#endif
 
     struct BufferDataLoader
     {
@@ -673,6 +687,11 @@ extern "C"
         uint32_t index,
         const char **out_data);
 
+#if defined(EXECUTORCH_RS_FLAT_TENSOR)
+    // FlatTensorDataMap
+    enum Error executorch_FlatTensorDataMap_load(struct DataLoaderRefMut loader, struct FlatTensorDataMap *out);
+#endif
+
     // Tensor
     void executorch_TensorImpl_new(
         struct TensorImpl *self,
@@ -743,7 +762,13 @@ extern "C"
     // Program
     enum ProgramHeaderStatus executorch_Program_check_header(const void *data, size_t size);
     enum Error executorch_Program_load(struct DataLoaderRefMut loader, enum ProgramVerification verification, struct Program *out);
-    enum Error executorch_Program_load_method(const struct Program *self, const char *method_name, struct MemoryManager *memory_manager, struct EventTracerRefMut event_tracer, struct Method *out);
+    enum Error executorch_Program_load_method(
+        const struct Program *self,
+        const char *method_name,
+        struct MemoryManager *memory_manager,
+        struct EventTracerRefMut event_tracer,
+        struct NamedDataMapRef named_data_map,
+        struct Method *out);
     enum Error executorch_Program_get_method_name(const struct Program *self, size_t method_index, const char **out);
     enum Error executorch_Program_get_named_data_map(const struct Program *self, struct NamedDataMapRef *out);
     enum Error executorch_Program_method_meta(const struct Program *self, const char *method_name, struct MethodMeta *method_meta_out);

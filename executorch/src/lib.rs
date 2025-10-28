@@ -64,13 +64,18 @@
 //!   Includes the [`module`] API, a high-level API for loading and executing PyTorch models. It is an alternative to
 //!   the lower-level [`Program`](crate::program::Program) API, which is more suitable for embedded systems.
 //!   The `libextension_module_static.a` static library is required, compile C++ `executorch` with
-//!   `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`. Also includes the `std` feature.
+//!   `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`.
+//!   Also includes the `std`, `data-loader` and `flat-tensor` features.
 //! - `tensor-ptr`:
 //!   Includes the [`tensor::TensorPtr`] struct, a smart pointer for tensors that manage the lifetime of the tensor
 //!   object alongside the lifetimes of the data buffer and additional metadata. The `extension_tensor.a`
 //!   static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_TENSOR=ON`.
 //!   Also includes the `std` feature.
-//! - `etdump`
+//! - `flat-tensor`:
+//!   Includes the `FlatTensorDataMap` struct that can read `.ptd` files with external tensors for models.
+//!   The `libextension_flat_tensor.a` static library is required,
+//!   compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_FLAT_TENSOR=ON`.
+//! - `etdump`:
 //!   Includes the `ETDumpGen` struct, an implementation of an `EventTracer`, used for debugging and profiling.
 //!   The `libetdump.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_DEVTOOLS=ON` and
 //!   `EXECUTORCH_ENABLE_EVENT_TRACER=ON`.

@@ -134,8 +134,11 @@ The build (and library) is tested on Ubuntu and MacOS, not on Windows.
 
 - `module`
 
-    Includes the `Module` struct. The `libextension_module_static.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`.
-    Also includes the `std` feature.
+    Includes the `module` API, a high-level API for loading and executing PyTorch models. It is an alternative to
+    the lower-level `Program` API, which is more suitable for embedded systems.
+    The `libextension_module_static.a` static library is required, compile C++ `executorch` with
+    `EXECUTORCH_BUILD_EXTENSION_MODULE=ON`.
+    Also includes the `std`, `data-loader` and `flat-tensor` features.
 
 - `tensor-ptr`
 
@@ -143,6 +146,11 @@ The build (and library) is tested on Ubuntu and MacOS, not on Windows.
     object alongside the lifetimes of the data buffer and additional metadata. The `libextension_tensor.a`
     static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_TENSOR=ON`.
     Also includes the `std` feature.
+
+- `flat-tensor`
+
+    Includes the `FlatTensorDataMap` struct that can read `.ptd` files with external tensors for models.
+    The `libextension_flat_tensor.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_FLAT_TENSOR=ON`.
 
 - `etdump`
 
