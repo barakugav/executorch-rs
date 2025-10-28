@@ -16,7 +16,14 @@ examples = [d for d in examples_dir.iterdir() if d.is_dir()]
 examples = [d for d in examples if d.name not in dir_excludes]
 for example in examples:
     match example.name:
-        case "hello_world" | "no_ndarray" | "no_std" | "raw_tensor" | "etdump":
+        case (
+            "hello_world"
+            | "no_ndarray"
+            | "no_std"
+            | "raw_tensor"
+            | "data_map"
+            | "etdump"
+        ):
             extra_args = []
         case "nano-gpt":
             # TODO: https://github.com/pytorch/executorch/issues/15285
