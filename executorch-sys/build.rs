@@ -96,8 +96,10 @@ fn generate_bindings() {
         .opaque_type("TensorImpl")
         .opaque_type("Program")
         .opaque_type("TensorInfo")
+        .opaque_type("TensorLayout")
         .opaque_type("MethodMeta")
         .opaque_type("Method")
+        .opaque_type("FlatTensorDataMap")
         .opaque_type("BufferDataLoader")
         .opaque_type("FileDataLoader")
         .opaque_type("MmapDataLoader")
@@ -106,6 +108,7 @@ fn generate_bindings() {
         .opaque_type("MemoryManager")
         .opaque_type("OptionalTensorStorage")
         .opaque_type("ETDumpGen")
+        .blocklist_item(".*_bindgen_ty_.*")
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()));
     let bindings = builder.generate().expect("Unable to generate bindings");
 
@@ -202,6 +205,9 @@ fn cpp_defines() -> Vec<&'static str> {
     let mut defines = vec!["C10_USING_CUSTOM_GENERATED_MACROS"];
     if cfg!(feature = "data-loader") {
         defines.push("EXECUTORCH_RS_DATA_LOADER");
+    }
+    if cfg!(feature = "flat-tensor") {
+        defines.push("EXECUTORCH_RS_FLAT_TENSOR");
     }
     if cfg!(feature = "module") {
         defines.push("EXECUTORCH_RS_MODULE");

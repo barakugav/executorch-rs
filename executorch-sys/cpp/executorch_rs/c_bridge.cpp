@@ -23,6 +23,10 @@
 #include "executorch/extension/data_loader/mmap_data_loader.h"
 #endif
 
+#if defined(EXECUTORCH_RS_FLAT_TENSOR)
+#include "executorch/extension/flat_tensor/flat_tensor_data_map.h"
+#endif
+
 #if defined(EXECUTORCH_RS_ETDUMP)
 #include "executorch/devtools/etdump/etdump_flatcc.h"
 #endif
@@ -36,14 +40,14 @@ namespace
 {
     using executorch_rs::is_equal_layout;
 
-    static_assert(is_equal_layout<EValueStorage, executorch::runtime::EValue>());
-    static_assert(is_equal_layout<TensorStorage, executorch::aten::Tensor>());
-    static_assert(is_equal_layout<OptionalTensorStorage, executorch::aten::optional<executorch::aten::Tensor>>());
+    static_assert(is_equal_layout<struct EValueStorage, executorch::runtime::EValue>());
+    static_assert(is_equal_layout<struct TensorStorage, executorch::aten::Tensor>());
+    static_assert(is_equal_layout<struct OptionalTensorStorage, executorch::aten::optional<executorch::aten::Tensor>>());
 
-    static_assert(is_equal_layout<TensorImpl, executorch::aten::TensorImpl>());
+    static_assert(is_equal_layout<struct TensorImpl, executorch::aten::TensorImpl>());
     static_assert(std::is_trivially_move_constructible_v<executorch::aten::TensorImpl>);
 
-    static_assert(is_equal_layout<Program, executorch::runtime::Program>());
+    static_assert(is_equal_layout<struct Program, executorch::runtime::Program>());
     // Program is not trivially move constructible because it has a FreeableBuffer field that
     // has a custom move constructor.
     // FreeableBuffer has a custom move constructor and a destructor, but the move is trivial +cleaning
@@ -52,19 +56,31 @@ namespace
     //
     // static_assert(std::is_trivially_move_constructible_v<executorch::runtime::Program>);
 
-    static_assert(is_equal_layout<TensorInfo, executorch::runtime::TensorInfo>());
+    static_assert(is_equal_layout<struct TensorInfo, executorch::runtime::TensorInfo>());
     static_assert(std::is_trivially_move_constructible_v<executorch::runtime::TensorInfo>);
 
-    static_assert(is_equal_layout<MethodMeta, executorch::runtime::MethodMeta>());
+    static_assert(is_equal_layout<struct TensorLayout, executorch::runtime::TensorLayout>());
+    static_assert(std::is_trivially_move_constructible_v<executorch::runtime::TensorLayout>);
+
+    static_assert(is_equal_layout<struct MethodMeta, executorch::runtime::MethodMeta>());
     static_assert(std::is_trivially_move_constructible_v<executorch::runtime::MethodMeta>);
 
-    static_assert(is_equal_layout<Method, executorch::runtime::Method>());
+    static_assert(is_equal_layout<struct Method, executorch::runtime::Method>());
     // Method has a move constructor that just clean the old object to avoid double free.
     // Its OK to move it in Rust because the old object is forgotten.
     //
     // static_assert(std::is_trivially_move_constructible_v<executorch::runtime::Method>);
 
-    static_assert(is_equal_layout<BufferDataLoader, executorch::extension::BufferDataLoader>());
+#if defined(EXECUTORCH_RS_FLAT_TENSOR)
+    static_assert(is_equal_layout<struct FlatTensorDataMap, executorch::extension::FlatTensorDataMap>());
+    // FlatTensorDataMap is not trivially move constructible because it has a vtable with virtual
+    // destructor inherited from DataLoader, but it has an empty implementation for it therefore
+    // it is safe.
+    //
+    // static_assert(std::is_trivially_move_constructible_v<executorch::extension::FlatTensorDataMap>);
+#endif
+
+    static_assert(is_equal_layout<struct BufferDataLoader, executorch::extension::BufferDataLoader>());
     // BufferDataLoader is not trivially move constructible because it has a vtable with virtual
     // destructor inherited from DataLoader, but it has an empty implementation for it therefore
     // it is safe.
@@ -72,14 +88,14 @@ namespace
     // static_assert(std::is_trivially_move_constructible_v<executorch::extension::BufferDataLoader>);
 
 #if defined(EXECUTORCH_RS_DATA_LOADER)
-    static_assert(is_equal_layout<FileDataLoader, executorch::extension::FileDataLoader>());
+    static_assert(is_equal_layout<struct FileDataLoader, executorch::extension::FileDataLoader>());
     // FileDataLoader has a custom move constructor and a destructor, but the move is trivial +cleaning
     // of the old object, which behave great with Rust move semantics as long as we only call the
     // destructor on the final object.
     //
     // static_assert(std::is_trivially_move_constructible_v<executorch::extension::FileDataLoader>);
 
-    static_assert(is_equal_layout<MmapDataLoader, executorch::extension::MmapDataLoader>());
+    static_assert(is_equal_layout<struct MmapDataLoader, executorch::extension::MmapDataLoader>());
     // MmapDataLoader has a custom move constructor and a destructor, but the move is trivial +cleaning
     // of the old object, which behave great with Rust move semantics as long as we only call the
     // destructor on the final object.
@@ -87,21 +103,21 @@ namespace
     // static_assert(std::is_trivially_move_constructible_v<executorch::extension::MmapDataLoader>);
 #endif
 
-    static_assert(is_equal_layout<MemoryAllocator, executorch::runtime::MemoryAllocator>());
+    static_assert(is_equal_layout<struct MemoryAllocator, executorch::runtime::MemoryAllocator>());
     // MemoryAllocator is not trivially move constructible because it has a vtable with virtual
     // destructor, but when we have a concrete instance of it there is nothing virtual and no move
     // constructor, so it is safe to move it in Rust.
     //
     // static_assert(std::is_trivially_move_constructible_v<executorch::runtime::MemoryAllocator>);
 
-    static_assert(is_equal_layout<HierarchicalAllocator, executorch::runtime::HierarchicalAllocator>());
+    static_assert(is_equal_layout<struct HierarchicalAllocator, executorch::runtime::HierarchicalAllocator>());
     static_assert(std::is_trivially_move_constructible_v<executorch::runtime::HierarchicalAllocator>);
 
-    static_assert(is_equal_layout<MemoryManager, executorch::runtime::MemoryManager>());
+    static_assert(is_equal_layout<struct MemoryManager, executorch::runtime::MemoryManager>());
     static_assert(std::is_trivially_move_constructible_v<executorch::runtime::MemoryManager>);
 
 #if defined(EXECUTORCH_RS_ETDUMP)
-    static_assert(is_equal_layout<ETDumpGen, executorch::etdump::ETDumpGen>());
+    static_assert(is_equal_layout<struct ETDumpGen, executorch::etdump::ETDumpGen>());
 // MemoryAllocator is not trivially move constructible because it has a vtable with virtual
 // destructor, but when we have a concrete instance of it there is nothing virtual and no move
 // constructor, so it is safe to move it in Rust.
@@ -111,11 +127,11 @@ namespace
 
     static_assert(is_equal_layout<executorch_timestamp_t, et_timestamp_t>());
     static_assert(std::is_trivially_move_constructible_v<et_timestamp_t>);
-    static_assert(is_equal_layout<executorch_tick_ratio, et_tick_ratio_t>());
+    static_assert(is_equal_layout<struct executorch_tick_ratio, et_tick_ratio_t>());
     static_assert(std::is_trivially_move_constructible_v<et_tick_ratio_t>);
-    static_assert(is_equal_layout<executorch_pal_log_level, et_pal_log_level_t>());
+    static_assert(is_equal_layout<enum executorch_pal_log_level, et_pal_log_level_t>());
     static_assert(std::is_trivially_move_constructible_v<et_pal_log_level_t>);
-    static_assert(is_equal_layout<ExecutorchPalImpl, executorch::runtime::PalImpl>());
+    static_assert(is_equal_layout<struct ExecutorchPalImpl, executorch::runtime::PalImpl>());
     static_assert(std::is_trivially_move_constructible_v<executorch::runtime::PalImpl>);
 }
 
@@ -262,6 +278,55 @@ struct DataLoaderRefMut executorch_MmapDataLoader_as_data_loader_mut(struct Mmap
     auto self_ = checked_reinterpret_cast<executorch::extension::MmapDataLoader>(self);
     auto loader = static_cast<executorch::runtime::DataLoader *>(self_);
     return cast_data_loader_mut(loader);
+}
+#endif
+
+// NamedDataMap
+enum Error executorch_NamedDataMap_get_tensor_layout(
+    struct NamedDataMapRef self,
+    struct ArrayRefChar key,
+    struct TensorLayout *out)
+{
+    auto self_ = reinterpret_cast<const executorch::runtime::NamedDataMap *>(self.ptr);
+    std::string_view key_(key.data, key.len);
+    auto res = self_->get_tensor_layout(key_);
+    auto out_ = checked_reinterpret_cast<executorch::runtime::TensorLayout>(out);
+    if (!res.ok())
+        return static_cast<Error>(res.error());
+    memcpy(out_, &res.get(), sizeof(executorch::runtime::TensorLayout));
+    return Error::Error_Ok;
+}
+enum Error executorch_NamedDataMap_get_num_keys(struct NamedDataMapRef self, uint32_t *out)
+{
+    auto self_ = reinterpret_cast<const executorch::runtime::NamedDataMap *>(self.ptr);
+    return extract_result(self_->get_num_keys(), out);
+}
+enum Error executorch_NamedDataMap_get_key(
+    struct NamedDataMapRef self,
+    uint32_t index,
+    const char **out_data)
+{
+    auto self_ = reinterpret_cast<const executorch::runtime::NamedDataMap *>(self.ptr);
+    auto res = self_->get_key(index);
+    if (!res.ok())
+        return static_cast<Error>(res.error());
+    *out_data = res.get();
+    return Error::Error_Ok;
+}
+
+#if defined(EXECUTORCH_RS_FLAT_TENSOR)
+// FlatTensorDataMap
+enum Error executorch_FlatTensorDataMap_load(struct DataLoaderRefMut loader, struct FlatTensorDataMap *out)
+{
+    auto loader_ = cast_data_loader_mut(loader);
+    auto out_ = checked_reinterpret_cast<executorch::extension::FlatTensorDataMap>(out);
+    // return extract_result(executorch::extension::FlatTensorDataMap::load(loader_), out_);
+    auto res = executorch::extension::FlatTensorDataMap::load(loader_);
+    if (!res.ok())
+        return static_cast<Error>(res.error());
+    auto &program = res.get();
+    new (out_) executorch::extension::FlatTensorDataMap(std::move(program));
+    return Error::Error_Ok;
 }
 #endif
 
@@ -460,6 +525,57 @@ struct TensorRef executorch_OptionalTensor_get(struct OptionalTensorRef self)
         return TensorRef{.ptr = nullptr};
     const executorch::aten::Tensor *tensor = &self_->value();
     return cast_tensor(tensor);
+}
+
+// TensorLayout
+// enum Error executorch_TensorLayout_create(
+//     struct ArrayRefI32 sizes,
+//     struct ArrayRefU8 dim_order,
+//     enum ScalarType scalar_type,
+//     struct TensorLayout *out)
+// {
+//     auto sizes_ = *checked_reinterpret_cast<executorch::runtime::Span<const int32_t>>(&sizes);
+//     auto dim_order_ = *checked_reinterpret_cast<executorch::runtime::Span<const uint8_t>>(&dim_order);
+//     auto out_ = checked_reinterpret_cast<executorch::runtime::TensorLayout>(out);
+//     auto scalar_type_ = static_cast<executorch::aten::ScalarType>(scalar_type);
+//     auto res = executorch::runtime::TensorLayout::create(
+//         sizes_,
+//         dim_order_,
+//         scalar_type_);
+//     if (!res.ok())
+//         return static_cast<Error>(res.error());
+//     auto &layout = res.get();
+//     new (out_) executorch::runtime::TensorLayout(std::move(layout));
+//     return Error::Error_Ok;
+// }
+struct ArrayRefI32 executorch_TensorLayout_sizes(const struct TensorLayout *self)
+{
+    auto self_ = checked_reinterpret_cast<executorch::runtime::TensorLayout>(self);
+    auto sizes = self_->sizes();
+    return ArrayRefI32{
+        .data = sizes.data(),
+        .len = sizes.size(),
+    };
+}
+struct ArrayRefU8 executorch_TensorLayout_dim_order(const struct TensorLayout *self)
+{
+    auto self_ = checked_reinterpret_cast<executorch::runtime::TensorLayout>(self);
+    auto dim_order = self_->dim_order();
+    return ArrayRefU8{
+        .data = dim_order.data(),
+        .len = dim_order.size(),
+    };
+}
+enum ScalarType executorch_TensorLayout_scalar_type(const struct TensorLayout *self)
+{
+    auto self_ = checked_reinterpret_cast<executorch::runtime::TensorLayout>(self);
+    auto scalar_type = self_->scalar_type();
+    return static_cast<ScalarType>(scalar_type);
+}
+size_t executorch_TensorLayout_nbytes(const struct TensorLayout *self)
+{
+    auto self_ = checked_reinterpret_cast<executorch::runtime::TensorLayout>(self);
+    return self_->nbytes();
 }
 
 // EValue
@@ -676,14 +792,21 @@ enum Error executorch_Program_load(struct DataLoaderRefMut loader, enum ProgramV
     new (out_) executorch::runtime::Program(std::move(program));
     return Error::Error_Ok;
 }
-enum Error executorch_Program_load_method(const struct Program *self, const char *method_name, struct MemoryManager *memory_manager, struct EventTracerRefMut event_tracer, struct Method *out)
+enum Error executorch_Program_load_method(
+    const struct Program *self,
+    const char *method_name,
+    struct MemoryManager *memory_manager,
+    struct EventTracerRefMut event_tracer,
+    struct NamedDataMapRef named_data_map,
+    struct Method *out)
 {
     auto self_ = checked_reinterpret_cast<executorch::runtime::Program>(self);
     auto memory_manager_ = checked_reinterpret_cast<executorch::runtime::MemoryManager>(memory_manager);
     auto event_tracer_ = reinterpret_cast<executorch::runtime::EventTracer *>(event_tracer.ptr);
+    auto named_data_map_ = reinterpret_cast<const executorch::runtime::NamedDataMap *>(named_data_map.ptr);
     auto out_ = checked_reinterpret_cast<executorch::runtime::Method>(out);
 
-    auto res = self_->load_method(method_name, memory_manager_, event_tracer_);
+    auto res = self_->load_method(method_name, memory_manager_, event_tracer_, named_data_map_);
     if (!res.ok())
         return static_cast<Error>(res.error());
     auto &method = res.get();
@@ -694,6 +817,15 @@ enum Error executorch_Program_get_method_name(const struct Program *self, size_t
 {
     auto self_ = checked_reinterpret_cast<executorch::runtime::Program>(self);
     return extract_result(self_->get_method_name(method_index), out);
+}
+enum Error executorch_Program_get_named_data_map(const struct Program *self, struct NamedDataMapRef *out)
+{
+    auto self_ = checked_reinterpret_cast<executorch::runtime::Program>(self);
+    auto res = self_->get_named_data_map();
+    if (!res.ok())
+        return static_cast<Error>(res.error());
+    *out = NamedDataMapRef{.ptr = res.get()};
+    return Error::Error_Ok;
 }
 enum Error executorch_Program_method_meta(const struct Program *self, const char *method_name, struct MethodMeta *method_meta_out)
 {

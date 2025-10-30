@@ -34,13 +34,14 @@ def main():
         tmp_headers_dir = Path(tmpdir) / "executorch"
 
         includes = [
+            "runtime/core/**/*.h",
+            "runtime/executor/**/*.h",
+            "runtime/platform/**/*.h",
             "extension/data_loader/**/*.h",
             "extension/memory_allocator/**/*.h",
             "extension/module/**/*.h",
             "extension/tensor/tensor_ptr.h",
-            "runtime/core/**/*.h",
-            "runtime/executor/**/*.h",
-            "runtime/platform/**/*.h",
+            "extension/flat_tensor/**/*.h",
             "devtools/etdump/etdump_flatcc.h",
             "devtools/etdump/data_sinks/buffer_data_sink.h",
             "devtools/etdump/data_sinks/data_sink_base.h",
@@ -58,6 +59,7 @@ def main():
             "extension/data_loader/mman.h",
             "extension/data_loader/mman_windows.h",
             "extension/module/bundled_module.h",  # TODO
+            "extension/flat_tensor/serialize/serialize.h",
             "**/test/**",
             "**/testing_util/**",
         ]

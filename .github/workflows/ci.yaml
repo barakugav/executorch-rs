@@ -45,6 +45,8 @@ jobs:
             examples/raw_tensor
             examples/no_ndarray
             examples/no_std
+            examples/data_map
+            examples/etdump
             examples/nano-gpt
             examples/llama3
       - uses: taiki-e/install-action@cargo-hack
@@ -112,21 +114,36 @@ jobs:
 
       ############ Examples ############
       - name: Run 'hello world' example
-        # python export_model.py
-        run: cargo run
+        run: |
+          : # python export_model.py
+          cargo run
         working-directory: examples/hello_world
       - name: Run 'raw tensor' example
-        # python export_model.py
-        run: cargo run
+        run: |
+          : # python export_model.py
+          cargo run
         working-directory: examples/raw_tensor
       - name: Run 'no_ndarray' example
-        # python export_model.py
-        run: cargo run
+        run: |
+          : # python export_model.py
+          cargo run
         working-directory: examples/no_ndarray
       - name: Run 'no_std' example
-        # python export_model.py
-        run: cargo run
+        run: |
+          : # python export_model.py
+          cargo run
         working-directory: examples/no_std
+      - name: Run 'data_map' example
+        run: |
+          : # python export_model.py
+          cargo run
+        working-directory: examples/data_map
+      - name: Run 'etdump' example
+        run: |
+          : # python export_model.py
+          cargo run
+        working-directory: examples/etdump
+
       - name: Check nano-gpt example
         run: cargo check
         working-directory: examples/nano-gpt

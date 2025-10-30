@@ -384,10 +384,44 @@ extern "C"
         // init_state_;
         uint8_t _blob2[1];
     };
+
+    struct TensorLayout
+    {
+        // sizes_ (2)
+        // dim_order_ (2)
+        size_t _blob1[4];
+        // scalar_type_
+        int8_t _blob2;
+        // nbytes_
+        size_t _blob3;
+    };
+
     struct DataLoaderRefMut
     {
         void *ptr;
     };
+    struct NamedDataMapRef
+    {
+        const void *ptr;
+    };
+    struct NamedDataMapRefMut
+    {
+        void *ptr;
+    };
+#if defined(EXECUTORCH_RS_FLAT_TENSOR)
+    struct FlatTensorDataMap
+    {
+
+        // vtable
+        size_t _blob0[1];
+        // header_
+        uint64_t _blob1[4];
+        // flat_tensor_data_ (4)
+        // flat_tensor_
+        // loader_
+        size_t _blob2[6];
+    };
+#endif
 
     struct BufferDataLoader
     {
@@ -543,11 +577,6 @@ extern "C"
         struct SpanU8 *data;
         size_t len;
     };
-    // struct SpanEValue
-    // {
-    //     EValue *data;
-    //     size_t len;
-    // };
     struct SpanI64
     {
         int64_t *data;
@@ -563,6 +592,11 @@ extern "C"
         struct OptionalTensorRefMut data;
         size_t len;
     };
+    // struct SpanEValue
+    // {
+    //     EValue *data;
+    //     size_t len;
+    // };
     struct BoxedEvalueListI64
     {
         struct ArrayRefEValuePtr wrapped_vals;
@@ -642,6 +676,22 @@ extern "C"
     bool executorch_is_valid_dim_order_and_strides(size_t dim, const SizesType *sizes, const DimOrderType *dim_order, const StridesType *strides);
     enum Error executorch_stride_to_dim_order(const StridesType *strides, size_t dims, DimOrderType *dim_order);
 
+    // NamedDataMap
+    enum Error executorch_NamedDataMap_get_tensor_layout(
+        struct NamedDataMapRef self,
+        struct ArrayRefChar key,
+        struct TensorLayout *out);
+    enum Error executorch_NamedDataMap_get_num_keys(struct NamedDataMapRef self, uint32_t *out);
+    enum Error executorch_NamedDataMap_get_key(
+        struct NamedDataMapRef self,
+        uint32_t index,
+        const char **out_data);
+
+#if defined(EXECUTORCH_RS_FLAT_TENSOR)
+    // FlatTensorDataMap
+    enum Error executorch_FlatTensorDataMap_load(struct DataLoaderRefMut loader, struct FlatTensorDataMap *out);
+#endif
+
     // Tensor
     void executorch_TensorImpl_new(
         struct TensorImpl *self,
@@ -670,6 +720,17 @@ extern "C"
 
     // OptionalTensor
     struct TensorRef executorch_OptionalTensor_get(struct OptionalTensorRef self);
+
+    // TensorLayout
+    // enum Error executorch_TensorLayout_create(
+    //     struct ArrayRefI32 sizes,
+    //     struct ArrayRefU8 dim_order,
+    //     enum ScalarType scalar_type,
+    //     struct TensorLayout *out);
+    struct ArrayRefI32 executorch_TensorLayout_sizes(const struct TensorLayout *self);
+    struct ArrayRefU8 executorch_TensorLayout_dim_order(const struct TensorLayout *self);
+    enum ScalarType executorch_TensorLayout_scalar_type(const struct TensorLayout *self);
+    size_t executorch_TensorLayout_nbytes(const struct TensorLayout *self);
 
     // EValue
     void executorch_EValue_new_none(struct EValueRefMut self);
@@ -701,8 +762,15 @@ extern "C"
     // Program
     enum ProgramHeaderStatus executorch_Program_check_header(const void *data, size_t size);
     enum Error executorch_Program_load(struct DataLoaderRefMut loader, enum ProgramVerification verification, struct Program *out);
-    enum Error executorch_Program_load_method(const struct Program *self, const char *method_name, struct MemoryManager *memory_manager, struct EventTracerRefMut event_tracer, struct Method *out);
+    enum Error executorch_Program_load_method(
+        const struct Program *self,
+        const char *method_name,
+        struct MemoryManager *memory_manager,
+        struct EventTracerRefMut event_tracer,
+        struct NamedDataMapRef named_data_map,
+        struct Method *out);
     enum Error executorch_Program_get_method_name(const struct Program *self, size_t method_index, const char **out);
+    enum Error executorch_Program_get_named_data_map(const struct Program *self, struct NamedDataMapRef *out);
     enum Error executorch_Program_method_meta(const struct Program *self, const char *method_name, struct MethodMeta *method_meta_out);
     size_t executorch_Program_num_methods(const struct Program *self);
     void executorch_Program_destructor(struct Program *self);

@@ -47,13 +47,13 @@ pub(crate) mod ffi {
         ///
         /// # Arguments
         /// - `file_path`: The path to the ExecuTorch program file to load.
-        /// - `data_map_path`: The path to a .ptd file, or an empty string if no data map is needed.
+        /// - `data_files`: The path to one or more .ptd file/s.
         /// - `load_mode`: The loading mode to use.
         /// - `event_tracer`: An EventTracer used for tracking and logging events, or null if not needed.
         #[namespace = "executorch_rs"]
         fn Module_new(
             file_path: &CxxString,
-            data_map_path: &CxxString,
+            data_files: &[&str],
             load_mode: ModuleLoadMode,
             event_tracer: UniquePtr<EventTracer>,
         ) -> UniquePtr<Module>;
@@ -112,6 +112,16 @@ pub(crate) mod ffi {
             planned_memory: *mut HierarchicalAllocator,
             event_tracer: *mut EventTracer,
         ) -> Error;
+
+        /// Unload a specific method from the program.
+        ///
+        /// # Arguments
+        /// - `method_name`: The name of the method to unload.
+        ///
+        /// # Returns
+        /// True if the method is unloaded, false if no-op.
+        #[namespace = "executorch_rs"]
+        unsafe fn Module_unload_method(self_: Pin<&mut Module>, method_name: &CxxString) -> bool;
 
         /// Checks if a specific method is loaded.
         ///

@@ -335,12 +335,12 @@ pub(crate) trait __ArrayRefImpl {
 pub(crate) struct FfiChar(#[allow(unused)] std::ffi::c_char);
 
 macro_rules! impl_array_ref {
-    ($element:path, $span:path) => {
+    ($element:path, $array_ref:path) => {
         impl ArrayRefElement for $element {
-            type __ArrayRefImpl = $span;
+            type __ArrayRefImpl = $array_ref;
             private_impl! {}
         }
-        impl __ArrayRefImpl for $span {
+        impl __ArrayRefImpl for $array_ref {
             type Element = $element;
             unsafe fn from_slice(slice: &[$element]) -> Self {
                 Self {

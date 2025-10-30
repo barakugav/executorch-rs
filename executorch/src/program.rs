@@ -25,7 +25,7 @@
 //! let memory_manager = MemoryManager::new(&allocator, Some(&mut planned_memory), None);
 //!
 //! let mut method = program
-//!     .load_method(c"forward", &memory_manager, None)
+//!     .load_method(c"forward", &memory_manager, None, None)
 //!     .unwrap();
 //!
 //! let input_array1 = ArrayStorage::new(array!(1.0_f32)).unwrap();
@@ -57,6 +57,7 @@ use std::marker::PhantomData;
 use std::ptr;
 
 use crate::data_loader::DataLoader;
+use crate::data_map::{data_map_ptr2dyn, NamedDataMap};
 use crate::evalue::{EValue, Tag};
 use crate::event_tracer::EventTracer;
 use crate::memory::MemoryManager;
@@ -118,6 +119,14 @@ impl<'a> Program<'a> {
         method_name.to_str().map_err(|_| Error::FromCStr)
     }
 
+    /// Get the named data map from the program.
+    pub fn get_named_data_map(&self) -> Result<&dyn NamedDataMap> {
+        let data_map = try_c_new(|data_map| unsafe {
+            et_c::executorch_Program_get_named_data_map(&self.0, data_map)
+        })?;
+        Ok(unsafe { data_map_ptr2dyn(data_map) })
+    }
+
     /// Loads the named method and prepares it for execution.
     ///
     /// # Arguments
@@ -125,6 +134,7 @@ impl<'a> Program<'a> {
     /// * `method_name` - The name of the method to load.
     /// * `memory_manager` - The allocators to use during initialization and execution of the loaded method.
     /// * `event_tracer` - The event tracer to use for this method run.
+    /// * `named_data_map` - An optional map of {name, blob} used to resolve data that is external to the PTE, if any.
     ///
     /// # Returns
     ///
@@ -134,6 +144,7 @@ impl<'a> Program<'a> {
         method_name: &CStr,
         memory_manager: &'b MemoryManager,
         event_tracer: Option<&'b mut EventTracer>,
+        named_data_map: Option<&'b dyn NamedDataMap>,
     ) -> Result<Method<'b>> {
         let memory_manager = memory_manager.0.get();
         let event_tracer = event_tracer
@@ -142,12 +153,19 @@ impl<'a> Program<'a> {
         let event_tracer = et_c::EventTracerRefMut {
             ptr: event_tracer as *mut _,
         };
+        let named_data_map = named_data_map
+            .map(|map| map.__named_data_map_ptr().ptr as *const _)
+            .unwrap_or(ptr::null());
+        let named_data_map = et_c::NamedDataMapRef {
+            ptr: named_data_map,
+        };
         let method = try_c_new(|method| unsafe {
             et_c::executorch_Program_load_method(
                 &self.0,
                 method_name.as_ptr(),
                 memory_manager,
                 event_tracer,
+                named_data_map,
                 method,
             )
         })?;
@@ -694,10 +712,10 @@ mod tests {
         let memory_manager = MemoryManager::new(&allocator, Some(&mut planned_memory), None);
 
         assert!(program
-            .load_method(c"non-existing-method", &memory_manager, None)
+            .load_method(c"non-existing-method", &memory_manager, None, None)
             .is_err());
         assert!(program
-            .load_method(c"forward", &memory_manager, None)
+            .load_method(c"forward", &memory_manager, None, None)
             .is_ok());
     }
 
@@ -741,7 +759,7 @@ mod tests {
         let memory_manager = MemoryManager::new(&allocator, Some(&mut planned_memory), None);
 
         let mut method = program
-            .load_method(c"forward", &memory_manager, None)
+            .load_method(c"forward", &memory_manager, None, None)
             .unwrap();
         assert_eq!(method.inputs_size(), 2);
         assert!(method.get_attribute("non-existing-attr").is_err());
