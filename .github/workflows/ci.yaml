@@ -207,14 +207,15 @@ jobs:
             executorch
             executorch-sys
 
-      - uses: cargo-bins/cargo-binstall@main
+      - uses: cargo-bins/cargo-binstall@v1.14.4
       - name: Install cross dependencies
         run: |
           if [[ "${{ matrix.target }}" == *"android"* ]]; then
             : # Run `cargo ndk-env`, capture the environment variables it sets,
             : # and export them to GITHUB_ENV for subsequent steps.
 
-            cargo binstall cargo-ndk
+            sudo apt-get update
+            cargo binstall cargo-ndk --force
             cargo ndk-env --target ${{ matrix.target }} > ndk-env.sh
             env | sort > env_before.txt
             source ndk-env.sh
@@ -222,18 +223,21 @@ jobs:
             comm -13 env_before.txt env_after.txt >> $GITHUB_ENV
           fi
           if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
+            sudo apt-get update
             sudo apt-get install g++-aarch64-linux-gnu
             echo "CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
             echo "CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++" >> $GITHUB_ENV
             echo "AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar" >> $GITHUB_ENV
           fi
           if [[ "${{ matrix.target }}" == "armv7-unknown-linux-gnueabihf" ]]; then
+            sudo apt-get update
             sudo apt-get install g++-arm-linux-gnueabihf
             echo "CC_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc" >> $GITHUB_ENV
             echo "CXX_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-g++" >> $GITHUB_ENV
             echo "AR_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-ar" >> $GITHUB_ENV
           fi
           if [[ "${{ matrix.target }}" == "i686-unknown-linux-gnu" ]]; then
+            sudo apt-get update
             sudo apt-get install g++-i686-linux-gnu
             echo "CC_i686_unknown_linux_gnu=i686-linux-gnu-gcc" >> $GITHUB_ENV
             echo "CXX_i686_unknown_linux_gnu=i686-linux-gnu-g++" >> $GITHUB_ENV
