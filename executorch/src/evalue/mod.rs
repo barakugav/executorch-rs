@@ -1088,14 +1088,16 @@ mod tests {
             let evalue = EValue::new(&tensor);
             assert_eq!(evalue.tag(), Tag::Tensor);
             let tensor = evalue.as_tensor().into_typed::<i32>();
-            let tensor_data = unsafe { std::slice::from_raw_parts(tensor.as_ptr(), data.len()) };
+            let tensor_data =
+                unsafe { std::slice::from_raw_parts(tensor.as_data_ptr(), data.len()) };
             assert_eq!(tensor_data, data);
 
             // Move tensor into evalue
             let evalue = EValue::new(tensor);
             assert_eq!(evalue.tag(), Tag::Tensor);
             let tensor = evalue.as_tensor().into_typed::<i32>();
-            let tensor_data = unsafe { std::slice::from_raw_parts(tensor.as_ptr(), data.len()) };
+            let tensor_data =
+                unsafe { std::slice::from_raw_parts(tensor.as_data_ptr(), data.len()) };
             assert_eq!(tensor_data, data);
 
             test_try_from_evalue(Tag::Tensor);
@@ -1106,7 +1108,8 @@ mod tests {
             let evalue = EValue::new(&tensor);
             assert_eq!(evalue.tag(), Tag::Tensor);
             let tensor = evalue.as_tensor().into_typed::<i32>();
-            let tensor_data = unsafe { std::slice::from_raw_parts(tensor.as_ptr(), data.len()) };
+            let tensor_data =
+                unsafe { std::slice::from_raw_parts(tensor.as_data_ptr(), data.len()) };
             assert_eq!(tensor_data, data);
 
             let tensor = TensorPtr::from_slice(&data);
@@ -1114,7 +1117,8 @@ mod tests {
             let evalue = EValue::new_in_storage(&tensor, evalue_storage);
             assert_eq!(evalue.tag(), Tag::Tensor);
             let tensor = evalue.as_tensor().into_typed::<i32>();
-            let tensor_data = unsafe { std::slice::from_raw_parts(tensor.as_ptr(), data.len()) };
+            let tensor_data =
+                unsafe { std::slice::from_raw_parts(tensor.as_data_ptr(), data.len()) };
             assert_eq!(tensor_data, data);
         }
         {
@@ -1130,7 +1134,8 @@ mod tests {
             let evalue = EValue::new_in_storage(&tensor, evalue_storage);
             assert_eq!(evalue.tag(), Tag::Tensor);
             let tensor = evalue.as_tensor().into_typed::<i32>();
-            let tensor_data = unsafe { std::slice::from_raw_parts(tensor.as_ptr(), data.len()) };
+            let tensor_data =
+                unsafe { std::slice::from_raw_parts(tensor.as_data_ptr(), data.len()) };
             assert_eq!(tensor_data, data);
 
             // Move tensor into evalue
@@ -1138,7 +1143,8 @@ mod tests {
             let evalue = EValue::new_in_storage(tensor, evalue_storage);
             assert_eq!(evalue.tag(), Tag::Tensor);
             let tensor = evalue.as_tensor().into_typed::<i32>();
-            let tensor_data = unsafe { std::slice::from_raw_parts(tensor.as_ptr(), data.len()) };
+            let tensor_data =
+                unsafe { std::slice::from_raw_parts(tensor.as_data_ptr(), data.len()) };
             assert_eq!(tensor_data, data);
         }
     }
@@ -1185,7 +1191,7 @@ mod tests {
             for (i, data) in [data1.as_slice(), &data2, &data3].iter().enumerate() {
                 let tensor = tensor_list.get(i).unwrap().into_typed::<i32>();
                 let tensor_data =
-                    unsafe { std::slice::from_raw_parts(tensor.as_ptr(), data.len()) };
+                    unsafe { std::slice::from_raw_parts(tensor.as_data_ptr(), data.len()) };
                 assert_eq!(&tensor_data, data);
             }
 
@@ -1212,7 +1218,7 @@ mod tests {
             for (i, data) in [data1.as_slice(), &data2, &data3].iter().enumerate() {
                 let tensor = tensor_list.get(i).unwrap().into_typed::<i32>();
                 let tensor_data =
-                    unsafe { std::slice::from_raw_parts(tensor.as_ptr(), data.len()) };
+                    unsafe { std::slice::from_raw_parts(tensor.as_data_ptr(), data.len()) };
                 assert_eq!(&tensor_data, data);
             }
         }
@@ -1261,7 +1267,7 @@ mod tests {
             for (i, data) in [data1.as_slice(), &data2, &data3].iter().enumerate() {
                 let tensor = tensor_list.get(i).unwrap().into_typed::<i32>();
                 let tensor_data =
-                    unsafe { std::slice::from_raw_parts(tensor.as_ptr(), data.len()) };
+                    unsafe { std::slice::from_raw_parts(tensor.as_data_ptr(), data.len()) };
                 assert_eq!(&tensor_data, data);
             }
         }
@@ -1325,7 +1331,7 @@ mod tests {
                     (Some(tensor), Some(data)) => {
                         let tensor_data = unsafe {
                             std::slice::from_raw_parts(
-                                tensor.into_typed::<i32>().as_ptr(),
+                                tensor.into_typed::<i32>().as_data_ptr(),
                                 data.len(),
                             )
                         };
@@ -1373,7 +1379,7 @@ mod tests {
                     (Some(tensor), Some(data)) => {
                         let tensor_data = unsafe {
                             std::slice::from_raw_parts(
-                                tensor.into_typed::<i32>().as_ptr(),
+                                tensor.into_typed::<i32>().as_data_ptr(),
                                 data.len(),
                             )
                         };
@@ -1441,7 +1447,7 @@ mod tests {
                     (Some(tensor), Some(data)) => {
                         let tensor_data = unsafe {
                             std::slice::from_raw_parts(
-                                tensor.into_typed::<i32>().as_ptr(),
+                                tensor.into_typed::<i32>().as_data_ptr(),
                                 data.len(),
                             )
                         };

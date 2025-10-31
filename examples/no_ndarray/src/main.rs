@@ -38,7 +38,7 @@ fn main() {
 
     assert_eq!(output.dim(), 1);
     assert_eq!(output.sizes()[0], 1);
-    let output = unsafe { *output.as_ptr() };
+    let output = unsafe { *output.as_data_ptr() };
 
     println!("Output tensor computed: {:?}", output);
     assert_eq!(2.0, output);

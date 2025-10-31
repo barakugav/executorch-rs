@@ -35,7 +35,7 @@ impl<D: DataTyped> TensorBase<'_, D> {
         for (i, s) in self.dim_order().iter().enumerate() {
             dim_order[i] = *s as usize;
         }
-        let ptr = self.as_ptr();
+        let ptr = self.as_data_ptr();
         unsafe { ArrayView::from_shape_ptr(dim.strides(strides), ptr) }.permuted_axes(dim_order)
     }
 
@@ -66,7 +66,7 @@ impl<'a, D: DataTyped + DataMut> TensorBase<'a, D> {
         for (i, s) in self.dim_order().iter().enumerate() {
             dim_order[i] = *s as usize;
         }
-        let ptr = self.as_mut_ptr();
+        let ptr = self.as_data_mut_ptr();
         unsafe { ArrayViewMut::from_shape_ptr(dim.strides(strides), ptr) }.permuted_axes(dim_order)
     }
 
@@ -319,7 +319,7 @@ mod tests {
         assert_eq!(tensor.sizes(), &[3]);
         assert_eq!(tensor.dim_order(), &[0]);
         assert_eq!(tensor.strides(), &[1]);
-        assert_eq!(tensor.as_ptr(), array.as_ref().as_ptr());
+        assert_eq!(tensor.as_data_ptr(), array.as_ref().as_ptr());
         drop(tensor);
 
         let array = array.into_array();
@@ -339,7 +339,7 @@ mod tests {
         assert_eq!(tensor.sizes(), &[2, 3]);
         assert_eq!(tensor.dim_order(), &[0, 1]);
         assert_eq!(tensor.strides(), &[3, 1]);
-        assert_eq!(tensor.as_ptr(), array.as_ref().as_ptr());
+        assert_eq!(tensor.as_data_ptr(), array.as_ref().as_ptr());
         drop(tensor);
 
         let array = array.into_array();
@@ -363,7 +363,7 @@ mod tests {
         assert_eq!(tensor.sizes(), &[3]);
         assert_eq!(tensor.dim_order(), &[0]);
         assert_eq!(tensor.strides(), &[1]);
-        assert_eq!(tensor.as_ptr(), arr_ptr);
+        assert_eq!(tensor.as_data_ptr(), arr_ptr);
 
         // Create a 2D array and convert it to a tensor
         let mut array = ArrayStorage::new(arr2(&[[1.0_f64, 2.0, 7.0], [3.0, 4.0, 8.0]])).unwrap();
@@ -380,7 +380,7 @@ mod tests {
         assert_eq!(tensor.sizes(), &[2, 3]);
         assert_eq!(tensor.dim_order(), &[0, 1]);
         assert_eq!(tensor.strides(), &[3, 1]);
-        assert_eq!(tensor.as_ptr(), arr_ptr);
+        assert_eq!(tensor.as_data_ptr(), arr_ptr);
     }
 
     #[cfg(feature = "std")]
