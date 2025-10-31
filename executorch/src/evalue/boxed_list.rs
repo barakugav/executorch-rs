@@ -5,9 +5,7 @@ use std::mem::MaybeUninit;
 use crate::memory::{Storable, Storage};
 use crate::tensor::TensorAny;
 use crate::util::IntoCpp;
-use crate::{CError, Error, Result};
-
-use executorch_sys as et_c;
+use crate::{sys, CError, Error, Result};
 
 use super::{EValue, Tag};
 
@@ -87,7 +85,7 @@ impl<'a, T: BoxedEvalueListElement<'a>> BoxedEvalueList<'a, T> {
             }
         }
 
-        let wrapped_vals = et_c::ArrayRefEValuePtr {
+        let wrapped_vals = sys::ArrayRefEValuePtr {
             data: wrapped_vals_slice.as_ptr(),
             len: wrapped_vals_slice.len(),
         };
@@ -127,7 +125,7 @@ pub trait __BoxedEvalueListImpl {
     /// that the wrapped values are of the correct type, and that both wrapped and unwrapped
     /// arrays are valid for the lifetime of the returned object.
     unsafe fn __new(
-        wrapped_vals: et_c::ArrayRefEValuePtr,
+        wrapped_vals: sys::ArrayRefEValuePtr,
         unwrapped_vals: Pin<&mut [Storage<Self::Element<'_>>]>,
     ) -> Result<Self>
     where
@@ -158,7 +156,7 @@ macro_rules! impl_boxed_evalue_list {
             type Element<'a> = $element;
 
             unsafe fn __new(
-                wrapped_vals: et_c::ArrayRefEValuePtr,
+                wrapped_vals: sys::ArrayRefEValuePtr,
                 unwrapped_vals: Pin<&mut [Storage<Self::Element<'_>>]>,
             ) -> Result<Self> {
                 // Safety: we dont move out of the pinned slice.
@@ -179,22 +177,22 @@ macro_rules! impl_boxed_evalue_list {
         }
     };
 }
-impl_boxed_evalue_list!(i64, et_c::BoxedEvalueListI64, et_c::SpanI64, Int, false);
+impl_boxed_evalue_list!(i64, sys::BoxedEvalueListI64, sys::SpanI64, Int, false);
 impl_boxed_evalue_list!(
     Option<TensorAny<'a>>,
-    et_c::BoxedEvalueListOptionalTensor,
-    et_c::SpanOptionalTensor,
+    sys::BoxedEvalueListOptionalTensor,
+    sys::SpanOptionalTensor,
     Tensor,
     true,
-    et_c::OptionalTensorRefMut
+    sys::OptionalTensorRefMut
 );
 impl_boxed_evalue_list!(
     TensorAny<'a>,
-    et_c::BoxedEvalueListTensor,
-    et_c::SpanTensor,
+    sys::BoxedEvalueListTensor,
+    sys::SpanTensor,
     Tensor,
     false,
-    et_c::TensorRefMut
+    sys::TensorRefMut
 );
 
 /// A list of pointers to `EValue`.
@@ -205,14 +203,14 @@ enum EValuePtrListInner<'a> {
     #[cfg(feature = "alloc")]
     Vec(
         (
-            crate::alloc::Vec<et_c::EValueRef>,
+            crate::alloc::Vec<sys::EValueRef>,
             // A lifetime for the `*const EValue` values
             PhantomData<&'a ()>,
         ),
     ),
     Slice(
         (
-            &'a [et_c::EValueRef],
+            &'a [sys::EValueRef],
             // A lifetime for the `*const EValue` values
             PhantomData<&'a ()>,
         ),
@@ -221,10 +219,10 @@ enum EValuePtrListInner<'a> {
 impl<'a> EValuePtrList<'a> {
     #[cfg(feature = "alloc")]
     fn new_impl(values: impl IntoIterator<Item = Option<&'a EValue<'a>>>) -> Self {
-        let values: crate::alloc::Vec<et_c::EValueRef> = values
+        let values: crate::alloc::Vec<sys::EValueRef> = values
             .into_iter()
             .map(|value| {
-                value.map(|value| value.cpp()).unwrap_or(et_c::EValueRef {
+                value.map(|value| value.cpp()).unwrap_or(sys::EValueRef {
                     ptr: std::ptr::null(),
                 })
             })
@@ -274,7 +272,7 @@ impl<'a> EValuePtrList<'a> {
         loop {
             match (values.next(), storage_iter.next()) {
                 (Some(value), Some(storage)) => {
-                    storage.write(value.map(|value| value.cpp()).unwrap_or(et_c::EValueRef {
+                    storage.write(value.map(|value| value.cpp()).unwrap_or(sys::EValueRef {
                         ptr: std::ptr::null(),
                     }));
                 }
@@ -326,7 +324,7 @@ impl<'a> EValuePtrList<'a> {
         Self::new_in_storage_impl(values, storage)
     }
 
-    fn as_slice(&self) -> &[et_c::EValueRef] {
+    fn as_slice(&self) -> &[sys::EValueRef] {
         match &self.0 {
             #[cfg(feature = "alloc")]
             EValuePtrListInner::Vec((values, _)) => values.as_slice(),
@@ -353,9 +351,9 @@ impl<'a> EValuePtrList<'a> {
 /// let wrapped_vals_storage = executorch::storage!(EValuePtrListElement, [3]);
 /// let wrapped_vals = EValuePtrList::new_in_storage([&evalue1, &evalue2, &evalue3], wrapped_vals_storage);
 /// ```
-pub struct EValuePtrListElem(#[allow(unused)] et_c::EValueRef);
+pub struct EValuePtrListElem(#[allow(unused)] sys::EValueRef);
 impl Storable for EValuePtrListElem {
-    type __Storage = et_c::EValueRef;
+    type __Storage = sys::EValueRef;
 }
 
 #[cfg(test)]

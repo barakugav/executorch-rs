@@ -1,9 +1,7 @@
 use ndarray::{ArrayBase, ArrayView, ArrayViewMut, ShapeBuilder};
 
-use executorch_sys as et_c;
-
 use crate::util::IntoRust;
-use crate::{CError, Error, Result};
+use crate::{sys, CError, Error, Result};
 
 use super::{
     DataMut, DataTyped, DimOrderType, Scalar, SizesType, StridesType, TensorBase, TensorImpl,
@@ -125,7 +123,7 @@ where
         }
 
         unsafe {
-            et_c::executorch_stride_to_dim_order(
+            sys::executorch_stride_to_dim_order(
                 strides.as_ref().as_ptr(),
                 ndim,
                 dim_order.as_mut().as_mut_ptr(),
@@ -133,7 +131,7 @@ where
         }
         .rs()?;
         let valid_strides = unsafe {
-            et_c::executorch_is_valid_dim_order_and_strides(
+            sys::executorch_is_valid_dim_order_and_strides(
                 ndim,
                 sizes.as_ref().as_ptr(),
                 dim_order.as_ref().as_ptr(),

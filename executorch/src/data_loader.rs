@@ -6,7 +6,7 @@
 use std::cell::UnsafeCell;
 use std::marker::PhantomData;
 
-use executorch_sys as et_c;
+use crate::sys;
 
 /// Loads from a data source.
 ///
@@ -16,7 +16,7 @@ use executorch_sys as et_c;
 /// [`Program`]: crate::program::Program
 pub trait DataLoader {
     #[doc(hidden)]
-    fn __data_loader_ptr(&self) -> et_c::DataLoaderRefMut;
+    fn __data_loader_ptr(&self) -> sys::DataLoaderRefMut;
 }
 
 /// A DataLoader that wraps a pre-allocated buffer. The FreeableBuffers
@@ -24,19 +24,19 @@ pub trait DataLoader {
 ///
 /// This can be used to wrap data that is directly embedded into the firmware
 /// image, or to wrap data that was allocated elsewhere.
-pub struct BufferDataLoader<'a>(UnsafeCell<et_c::BufferDataLoader>, PhantomData<&'a ()>);
+pub struct BufferDataLoader<'a>(UnsafeCell<sys::BufferDataLoader>, PhantomData<&'a ()>);
 impl<'a> BufferDataLoader<'a> {
     /// Creates a new BufferDataLoader that wraps the given data.
     pub fn new(data: &'a [u8]) -> Self {
         // Safety: the returned Self has a lifetime guaranteeing it will not outlive the buffer
         let loader =
-            unsafe { et_c::executorch_BufferDataLoader_new(data.as_ptr().cast(), data.len()) };
+            unsafe { sys::executorch_BufferDataLoader_new(data.as_ptr().cast(), data.len()) };
         Self(UnsafeCell::new(loader), PhantomData)
     }
 }
 impl DataLoader for BufferDataLoader<'_> {
-    fn __data_loader_ptr(&self) -> et_c::DataLoaderRefMut {
-        unsafe { et_c::executorch_BufferDataLoader_as_data_loader_mut(self.0.get()) }
+    fn __data_loader_ptr(&self) -> sys::DataLoaderRefMut {
+        unsafe { sys::executorch_BufferDataLoader_as_data_loader_mut(self.0.get()) }
     }
 }
 
@@ -49,8 +49,7 @@ mod file_data_loader {
     use std::ffi::CStr;
 
     use crate::util::{try_c_new, IntoCpp};
-    use crate::Result;
-    use executorch_sys as et_c;
+    use crate::{sys, Result};
 
     use super::DataLoader;
 
@@ -59,7 +58,7 @@ mod file_data_loader {
     ///
     /// Note that this will keep the file open for the duration of its lifetime, to
     /// avoid the overhead of opening it again for every load() call.
-    pub struct FileDataLoader(UnsafeCell<et_c::FileDataLoader>);
+    pub struct FileDataLoader(UnsafeCell<sys::FileDataLoader>);
     impl FileDataLoader {
         /// Creates a new FileDataLoader given a [`Path`](std::path::Path).
         ///
@@ -114,19 +113,19 @@ mod file_data_loader {
         pub fn from_path_cstr(file_name: &CStr, alignment: Option<usize>) -> Result<Self> {
             let alignment = alignment.unwrap_or(16);
             let loader = try_c_new(|loader| unsafe {
-                et_c::executorch_FileDataLoader_new(file_name.as_ptr(), alignment, loader)
+                sys::executorch_FileDataLoader_new(file_name.as_ptr(), alignment, loader)
             })?;
             Ok(Self(UnsafeCell::new(loader)))
         }
     }
     impl DataLoader for FileDataLoader {
-        fn __data_loader_ptr(&self) -> et_c::DataLoaderRefMut {
-            unsafe { et_c::executorch_FileDataLoader_as_data_loader_mut(self.0.get()) }
+        fn __data_loader_ptr(&self) -> sys::DataLoaderRefMut {
+            unsafe { sys::executorch_FileDataLoader_as_data_loader_mut(self.0.get()) }
         }
     }
     impl Drop for FileDataLoader {
         fn drop(&mut self) {
-            unsafe { et_c::executorch_FileDataLoader_destructor(self.0.get_mut()) };
+            unsafe { sys::executorch_FileDataLoader_destructor(self.0.get_mut()) };
         }
     }
 
@@ -135,7 +134,7 @@ mod file_data_loader {
     ///
     /// Note that this will keep the file open for the duration of its lifetime, to
     /// avoid the overhead of opening it again for every load() call.
-    pub struct MmapDataLoader(UnsafeCell<et_c::MmapDataLoader>);
+    pub struct MmapDataLoader(UnsafeCell<sys::MmapDataLoader>);
     impl MmapDataLoader {
         /// Creates a new MmapDataLoader from a [`Path`](std::path::Path).
         ///
@@ -184,19 +183,19 @@ mod file_data_loader {
         pub fn from_path_cstr(file_name: &CStr, mlock_config: Option<MlockConfig>) -> Result<Self> {
             let mlock_config = mlock_config.unwrap_or(MlockConfig::UseMlock).cpp();
             let loader = try_c_new(|loader| unsafe {
-                et_c::executorch_MmapDataLoader_new(file_name.as_ptr(), mlock_config, loader)
+                sys::executorch_MmapDataLoader_new(file_name.as_ptr(), mlock_config, loader)
             })?;
             Ok(Self(UnsafeCell::new(loader)))
         }
     }
     impl DataLoader for MmapDataLoader {
-        fn __data_loader_ptr(&self) -> et_c::DataLoaderRefMut {
-            unsafe { et_c::executorch_MmapDataLoader_as_data_loader_mut(self.0.get()) }
+        fn __data_loader_ptr(&self) -> sys::DataLoaderRefMut {
+            unsafe { sys::executorch_MmapDataLoader_as_data_loader_mut(self.0.get()) }
         }
     }
     impl Drop for MmapDataLoader {
         fn drop(&mut self) {
-            unsafe { et_c::executorch_MmapDataLoader_destructor(self.0.get_mut()) };
+            unsafe { sys::executorch_MmapDataLoader_destructor(self.0.get_mut()) };
         }
     }
 
@@ -209,21 +208,21 @@ mod file_data_loader {
     #[repr(u32)]
     pub enum MlockConfig {
         #[doc = " Do not call `mlock()` on loaded pages."]
-        NoMlock = et_c::MmapDataLoaderMlockConfig::ModuleLoadMode_NoMlock as u32,
+        NoMlock = sys::MmapDataLoaderMlockConfig::ModuleLoadMode_NoMlock as u32,
         #[doc = " Call `mlock()` on loaded pages, failing if it fails."]
-        UseMlock = et_c::MmapDataLoaderMlockConfig::ModuleLoadMode_UseMlock as u32,
+        UseMlock = sys::MmapDataLoaderMlockConfig::ModuleLoadMode_UseMlock as u32,
         #[doc = " Call `mlock()` on loaded pages, ignoring errors if it fails."]
         UseMlockIgnoreErrors =
-            et_c::MmapDataLoaderMlockConfig::ModuleLoadMode_UseMlockIgnoreErrors as u32,
+            sys::MmapDataLoaderMlockConfig::ModuleLoadMode_UseMlockIgnoreErrors as u32,
     }
     impl IntoCpp for MlockConfig {
-        type CppType = et_c::MmapDataLoaderMlockConfig;
+        type CppType = sys::MmapDataLoaderMlockConfig;
         fn cpp(self) -> Self::CppType {
             match self {
-                MlockConfig::NoMlock => et_c::MmapDataLoaderMlockConfig::ModuleLoadMode_NoMlock,
-                MlockConfig::UseMlock => et_c::MmapDataLoaderMlockConfig::ModuleLoadMode_UseMlock,
+                MlockConfig::NoMlock => sys::MmapDataLoaderMlockConfig::ModuleLoadMode_NoMlock,
+                MlockConfig::UseMlock => sys::MmapDataLoaderMlockConfig::ModuleLoadMode_UseMlock,
                 MlockConfig::UseMlockIgnoreErrors => {
-                    et_c::MmapDataLoaderMlockConfig::ModuleLoadMode_UseMlockIgnoreErrors
+                    sys::MmapDataLoaderMlockConfig::ModuleLoadMode_UseMlockIgnoreErrors
                 }
             }
         }

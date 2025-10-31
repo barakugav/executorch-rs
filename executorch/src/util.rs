@@ -4,17 +4,17 @@
 //! that are used in the C++ API. Some structs and functions accept these types as arguments, so they are
 //! necessary to interact with the C++ API.
 
-use et_c::Error as CError;
 use std::ffi::CStr;
 use std::fmt::Debug;
 use std::marker::{PhantomData, PhantomPinned};
 use std::mem::MaybeUninit;
 use std::pin::Pin;
+use sys::Error as CError;
 
 #[cfg(feature = "alloc")]
 use crate::alloc;
 use crate::memory::{Storable, Storage};
-use executorch_sys as et_c;
+use crate::sys;
 
 pub(crate) trait Destroy {
     /// Destroy the object without deallocating its memory.
@@ -355,17 +355,17 @@ macro_rules! impl_array_ref {
         }
     };
 }
-impl_array_ref!(u8, et_c::ArrayRefU8);
-impl_array_ref!(i32, et_c::ArrayRefI32);
-impl_array_ref!(i64, et_c::ArrayRefI64);
-impl_array_ref!(f64, et_c::ArrayRefF64);
-impl_array_ref!(usize, et_c::ArrayRefUsizeType);
-impl_array_ref!(bool, et_c::ArrayRefBool);
+impl_array_ref!(u8, sys::ArrayRefU8);
+impl_array_ref!(i32, sys::ArrayRefI32);
+impl_array_ref!(i64, sys::ArrayRefI64);
+impl_array_ref!(f64, sys::ArrayRefF64);
+impl_array_ref!(usize, sys::ArrayRefUsizeType);
+impl_array_ref!(bool, sys::ArrayRefBool);
 impl ArrayRefElement for FfiChar {
-    type __ArrayRefImpl = et_c::ArrayRefChar;
+    type __ArrayRefImpl = sys::ArrayRefChar;
     private_impl! {}
 }
-impl __ArrayRefImpl for et_c::ArrayRefChar {
+impl __ArrayRefImpl for sys::ArrayRefChar {
     type Element = FfiChar;
     unsafe fn from_slice(slice: &[FfiChar]) -> Self {
         let slice = unsafe { std::mem::transmute::<&[FfiChar], &[std::ffi::c_char]>(slice) };
@@ -380,24 +380,24 @@ impl __ArrayRefImpl for et_c::ArrayRefChar {
     }
     private_impl! {}
 }
-// impl_array_ref!(et_c::Tensor, et_c::ArrayRefTensor);
-// impl_array_ref!(et_c::EValue, et_c::ArrayRefEValue);
-impl ArrayRefElement for et_c::EValueStorage {
-    type __ArrayRefImpl = et_c::ArrayRefEValue;
+// impl_array_ref!(sys::Tensor, sys::ArrayRefTensor);
+// impl_array_ref!(sys::EValue, sys::ArrayRefEValue);
+impl ArrayRefElement for sys::EValueStorage {
+    type __ArrayRefImpl = sys::ArrayRefEValue;
     private_impl! {}
 }
-impl __ArrayRefImpl for et_c::ArrayRefEValue {
-    type Element = et_c::EValueStorage;
-    unsafe fn from_slice(slice: &[et_c::EValueStorage]) -> Self {
+impl __ArrayRefImpl for sys::ArrayRefEValue {
+    type Element = sys::EValueStorage;
+    unsafe fn from_slice(slice: &[sys::EValueStorage]) -> Self {
         Self {
-            data: et_c::EValueRef {
+            data: sys::EValueRef {
                 ptr: slice.as_ptr() as *const _,
             },
             len: slice.len(),
         }
     }
-    unsafe fn as_slice(&self) -> &'static [et_c::EValueStorage] {
-        let data = self.data.ptr as *const et_c::EValueStorage;
+    unsafe fn as_slice(&self) -> &'static [sys::EValueStorage] {
+        let data = self.data.ptr as *const sys::EValueStorage;
         unsafe { std::slice::from_raw_parts(data, self.len) }
     }
     private_impl! {}
@@ -498,7 +498,7 @@ macro_rules! impl_span {
         }
     };
 }
-impl_span!(u8, et_c::SpanU8);
+impl_span!(u8, sys::SpanU8);
 
 pub(crate) fn cstr2chars(s: &CStr) -> &[std::ffi::c_char] {
     unsafe { std::slice::from_raw_parts(s.as_ptr(), s.to_bytes().len()) }
@@ -546,7 +546,7 @@ pub(crate) fn path2cstring(path: &std::path::Path) -> Result<std::ffi::CString, 
 #[allow(unused)]
 pub(crate) mod cpp_vec {
     use super::IntoRust;
-    use executorch_sys as et_c;
+    use crate::sys;
 
     // pub(crate) fn vec_as_slice<T: CppVecElement>(vec: &T::VecImpl) -> &[T] {
     //     unsafe { std::slice::from_raw_parts(vec.data, vec.len) }
@@ -599,12 +599,12 @@ pub(crate) mod cpp_vec {
         fn as_mut_slice(&mut self) -> &mut [Self::Element];
     }
     impl CppVecElement for std::ffi::c_char {
-        type VecImpl = et_c::VecChar;
+        type VecImpl = sys::VecChar;
         fn drop_vec(vec: &mut CppVec<Self>) {
-            unsafe { et_c::executorch_VecChar_destructor(&mut vec.0) }
+            unsafe { sys::executorch_VecChar_destructor(&mut vec.0) }
         }
     }
-    impl CppVecImpl for et_c::VecChar {
+    impl CppVecImpl for sys::VecChar {
         type Element = std::ffi::c_char;
         fn as_slice(&self) -> &[std::ffi::c_char] {
             unsafe { std::slice::from_raw_parts(self.data, self.len) }
@@ -613,35 +613,35 @@ pub(crate) mod cpp_vec {
             unsafe { std::slice::from_raw_parts_mut(self.data, self.len) }
         }
     }
-    impl CppVecElement for et_c::EValueStorage {
-        type VecImpl = et_c::VecEValue;
+    impl CppVecElement for sys::EValueStorage {
+        type VecImpl = sys::VecEValue;
         fn drop_vec(vec: &mut CppVec<Self>) {
-            unsafe { et_c::executorch_VecEValue_destructor(&mut vec.0) }
+            unsafe { sys::executorch_VecEValue_destructor(&mut vec.0) }
         }
     }
-    impl CppVecImpl for et_c::VecEValue {
-        type Element = et_c::EValueStorage;
-        fn as_slice(&self) -> &[et_c::EValueStorage] {
-            let data = self.data.ptr as *const et_c::EValueStorage;
+    impl CppVecImpl for sys::VecEValue {
+        type Element = sys::EValueStorage;
+        fn as_slice(&self) -> &[sys::EValueStorage] {
+            let data = self.data.ptr as *const sys::EValueStorage;
             unsafe { std::slice::from_raw_parts(data, self.len) }
         }
-        fn as_mut_slice(&mut self) -> &mut [et_c::EValueStorage] {
-            let data = self.data.ptr as *mut et_c::EValueStorage;
+        fn as_mut_slice(&mut self) -> &mut [sys::EValueStorage] {
+            let data = self.data.ptr as *mut sys::EValueStorage;
             unsafe { std::slice::from_raw_parts_mut(data, self.len) }
         }
     }
-    impl CppVecElement for et_c::VecChar {
-        type VecImpl = et_c::VecVecChar;
+    impl CppVecElement for sys::VecChar {
+        type VecImpl = sys::VecVecChar;
         fn drop_vec(vec: &mut CppVec<Self>) {
-            unsafe { et_c::executorch_VecVecChar_destructor(&mut vec.0) }
+            unsafe { sys::executorch_VecVecChar_destructor(&mut vec.0) }
         }
     }
-    impl CppVecImpl for et_c::VecVecChar {
-        type Element = et_c::VecChar;
-        fn as_slice(&self) -> &[et_c::VecChar] {
+    impl CppVecImpl for sys::VecVecChar {
+        type Element = sys::VecChar;
+        fn as_slice(&self) -> &[sys::VecChar] {
             unsafe { std::slice::from_raw_parts(self.data, self.len) }
         }
-        fn as_mut_slice(&mut self) -> &mut [et_c::VecChar] {
+        fn as_mut_slice(&mut self) -> &mut [sys::VecChar] {
             unsafe { std::slice::from_raw_parts_mut(self.data, self.len) }
         }
     }

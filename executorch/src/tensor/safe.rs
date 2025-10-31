@@ -5,8 +5,7 @@ use std::pin::Pin;
 use super::{DimOrderType, RawTensor, RawTensorImpl, Scalar, ScalarType, SizesType, StridesType};
 use crate::memory::{MemoryAllocator, Storable, Storage};
 use crate::tensor::{TensorAccessor, TensorAccessorMut};
-use crate::{CError, Error, Result};
-use executorch_sys as et_c;
+use crate::{sys, CError, Error, Result};
 
 /// A minimal Tensor type whose API is a source compatible subset of at::Tensor.
 ///
@@ -71,7 +70,7 @@ impl<'a, D> TensorBase<'a, D> {
     /// The caller must ensure that the given tensor is valid for the lifetime of the new tensor,
     /// and that the tensor is compatible with the data generic. `D` must be immutable as we take immutable reference
     /// to the given tensor.
-    pub(crate) unsafe fn from_inner_ref(tensor: et_c::TensorRef) -> Self
+    pub(crate) unsafe fn from_inner_ref(tensor: sys::TensorRef) -> Self
     where
         D: Data,
     {
@@ -85,7 +84,7 @@ impl<'a, D> TensorBase<'a, D> {
     /// The caller must ensure that the given tensor is valid for the lifetime of the new tensor,
     /// and that the tensor is compatible with the data generic.
     #[allow(unused)]
-    pub(crate) unsafe fn from_inner_ref_mut(tensor: et_c::TensorRefMut) -> Self
+    pub(crate) unsafe fn from_inner_ref_mut(tensor: sys::TensorRefMut) -> Self
     where
         D: Data,
     {
@@ -136,7 +135,7 @@ impl<'a, D> TensorBase<'a, D> {
     }
 
     /// Get the underlying Cpp tensor.
-    pub(crate) fn as_cpp(&self) -> et_c::TensorRef {
+    pub(crate) fn as_cpp(&self) -> sys::TensorRef {
         self.0.as_cpp()
     }
 
@@ -145,7 +144,7 @@ impl<'a, D> TensorBase<'a, D> {
     /// # Safety
     ///
     /// The caller can not move out of the returned mut reference.
-    pub(crate) unsafe fn as_cpp_mut(&mut self) -> et_c::TensorRefMut
+    pub(crate) unsafe fn as_cpp_mut(&mut self) -> sys::TensorRefMut
     where
         D: DataMut,
     {
@@ -438,7 +437,7 @@ impl<'a, D> TensorBase<'a, D> {
     }
 }
 impl<D> Storable for TensorBase<'_, D> {
-    type __Storage = et_c::TensorStorage;
+    type __Storage = sys::TensorStorage;
 }
 
 impl<D: DataTyped> Index<&[usize]> for TensorBase<'_, D> {
@@ -885,7 +884,7 @@ impl Data for ViewMutAny {
 impl DataMut for ViewMutAny {}
 
 impl Storable for Option<TensorAny<'_>> {
-    type __Storage = et_c::OptionalTensorStorage;
+    type __Storage = sys::OptionalTensorStorage;
 }
 
 #[cfg(test)]

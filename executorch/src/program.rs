@@ -63,13 +63,12 @@ use crate::event_tracer::EventTracer;
 use crate::memory::MemoryManager;
 use crate::tensor::ScalarType;
 use crate::util::{try_c_new, ArrayRef, IntoCpp, IntoRust, __ArrayRefImpl, chars2str, FfiChar};
-use crate::{CError, Error, Result};
-use executorch_sys as et_c;
+use crate::{sys, CError, Error, Result};
 
 /// A deserialized ExecuTorch program binary.
 ///
 /// See the `examples/no_std` example for how to load and execute a program.
-pub struct Program<'a>(et_c::Program, PhantomData<&'a ()>);
+pub struct Program<'a>(sys::Program, PhantomData<&'a ()>);
 impl<'a> Program<'a> {
     /// Loads a Program from the provided loader. The Program will hold a pointer
     /// to the loader, which must outlive the returned Program instance.
@@ -92,14 +91,14 @@ impl<'a> Program<'a> {
         let data_loader = data_loader.__data_loader_ptr();
         let verification = verification.unwrap_or(ProgramVerification::Minimal).cpp();
         let program = try_c_new(|program| unsafe {
-            et_c::executorch_Program_load(data_loader, verification, program)
+            sys::executorch_Program_load(data_loader, verification, program)
         })?;
         Ok(Self(program, PhantomData))
     }
 
     /// Returns the number of methods in the program.
     pub fn num_methods(&self) -> usize {
-        unsafe { et_c::executorch_Program_num_methods(&self.0) }
+        unsafe { sys::executorch_Program_num_methods(&self.0) }
     }
 
     /// Returns the name of the method at particular index.
@@ -113,7 +112,7 @@ impl<'a> Program<'a> {
     /// The name of the requested method. The pointer is owned by the Program, and has the same lifetime as the Program.
     pub fn get_method_name(&self, method_index: usize) -> Result<&str> {
         let method_name = try_c_new(|method_name| unsafe {
-            et_c::executorch_Program_get_method_name(&self.0, method_index, method_name)
+            sys::executorch_Program_get_method_name(&self.0, method_index, method_name)
         })?;
         let method_name = unsafe { CStr::from_ptr(method_name) };
         method_name.to_str().map_err(|_| Error::FromCStr)
@@ -122,7 +121,7 @@ impl<'a> Program<'a> {
     /// Get the named data map from the program.
     pub fn get_named_data_map(&self) -> Result<&dyn NamedDataMap> {
         let data_map = try_c_new(|data_map| unsafe {
-            et_c::executorch_Program_get_named_data_map(&self.0, data_map)
+            sys::executorch_Program_get_named_data_map(&self.0, data_map)
         })?;
         Ok(unsafe { data_map_ptr2dyn(data_map) })
     }
@@ -150,17 +149,17 @@ impl<'a> Program<'a> {
         let event_tracer = event_tracer
             .map(|tracer| tracer as *mut EventTracer)
             .unwrap_or(ptr::null_mut());
-        let event_tracer = et_c::EventTracerRefMut {
+        let event_tracer = sys::EventTracerRefMut {
             ptr: event_tracer as *mut _,
         };
         let named_data_map = named_data_map
             .map(|map| map.__named_data_map_ptr().ptr as *const _)
             .unwrap_or(ptr::null());
-        let named_data_map = et_c::NamedDataMapRef {
+        let named_data_map = sys::NamedDataMapRef {
             ptr: named_data_map,
         };
         let method = try_c_new(|method| unsafe {
-            et_c::executorch_Program_load_method(
+            sys::executorch_Program_load_method(
                 &self.0,
                 method_name.as_ptr(),
                 memory_manager,
@@ -179,7 +178,7 @@ impl<'a> Program<'a> {
     /// * `method_name` - The name of the method to get metadata for.
     pub fn method_meta(&self, method_name: &CStr) -> Result<MethodMeta<'_>> {
         let meta = try_c_new(|meta| unsafe {
-            et_c::executorch_Program_method_meta(&self.0, method_name.as_ptr(), meta)
+            sys::executorch_Program_method_meta(&self.0, method_name.as_ptr(), meta)
         })?;
         Ok(unsafe { MethodMeta::new(meta) })
     }
@@ -194,12 +193,12 @@ impl<'a> Program<'a> {
     ///
     /// A value describing the presence of a header in the data.
     pub fn check_header(data: &[u8]) -> HeaderStatus {
-        unsafe { et_c::executorch_Program_check_header(data.as_ptr() as *const _, data.len()) }.rs()
+        unsafe { sys::executorch_Program_check_header(data.as_ptr() as *const _, data.len()) }.rs()
     }
 }
 impl Drop for Program<'_> {
     fn drop(&mut self) {
-        unsafe { et_c::executorch_Program_destructor(&mut self.0) };
+        unsafe { sys::executorch_Program_destructor(&mut self.0) };
     }
 }
 
@@ -208,17 +207,17 @@ impl Drop for Program<'_> {
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum ProgramVerification {
     #[doc = " Do minimal verification of the data, ensuring that the header appears\n correct.\n\n Has minimal runtime overhead."]
-    Minimal = et_c::ProgramVerification::ProgramVerification_Minimal as u32,
+    Minimal = sys::ProgramVerification::ProgramVerification_Minimal as u32,
     #[doc = " Do full verification of the data, ensuring that internal pointers are\n self-consistent and that the data has not been truncated or obviously\n corrupted. May not catch all types of corruption, but should guard\n against illegal memory operations during parsing.\n\n Will have higher runtime overhead, scaling with the complexity of the\n proram data."]
-    InternalConsistency = et_c::ProgramVerification::ProgramVerification_InternalConsistency as u32,
+    InternalConsistency = sys::ProgramVerification::ProgramVerification_InternalConsistency as u32,
 }
 impl IntoCpp for ProgramVerification {
-    type CppType = et_c::ProgramVerification;
+    type CppType = sys::ProgramVerification;
     fn cpp(self) -> Self::CppType {
         match self {
-            ProgramVerification::Minimal => et_c::ProgramVerification::ProgramVerification_Minimal,
+            ProgramVerification::Minimal => sys::ProgramVerification::ProgramVerification_Minimal,
             ProgramVerification::InternalConsistency => {
-                et_c::ProgramVerification::ProgramVerification_InternalConsistency
+                sys::ProgramVerification::ProgramVerification_InternalConsistency
             }
         }
     }
@@ -229,26 +228,26 @@ impl IntoCpp for ProgramVerification {
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum HeaderStatus {
     #[doc = " An ExecuTorch program header is present, and its version is compatible\n with this version of the runtime."]
-    CompatibleVersion = et_c::ProgramHeaderStatus::ProgramHeaderStatus_CompatibleVersion as u32,
+    CompatibleVersion = sys::ProgramHeaderStatus::ProgramHeaderStatus_CompatibleVersion as u32,
     #[doc = " An ExecuTorch program header is present, but its version is not\n compatible with this version of the runtime."]
-    IncompatibleVersion = et_c::ProgramHeaderStatus::ProgramHeaderStatus_IncompatibleVersion as u32,
+    IncompatibleVersion = sys::ProgramHeaderStatus::ProgramHeaderStatus_IncompatibleVersion as u32,
     #[doc = " An ExecuTorch program header is not present."]
-    NotPresent = et_c::ProgramHeaderStatus::ProgramHeaderStatus_NotPresent as u32,
+    NotPresent = sys::ProgramHeaderStatus::ProgramHeaderStatus_NotPresent as u32,
     #[doc = " The data provided was too short to find the program header."]
-    ShortData = et_c::ProgramHeaderStatus::ProgramHeaderStatus_ShortData as u32,
+    ShortData = sys::ProgramHeaderStatus::ProgramHeaderStatus_ShortData as u32,
 }
-impl IntoRust for et_c::ProgramHeaderStatus {
+impl IntoRust for sys::ProgramHeaderStatus {
     type RsType = HeaderStatus;
     fn rs(self) -> Self::RsType {
         match self {
-            et_c::ProgramHeaderStatus::ProgramHeaderStatus_CompatibleVersion => {
+            sys::ProgramHeaderStatus::ProgramHeaderStatus_CompatibleVersion => {
                 HeaderStatus::CompatibleVersion
             }
-            et_c::ProgramHeaderStatus::ProgramHeaderStatus_IncompatibleVersion => {
+            sys::ProgramHeaderStatus::ProgramHeaderStatus_IncompatibleVersion => {
                 HeaderStatus::IncompatibleVersion
             }
-            et_c::ProgramHeaderStatus::ProgramHeaderStatus_NotPresent => HeaderStatus::NotPresent,
-            et_c::ProgramHeaderStatus::ProgramHeaderStatus_ShortData => HeaderStatus::ShortData,
+            sys::ProgramHeaderStatus::ProgramHeaderStatus_NotPresent => HeaderStatus::NotPresent,
+            sys::ProgramHeaderStatus::ProgramHeaderStatus_ShortData => HeaderStatus::ShortData,
         }
     }
 }
@@ -258,22 +257,22 @@ impl IntoRust for et_c::ProgramHeaderStatus {
 /// The program used to create a MethodMeta object must outlive the MethodMeta.
 /// It is separate from Method so that this information can be accessed without
 /// paying the initialization cost of loading the full Method.
-pub struct MethodMeta<'a>(et_c::MethodMeta, PhantomData<&'a ()>);
+pub struct MethodMeta<'a>(sys::MethodMeta, PhantomData<&'a ()>);
 impl MethodMeta<'_> {
-    pub(crate) unsafe fn new(meta: et_c::MethodMeta) -> Self {
+    pub(crate) unsafe fn new(meta: sys::MethodMeta) -> Self {
         Self(meta, PhantomData)
     }
 
     /// Get the name of this method.
     pub fn name(&self) -> &str {
-        let name = unsafe { et_c::executorch_MethodMeta_name(&self.0) };
+        let name = unsafe { sys::executorch_MethodMeta_name(&self.0) };
         let name = unsafe { CStr::from_ptr(name) };
         name.to_str().map_err(|_| Error::FromCStr).unwrap()
     }
 
     /// Get the number of inputs to this method.
     pub fn num_inputs(&self) -> usize {
-        unsafe { et_c::executorch_MethodMeta_num_inputs(&self.0) }
+        unsafe { sys::executorch_MethodMeta_num_inputs(&self.0) }
     }
 
     /// Get the tag of the specified input.
@@ -286,7 +285,7 @@ impl MethodMeta<'_> {
     ///
     /// The tag of input, can only be [Tensor, Int, Bool, Double, String].
     pub fn input_tag(&self, idx: usize) -> Result<Tag> {
-        try_c_new(|tag| unsafe { et_c::executorch_MethodMeta_input_tag(&self.0, idx, tag) })
+        try_c_new(|tag| unsafe { sys::executorch_MethodMeta_input_tag(&self.0, idx, tag) })
             .map(IntoRust::rs)
     }
 
@@ -301,14 +300,14 @@ impl MethodMeta<'_> {
     /// The metadata on success, or an error on failure. Only valid for `Tag::Tensor`
     pub fn input_tensor_meta(&self, idx: usize) -> Result<TensorInfo<'_>> {
         let info = try_c_new(|info| unsafe {
-            et_c::executorch_MethodMeta_input_tensor_meta(&self.0, idx, info)
+            sys::executorch_MethodMeta_input_tensor_meta(&self.0, idx, info)
         })?;
         Ok(unsafe { TensorInfo::new(info) })
     }
 
     /// Get the number of outputs to this method.
     pub fn num_outputs(&self) -> usize {
-        unsafe { et_c::executorch_MethodMeta_num_outputs(&self.0) }
+        unsafe { sys::executorch_MethodMeta_num_outputs(&self.0) }
     }
 
     /// Get the tag of the specified output.
@@ -321,7 +320,7 @@ impl MethodMeta<'_> {
     ///
     /// The tag of output, can only be [Tensor, Int, Bool, Double, String].
     pub fn output_tag(&self, idx: usize) -> Result<Tag> {
-        try_c_new(|tag| unsafe { et_c::executorch_MethodMeta_output_tag(&self.0, idx, tag) })
+        try_c_new(|tag| unsafe { sys::executorch_MethodMeta_output_tag(&self.0, idx, tag) })
             .map(IntoRust::rs)
     }
 
@@ -336,14 +335,14 @@ impl MethodMeta<'_> {
     /// The metadata on success, or an error on failure. Only valid for `Tag::Tensor`
     pub fn output_tensor_meta(&self, idx: usize) -> Result<TensorInfo<'_>> {
         let info = try_c_new(|info| unsafe {
-            et_c::executorch_MethodMeta_output_tensor_meta(&self.0, idx, info)
+            sys::executorch_MethodMeta_output_tensor_meta(&self.0, idx, info)
         })?;
         Ok(unsafe { TensorInfo::new(info) })
     }
 
     /// Get the number of attribute tensors in this method.
     pub fn num_attributes(&self) -> usize {
-        unsafe { et_c::executorch_MethodMeta_num_attributes(&self.0) }
+        unsafe { sys::executorch_MethodMeta_num_attributes(&self.0) }
     }
 
     /// Get metadata about the specified attribute tensor.
@@ -357,14 +356,14 @@ impl MethodMeta<'_> {
     /// The metadata on success, or an error on failure.
     pub fn attribute_tensor_meta(&self, idx: usize) -> Result<TensorInfo<'_>> {
         let info = try_c_new(|info| unsafe {
-            et_c::executorch_MethodMeta_attribute_tensor_meta(&self.0, idx, info)
+            sys::executorch_MethodMeta_attribute_tensor_meta(&self.0, idx, info)
         })?;
         Ok(unsafe { TensorInfo::new(info) })
     }
 
     /// Get the number of memory-planned buffers this method requires.
     pub fn num_memory_planned_buffers(&self) -> usize {
-        unsafe { et_c::executorch_MethodMeta_num_memory_planned_buffers(&self.0) }
+        unsafe { sys::executorch_MethodMeta_num_memory_planned_buffers(&self.0) }
     }
 
     /// Get the size in bytes of the specified memory-planned buffer.
@@ -378,25 +377,25 @@ impl MethodMeta<'_> {
     /// The size in bytes on success, or an error on failure.
     pub fn memory_planned_buffer_size(&self, idx: usize) -> Result<usize> {
         let size = try_c_new(|size| unsafe {
-            et_c::executorch_MethodMeta_memory_planned_buffer_size(&self.0, idx, size)
+            sys::executorch_MethodMeta_memory_planned_buffer_size(&self.0, idx, size)
         })?;
         Ok(size as usize)
     }
 
     /// Check to see if a backend is used in this method.
     pub fn uses_backend(&self, backend_name: &CStr) -> bool {
-        unsafe { et_c::executorch_MethodMeta_uses_backend(&self.0, backend_name.as_ptr()) }
+        unsafe { sys::executorch_MethodMeta_uses_backend(&self.0, backend_name.as_ptr()) }
     }
 
     /// Get the number of backends used in this method.
     pub fn num_backends(&self) -> usize {
-        unsafe { et_c::executorch_MethodMeta_num_backends(&self.0) }
+        unsafe { sys::executorch_MethodMeta_num_backends(&self.0) }
     }
 
     /// Get the backend name at the given index.
     pub fn get_backend_name(&self, index: usize) -> Result<&str> {
         let backend_name = try_c_new(|name| unsafe {
-            et_c::executorch_MethodMeta_get_backend_name(&self.0, index, name)
+            sys::executorch_MethodMeta_get_backend_name(&self.0, index, name)
         })?;
         let backend_name = unsafe { CStr::from_ptr(backend_name) };
         backend_name.to_str().map_err(|_| Error::FromCStr)
@@ -407,32 +406,32 @@ impl MethodMeta<'_> {
 ///
 /// The program used to create the MethodMeta object that created this
 /// TensorInfo must outlive this TensorInfo.
-pub struct TensorInfo<'a>(et_c::TensorInfo, PhantomData<&'a ()>);
+pub struct TensorInfo<'a>(sys::TensorInfo, PhantomData<&'a ()>);
 impl<'a> TensorInfo<'a> {
-    pub(crate) unsafe fn new(info: et_c::TensorInfo) -> Self {
+    pub(crate) unsafe fn new(info: sys::TensorInfo) -> Self {
         Self(info, PhantomData)
     }
 
     /// Returns the sizes of the tensor.
     pub fn sizes(&self) -> &[i32] {
-        let span = unsafe { et_c::executorch_TensorInfo_sizes(&self.0) };
+        let span = unsafe { sys::executorch_TensorInfo_sizes(&self.0) };
         unsafe { ArrayRef::from_inner(span) }.as_slice()
     }
 
     /// Returns the dim order of the tensor.
     pub fn dim_order(&self) -> &[u8] {
-        let span = unsafe { et_c::executorch_TensorInfo_dim_order(&self.0) };
+        let span = unsafe { sys::executorch_TensorInfo_dim_order(&self.0) };
         unsafe { ArrayRef::from_inner(span) }.as_slice()
     }
 
     /// Returns the scalar type of the input/output.
     pub fn scalar_type(&self) -> ScalarType {
-        unsafe { et_c::executorch_TensorInfo_scalar_type(&self.0) }.rs()
+        unsafe { sys::executorch_TensorInfo_scalar_type(&self.0) }.rs()
     }
 
     /// Returns the size of the tensor in bytes.
     pub fn nbytes(&self) -> usize {
-        unsafe { et_c::executorch_TensorInfo_nbytes(&self.0) }
+        unsafe { sys::executorch_TensorInfo_nbytes(&self.0) }
     }
 
     /// Returns the fully qualified name of the Tensor.
@@ -448,7 +447,7 @@ impl<'a> TensorInfo<'a> {
     ///
     /// Might be empty if the tensor is nameless.
     pub fn name_chars(&self) -> &[std::ffi::c_char] {
-        let chars = unsafe { et_c::executorch_TensorInfo_name(&self.0).as_slice() };
+        let chars = unsafe { sys::executorch_TensorInfo_name(&self.0).as_slice() };
         unsafe { std::mem::transmute::<&[FfiChar], &[std::ffi::c_char]>(chars) }
     }
 }
@@ -466,7 +465,7 @@ impl std::fmt::Debug for TensorInfo<'_> {
 
 /// An executable method of an ExecuTorch program. Maps to a python method like
 /// `forward()` on the original `nn.Module`.
-pub struct Method<'a>(et_c::Method, PhantomData<&'a ()>);
+pub struct Method<'a>(sys::Method, PhantomData<&'a ()>);
 impl Method<'_> {
     /// Starts the execution of the method.
     pub fn start_execution(&mut self) -> Execution<'_> {
@@ -475,7 +474,7 @@ impl Method<'_> {
 
     /// Returns the number of inputs the Method expects.
     pub fn inputs_size(&self) -> usize {
-        unsafe { et_c::executorch_Method_inputs_size(&self.0) }
+        unsafe { sys::executorch_Method_inputs_size(&self.0) }
     }
 
     /// Retrieves the attribute tensor associated with the given name.
@@ -493,11 +492,11 @@ impl Method<'_> {
         let name = unsafe { std::mem::transmute::<&[std::ffi::c_char], &[FfiChar]>(name) };
         let name = ArrayRef::from_slice(name);
 
-        // Safety: et_c::executorch_Method_get_attribute writes to the tensor pointer.
+        // Safety: sys::executorch_Method_get_attribute writes to the tensor pointer.
         let tensor = unsafe {
-            crate::util::NonTriviallyMovable::try_new_boxed(|tensor: *mut et_c::TensorStorage| {
-                let tensor = et_c::TensorRefMut { ptr: tensor.cast() };
-                et_c::executorch_Method_get_attribute(&mut self.0, name.0, tensor).rs()
+            crate::util::NonTriviallyMovable::try_new_boxed(|tensor: *mut sys::TensorStorage| {
+                let tensor = sys::TensorRefMut { ptr: tensor.cast() };
+                sys::executorch_Method_get_attribute(&mut self.0, name.0, tensor).rs()
             })?
         };
 
@@ -511,19 +510,19 @@ impl Method<'_> {
 }
 impl Drop for Method<'_> {
     fn drop(&mut self) {
-        unsafe { et_c::executorch_Method_destructor(&mut self.0) };
+        unsafe { sys::executorch_Method_destructor(&mut self.0) };
     }
 }
 
 /// An method execution builder used to set inputs and execute the method.
 pub struct Execution<'a> {
-    method: &'a mut et_c::Method,
+    method: &'a mut sys::Method,
     set_inputs: u64,
 }
 impl<'a> Execution<'a> {
-    fn new(method: &'a mut et_c::Method) -> Self {
+    fn new(method: &'a mut sys::Method) -> Self {
         assert!(
-            unsafe { et_c::executorch_Method_inputs_size(method) } <= u64::BITS as usize,
+            unsafe { sys::executorch_Method_inputs_size(method) } <= u64::BITS as usize,
             "more that 64 inputs for method, unsupported"
         );
         Self {
@@ -543,19 +542,19 @@ impl<'a> Execution<'a> {
     ///   provided as inputs here rather then deepcopy the input into the memory planned arena.
     /// * `input_idx` - Zero-based index of the input to set. Must be less than the value returned by inputs_size().
     pub fn set_input(&mut self, input: &'a EValue, input_idx: usize) -> Result<()> {
-        unsafe { et_c::executorch_Method_set_input(self.method, input.cpp(), input_idx) }.rs()?;
+        unsafe { sys::executorch_Method_set_input(self.method, input.cpp(), input_idx) }.rs()?;
         self.set_inputs |= 1 << input_idx;
         Ok(())
     }
 
     /// Execute the method.
     pub fn execute(self) -> Result<Outputs<'a>> {
-        if self.set_inputs != (1 << unsafe { et_c::executorch_Method_inputs_size(self.method) }) - 1
+        if self.set_inputs != (1 << unsafe { sys::executorch_Method_inputs_size(self.method) }) - 1
         {
             crate::log::error!("Not all inputs were set before executing the method");
             return Err(Error::CError(CError::InvalidArgument));
         }
-        unsafe { et_c::executorch_Method_execute(self.method) }.rs()?;
+        unsafe { sys::executorch_Method_execute(self.method) }.rs()?;
         Ok(Outputs::new(self.method))
     }
 }
@@ -564,16 +563,16 @@ impl<'a> Execution<'a> {
 ///
 /// Access the outputs of a method execution by indexing into the Outputs object.
 pub struct Outputs<'a> {
-    method: &'a mut et_c::Method,
+    method: &'a mut sys::Method,
 }
 impl<'a> Outputs<'a> {
-    fn new(method: &'a mut et_c::Method) -> Self {
+    fn new(method: &'a mut sys::Method) -> Self {
         Self { method }
     }
 
     /// Returns the number of outputs the Method returns.
     pub fn len(&self) -> usize {
-        unsafe { et_c::executorch_Method_outputs_size(self.method) }
+        unsafe { sys::executorch_Method_outputs_size(self.method) }
     }
 
     /// Returns true if the Method returns no outputs.
@@ -587,7 +586,7 @@ impl<'a> Outputs<'a> {
     ///
     /// Panics if the index is out of bounds.
     pub fn get(&self, index: usize) -> EValue<'_> {
-        let value = unsafe { et_c::executorch_Method_get_output(self.method as *const _, index) };
+        let value = unsafe { sys::executorch_Method_get_output(self.method as *const _, index) };
         unsafe { EValue::from_inner_ref(value) }
     }
 }
