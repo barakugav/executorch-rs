@@ -5,7 +5,7 @@ use std::pin::Pin;
 use super::{DimOrderType, RawTensor, RawTensorImpl, Scalar, ScalarType, SizesType, StridesType};
 use crate::memory::{MemoryAllocator, Storable, Storage};
 use crate::tensor::{TensorAccessor, TensorAccessorMut};
-use crate::{sys, CError, Error, Result};
+use crate::{sys, Error, Result};
 
 /// A minimal Tensor type whose API is a source compatible subset of at::Tensor.
 ///
@@ -371,7 +371,7 @@ impl<'a, D> TensorBase<'a, D> {
         D: Data,
     {
         self.try_into_typed()
-            .map_err(|_| Error::CError(CError::InvalidType))
+            .map_err(|_| Error::InvalidType)
             .unwrap()
     }
 
@@ -402,9 +402,7 @@ impl<'a, D> TensorBase<'a, D> {
     where
         D: Data,
     {
-        self.try_as_typed()
-            .ok_or(Error::CError(CError::InvalidType))
-            .unwrap()
+        self.try_as_typed().ok_or(Error::InvalidType).unwrap()
     }
 
     /// Try to get a mutable typed tensor with scalar type `S` referencing the same internal data as this tensor.
@@ -431,9 +429,7 @@ impl<'a, D> TensorBase<'a, D> {
     where
         D: DataMut,
     {
-        self.try_as_typed_mut()
-            .ok_or(Error::CError(CError::InvalidType))
-            .unwrap()
+        self.try_as_typed_mut().ok_or(Error::InvalidType).unwrap()
     }
 }
 impl<D> Storable for TensorBase<'_, D> {
@@ -446,14 +442,14 @@ impl<D: DataTyped> Index<&[usize]> for TensorBase<'_, D> {
     fn index(&self, index: &[usize]) -> &Self::Output {
         // Safety: D: DataTyped, meaning we know the type is correct
         let value = unsafe { self.0.get_without_type_check::<D::Scalar>(index) };
-        value.ok_or(Error::InvalidIndex).unwrap()
+        value.ok_or(Error::InvalidArgument).unwrap()
     }
 }
 impl<D: DataTyped + DataMut> IndexMut<&[usize]> for TensorBase<'_, D> {
     // Safety: D: DataTyped, meaning we know the type is correct
     fn index_mut(&mut self, index: &[usize]) -> &mut Self::Output {
         let value = unsafe { self.0.get_without_type_check_mut::<D::Scalar>(index) };
-        value.ok_or(Error::InvalidIndex).unwrap()
+        value.ok_or(Error::InvalidArgument).unwrap()
     }
 }
 
@@ -524,7 +520,7 @@ impl<'a, S> Tensor<'a, S> {
     {
         let storage = allocator
             .allocate_pinned()
-            .ok_or(Error::CError(CError::MemoryAllocationFailed))
+            .ok_or(Error::MemoryAllocationFailed)
             .unwrap();
         Self::new_in_storage(tensor_impl, storage)
     }

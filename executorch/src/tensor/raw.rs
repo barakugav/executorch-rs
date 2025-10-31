@@ -7,7 +7,7 @@ use crate::tensor::{
     TensorAccessorMut,
 };
 use crate::util::{Destroy, IntoCpp, IntoRust, NonTriviallyMovable, __ArrayRefImpl, c_new};
-use crate::{sys, CError, Error, Result};
+use crate::{sys, Error, Result};
 
 /// A raw tensor that does not own the underlying data.
 ///
@@ -465,7 +465,7 @@ impl<'a> RawTensorImpl<'a> {
         };
         if !valid_strides {
             crate::log::error!("Invalid strides");
-            return Err(Error::CError(CError::InvalidArgument));
+            return Err(Error::InvalidArgument);
         }
 
         let impl_ = unsafe {
@@ -611,7 +611,7 @@ impl<'a> RawTensorImpl<'a> {
                 TensorError::TooManyDimensions => "too many dimensions, maximum supported is 16",
             };
             crate::log::error!("{err_msg}");
-            return Err(Error::CError(CError::InvalidArgument));
+            return Err(Error::InvalidArgument);
         }
 
         Ok(())

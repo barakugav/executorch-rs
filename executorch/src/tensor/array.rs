@@ -1,7 +1,7 @@
 use ndarray::{ArrayBase, ArrayView, ArrayViewMut, ShapeBuilder};
 
 use crate::util::IntoRust;
-use crate::{sys, CError, Error, Result};
+use crate::{sys, Error, Result};
 
 use super::{
     DataMut, DataTyped, DimOrderType, Scalar, SizesType, StridesType, TensorBase, TensorImpl,
@@ -140,7 +140,7 @@ where
         };
         if !valid_strides {
             crate::log::error!("Invalid strides");
-            return Err(Error::CError(CError::InvalidArgument));
+            return Err(Error::InvalidArgument);
         }
 
         Ok(Self {

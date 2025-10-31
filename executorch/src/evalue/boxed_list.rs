@@ -5,7 +5,7 @@ use std::mem::MaybeUninit;
 use crate::memory::{Storable, Storage};
 use crate::tensor::TensorAny;
 use crate::util::IntoCpp;
-use crate::{sys, CError, Error, Result};
+use crate::{sys, Error, Result};
 
 use super::{EValue, Tag};
 
@@ -70,18 +70,18 @@ impl<'a, T: BoxedEvalueListElement<'a>> BoxedEvalueList<'a, T> {
         let wrapped_vals_slice = wrapped_vals.as_slice();
         if wrapped_vals_slice.len() != unwrapped_vals.len() {
             crate::log::error!("wrapped and unwrapped lengths do not match");
-            return Err(Error::CError(CError::InvalidArgument));
+            return Err(Error::InvalidArgument);
         }
         for i in 0..wrapped_vals_slice.len() {
             let elm = wrapped_vals.get(i).unwrap();
             if let Some(elm) = elm {
                 if elm.tag() != T::__ELEMENT_TAG {
                     crate::log::error!("Value does not match T");
-                    return Err(Error::CError(CError::InvalidType));
+                    return Err(Error::InvalidType);
                 }
             } else if !T::__ALLOW_NULL_ELEMENT {
                 crate::log::error!("T does not allow null elements");
-                return Err(Error::CError(CError::InvalidType));
+                return Err(Error::InvalidType);
             }
         }
 
@@ -391,7 +391,7 @@ mod tests {
         let unwrapped_vals = storage!(i64, [2]); // length mismatch
 
         let res = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals);
-        assert!(matches!(res, Err(Error::CError(CError::InvalidArgument))));
+        assert!(matches!(res, Err(Error::InvalidArgument)));
     }
 
     #[test]
@@ -409,7 +409,7 @@ mod tests {
         let unwrapped_vals = storage!(i64, [3]);
 
         let res = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals);
-        assert!(matches!(res, Err(Error::CError(CError::InvalidType))));
+        assert!(matches!(res, Err(Error::InvalidType)));
     }
 
     #[test]
@@ -429,6 +429,6 @@ mod tests {
         let unwrapped_vals = storage!(i64, [3]);
 
         let res = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals);
-        assert!(matches!(res, Err(Error::CError(CError::InvalidType))));
+        assert!(matches!(res, Err(Error::InvalidType)));
     }
 }

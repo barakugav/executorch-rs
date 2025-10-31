@@ -169,8 +169,8 @@ pub mod scalar;
 pub mod tensor;
 pub mod util;
 
+pub use error::Error;
 pub(crate) use error::Result;
-pub use error::{CError, Error};
 
 #[cfg(feature = "ndarray")]
 pub use ndarray;
