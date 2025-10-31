@@ -7,7 +7,7 @@ use std::ffi::CStr;
 use std::pin::Pin;
 
 use crate::memory::{MemoryAllocator, Storable, Storage};
-use crate::tensor::{self, RawTensor, TensorAny, TensorBase};
+use crate::tensor::{RawTensor, TensorAny, TensorBase};
 use crate::util::{
     ArrayRef, Destroy, FfiChar, IntoCpp, IntoRust, NonTriviallyMovable, __ArrayRefImpl, chars2str,
 };
@@ -562,7 +562,7 @@ impl<'a> IntoEValue<'a> for &'a RawTensor<'_> {
         }
     }
 }
-impl<'a, D: tensor::Data> IntoEValue<'a> for TensorBase<'a, D> {
+impl<'a, D> IntoEValue<'a> for TensorBase<'a, D> {
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a> {
         self.0.into_evalue()
@@ -572,7 +572,7 @@ impl<'a, D: tensor::Data> IntoEValue<'a> for TensorBase<'a, D> {
         self.0.into_evalue_in_storage(storage)
     }
 }
-impl<'a, D: tensor::Data> IntoEValue<'a> for &'a TensorBase<'_, D> {
+impl<'a, D> IntoEValue<'a> for &'a TensorBase<'_, D> {
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a> {
         (&self.0).into_evalue()
@@ -583,7 +583,7 @@ impl<'a, D: tensor::Data> IntoEValue<'a> for &'a TensorBase<'_, D> {
     }
 }
 #[cfg(feature = "tensor-ptr")]
-impl<'a, D: tensor::Data> IntoEValue<'a> for &'a tensor::TensorPtr<'_, D> {
+impl<'a, D: crate::tensor::Data> IntoEValue<'a> for &'a crate::tensor::TensorPtr<'_, D> {
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a> {
         self.as_tensor().into_evalue()

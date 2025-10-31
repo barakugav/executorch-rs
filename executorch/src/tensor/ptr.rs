@@ -91,9 +91,12 @@ impl<'a, S: Scalar> TensorPtr<'a, View<S>> {
             .unwrap()
     }
 }
-impl<D: Data> TensorPtr<'_, D> {
+impl<D> TensorPtr<'_, D> {
     /// Get an immutable tensor that points to the underlying data.
-    pub fn as_tensor(&self) -> TensorBase<'_, D::Immutable> {
+    pub fn as_tensor(&self) -> TensorBase<'_, D::Immutable>
+    where
+        D: Data,
+    {
         let tensor = self.0.as_ref().unwrap();
         let tensor = et_c::TensorRef {
             ptr: tensor as *const et_c::cpp::Tensor as *const _,
