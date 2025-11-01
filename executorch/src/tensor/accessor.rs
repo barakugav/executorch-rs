@@ -24,19 +24,24 @@ impl<'a, T, const N: usize> TensorAccessorInner<'a, T, N> {
     }
 
     fn offset_of(&self, index: [usize; N]) -> Option<isize> {
-        let valid_index = index
-            .iter()
-            .zip(self.sizes)
-            .all(|(&idx, size)| idx < size as usize);
-        valid_index.then(|| unsafe { self.offset_of_unchecked(index) })
+        self.is_valid_index(index)
+            .then(|| unsafe { self.offset_of_unchecked(index) })
     }
 
     unsafe fn offset_of_unchecked(&self, index: [usize; N]) -> isize {
+        debug_assert!(self.is_valid_index(index));
         let mut offset = 0isize;
         for (&idx, stride) in index.iter().zip(self.strides) {
             offset += idx as isize * stride as isize;
         }
         offset
+    }
+
+    fn is_valid_index(&self, index: [usize; N]) -> bool {
+        index
+            .iter()
+            .zip(self.sizes)
+            .all(|(&idx, size)| idx < size as usize)
     }
 }
 
@@ -71,12 +76,16 @@ impl<'a, T, const N: usize> TensorAccessor<'a, T, N> {
 }
 impl<'a, T> Index<usize> for TensorAccessor<'a, T, 1> {
     type Output = T;
+    #[inline]
+    #[track_caller]
     fn index(&self, index: usize) -> &Self::Output {
         self.get([index]).unwrap()
     }
 }
 impl<'a, T, const N: usize> Index<[usize; N]> for TensorAccessor<'a, T, N> {
     type Output = T;
+    #[inline]
+    #[track_caller]
     fn index(&self, index: [usize; N]) -> &Self::Output {
         self.get(index).unwrap()
     }
@@ -128,7 +137,7 @@ impl<'a, T, const N: usize> TensorAccessorMut<'a, T, N> {
 }
 impl<'a, T> Index<usize> for TensorAccessorMut<'a, T, 1> {
     type Output = T;
-
+    #[inline]
     #[track_caller]
     fn index(&self, index: usize) -> &Self::Output {
         self.get([index]).unwrap()
@@ -136,19 +145,21 @@ impl<'a, T> Index<usize> for TensorAccessorMut<'a, T, 1> {
 }
 impl<'a, T, const N: usize> Index<[usize; N]> for TensorAccessorMut<'a, T, N> {
     type Output = T;
-
+    #[inline]
     #[track_caller]
     fn index(&self, index: [usize; N]) -> &Self::Output {
         self.get(index).unwrap()
     }
 }
 impl<'a, T> IndexMut<usize> for TensorAccessorMut<'a, T, 1> {
+    #[inline]
     #[track_caller]
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         self.get_mut([index]).unwrap()
     }
 }
 impl<'a, T, const N: usize> IndexMut<[usize; N]> for TensorAccessorMut<'a, T, N> {
+    #[inline]
     #[track_caller]
     fn index_mut(&mut self, index: [usize; N]) -> &mut Self::Output {
         self.get_mut(index).unwrap()
