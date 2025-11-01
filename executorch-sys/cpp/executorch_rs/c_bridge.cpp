@@ -328,6 +328,12 @@ enum Error executorch_FlatTensorDataMap_load(struct DataLoaderRefMut loader, str
     new (out_) executorch::extension::FlatTensorDataMap(std::move(program));
     return Error::Error_Ok;
 }
+struct NamedDataMapRefMut executorch_FlatTensorDataMap_as_named_data_map_mut(struct FlatTensorDataMap *self)
+{
+    auto self_ = checked_reinterpret_cast<executorch::extension::FlatTensorDataMap>(self);
+    auto named_data_map = static_cast<executorch::runtime::NamedDataMap *>(self_);
+    return NamedDataMapRefMut{.ptr = named_data_map};
+}
 #endif
 
 // Tensor

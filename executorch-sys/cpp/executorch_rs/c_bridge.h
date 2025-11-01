@@ -690,6 +690,7 @@ extern "C"
 #if defined(EXECUTORCH_RS_FLAT_TENSOR)
     // FlatTensorDataMap
     enum Error executorch_FlatTensorDataMap_load(struct DataLoaderRefMut loader, struct FlatTensorDataMap *out);
+    struct NamedDataMapRefMut executorch_FlatTensorDataMap_as_named_data_map_mut(struct FlatTensorDataMap *self);
 #endif
 
     // Tensor

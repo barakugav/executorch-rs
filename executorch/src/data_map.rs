@@ -118,8 +118,10 @@ mod flat_tensor {
     }
     impl NamedDataMap for FlatTensorDataMap<'_> {
         fn __named_data_map_ptr(&self) -> sys::NamedDataMapRefMut {
-            sys::NamedDataMapRefMut {
-                ptr: self as *const _ as *mut _,
+            unsafe {
+                sys::executorch_FlatTensorDataMap_as_named_data_map_mut(
+                    &self.0 as *const _ as *mut _,
+                )
             }
         }
     }
