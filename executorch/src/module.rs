@@ -49,7 +49,7 @@ impl<'a> Module<'a> {
     ) -> Self {
         let data_files = data_files
             .iter()
-            .map(|f| f.as_os_str().to_str().ok_or(Error::ToCStr).unwrap())
+            .map(|f| f.as_os_str().to_str().ok_or(Error::InvalidString).unwrap())
             .collect::<Vec<_>>();
         sys::cxx::let_cxx_string!(file_path = file_path.as_os_str().as_encoded_bytes());
 

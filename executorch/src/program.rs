@@ -63,7 +63,7 @@ use crate::event_tracer::EventTracer;
 use crate::memory::MemoryManager;
 use crate::tensor::ScalarType;
 use crate::util::{try_c_new, ArrayRef, IntoCpp, IntoRust, __ArrayRefImpl, chars2str, FfiChar};
-use crate::{sys, CError, Error, Result};
+use crate::{sys, Error, Result};
 
 /// A deserialized ExecuTorch program binary.
 ///
@@ -115,7 +115,7 @@ impl<'a> Program<'a> {
             sys::executorch_Program_get_method_name(&self.0, method_index, method_name)
         })?;
         let method_name = unsafe { CStr::from_ptr(method_name) };
-        method_name.to_str().map_err(|_| Error::FromCStr)
+        method_name.to_str().map_err(|_| Error::InvalidString)
     }
 
     /// Get the named data map from the program.
@@ -267,7 +267,7 @@ impl MethodMeta<'_> {
     pub fn name(&self) -> &str {
         let name = unsafe { sys::executorch_MethodMeta_name(&self.0) };
         let name = unsafe { CStr::from_ptr(name) };
-        name.to_str().map_err(|_| Error::FromCStr).unwrap()
+        name.to_str().map_err(|_| Error::InvalidString).unwrap()
     }
 
     /// Get the number of inputs to this method.
@@ -398,7 +398,7 @@ impl MethodMeta<'_> {
             sys::executorch_MethodMeta_get_backend_name(&self.0, index, name)
         })?;
         let backend_name = unsafe { CStr::from_ptr(backend_name) };
-        backend_name.to_str().map_err(|_| Error::FromCStr)
+        backend_name.to_str().map_err(|_| Error::InvalidString)
     }
 }
 
@@ -552,7 +552,7 @@ impl<'a> Execution<'a> {
         if self.set_inputs != (1 << unsafe { sys::executorch_Method_inputs_size(self.method) }) - 1
         {
             crate::log::error!("Not all inputs were set before executing the method");
-            return Err(Error::CError(CError::InvalidArgument));
+            return Err(Error::InvalidArgument);
         }
         unsafe { sys::executorch_Method_execute(self.method) }.rs()?;
         Ok(Outputs::new(self.method))
@@ -765,7 +765,7 @@ mod tests {
         let execution = method.start_execution();
         assert!(matches!(
             execution.execute(), // inputs not set
-            Err(Error::CError(CError::InvalidArgument))
+            Err(Error::InvalidArgument)
         ));
         let mut execution = method.start_execution();
 

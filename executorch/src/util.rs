@@ -9,7 +9,6 @@ use std::fmt::Debug;
 use std::marker::{PhantomData, PhantomPinned};
 use std::mem::MaybeUninit;
 use std::pin::Pin;
-use sys::Error as CError;
 
 #[cfg(feature = "alloc")]
 use crate::alloc;
@@ -230,7 +229,7 @@ impl<T: Destroy> Drop for NonTriviallyMovableVec<T> {
     }
 }
 
-pub(crate) fn try_c_new<T>(f: impl FnOnce(*mut T) -> CError) -> crate::Result<T> {
+pub(crate) fn try_c_new<T>(f: impl FnOnce(*mut T) -> sys::Error) -> crate::Result<T> {
     let mut value = MaybeUninit::uninit();
     let err = f(value.as_mut_ptr());
     err.rs().map(|_| unsafe { value.assume_init() })
@@ -539,7 +538,7 @@ pub(crate) fn chars2cstring(s: &[std::ffi::c_char]) -> Option<std::ffi::CString>
 #[allow(unused)]
 pub(crate) fn path2cstring(path: &std::path::Path) -> Result<std::ffi::CString, crate::Error> {
     let path_bytes = path.as_os_str().as_encoded_bytes();
-    std::ffi::CString::new(path_bytes).map_err(|_| crate::Error::ToCStr)
+    std::ffi::CString::new(path_bytes).map_err(|_| crate::Error::InvalidString)
 }
 
 #[cfg(feature = "std")]

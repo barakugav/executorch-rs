@@ -5,7 +5,7 @@ use std::pin::Pin;
 use super::{DimOrderType, RawTensor, RawTensorImpl, Scalar, ScalarType, SizesType, StridesType};
 use crate::memory::{MemoryAllocator, Storable, Storage};
 use crate::tensor::{TensorAccessor, TensorAccessorMut};
-use crate::{sys, CError, Error, Result};
+use crate::{sys, Error, Result};
 
 /// A minimal Tensor type whose API is a source compatible subset of at::Tensor.
 ///
@@ -214,17 +214,17 @@ impl<'a, D> TensorBase<'a, D> {
     ///
     /// The caller must access the values in the returned pointer according to the type, sizes, dim order and strides
     /// of the tensor.
-    pub fn as_ptr_raw(&self) -> *const () {
-        self.0.as_ptr_raw()
+    pub fn as_data_ptr_raw(&self) -> *const () {
+        self.0.as_data_ptr()
     }
 
     /// Returns a pointer to the constant underlying data blob.
-    pub fn as_ptr(&self) -> *const D::Scalar
+    pub fn as_data_ptr(&self) -> *const D::Scalar
     where
         D: DataTyped,
     {
         debug_assert_eq!(self.scalar_type(), D::Scalar::TYPE);
-        self.as_ptr_raw() as *const D::Scalar
+        self.as_data_ptr_raw() as *const D::Scalar
     }
     /// Returns a mutable pointer to the underlying data blob.
     ///
@@ -232,22 +232,22 @@ impl<'a, D> TensorBase<'a, D> {
     ///
     /// The caller must access the values in the returned pointer according to the type, sizes, dim order and strides
     /// of the tensor.
-    pub fn as_mut_ptr_raw(&mut self) -> *mut ()
+    pub fn as_data_mut_ptr_raw(&mut self) -> *mut ()
     where
         D: DataMut,
     {
-        let ptr = self.0.as_mut_ptr_raw();
+        let ptr = self.0.as_data_mut_ptr();
         // Safety: D: DataMut meaning the Tensor (and the TensorImpl) are mutable
         unsafe { ptr.unwrap_unchecked() }
     }
 
     /// Returns a mutable pointer of type S to the underlying data blob.
-    pub fn as_mut_ptr(&mut self) -> *mut D::Scalar
+    pub fn as_data_mut_ptr(&mut self) -> *mut D::Scalar
     where
         D: DataTyped + DataMut,
     {
         debug_assert_eq!(self.scalar_type(), D::Scalar::TYPE);
-        self.as_mut_ptr_raw().cast()
+        self.as_data_mut_ptr_raw().cast()
     }
 
     /// Get a reference to the element at `index`, or `None` if the index is out of bounds.
@@ -371,7 +371,7 @@ impl<'a, D> TensorBase<'a, D> {
         D: Data,
     {
         self.try_into_typed()
-            .map_err(|_| Error::CError(CError::InvalidType))
+            .map_err(|_| Error::InvalidType)
             .unwrap()
     }
 
@@ -402,9 +402,7 @@ impl<'a, D> TensorBase<'a, D> {
     where
         D: Data,
     {
-        self.try_as_typed()
-            .ok_or(Error::CError(CError::InvalidType))
-            .unwrap()
+        self.try_as_typed().ok_or(Error::InvalidType).unwrap()
     }
 
     /// Try to get a mutable typed tensor with scalar type `S` referencing the same internal data as this tensor.
@@ -431,9 +429,7 @@ impl<'a, D> TensorBase<'a, D> {
     where
         D: DataMut,
     {
-        self.try_as_typed_mut()
-            .ok_or(Error::CError(CError::InvalidType))
-            .unwrap()
+        self.try_as_typed_mut().ok_or(Error::InvalidType).unwrap()
     }
 }
 impl<D> Storable for TensorBase<'_, D> {
@@ -446,14 +442,14 @@ impl<D: DataTyped> Index<&[usize]> for TensorBase<'_, D> {
     fn index(&self, index: &[usize]) -> &Self::Output {
         // Safety: D: DataTyped, meaning we know the type is correct
         let value = unsafe { self.0.get_without_type_check::<D::Scalar>(index) };
-        value.ok_or(Error::InvalidIndex).unwrap()
+        value.ok_or(Error::InvalidArgument).unwrap()
     }
 }
 impl<D: DataTyped + DataMut> IndexMut<&[usize]> for TensorBase<'_, D> {
     // Safety: D: DataTyped, meaning we know the type is correct
     fn index_mut(&mut self, index: &[usize]) -> &mut Self::Output {
         let value = unsafe { self.0.get_without_type_check_mut::<D::Scalar>(index) };
-        value.ok_or(Error::InvalidIndex).unwrap()
+        value.ok_or(Error::InvalidArgument).unwrap()
     }
 }
 
@@ -524,7 +520,7 @@ impl<'a, S> Tensor<'a, S> {
     {
         let storage = allocator
             .allocate_pinned()
-            .ok_or(Error::CError(CError::MemoryAllocationFailed))
+            .ok_or(Error::MemoryAllocationFailed)
             .unwrap();
         Self::new_in_storage(tensor_impl, storage)
     }
@@ -939,7 +935,7 @@ mod tests {
             assert_eq!(tensor.sizes(), &[2, 3]);
             assert_eq!(tensor.dim_order(), &[0, 1]);
             assert_eq!(tensor.strides(), &[3, 1]);
-            assert_eq!(tensor.as_ptr(), data.as_ptr());
+            assert_eq!(tensor.as_data_ptr(), data.as_ptr());
         }
     }
 
@@ -985,7 +981,7 @@ mod tests {
             assert_eq!(tensor.sizes(), &[2, 3]);
             assert_eq!(tensor.dim_order(), &[0, 1]);
             assert_eq!(tensor.strides(), &[3, 1]);
-            assert_eq!(tensor.as_ptr(), data.as_ptr());
+            assert_eq!(tensor.as_data_ptr(), data.as_ptr());
         }
     }
 
@@ -1026,7 +1022,7 @@ mod tests {
             assert_eq!(tensor.sizes(), &[2, 3]);
             assert_eq!(tensor.dim_order(), &[0, 1]);
             assert_eq!(tensor.strides(), &[3, 1]);
-            assert_eq!(tensor.as_ptr(), data_ptr);
+            assert_eq!(tensor.as_data_ptr(), data_ptr);
         }
     }
 
@@ -1066,7 +1062,7 @@ mod tests {
             assert_eq!(tensor.sizes(), &[2, 3]);
             assert_eq!(tensor.dim_order(), &[0, 1]);
             assert_eq!(tensor.strides(), &[3, 1]);
-            assert_eq!(tensor.as_ptr(), data_ptr);
+            assert_eq!(tensor.as_data_ptr(), data_ptr);
         }
     }
 
@@ -1242,7 +1238,7 @@ mod tests {
         assert_eq!(tensor.scalar_type(), ScalarType::Int);
         let mut tensor = tensor.into_typed::<i32>();
         // as_mut_ptr_raw is available only if the tensor is mutable
-        assert!(!tensor.as_mut_ptr_raw().is_null());
+        assert!(!tensor.as_data_mut_ptr_raw().is_null());
     }
 
     #[cfg(feature = "tensor-ptr")]
@@ -1262,7 +1258,7 @@ mod tests {
         assert_eq!(tensor.scalar_type(), ScalarType::Int);
         let mut tensor = tensor.as_typed_mut::<i32>();
         // as_mut_ptr_raw is available only if the tensor is mutable
-        assert!(!tensor.as_mut_ptr_raw().is_null());
+        assert!(!tensor.as_data_mut_ptr_raw().is_null());
     }
 
     #[cfg(feature = "tensor-ptr")]
@@ -1403,7 +1399,7 @@ mod tests {
         assert_eq!(tensor.sizes(), &[]);
         assert_eq!(tensor.dim_order(), &[]);
         assert_eq!(tensor.strides(), &[]);
-        assert_eq!(unsafe { *tensor.as_ptr() }, 42);
+        assert_eq!(unsafe { *tensor.as_data_ptr() }, 42);
         assert_eq!(tensor[&[]], 42);
 
         let mut scalar = 17;
@@ -1418,10 +1414,10 @@ mod tests {
         assert_eq!(tensor.sizes(), &[]);
         assert_eq!(tensor.dim_order(), &[]);
         assert_eq!(tensor.strides(), &[]);
-        assert_eq!(unsafe { *tensor.as_ptr() }, 17);
+        assert_eq!(unsafe { *tensor.as_data_ptr() }, 17);
         assert_eq!(tensor[&[]], 17);
         tensor[&[]] = 6;
-        assert_eq!(unsafe { *tensor.as_ptr() }, 6);
+        assert_eq!(unsafe { *tensor.as_data_ptr() }, 6);
         assert_eq!(tensor[&[]], 6);
     }
 

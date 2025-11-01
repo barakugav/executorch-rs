@@ -7,7 +7,6 @@ use super::{
     Data, DataMut, DataTyped, DimOrderType, Scalar, SizesType, StridesType, TensorBase, View,
     ViewMut,
 };
-use crate::error::CError;
 use crate::util::{IntoCpp, IntoRust};
 use crate::{sys, Error, Result};
 
@@ -376,7 +375,7 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
         };
         if !valid_strides {
             crate::log::error!("Invalid strides");
-            return Err(Error::CError(CError::InvalidArgument));
+            return Err(Error::InvalidArgument);
         }
 
         let tensor = unsafe {
@@ -448,7 +447,7 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
         };
         if !valid_strides {
             crate::log::error!("Invalid strides");
-            return Err(Error::CError(CError::InvalidArgument));
+            return Err(Error::InvalidArgument);
         }
 
         let tensor = unsafe {

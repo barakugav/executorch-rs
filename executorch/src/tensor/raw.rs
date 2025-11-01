@@ -7,7 +7,7 @@ use crate::tensor::{
     TensorAccessorMut,
 };
 use crate::util::{Destroy, IntoCpp, IntoRust, NonTriviallyMovable, __ArrayRefImpl, c_new};
-use crate::{sys, CError, Error, Result};
+use crate::{sys, Error, Result};
 
 /// A raw tensor that does not own the underlying data.
 ///
@@ -195,7 +195,7 @@ impl<'a> RawTensor<'a> {
     ///
     /// The caller must access the values in the returned pointer according to the type, sizes, dim order and strides
     /// of the tensor.
-    pub fn as_ptr_raw(&self) -> *const () {
+    pub fn as_data_ptr(&self) -> *const () {
         let ptr = unsafe { sys::executorch_Tensor_const_data_ptr(self.as_cpp()) };
         debug_assert!(!ptr.is_null());
         ptr as *const ()
@@ -216,7 +216,7 @@ impl<'a> RawTensor<'a> {
     /// The caller must access the values in the returned pointer according to the type, sizes, dim order and strides
     /// of the tensor.
     /// The caller should call this function only if the tensor was created with a mutable tensor impl.
-    pub fn as_mut_ptr_raw(&mut self) -> Option<*mut ()> {
+    pub fn as_data_mut_ptr(&mut self) -> Option<*mut ()> {
         let tensor = unsafe { self.as_cpp_mut()? };
         let tensor = sys::TensorRef { ptr: tensor.ptr };
         let ptr = unsafe { sys::executorch_Tensor_mutable_data_ptr(tensor) };
@@ -259,7 +259,7 @@ impl<'a> RawTensor<'a> {
     /// The caller must ensure that the index is within bounds.
     pub unsafe fn get_unchecked<S: Scalar>(&self, index: &[usize]) -> &S {
         let index = unsafe { self.coordinate_to_index_unchecked(index) };
-        let base_ptr = self.as_ptr_raw() as *const S;
+        let base_ptr = self.as_data_ptr() as *const S;
         debug_assert!(!base_ptr.is_null());
         unsafe { &*base_ptr.add(index) }
     }
@@ -272,7 +272,7 @@ impl<'a> RawTensor<'a> {
     /// The caller must ensure that the tensor was created with a mutable tensor impl.
     pub unsafe fn get_unchecked_mut<S: Scalar>(&mut self, index: &[usize]) -> &mut S {
         let index = unsafe { self.coordinate_to_index_unchecked(index) };
-        let base_ptr = unsafe { self.as_mut_ptr_raw().unwrap_unchecked() } as *mut S;
+        let base_ptr = unsafe { self.as_data_mut_ptr().unwrap_unchecked() } as *mut S;
         debug_assert!(!base_ptr.is_null());
         unsafe { &mut *base_ptr.add(index) }
     }
@@ -280,7 +280,7 @@ impl<'a> RawTensor<'a> {
     /// Safety: the caller must ensure that type `S` is the correct scalar type of the tensor.
     pub(super) unsafe fn get_without_type_check<S: Scalar>(&self, index: &[usize]) -> Option<&S> {
         let index = self.coordinate_to_index(index)?;
-        let base_ptr = self.as_ptr_raw() as *const S;
+        let base_ptr = self.as_data_ptr() as *const S;
         debug_assert!(!base_ptr.is_null());
         Some(unsafe { &*base_ptr.add(index) })
     }
@@ -305,7 +305,7 @@ impl<'a> RawTensor<'a> {
         index: &[usize],
     ) -> Option<&mut S> {
         let index = self.coordinate_to_index(index)?;
-        let base_ptr = self.as_mut_ptr_raw()? as *mut S;
+        let base_ptr = self.as_data_mut_ptr()? as *mut S;
         debug_assert!(!base_ptr.is_null());
         Some(unsafe { &mut *base_ptr.add(index) })
     }
@@ -346,7 +346,7 @@ impl<'a> RawTensor<'a> {
         if !self.dim_order().iter().map(|d| *d as usize).eq(0..N) {
             panic!("Non-default dim order is not supported for TensorAccessorInner");
         }
-        let data = self.as_ptr_raw() as *const S;
+        let data = self.as_data_ptr() as *const S;
         let accessor = unsafe { TensorAccessorInner::new(data, self.sizes(), self.strides()) };
         Some(accessor)
     }
@@ -465,7 +465,7 @@ impl<'a> RawTensorImpl<'a> {
         };
         if !valid_strides {
             crate::log::error!("Invalid strides");
-            return Err(Error::CError(CError::InvalidArgument));
+            return Err(Error::InvalidArgument);
         }
 
         let impl_ = unsafe {
@@ -611,7 +611,7 @@ impl<'a> RawTensorImpl<'a> {
                 TensorError::TooManyDimensions => "too many dimensions, maximum supported is 16",
             };
             crate::log::error!("{err_msg}");
-            return Err(Error::CError(CError::InvalidArgument));
+            return Err(Error::InvalidArgument);
         }
 
         Ok(())

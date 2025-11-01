@@ -64,7 +64,7 @@ pub trait NamedDataMap {
             )
         })?;
         let key = unsafe { CStr::from_ptr(key) };
-        key.to_str().map_err(|_| Error::FromCStr)
+        key.to_str().map_err(|_| Error::InvalidString)
     }
 }
 
