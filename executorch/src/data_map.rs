@@ -109,9 +109,12 @@ mod flat_tensor {
         ///
         /// * `data_loader` - loader The DataLoader that wraps the FlatTensor file.
         ///
-        pub fn load(data_loader: &'a dyn DataLoader) -> Result<Self> {
+        pub fn load(data_loader: &'a DataLoader) -> Result<Self> {
+            let data_loader = sys::DataLoaderRefMut {
+                ptr: data_loader as *const _ as *mut _,
+            };
             let data_map = try_c_new(|data_map| unsafe {
-                sys::executorch_FlatTensorDataMap_load(data_loader.__data_loader_ptr(), data_map)
+                sys::executorch_FlatTensorDataMap_load(data_loader, data_map)
             })?;
             Ok(Self(data_map, PhantomData))
         }

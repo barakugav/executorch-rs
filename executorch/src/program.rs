@@ -8,7 +8,7 @@
 //! let allocator = BufferMemoryAllocator::new(&mut buffer);
 //!
 //! let data_loader = BufferDataLoader::new(ADD_MODEL_BYTES);
-//! let program = Program::load(&data_loader, None).unwrap();
+//! let program = Program::load(data_loader.as_ref(), None).unwrap();
 //!
 //! let method_meta = program.method_meta(c"forward").unwrap();
 //!
@@ -85,10 +85,12 @@ impl<'a> Program<'a> {
     ///
     /// A new instance of Program.
     pub fn load(
-        data_loader: &'a dyn DataLoader,
+        data_loader: &'a DataLoader,
         verification: Option<ProgramVerification>,
     ) -> Result<Self> {
-        let data_loader = data_loader.__data_loader_ptr();
+        let data_loader = sys::DataLoaderRefMut {
+            ptr: data_loader as *const _ as *mut _,
+        };
         let verification = verification.unwrap_or(ProgramVerification::Minimal).cpp();
         let program = try_c_new(|program| unsafe {
             sys::executorch_Program_load(data_loader, verification, program)
@@ -548,6 +550,10 @@ impl<'a> Execution<'a> {
     }
 
     /// Execute the method.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if not all inputs were set before executing the method, or if the execution failed.
     pub fn execute(self) -> Result<Outputs<'a>> {
         if self.set_inputs != (1 << unsafe { sys::executorch_Method_inputs_size(self.method) }) - 1
         {
@@ -601,33 +607,36 @@ mod tests {
     #[test]
     fn load() {
         let loader = BufferDataLoader::new(ADD_MODEL_BYTES);
-        let program = Program::load(&loader, None);
+        let program = Program::load(loader.as_ref(), None);
         assert!(program.is_ok());
 
         let loader = BufferDataLoader::new(ADD_MODEL_BYTES);
-        let program = Program::load(&loader, Some(ProgramVerification::Minimal));
+        let program = Program::load(loader.as_ref(), Some(ProgramVerification::Minimal));
         assert!(program.is_ok());
 
         let loader = BufferDataLoader::new(ADD_MODEL_BYTES);
-        let program = Program::load(&loader, Some(ProgramVerification::InternalConsistency));
+        let program = Program::load(
+            loader.as_ref(),
+            Some(ProgramVerification::InternalConsistency),
+        );
         assert!(program.is_ok());
 
         let loader = BufferDataLoader::new(&[]);
-        let program = Program::load(&loader, None);
+        let program = Program::load(loader.as_ref(), None);
         assert!(program.is_err());
     }
 
     #[test]
     fn num_methods() {
         let loader = BufferDataLoader::new(ADD_MODEL_BYTES);
-        let program = Program::load(&loader, None).unwrap();
+        let program = Program::load(loader.as_ref(), None).unwrap();
         assert_eq!(program.num_methods(), 1);
     }
 
     #[test]
     fn get_method_name() {
         let loader = BufferDataLoader::new(ADD_MODEL_BYTES);
-        let program = Program::load(&loader, None).unwrap();
+        let program = Program::load(loader.as_ref(), None).unwrap();
         assert_eq!(program.get_method_name(0).ok(), Some("forward"));
         assert_eq!(program.get_method_name(1).ok(), None);
     }
@@ -635,7 +644,7 @@ mod tests {
     #[test]
     fn method_meta() {
         let loader = BufferDataLoader::new(ADD_MODEL_BYTES);
-        let program = Program::load(&loader, None).unwrap();
+        let program = Program::load(loader.as_ref(), None).unwrap();
         let method_meta = program.method_meta(c"forward").unwrap();
         assert!(program.method_meta(c"non-existing-method").is_err());
 
@@ -695,8 +704,11 @@ mod tests {
         let allocator = BufferMemoryAllocator::new(&mut buffer);
 
         let data_loader = BufferDataLoader::new(ADD_MODEL_BYTES);
-        let program =
-            Program::load(&data_loader, Some(ProgramVerification::InternalConsistency)).unwrap();
+        let program = Program::load(
+            data_loader.as_ref(),
+            Some(ProgramVerification::InternalConsistency),
+        )
+        .unwrap();
 
         let method_meta = program.method_meta(c"forward").unwrap();
         let num_memory_planned_buffers = method_meta.num_memory_planned_buffers();
@@ -742,8 +754,11 @@ mod tests {
         let allocator = BufferMemoryAllocator::new(&mut buffer);
 
         let data_loader = BufferDataLoader::new(ADD_MODEL_BYTES);
-        let program =
-            Program::load(&data_loader, Some(ProgramVerification::InternalConsistency)).unwrap();
+        let program = Program::load(
+            data_loader.as_ref(),
+            Some(ProgramVerification::InternalConsistency),
+        )
+        .unwrap();
 
         let method_meta = program.method_meta(c"forward").unwrap();
         let num_memory_planned_buffers = method_meta.num_memory_planned_buffers();

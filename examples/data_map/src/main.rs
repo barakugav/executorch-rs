@@ -45,8 +45,11 @@ fn main_program() {
     let allocator = BufferMemoryAllocator::new(&mut buffer);
 
     let data_loader = FileDataLoader::from_path(&model_path, None).unwrap();
-    let program =
-        Program::load(&data_loader, Some(ProgramVerification::InternalConsistency)).unwrap();
+    let program = Program::load(
+        data_loader.as_ref(),
+        Some(ProgramVerification::InternalConsistency),
+    )
+    .unwrap();
 
     let method_meta = program.method_meta(c"forward").unwrap();
 
@@ -66,7 +69,7 @@ fn main_program() {
     let memory_manager = MemoryManager::new(&allocator, Some(&mut planned_memory), None);
 
     let data_map_loader = FileDataLoader::from_path(&data_file, None).unwrap();
-    let data_map = FlatTensorDataMap::load(&data_map_loader).unwrap();
+    let data_map = FlatTensorDataMap::load(data_map_loader.as_ref()).unwrap();
     let mut method = program
         .load_method(c"forward", &memory_manager, None, Some(&data_map))
         .unwrap();

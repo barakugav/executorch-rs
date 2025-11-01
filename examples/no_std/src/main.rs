@@ -28,9 +28,11 @@ fn real_main() {
     let allocator = BufferMemoryAllocator::new(&mut buffer);
 
     let data_loader = BufferDataLoader::new(ADD_MODEL_BYTES);
-    let program =
-        Program::load(&data_loader, Some(ProgramVerification::InternalConsistency)).unwrap();
-
+    let program = Program::load(
+        data_loader.as_ref(),
+        Some(ProgramVerification::InternalConsistency),
+    )
+    .unwrap();
     let method_meta = program.method_meta(c"forward").unwrap();
 
     let num_memory_planned_buffers = method_meta.num_memory_planned_buffers();
