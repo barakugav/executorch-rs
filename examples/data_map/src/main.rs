@@ -13,7 +13,7 @@ use executorch::util::Span;
 use ndarray::array;
 
 fn main() {
-    executorch::platform::pal_init();
+    unsafe { executorch::platform::pal_init() };
 
     println!("Running the model using a Module...");
     main_module();

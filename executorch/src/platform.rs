@@ -16,9 +16,7 @@ use core::ffi::CStr;
 /// This function should be called only once, before any accesses to the platform functions.
 /// This function changes global state, but does not provide any synchronization.
 /// Use this function carefully.
-///
-/// TODO: mark this function as unsafe
-pub fn pal_init() {
+pub unsafe fn pal_init() {
     unsafe { sys::executorch_pal_init() };
 }
 
@@ -56,11 +54,16 @@ pub(crate) fn emit_log(
     let (msg, msg_len) = match fmt_res {
         Ok(()) if msg_buf.len < MAX_LOG_MESSAGE_LEN - 1 => {
             msg_buf.buf[msg_buf.len] = 0;
-            let msg =
-                core::ffi::CStr::from_bytes_with_nul(&msg_buf.buf[..msg_buf.len + 1]).unwrap();
+            let msg = unsafe {
+                core::ffi::CStr::from_bytes_with_nul_unchecked(&msg_buf.buf[..msg_buf.len + 1])
+            };
             (msg, msg_buf.len)
         }
-        _ => (c"? (format error)", 1),
+        _ => {
+            let msg_bytes = b"? (format error)\0";
+            let msg = unsafe { core::ffi::CStr::from_bytes_with_nul_unchecked(msg_bytes) };
+            (msg, msg_bytes.len() - 1)
+        }
     };
 
     unsafe {
@@ -81,6 +84,6 @@ mod tests {
 
     #[ctor::ctor]
     fn pal_init() {
-        super::pal_init();
+        unsafe { super::pal_init() };
     }
 }

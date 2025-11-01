@@ -8,7 +8,7 @@ use executorch::tensor_ptr;
 use ndarray::array;
 
 fn main() {
-    executorch::platform::pal_init();
+    unsafe { executorch::platform::pal_init() };
 
     let model_path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()

@@ -51,7 +51,7 @@ fn main() {
     let args = Args::parse();
     assert!(args.temperature >= 0.0);
 
-    executorch::platform::pal_init();
+    unsafe { executorch::platform::pal_init() };
 
     let mut model = Module::new(&args.model, &[], Some(LoadMode::File), None);
     let tokenizer = Tokenizer::from_json(&args.tokenizer);

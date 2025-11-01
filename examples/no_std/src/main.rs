@@ -22,7 +22,7 @@ const ADD_MODEL_BYTES_ALIGNED: AlignedBytes<{ include_bytes!("../../models/add.p
 const ADD_MODEL_BYTES: &[u8] = &ADD_MODEL_BYTES_ALIGNED.0;
 
 fn real_main() {
-    executorch::platform::pal_init();
+    unsafe { executorch::platform::pal_init() };
 
     let mut buffer = [0_u8; 4096];
     let allocator = BufferMemoryAllocator::new(&mut buffer);
