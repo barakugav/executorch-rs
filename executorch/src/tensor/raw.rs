@@ -7,8 +7,7 @@ use crate::tensor::{
     TensorAccessorMut,
 };
 use crate::util::{Destroy, IntoCpp, IntoRust, NonTriviallyMovable, __ArrayRefImpl, c_new};
-use crate::{CError, Error, Result};
-use executorch_sys as et_c;
+use crate::{sys, CError, Error, Result};
 
 /// A raw tensor that does not own the underlying data.
 ///
@@ -21,12 +20,12 @@ use executorch_sys as et_c;
 /// The struct does not enforce any mutability rules, and the caller must ensure that the tensor
 /// is used correctly according to its mutability.
 pub struct RawTensor<'a>(
-    NonTriviallyMovable<'a, et_c::TensorStorage>,
+    NonTriviallyMovable<'a, sys::TensorStorage>,
     // phantom for the lifetime of the TensorImpl we depends on
     PhantomData<&'a ()>,
 );
 impl<'a> RawTensor<'a> {
-    pub(crate) fn new_impl(tensor: NonTriviallyMovable<'a, et_c::TensorStorage>) -> Self {
+    pub(crate) fn new_impl(tensor: NonTriviallyMovable<'a, sys::TensorStorage>) -> Self {
         Self(tensor, PhantomData)
     }
 
@@ -39,13 +38,13 @@ impl<'a> RawTensor<'a> {
     /// its mutability.
     #[cfg(feature = "alloc")]
     pub unsafe fn new(tensor_impl: &'a RawTensorImpl) -> Self {
-        let impl_ = &tensor_impl.0 as *const et_c::TensorImpl;
+        let impl_ = &tensor_impl.0 as *const sys::TensorImpl;
         let impl_ = impl_.cast_mut();
         // Safety: the closure init the pointer
         let tensor = unsafe {
-            NonTriviallyMovable::new_boxed(|p: *mut et_c::TensorStorage| {
-                let p = et_c::TensorRefMut { ptr: p as *mut _ };
-                et_c::executorch_Tensor_new(p, impl_)
+            NonTriviallyMovable::new_boxed(|p: *mut sys::TensorStorage| {
+                let p = sys::TensorRefMut { ptr: p as *mut _ };
+                sys::executorch_Tensor_new(p, impl_)
             })
         };
         Self::new_impl(tensor)
@@ -62,14 +61,14 @@ impl<'a> RawTensor<'a> {
         tensor_impl: &'a RawTensorImpl,
         storage: Pin<&'a mut Storage<RawTensor<'_>>>,
     ) -> Self {
-        let impl_ = &tensor_impl.0 as *const et_c::TensorImpl;
+        let impl_ = &tensor_impl.0 as *const sys::TensorImpl;
         let impl_ = impl_.cast_mut();
         // Safety: the closure init the pointer
         let tensor = unsafe {
             NonTriviallyMovable::new_in_storage(
-                |p: *mut executorch_sys::TensorStorage| {
-                    let p = et_c::TensorRefMut { ptr: p as *mut _ };
-                    et_c::executorch_Tensor_new(p, impl_)
+                |p: *mut sys::TensorStorage| {
+                    let p = sys::TensorRefMut { ptr: p as *mut _ };
+                    sys::executorch_Tensor_new(p, impl_)
                 },
                 storage,
             )
@@ -85,9 +84,9 @@ impl<'a> RawTensor<'a> {
     /// and that the tensor is compatible with the data generic.
     /// The created tensor should not be modified as we take an immutable reference to the given
     /// Cpp tensor reference.
-    pub(crate) unsafe fn from_inner_ref(tensor: et_c::TensorRef) -> Self {
+    pub(crate) unsafe fn from_inner_ref(tensor: sys::TensorRef) -> Self {
         debug_assert!(!tensor.ptr.is_null());
-        let tensor = unsafe { &*(tensor.ptr as *const et_c::TensorStorage) };
+        let tensor = unsafe { &*(tensor.ptr as *const sys::TensorStorage) };
         Self::new_impl(NonTriviallyMovable::from_ref(tensor))
     }
 
@@ -97,16 +96,16 @@ impl<'a> RawTensor<'a> {
     ///
     /// The caller must ensure that the given tensor is valid for the lifetime of the new tensor.
     #[allow(unused)]
-    pub(crate) unsafe fn from_inner_ref_mut(tensor: et_c::TensorRefMut) -> Self {
+    pub(crate) unsafe fn from_inner_ref_mut(tensor: sys::TensorRefMut) -> Self {
         debug_assert!(!tensor.ptr.is_null());
-        let tensor = unsafe { &mut *(tensor.ptr as *mut et_c::TensorStorage) };
+        let tensor = unsafe { &mut *(tensor.ptr as *mut sys::TensorStorage) };
         Self::new_impl(NonTriviallyMovable::from_mut_ref(tensor))
     }
 
     /// Get the underlying Cpp tensor.
-    pub(crate) fn as_cpp(&self) -> et_c::TensorRef {
-        et_c::TensorRef {
-            ptr: self.0.as_ref() as *const et_c::TensorStorage as *const _,
+    pub(crate) fn as_cpp(&self) -> sys::TensorRef {
+        sys::TensorRef {
+            ptr: self.0.as_ref() as *const sys::TensorStorage as *const _,
         }
     }
 
@@ -116,10 +115,10 @@ impl<'a> RawTensor<'a> {
     ///
     /// The caller can not move out of the returned mut reference, and should use this function only
     /// if the tensor was created with a mutable tensor impl.
-    pub(crate) unsafe fn as_cpp_mut(&mut self) -> Option<et_c::TensorRefMut> {
+    pub(crate) unsafe fn as_cpp_mut(&mut self) -> Option<sys::TensorRefMut> {
         // Safety: the caller does not move out of the returned mut reference.
-        Some(et_c::TensorRefMut {
-            ptr: unsafe { self.0.as_mut()? } as *mut et_c::TensorStorage as *mut _,
+        Some(sys::TensorRefMut {
+            ptr: unsafe { self.0.as_mut()? } as *mut sys::TensorStorage as *mut _,
         })
     }
 
@@ -128,7 +127,7 @@ impl<'a> RawTensor<'a> {
     /// NOTE: Only the alive space is returned not the total capacity of the
     /// underlying data blob.
     pub fn nbytes(&self) -> usize {
-        unsafe { et_c::executorch_Tensor_nbytes(self.as_cpp()) }
+        unsafe { sys::executorch_Tensor_nbytes(self.as_cpp()) }
     }
 
     /// Returns the size of the tensor at the given dimension.
@@ -138,33 +137,33 @@ impl<'a> RawTensor<'a> {
     /// this method more compatible with at::Tensor, and more consistent with the
     /// rest of the methods on this class and in ETensor.
     pub fn size(&self, dim: usize) -> usize {
-        unsafe { et_c::executorch_Tensor_size(self.as_cpp(), dim) }
+        unsafe { sys::executorch_Tensor_size(self.as_cpp(), dim) }
     }
 
     /// Returns the tensor's number of dimensions.
     pub fn dim(&self) -> usize {
-        unsafe { et_c::executorch_Tensor_dim(self.as_cpp()) }
+        unsafe { sys::executorch_Tensor_dim(self.as_cpp()) }
     }
 
     /// Returns the number of elements in the tensor.
     pub fn numel(&self) -> usize {
-        unsafe { et_c::executorch_Tensor_numel(self.as_cpp()) }
+        unsafe { sys::executorch_Tensor_numel(self.as_cpp()) }
     }
 
     /// Returns the type of the elements in the tensor (int32, float, bool, etc).
     pub fn scalar_type(&self) -> ScalarType {
-        unsafe { et_c::executorch_Tensor_scalar_type(self.as_cpp()) }.rs()
+        unsafe { sys::executorch_Tensor_scalar_type(self.as_cpp()) }.rs()
     }
 
     /// Returns the size in bytes of one element of the tensor.
     pub fn element_size(&self) -> usize {
-        unsafe { et_c::executorch_Tensor_element_size(self.as_cpp()) }
+        unsafe { sys::executorch_Tensor_element_size(self.as_cpp()) }
     }
 
     /// Returns the sizes of the tensor at each dimension.
     pub fn sizes(&self) -> &[SizesType] {
         unsafe {
-            let arr = et_c::executorch_Tensor_sizes(self.as_cpp());
+            let arr = sys::executorch_Tensor_sizes(self.as_cpp());
             debug_assert!(!arr.data.is_null());
             std::slice::from_raw_parts(arr.data, arr.len)
         }
@@ -173,7 +172,7 @@ impl<'a> RawTensor<'a> {
     /// Returns the order the dimensions are laid out in memory.
     pub fn dim_order(&self) -> &[DimOrderType] {
         unsafe {
-            let arr = et_c::executorch_Tensor_dim_order(self.as_cpp());
+            let arr = sys::executorch_Tensor_dim_order(self.as_cpp());
             debug_assert!(!arr.data.is_null());
             std::slice::from_raw_parts(arr.data, arr.len)
         }
@@ -184,7 +183,7 @@ impl<'a> RawTensor<'a> {
     /// Strides are in units of the elements size, not in bytes.
     pub fn strides(&self) -> &[StridesType] {
         unsafe {
-            let arr = et_c::executorch_Tensor_strides(self.as_cpp());
+            let arr = sys::executorch_Tensor_strides(self.as_cpp());
             debug_assert!(!arr.data.is_null());
             std::slice::from_raw_parts(arr.data, arr.len)
         }
@@ -197,7 +196,7 @@ impl<'a> RawTensor<'a> {
     /// The caller must access the values in the returned pointer according to the type, sizes, dim order and strides
     /// of the tensor.
     pub fn as_ptr_raw(&self) -> *const () {
-        let ptr = unsafe { et_c::executorch_Tensor_const_data_ptr(self.as_cpp()) };
+        let ptr = unsafe { sys::executorch_Tensor_const_data_ptr(self.as_cpp()) };
         debug_assert!(!ptr.is_null());
         ptr as *const ()
     }
@@ -219,17 +218,17 @@ impl<'a> RawTensor<'a> {
     /// The caller should call this function only if the tensor was created with a mutable tensor impl.
     pub fn as_mut_ptr_raw(&mut self) -> Option<*mut ()> {
         let tensor = unsafe { self.as_cpp_mut()? };
-        let tensor = et_c::TensorRef { ptr: tensor.ptr };
-        let ptr = unsafe { et_c::executorch_Tensor_mutable_data_ptr(tensor) };
+        let tensor = sys::TensorRef { ptr: tensor.ptr };
+        let ptr = unsafe { sys::executorch_Tensor_mutable_data_ptr(tensor) };
         debug_assert!(!ptr.is_null());
         Some(ptr as *mut ())
     }
 
     fn coordinate_to_index(&self, coordinate: &[usize]) -> Option<usize> {
         let index = unsafe {
-            et_c::executorch_Tensor_coordinate_to_index(
+            sys::executorch_Tensor_coordinate_to_index(
                 self.as_cpp(),
-                et_c::ArrayRefUsizeType::from_slice(coordinate),
+                sys::ArrayRefUsizeType::from_slice(coordinate),
             )
         };
         if index < 0 {
@@ -244,9 +243,9 @@ impl<'a> RawTensor<'a> {
             unsafe { index.unwrap_unchecked() }
         } else {
             let index = unsafe {
-                et_c::executorch_Tensor_coordinate_to_index_unchecked(
+                sys::executorch_Tensor_coordinate_to_index_unchecked(
                     self.as_cpp(),
-                    et_c::ArrayRefUsizeType::from_slice(coordinate),
+                    sys::ArrayRefUsizeType::from_slice(coordinate),
                 )
             };
             index as usize
@@ -386,17 +385,17 @@ impl<'a> RawTensor<'a> {
         Some(TensorAccessorMut(self.accessor_inner()?))
     }
 }
-impl Destroy for et_c::TensorStorage {
+impl Destroy for sys::TensorStorage {
     unsafe fn destroy(&mut self) {
         unsafe {
-            et_c::executorch_Tensor_destructor(et_c::TensorRefMut {
+            sys::executorch_Tensor_destructor(sys::TensorRefMut {
                 ptr: self as *mut Self as *mut _,
             })
         }
     }
 }
 impl Storable for RawTensor<'_> {
-    type __Storage = et_c::TensorStorage;
+    type __Storage = sys::TensorStorage;
 }
 
 /// A raw tensor implementation.
@@ -408,7 +407,7 @@ impl Storable for RawTensor<'_> {
 /// tensor generics).
 /// The struct does not enforce any mutability rules, and the caller must ensure that the tensor
 /// is used correctly according to its mutability.
-pub struct RawTensorImpl<'a>(et_c::TensorImpl, PhantomData<&'a ()>);
+pub struct RawTensorImpl<'a>(sys::TensorImpl, PhantomData<&'a ()>);
 impl<'a> RawTensorImpl<'a> {
     /// Create a new TensorImpl from a pointer to the data.
     ///
@@ -462,7 +461,7 @@ impl<'a> RawTensorImpl<'a> {
         debug_assert!(!data.is_null());
 
         let valid_strides = unsafe {
-            et_c::executorch_is_valid_dim_order_and_strides(dim, sizes, dim_order, strides)
+            sys::executorch_is_valid_dim_order_and_strides(dim, sizes, dim_order, strides)
         };
         if !valid_strides {
             crate::log::error!("Invalid strides");
@@ -471,7 +470,7 @@ impl<'a> RawTensorImpl<'a> {
 
         let impl_ = unsafe {
             c_new(|this| {
-                et_c::executorch_TensorImpl_new(
+                sys::executorch_TensorImpl_new(
                     this,
                     S::TYPE.cpp(),
                     dim,
@@ -479,7 +478,7 @@ impl<'a> RawTensorImpl<'a> {
                     data as *mut _,
                     dim_order as *mut DimOrderType,
                     strides as *mut StridesType,
-                    et_c::TensorShapeDynamism::TensorShapeDynamism_STATIC,
+                    sys::TensorShapeDynamism::TensorShapeDynamism_STATIC,
                 )
             })
         };

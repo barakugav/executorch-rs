@@ -2,9 +2,6 @@
 
 use std::marker::PhantomData;
 
-#[cfg(feature = "module")]
-use executorch_sys as et_c;
-
 /// EventTracer is a class that users can inherit and implement to log/serialize/stream etc.
 ///
 /// The profiling and debugging events that are generated at runtime for a model. An example of this is the ETDump
@@ -14,7 +11,7 @@ pub struct EventTracer<'a>([std::ffi::c_void; 0], PhantomData<&'a ()>);
 /// A unique pointer to an EventTracer.
 #[cfg(feature = "module")]
 pub struct EventTracerPtr<'a>(
-    pub(crate) et_c::cxx::UniquePtr<et_c::cpp::EventTracer>,
+    pub(crate) crate::sys::cxx::UniquePtr<crate::sys::cpp::EventTracer>,
     PhantomData<&'a ()>,
 );
 
@@ -24,7 +21,7 @@ pub use etdump::*;
 mod etdump {
     use std::marker::PhantomData;
 
-    use executorch_sys as et_c;
+    use crate::sys;
 
     use super::EventTracer;
 
@@ -33,7 +30,7 @@ mod etdump {
     /// It is the mechanism through which all forms of profiling and debugging data is extracted from the runtime.
     /// Users can’t parse ETDump directly; instead, they should pass it into the Inspector API, which deserializes the data,
     /// offering interfaces for flexible analysis and debugging.
-    pub struct ETDumpGen<'a>(et_c::ETDumpGen, PhantomData<&'a ()>);
+    pub struct ETDumpGen<'a>(sys::ETDumpGen, PhantomData<&'a ()>);
     #[cfg(feature = "std")]
     impl Default for ETDumpGen<'static> {
         fn default() -> Self {
@@ -53,9 +50,9 @@ mod etdump {
             let (data, len) = buffer
                 .map(|b| (b.as_mut_ptr(), b.len()))
                 .unwrap_or((std::ptr::null_mut(), 0));
-            let buffer = et_c::SpanU8 { data, len };
+            let buffer = sys::SpanU8 { data, len };
 
-            let self_ = unsafe { et_c::executorch_ETDumpGen_new(buffer) };
+            let self_ = unsafe { sys::executorch_ETDumpGen_new(buffer) };
             Self(self_, PhantomData)
         }
 
@@ -67,7 +64,7 @@ mod etdump {
         /// Get the ETDump data.
         pub fn get_etdump_data(&mut self) -> Option<&[u8]> {
             let data =
-                unsafe { et_c::executorch_ETDumpGen_get_etdump_data((&mut self.0) as *mut _) };
+                unsafe { sys::executorch_ETDumpGen_get_etdump_data((&mut self.0) as *mut _) };
             if data.data.is_null() {
                 None
             } else {
@@ -77,8 +74,8 @@ mod etdump {
     }
     impl<'a> AsMut<EventTracer<'a>> for ETDumpGen<'a> {
         fn as_mut(&mut self) -> &mut EventTracer<'a> {
-            let self_ = (&mut self.0) as *mut et_c::ETDumpGen;
-            let tracer = unsafe { et_c::executorch_ETDumpGen_as_event_tracer_mut(self_) };
+            let self_ = (&mut self.0) as *mut sys::ETDumpGen;
+            let tracer = unsafe { sys::executorch_ETDumpGen_as_event_tracer_mut(self_) };
             let tracer = tracer.ptr as *mut EventTracer<'a>;
             unsafe { &mut *tracer }
         }

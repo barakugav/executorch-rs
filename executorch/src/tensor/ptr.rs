@@ -1,8 +1,7 @@
 use std::marker::PhantomData;
 
-use executorch_sys as et_c;
-use executorch_sys::cxx::vector::VectorElement;
-use executorch_sys::cxx::{self, ExternType, SharedPtr, UniquePtr};
+use sys::cxx::vector::VectorElement;
+use sys::cxx::{self, ExternType, SharedPtr, UniquePtr};
 
 use super::{
     Data, DataMut, DataTyped, DimOrderType, Scalar, SizesType, StridesType, TensorBase, View,
@@ -10,7 +9,7 @@ use super::{
 };
 use crate::error::CError;
 use crate::util::{IntoCpp, IntoRust};
-use crate::{Error, Result};
+use crate::{sys, Error, Result};
 
 /// A smart pointer type for managing the lifetime of a Tensor.
 ///
@@ -44,7 +43,7 @@ use crate::{Error, Result};
 /// let tensor = Tensor::new(&tensor);
 /// let outputs = module.forward(&[tensor.into_evalue()]).unwrap();
 /// ```
-pub struct TensorPtr<'a, D>(SharedPtr<et_c::cpp::Tensor>, PhantomData<(&'a (), D)>);
+pub struct TensorPtr<'a, D>(SharedPtr<sys::cpp::Tensor>, PhantomData<(&'a (), D)>);
 impl<S: Scalar> TensorPtr<'static, View<S>> {
     /// Create a new [`TensorPtr`] from an [`Array`](ndarray::Array).
     ///
@@ -91,12 +90,15 @@ impl<'a, S: Scalar> TensorPtr<'a, View<S>> {
             .unwrap()
     }
 }
-impl<D: Data> TensorPtr<'_, D> {
+impl<D> TensorPtr<'_, D> {
     /// Get an immutable tensor that points to the underlying data.
-    pub fn as_tensor(&self) -> TensorBase<'_, D::Immutable> {
+    pub fn as_tensor(&self) -> TensorBase<'_, D::Immutable>
+    where
+        D: Data,
+    {
         let tensor = self.0.as_ref().unwrap();
-        let tensor = et_c::TensorRef {
-            ptr: tensor as *const et_c::cpp::Tensor as *const _,
+        let tensor = sys::TensorRef {
+            ptr: tensor as *const sys::cpp::Tensor as *const _,
         };
         // Safety: the tensor is valid and the data is immutable.
         unsafe { TensorBase::from_inner_ref(tensor) }
@@ -108,8 +110,8 @@ impl<D: Data> TensorPtr<'_, D> {
         D: DataMut,
     {
         let tensor = self.0.as_ref().unwrap();
-        let tensor = et_c::TensorRefMut {
-            ptr: tensor as *const et_c::cpp::Tensor as *mut et_c::cpp::Tensor as *mut _,
+        let tensor = sys::TensorRefMut {
+            ptr: tensor as *const sys::cpp::Tensor as *mut sys::cpp::Tensor as *mut _,
         };
         // Safety: the tensor is mutable, and we are the sole borrower.
         unsafe { TensorBase::from_inner_ref_mut(tensor) }
@@ -122,7 +124,7 @@ pub struct TensorPtrBuilder<'a, D: DataTyped> {
     sizes: UniquePtr<cxx::Vector<SizesType>>,
     data: TensorPtrBuilderData<'a, D>,
     strides: Option<UniquePtr<cxx::Vector<StridesType>>>,
-    dynamism: et_c::TensorShapeDynamism,
+    dynamism: sys::TensorShapeDynamism,
 }
 enum TensorPtrBuilderData<'a, D: DataTyped> {
     Vec { data: Vec<D::Scalar>, offset: usize },
@@ -162,7 +164,7 @@ impl<D: DataTyped> TensorPtrBuilder<'static, D> {
                     offset: data_offset,
                 }
             },
-            dynamism: et_c::TensorShapeDynamism::TensorShapeDynamism_STATIC,
+            dynamism: sys::TensorShapeDynamism::TensorShapeDynamism_STATIC,
         }
     }
 
@@ -182,7 +184,7 @@ impl<D: DataTyped> TensorPtrBuilder<'static, D> {
             sizes: cxx_vec([data.len() as SizesType]),
             data: TensorPtrBuilderData::Vec { data, offset: 0 },
             strides: None,
-            dynamism: et_c::TensorShapeDynamism::TensorShapeDynamism_STATIC,
+            dynamism: sys::TensorShapeDynamism::TensorShapeDynamism_STATIC,
         }
     }
 }
@@ -200,7 +202,7 @@ impl<'a, S: Scalar> TensorPtrBuilder<'a, View<S>> {
                     .iter()
                     .map(|&s| s as StridesType),
             )),
-            dynamism: et_c::TensorShapeDynamism::TensorShapeDynamism_STATIC,
+            dynamism: sys::TensorShapeDynamism::TensorShapeDynamism_STATIC,
         }
     }
 
@@ -213,7 +215,7 @@ impl<'a, S: Scalar> TensorPtrBuilder<'a, View<S>> {
             sizes: cxx_vec([data.len() as SizesType]),
             data: TensorPtrBuilderData::Slice(data),
             strides: None,
-            dynamism: et_c::TensorShapeDynamism::TensorShapeDynamism_STATIC,
+            dynamism: sys::TensorShapeDynamism::TensorShapeDynamism_STATIC,
         }
     }
 
@@ -235,7 +237,7 @@ impl<'a, S: Scalar> TensorPtrBuilder<'a, View<S>> {
             data: TensorPtrBuilderData::Ptr(data, PhantomData),
             strides: None,
             sizes: cxx_vec(sizes),
-            dynamism: et_c::TensorShapeDynamism::TensorShapeDynamism_STATIC,
+            dynamism: sys::TensorShapeDynamism::TensorShapeDynamism_STATIC,
         }
     }
 }
@@ -256,7 +258,7 @@ impl<'a, S: Scalar> TensorPtrBuilder<'a, ViewMut<S>> {
                     .iter()
                     .map(|&s| s as StridesType),
             )),
-            dynamism: et_c::TensorShapeDynamism::TensorShapeDynamism_STATIC,
+            dynamism: sys::TensorShapeDynamism::TensorShapeDynamism_STATIC,
         }
     }
 
@@ -269,7 +271,7 @@ impl<'a, S: Scalar> TensorPtrBuilder<'a, ViewMut<S>> {
             sizes: cxx_vec([data.len() as SizesType]),
             data: TensorPtrBuilderData::SliceMut(data),
             strides: None,
-            dynamism: et_c::TensorShapeDynamism::TensorShapeDynamism_STATIC,
+            dynamism: sys::TensorShapeDynamism::TensorShapeDynamism_STATIC,
         }
     }
 
@@ -291,7 +293,7 @@ impl<'a, S: Scalar> TensorPtrBuilder<'a, ViewMut<S>> {
             data: TensorPtrBuilderData::PtrMut(data, PhantomData),
             strides: None,
             sizes: cxx_vec(sizes),
-            dynamism: et_c::TensorShapeDynamism::TensorShapeDynamism_STATIC,
+            dynamism: sys::TensorShapeDynamism::TensorShapeDynamism_STATIC,
         }
     }
 }
@@ -341,7 +343,7 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
         assert_eq!(ndim, strides.len(), "Invalid strides length");
         let mut dim_order = cxx_vec(std::iter::repeat(0 as DimOrderType).take(ndim));
         unsafe {
-            et_c::executorch_stride_to_dim_order(
+            sys::executorch_stride_to_dim_order(
                 strides.as_ref().unwrap().as_slice().as_ptr(),
                 ndim,
                 dim_order.as_mut().unwrap().as_mut_slice().as_mut_ptr(),
@@ -365,7 +367,7 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
         // TODO: check sizes, dim_order and strides make sense with respect to the data_bound
 
         let valid_strides = unsafe {
-            et_c::executorch_is_valid_dim_order_and_strides(
+            sys::executorch_is_valid_dim_order_and_strides(
                 ndim,
                 self.sizes.as_ref().unwrap().as_slice().as_ptr(),
                 dim_order.as_ref().unwrap().as_slice().as_ptr(),
@@ -378,16 +380,14 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
         }
 
         let tensor = unsafe {
-            executorch_sys::cpp::TensorPtr_new(
+            sys::cpp::TensorPtr_new(
                 self.sizes,
                 data_ptr as *const u8 as *mut u8,
                 dim_order,
                 strides,
                 D::Scalar::TYPE.cpp(),
                 self.dynamism,
-                Box::new(executorch_sys::cpp::util::RustAny::new(Box::new(
-                    allocation_vec,
-                ))),
+                Box::new(sys::cpp::util::RustAny::new(Box::new(allocation_vec))),
             )
         };
         Ok(TensorPtr(tensor, PhantomData))
@@ -439,7 +439,7 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
         // TODO: check sizes, dim_order and strides make sense with respect to the data_bound
 
         let valid_strides = unsafe {
-            et_c::executorch_is_valid_dim_order_and_strides(
+            sys::executorch_is_valid_dim_order_and_strides(
                 ndim,
                 self.sizes.as_ref().unwrap().as_slice().as_ptr(),
                 dim_order.as_ref().unwrap().as_slice().as_ptr(),
@@ -452,16 +452,14 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
         }
 
         let tensor = unsafe {
-            executorch_sys::cpp::TensorPtr_new(
+            sys::cpp::TensorPtr_new(
                 self.sizes,
                 data_ptr as *const u8 as *mut u8,
                 dim_order,
                 strides,
                 D::Scalar::TYPE.cpp(),
                 self.dynamism,
-                Box::new(executorch_sys::cpp::util::RustAny::new(Box::new(
-                    allocation_vec,
-                ))),
+                Box::new(sys::cpp::util::RustAny::new(Box::new(allocation_vec))),
             )
         };
         Ok(TensorPtr(tensor, PhantomData))

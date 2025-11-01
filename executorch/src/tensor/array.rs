@@ -1,9 +1,7 @@
 use ndarray::{ArrayBase, ArrayView, ArrayViewMut, ShapeBuilder};
 
-use executorch_sys as et_c;
-
 use crate::util::IntoRust;
-use crate::{CError, Error, Result};
+use crate::{sys, CError, Error, Result};
 
 use super::{
     DataMut, DataTyped, DimOrderType, Scalar, SizesType, StridesType, TensorBase, TensorImpl,
@@ -88,20 +86,31 @@ impl<'a, D: DataTyped + DataMut> TensorBase<'a, D> {
 ///
 /// Use [`as_tensor_impl`](ArrayStorage::as_tensor_impl) and [`as_tensor_impl_mut`](ArrayStorage::as_tensor_impl_mut)
 /// to obtain a [`TensorImplBase`](super::TensorImplBase) pointing to this array data.
-pub struct ArrayStorage<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> {
+pub struct ArrayStorage<S, D>
+where
+    S: ndarray::RawData,
+    D: Dimension,
+{
     array: ArrayBase<S, D>,
     sizes: D::Arr<SizesType>,
     dim_order: D::Arr<DimOrderType>,
     strides: D::Arr<StridesType>,
 }
-impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> ArrayStorage<A, S, D> {
+impl<S, D> ArrayStorage<S, D>
+where
+    S: ndarray::RawData,
+    D: Dimension,
+{
     /// Create a new [`ArrayStorage`] from an ndarray.
     ///
     /// # Errors
     ///
     /// Returns an error if the array is not dense, i.e. if the strides are not the standard layout strides of some
     /// permutation of the dimensions.
-    pub fn new(array: ArrayBase<S, D>) -> Result<Self> {
+    pub fn new(array: ArrayBase<S, D>) -> Result<Self>
+    where
+        D: Dimension,
+    {
         let ndim = array.ndim();
         let mut sizes = D::Arr::zeros(ndim);
         let mut dim_order = D::Arr::zeros(ndim);
@@ -114,7 +123,7 @@ impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> ArrayStorage<A, S, 
         }
 
         unsafe {
-            et_c::executorch_stride_to_dim_order(
+            sys::executorch_stride_to_dim_order(
                 strides.as_ref().as_ptr(),
                 ndim,
                 dim_order.as_mut().as_mut_ptr(),
@@ -122,7 +131,7 @@ impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> ArrayStorage<A, S, 
         }
         .rs()?;
         let valid_strides = unsafe {
-            et_c::executorch_is_valid_dim_order_and_strides(
+            sys::executorch_is_valid_dim_order_and_strides(
                 ndim,
                 sizes.as_ref().as_ptr(),
                 dim_order.as_ref().as_ptr(),
@@ -146,7 +155,11 @@ impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> ArrayStorage<A, S, 
     ///
     /// The [`TensorImpl`] does not own the data or the sizes, dim order and strides of the tensor. This struct
     /// must outlive the [`TensorImpl`] created from it.
-    pub fn as_tensor_impl(&self) -> TensorImpl<'_, A> {
+    pub fn as_tensor_impl<A>(&self) -> TensorImpl<'_, A>
+    where
+        A: Scalar,
+        S: ndarray::RawData<Elem = A>,
+    {
         unsafe {
             TensorImpl::from_ptr(
                 self.sizes.as_ref(),
@@ -156,6 +169,20 @@ impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> ArrayStorage<A, S, 
             )
         }
         .unwrap()
+    }
+
+    /// Create a [`TensorImplMut`] pointing to this struct's data.
+    ///
+    /// The [`TensorImplMut`] does not own the data or the sizes, dim order and strides of the tensor. This struct
+    /// must outlive the [`TensorImplMut`] created from it.
+    pub fn as_tensor_impl_mut<A>(&mut self) -> TensorImplMut<'_, A>
+    where
+        A: Scalar,
+        S: ndarray::RawDataMut<Elem = A>,
+    {
+        let tensor = self.as_tensor_impl();
+        // Safety: TensorImpl has the same memory layout as TensorImplBase
+        unsafe { std::mem::transmute::<TensorImpl<A>, TensorImplMut<A>>(tensor) }
     }
 
     /// Get a reference to the underlying ndarray.
@@ -168,19 +195,10 @@ impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> ArrayStorage<A, S, 
         self.array
     }
 }
-impl<A: Scalar, S: ndarray::RawDataMut<Elem = A>, D: Dimension> ArrayStorage<A, S, D> {
-    /// Create a [`TensorImplMut`] pointing to this struct's data.
-    ///
-    /// The [`TensorImplMut`] does not own the data or the sizes, dim order and strides of the tensor. This struct
-    /// must outlive the [`TensorImplMut`] created from it.
-    pub fn as_tensor_impl_mut(&mut self) -> TensorImplMut<'_, A> {
-        let tensor = self.as_tensor_impl();
-        // Safety: TensorImpl has the same memory layout as TensorImplBase
-        unsafe { std::mem::transmute::<TensorImpl<A>, TensorImplMut<A>>(tensor) }
-    }
-}
-impl<A: Scalar, S: ndarray::RawData<Elem = A>, D: Dimension> AsRef<ArrayBase<S, D>>
-    for ArrayStorage<A, S, D>
+impl<S, D> AsRef<ArrayBase<S, D>> for ArrayStorage<S, D>
+where
+    S: ndarray::RawData,
+    D: Dimension,
 {
     fn as_ref(&self) -> &ArrayBase<S, D> {
         self.as_array()
@@ -289,7 +307,7 @@ mod tests {
     #[test]
     fn array_as_tensor() {
         // Create a 1D array and convert it to a tensor
-        let array = ArrayStorage::<i32, _, _>::new(arr1(&[1, 2, 3])).unwrap();
+        let array = ArrayStorage::new(arr1(&[1_i32, 2, 3])).unwrap();
         let tensor_impl = array.as_tensor_impl();
         let tensor = Tensor::new(&tensor_impl);
         assert_eq!(tensor.nbytes(), 12);
@@ -308,8 +326,7 @@ mod tests {
         assert_eq!(array, arr1(&[1, 2, 3]));
 
         // Create a 2D array and convert it to a tensor
-        let array =
-            ArrayStorage::<f64, _, _>::new(arr2(&[[1.0, 2.0, 7.0], [3.0, 4.0, 8.0]])).unwrap();
+        let array = ArrayStorage::new(arr2(&[[1.0_f64, 2.0, 7.0], [3.0, 4.0, 8.0]])).unwrap();
         let tensor_impl = array.as_tensor_impl();
         let tensor = Tensor::new(&tensor_impl);
         assert_eq!(tensor.nbytes(), 48);
@@ -333,7 +350,7 @@ mod tests {
     #[test]
     fn array_as_tensor_mut() {
         // Create a 1D array and convert it to a tensor
-        let mut array = ArrayStorage::<i32, _, _>::new(arr1(&[1, 2, 3])).unwrap();
+        let mut array = ArrayStorage::new(arr1(&[1_i32, 2, 3])).unwrap();
         let arr_ptr = array.as_ref().as_ptr();
         let mut tensor_impl = array.as_tensor_impl_mut();
         let tensor = TensorMut::new(&mut tensor_impl);
@@ -349,8 +366,7 @@ mod tests {
         assert_eq!(tensor.as_ptr(), arr_ptr);
 
         // Create a 2D array and convert it to a tensor
-        let mut array =
-            ArrayStorage::<f64, _, _>::new(arr2(&[[1.0, 2.0, 7.0], [3.0, 4.0, 8.0]])).unwrap();
+        let mut array = ArrayStorage::new(arr2(&[[1.0_f64, 2.0, 7.0], [3.0, 4.0, 8.0]])).unwrap();
         let arr_ptr = array.as_ref().as_ptr();
         let mut tensor_impl = array.as_tensor_impl_mut();
         let tensor = TensorMut::new(&mut tensor_impl);

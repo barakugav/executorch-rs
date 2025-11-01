@@ -51,16 +51,16 @@ pub use array::*;
 
 mod fmt;
 
-use executorch_sys as et_c;
+use crate::sys;
 
 /// A type that represents the sizes (dimensions) of a tensor.
-pub type SizesType = et_c::SizesType;
+pub type SizesType = sys::SizesType;
 /// A type that represents the order of the dimensions of a tensor.
-pub type DimOrderType = et_c::DimOrderType;
+pub type DimOrderType = sys::DimOrderType;
 /// A type that represents the strides of a tensor.
 ///
 /// Strides are in units of the elements size, not in bytes.
-pub type StridesType = et_c::StridesType;
+pub type StridesType = sys::StridesType;
 
 pub use scalar::{Scalar, ScalarType};
 

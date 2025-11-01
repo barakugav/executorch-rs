@@ -5,8 +5,7 @@ use std::pin::Pin;
 use super::{DimOrderType, RawTensor, RawTensorImpl, Scalar, ScalarType, SizesType, StridesType};
 use crate::memory::{MemoryAllocator, Storable, Storage};
 use crate::tensor::{TensorAccessor, TensorAccessorMut};
-use crate::{CError, Error, Result};
-use executorch_sys as et_c;
+use crate::{sys, CError, Error, Result};
 
 /// A minimal Tensor type whose API is a source compatible subset of at::Tensor.
 ///
@@ -14,14 +13,17 @@ use executorch_sys as et_c;
 /// used directly.
 /// Use the aliases such as [`Tensor`], [`TensorAny`] or [`TensorMut`] instead.
 /// It is used to provide a common API for all of them.
-pub struct TensorBase<'a, D: Data>(pub(crate) RawTensor<'a>, PhantomData<D>);
-impl<'a, D: Data> TensorBase<'a, D> {
+pub struct TensorBase<'a, D>(pub(crate) RawTensor<'a>, PhantomData<D>);
+impl<'a, D> TensorBase<'a, D> {
     /// Create a new tensor from a raw tensor.
     ///
     /// # Safety
     ///
     /// The caller must ensure that the D generic is compatible with the data of the given raw tensor.
-    pub(crate) unsafe fn from_raw_tensor(tensor: RawTensor<'a>) -> Self {
+    pub(crate) unsafe fn from_raw_tensor(tensor: RawTensor<'a>) -> Self
+    where
+        D: Data,
+    {
         Self(tensor, PhantomData)
     }
 
@@ -31,7 +33,10 @@ impl<'a, D: Data> TensorBase<'a, D> {
     ///
     /// The caller must obtain a mutable reference to `tensor_impl` if the tensor is mutable.
     #[cfg(feature = "alloc")]
-    unsafe fn new_boxed(tensor_impl: &'a TensorImplBase<D>) -> Self {
+    unsafe fn new_boxed(tensor_impl: &'a TensorImplBase<D>) -> Self
+    where
+        D: Data,
+    {
         Self::from_raw_tensor(RawTensor::new(&tensor_impl.0))
     }
 
@@ -43,7 +48,10 @@ impl<'a, D: Data> TensorBase<'a, D> {
     unsafe fn new_in_storage_impl(
         tensor_impl: &'a TensorImplBase<D>,
         storage: Pin<&'a mut Storage<TensorBase<'_, D>>>,
-    ) -> Self {
+    ) -> Self
+    where
+        D: Data,
+    {
         // Safety: the storage is identical
         let storage = unsafe {
             std::mem::transmute::<
@@ -62,7 +70,10 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// The caller must ensure that the given tensor is valid for the lifetime of the new tensor,
     /// and that the tensor is compatible with the data generic. `D` must be immutable as we take immutable reference
     /// to the given tensor.
-    pub(crate) unsafe fn from_inner_ref(tensor: et_c::TensorRef) -> Self {
+    pub(crate) unsafe fn from_inner_ref(tensor: sys::TensorRef) -> Self
+    where
+        D: Data,
+    {
         Self::from_raw_tensor(RawTensor::from_inner_ref(tensor))
     }
 
@@ -73,7 +84,10 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// The caller must ensure that the given tensor is valid for the lifetime of the new tensor,
     /// and that the tensor is compatible with the data generic.
     #[allow(unused)]
-    pub(crate) unsafe fn from_inner_ref_mut(tensor: et_c::TensorRefMut) -> Self {
+    pub(crate) unsafe fn from_inner_ref_mut(tensor: sys::TensorRefMut) -> Self
+    where
+        D: Data,
+    {
         Self::from_raw_tensor(RawTensor::from_inner_ref_mut(tensor))
     }
 
@@ -82,7 +96,11 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// # Safety
     ///
     /// The caller must ensure that the new data generic is compatible with the data of the given tensor.
-    pub(crate) unsafe fn convert_from<D2: Data>(tensor: TensorBase<'a, D2>) -> Self {
+    pub(crate) unsafe fn convert_from<D2>(tensor: TensorBase<'a, D2>) -> Self
+    where
+        D: Data,
+        D2: Data,
+    {
         Self::from_raw_tensor(tensor.0)
     }
 
@@ -92,7 +110,11 @@ impl<'a, D: Data> TensorBase<'a, D> {
     ///
     /// The caller must ensure that the new data generic is compatible with the data of the given tensor.
     /// `D2` must be immutable as we take immutable reference to the given tensor.
-    pub(crate) unsafe fn convert_from_ref<D2: Data>(tensor: &'a TensorBase<D2>) -> Self {
+    pub(crate) unsafe fn convert_from_ref<D2>(tensor: &'a TensorBase<D2>) -> Self
+    where
+        D: Data,
+        D2: Data,
+    {
         Self::from_inner_ref(tensor.as_cpp())
     }
 
@@ -104,6 +126,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// The caller must ensure that the new data generic is compatible with the data of the given tensor.
     pub(crate) unsafe fn convert_from_mut_ref<D2>(tensor: &'a mut TensorBase<D2>) -> Self
     where
+        D: Data,
         D2: DataMut,
     {
         // Safety: we are not moving out of the mut reference of the inner tensor
@@ -112,7 +135,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     }
 
     /// Get the underlying Cpp tensor.
-    pub(crate) fn as_cpp(&self) -> et_c::TensorRef {
+    pub(crate) fn as_cpp(&self) -> sys::TensorRef {
         self.0.as_cpp()
     }
 
@@ -121,7 +144,7 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// # Safety
     ///
     /// The caller can not move out of the returned mut reference.
-    pub(crate) unsafe fn as_cpp_mut(&mut self) -> et_c::TensorRefMut
+    pub(crate) unsafe fn as_cpp_mut(&mut self) -> sys::TensorRefMut
     where
         D: DataMut,
     {
@@ -297,13 +320,19 @@ impl<'a, D: Data> TensorBase<'a, D> {
     }
 
     /// Converts this tensor into a type-erased tensor.
-    pub fn into_type_erased(self) -> TensorBase<'a, D::TypeErased> {
+    pub fn into_type_erased(self) -> TensorBase<'a, D::TypeErased>
+    where
+        D: Data,
+    {
         // Safety: D::TypeErased is compatible with D
         unsafe { TensorBase::<'a, D::TypeErased>::convert_from(self) }
     }
 
     /// Get a type erased tensor referencing the same internal data as this tensor.
-    pub fn as_type_erased(&self) -> TensorBase<'_, <D::Immutable as Data>::TypeErased> {
+    pub fn as_type_erased(&self) -> TensorBase<'_, <D::Immutable as Data>::TypeErased>
+    where
+        D: Data,
+    {
         // Safety: <D::Immutable as Data>::TypeErased is compatible with D and its immutable (we took &self)
         unsafe { TensorBase::<<D::Immutable as Data>::TypeErased>::convert_from_ref(self) }
     }
@@ -320,7 +349,10 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// Try to convert this tensor into a typed tensor with scalar type `S`.
     ///
     /// Fails if the scalar type of the tensor does not match the required one.
-    pub fn try_into_typed<S: Scalar>(self) -> Result<TensorBase<'a, D::Typed<S>>, Self> {
+    pub fn try_into_typed<S: Scalar>(self) -> Result<TensorBase<'a, D::Typed<S>>, Self>
+    where
+        D: Data,
+    {
         if self.scalar_type() != S::TYPE {
             return Err(self);
         }
@@ -334,7 +366,10 @@ impl<'a, D: Data> TensorBase<'a, D> {
     ///
     /// If the scalar type of the tensor does not match the required one.
     #[track_caller]
-    pub fn into_typed<S: Scalar>(self) -> TensorBase<'a, D::Typed<S>> {
+    pub fn into_typed<S: Scalar>(self) -> TensorBase<'a, D::Typed<S>>
+    where
+        D: Data,
+    {
         self.try_into_typed()
             .map_err(|_| Error::CError(CError::InvalidType))
             .unwrap()
@@ -345,7 +380,10 @@ impl<'a, D: Data> TensorBase<'a, D> {
     /// Fails if the scalar type of the tensor does not match the required one.
     pub fn try_as_typed<S: Scalar>(
         &self,
-    ) -> Option<TensorBase<'_, <D::Immutable as Data>::Typed<S>>> {
+    ) -> Option<TensorBase<'_, <D::Immutable as Data>::Typed<S>>>
+    where
+        D: Data,
+    {
         if self.scalar_type() != S::TYPE {
             return None;
         }
@@ -360,7 +398,10 @@ impl<'a, D: Data> TensorBase<'a, D> {
     ///
     /// If the scalar type of the tensor does not match the required one.
     #[track_caller]
-    pub fn as_typed<S: Scalar>(&self) -> TensorBase<'_, <D::Immutable as Data>::Typed<S>> {
+    pub fn as_typed<S: Scalar>(&self) -> TensorBase<'_, <D::Immutable as Data>::Typed<S>>
+    where
+        D: Data,
+    {
         self.try_as_typed()
             .ok_or(Error::CError(CError::InvalidType))
             .unwrap()
@@ -395,8 +436,8 @@ impl<'a, D: Data> TensorBase<'a, D> {
             .unwrap()
     }
 }
-impl<D: Data> Storable for TensorBase<'_, D> {
-    type __Storage = et_c::TensorStorage;
+impl<D> Storable for TensorBase<'_, D> {
+    type __Storage = sys::TensorStorage;
 }
 
 impl<D: DataTyped> Index<&[usize]> for TensorBase<'_, D> {
@@ -418,7 +459,7 @@ impl<D: DataTyped + DataMut> IndexMut<&[usize]> for TensorBase<'_, D> {
 
 /// A typed immutable tensor that does not own the underlying data.
 pub type Tensor<'a, S> = TensorBase<'a, View<S>>;
-impl<'a, S: Scalar> Tensor<'a, S> {
+impl<'a, S> Tensor<'a, S> {
     /// Create a new [`Tensor`] from a [`TensorImpl`].
     ///
     /// The underlying Cpp object is allocated on the heap, which is preferred on systems in which allocations are
@@ -428,7 +469,10 @@ impl<'a, S: Scalar> Tensor<'a, S> {
     /// Note that the tensor data is not copied, and the required allocation is small.
     /// See [`Storage`] for more information.
     #[cfg(feature = "alloc")]
-    pub fn new(tensor_impl: &'a TensorImpl<S>) -> Self {
+    pub fn new(tensor_impl: &'a TensorImpl<S>) -> Self
+    where
+        S: Scalar,
+    {
         // Safety: both Self and TensorImpl are immutable
         unsafe { Self::new_boxed(tensor_impl) }
     }
@@ -455,7 +499,10 @@ impl<'a, S: Scalar> Tensor<'a, S> {
     pub fn new_in_storage(
         tensor_impl: &'a TensorImpl<S>,
         storage: Pin<&'a mut Storage<Tensor<S>>>,
-    ) -> Self {
+    ) -> Self
+    where
+        S: Scalar,
+    {
         // Safety: both Self and TensorImpl are immutable
         unsafe { Self::new_in_storage_impl(tensor_impl, storage) }
     }
@@ -471,7 +518,10 @@ impl<'a, S: Scalar> Tensor<'a, S> {
     pub fn new_in_allocator(
         tensor_impl: &'a TensorImpl<S>,
         allocator: &'a MemoryAllocator<'a>,
-    ) -> Self {
+    ) -> Self
+    where
+        S: Scalar,
+    {
         let storage = allocator
             .allocate_pinned()
             .ok_or(Error::CError(CError::MemoryAllocationFailed))
@@ -482,7 +532,7 @@ impl<'a, S: Scalar> Tensor<'a, S> {
 
 /// A typed mutable tensor that does not own the underlying data.
 pub type TensorMut<'a, S> = TensorBase<'a, ViewMut<S>>;
-impl<'a, S: Scalar> TensorMut<'a, S> {
+impl<'a, S> TensorMut<'a, S> {
     /// Create a new [`TensorMut`] from a [`TensorImplMut`].
     ///
     /// The underlying Cpp object is allocated on the heap, which is preferred on systems in which allocations are
@@ -492,7 +542,10 @@ impl<'a, S: Scalar> TensorMut<'a, S> {
     /// Note that the tensor data is not copied, and the required allocation is small.
     /// See [`Storage`] for more information.
     #[cfg(feature = "alloc")]
-    pub fn new(tensor_impl: &'a mut TensorImplMut<S>) -> Self {
+    pub fn new(tensor_impl: &'a mut TensorImplMut<S>) -> Self
+    where
+        S: Scalar,
+    {
         // Safety: Self has a mutable data, and we indeed took a mutable reference to tensor_impl
         unsafe { Self::new_boxed(tensor_impl) }
     }
@@ -519,7 +572,10 @@ impl<'a, S: Scalar> TensorMut<'a, S> {
     pub fn new_in_storage(
         tensor_impl: &'a mut TensorImplMut<S>,
         storage: Pin<&'a mut Storage<TensorMut<S>>>,
-    ) -> Self {
+    ) -> Self
+    where
+        S: Scalar,
+    {
         // Safety: Self has a mutable data, and we indeed took a mutable reference to tensor_impl
         unsafe { Self::new_in_storage_impl(tensor_impl, storage) }
     }
@@ -532,8 +588,8 @@ pub type TensorAny<'a> = TensorBase<'a, ViewAny>;
 ///
 /// This is a base class for [`TensorImpl`] and [`TensorImplMut`] and is not meant to be
 /// used directly. It is used to provide a common API for both of them.
-pub struct TensorImplBase<'a, D: Data>(RawTensorImpl<'a>, PhantomData<D>);
-impl<'a, D: Data> TensorImplBase<'a, D> {
+pub struct TensorImplBase<'a, D>(RawTensorImpl<'a>, PhantomData<D>);
+impl<'a, D> TensorImplBase<'a, D> {
     /// Create a new TensorImpl from a pointer to the data.
     ///
     /// # Arguments
@@ -557,14 +613,18 @@ impl<'a, D: Data> TensorImplBase<'a, D> {
     /// The caller must ensure elements in the data can be safely accessed according to the scalar type, sizes,
     /// dim order and strides of the tensor.
     /// The caller must ensure that the data is valid for the lifetime of the TensorImpl.
-    unsafe fn from_ptr_impl<S: Scalar>(
+    unsafe fn from_ptr_impl<S>(
         sizes: &'a [SizesType],
         data: *mut S,
         data_len: Option<usize>,
         dim_order: &'a [DimOrderType],
         strides: &'a [StridesType],
         mutable: bool,
-    ) -> Result<Self> {
+    ) -> Result<Self>
+    where
+        D: Data,
+        S: Scalar,
+    {
         let impl_ =
             RawTensorImpl::from_ptr_impl(sizes, data, data_len, dim_order, strides, mutable)?;
         Ok(Self(impl_, PhantomData))
@@ -573,7 +633,7 @@ impl<'a, D: Data> TensorImplBase<'a, D> {
 
 /// An immutable tensor implementation that does not own the underlying data.
 pub type TensorImpl<'a, S> = TensorImplBase<'a, View<S>>;
-impl<'a, S: Scalar> TensorImpl<'a, S> {
+impl<'a, S> TensorImpl<'a, S> {
     /// Create a new TensorImpl from a pointer to the data.
     ///
     /// # Arguments
@@ -604,7 +664,10 @@ impl<'a, S: Scalar> TensorImpl<'a, S> {
         data: *const S,
         dim_order: &'a [DimOrderType],
         strides: &'a [StridesType],
-    ) -> Result<Self> {
+    ) -> Result<Self>
+    where
+        S: Scalar,
+    {
         unsafe { Self::from_ptr_impl(sizes, data as *mut S, None, dim_order, strides, false) }
     }
 
@@ -632,7 +695,10 @@ impl<'a, S: Scalar> TensorImpl<'a, S> {
         data: &'a [S],
         dim_order: &'a [DimOrderType],
         strides: &'a [StridesType],
-    ) -> Result<Self> {
+    ) -> Result<Self>
+    where
+        S: Scalar,
+    {
         let data_ptr = data.as_ptr() as *mut S;
         unsafe { Self::from_ptr_impl(sizes, data_ptr, Some(data.len()), dim_order, strides, false) }
     }
@@ -640,14 +706,17 @@ impl<'a, S: Scalar> TensorImpl<'a, S> {
     /// Create a new TensorImpl from a scalar.
     ///
     /// The created tensor will be zero-dimensional.
-    pub fn from_scalar(scalar: &'a S) -> Self {
+    pub fn from_scalar(scalar: &'a S) -> Self
+    where
+        S: Scalar,
+    {
         unsafe { Self::from_ptr(&[], scalar as *const S, &[], &[]).unwrap() }
     }
 }
 
 /// A mutable tensor implementation that does not own the underlying data.
 pub type TensorImplMut<'a, S> = TensorImplBase<'a, ViewMut<S>>;
-impl<'a, S: Scalar> TensorImplMut<'a, S> {
+impl<'a, S> TensorImplMut<'a, S> {
     /// Create a new TensorImplMut from a pointer to the data.
     ///
     /// # Arguments
@@ -678,7 +747,10 @@ impl<'a, S: Scalar> TensorImplMut<'a, S> {
         data: *mut S,
         dim_order: &'a [DimOrderType],
         strides: &'a [StridesType],
-    ) -> Result<Self> {
+    ) -> Result<Self>
+    where
+        S: Scalar,
+    {
         unsafe { Self::from_ptr_impl(sizes, data, None, dim_order, strides, true) }
     }
 
@@ -708,7 +780,10 @@ impl<'a, S: Scalar> TensorImplMut<'a, S> {
         data: &'a mut [S],
         dim_order: &'a [DimOrderType],
         strides: &'a [StridesType],
-    ) -> Result<Self> {
+    ) -> Result<Self>
+    where
+        S: Scalar,
+    {
         let data_ptr = data.as_ptr() as *mut S;
         unsafe { Self::from_ptr_impl(sizes, data_ptr, Some(data.len()), dim_order, strides, true) }
     }
@@ -716,7 +791,10 @@ impl<'a, S: Scalar> TensorImplMut<'a, S> {
     /// Create a new TensorImplMut from a scalar.
     ///
     /// The created tensor will be zero-dimensional.
-    pub fn from_scalar(scalar: &'a mut S) -> Self {
+    pub fn from_scalar(scalar: &'a mut S) -> Self
+    where
+        S: Scalar,
+    {
         unsafe { Self::from_ptr(&[], scalar as *mut S, &[], &[]).unwrap() }
     }
 }
@@ -759,7 +837,7 @@ pub trait DataTyped: Data {
 }
 
 /// A marker type of typed immutable data of a tensor.
-pub struct View<S: Scalar>(PhantomData<S>);
+pub struct View<S>(PhantomData<S>);
 impl<S: Scalar> Data for View<S> {
     type Immutable = View<S>;
     type Mutable = ViewMut<S>;
@@ -771,7 +849,7 @@ impl<S: Scalar> DataTyped for View<S> {
     type Scalar = S;
 }
 /// A marker type of typed mutable data of a tensor.
-pub struct ViewMut<S: Scalar>(PhantomData<S>);
+pub struct ViewMut<S>(PhantomData<S>);
 impl<S: Scalar> Data for ViewMut<S> {
     type Immutable = View<S>;
     type Mutable = ViewMut<S>;
@@ -806,7 +884,7 @@ impl Data for ViewMutAny {
 impl DataMut for ViewMutAny {}
 
 impl Storable for Option<TensorAny<'_>> {
-    type __Storage = et_c::OptionalTensorStorage;
+    type __Storage = sys::OptionalTensorStorage;
 }
 
 #[cfg(test)]

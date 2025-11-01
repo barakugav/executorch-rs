@@ -3,6 +3,7 @@
 //!
 //! PAL functions are defined as C functions so a platform library implementer can use C in lieu of C++.
 
+use crate::sys;
 use core::ffi::CStr;
 
 /// Initialize the platform abstraction layer.
@@ -18,12 +19,12 @@ use core::ffi::CStr;
 ///
 /// TODO: mark this function as unsafe
 pub fn pal_init() {
-    unsafe { executorch_sys::executorch_pal_init() };
+    unsafe { sys::executorch_pal_init() };
 }
 
 pub(crate) fn emit_log(
-    timestamp: executorch_sys::executorch_timestamp_t,
-    level: executorch_sys::executorch_pal_log_level,
+    timestamp: sys::executorch_timestamp_t,
+    level: sys::executorch_pal_log_level,
     filename: &CStr,
     function: &CStr,
     line: usize,
@@ -63,7 +64,7 @@ pub(crate) fn emit_log(
     };
 
     unsafe {
-        executorch_sys::executorch_pal_emit_log_message(
+        sys::executorch_pal_emit_log_message(
             timestamp,
             level,
             filename.as_ptr(),

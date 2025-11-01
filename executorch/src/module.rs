@@ -17,16 +17,12 @@ use crate::event_tracer::{EventTracer, EventTracerPtr};
 use crate::memory::HierarchicalAllocator;
 use crate::program::{MethodMeta, ProgramVerification};
 use crate::util::{try_c_new, ArrayRef, IntoCpp, IntoRust, NonTriviallyMovableVec};
-use crate::{Error, Result};
-use executorch_sys as et_c;
+use crate::{sys, Error, Result};
 
 /// A facade class for loading programs and executing methods within them.
 ///
 /// See the `hello_world` example for how to load and execute a module.
-pub struct Module<'a>(
-    executorch_sys::cxx::UniquePtr<et_c::cpp::Module>,
-    PhantomData<&'a ()>,
-);
+pub struct Module<'a>(sys::cxx::UniquePtr<sys::cpp::Module>, PhantomData<&'a ()>);
 impl<'a> Module<'a> {
     /// Constructs an instance by loading a program from a file with specified
     /// memory locking behavior.
@@ -55,13 +51,13 @@ impl<'a> Module<'a> {
             .iter()
             .map(|f| f.as_os_str().to_str().ok_or(Error::ToCStr).unwrap())
             .collect::<Vec<_>>();
-        et_c::cxx::let_cxx_string!(file_path = file_path.as_os_str().as_encoded_bytes());
+        sys::cxx::let_cxx_string!(file_path = file_path.as_os_str().as_encoded_bytes());
 
         let load_mode = load_mode.unwrap_or(LoadMode::File).cpp();
         let event_tracer = event_tracer
             .map(|tracer| tracer.0)
-            .unwrap_or(et_c::cxx::UniquePtr::null());
-        let module = et_c::cpp::Module_new(&file_path, &data_files, load_mode, event_tracer);
+            .unwrap_or(sys::cxx::UniquePtr::null());
+        let module = sys::cpp::Module_new(&file_path, &data_files, load_mode, event_tracer);
         Self(module, PhantomData)
     }
 
@@ -94,13 +90,13 @@ impl<'a> Module<'a> {
     /// An Error to indicate success or failure of the loading process.
     pub fn load(&mut self, verification: Option<ProgramVerification>) -> Result<()> {
         let verification = verification.unwrap_or(ProgramVerification::Minimal).cpp();
-        et_c::cpp::Module_load(self.0.as_mut().unwrap(), verification).rs()
+        sys::cpp::Module_load(self.0.as_mut().unwrap(), verification).rs()
     }
 
     /// Get the number of methods available in the loaded program.
     pub fn num_methods(&mut self) -> Result<usize> {
         let mut num_methods = 0;
-        unsafe { et_c::cpp::Module_num_methods(self.0.as_mut().unwrap(), &mut num_methods).rs()? };
+        unsafe { sys::cpp::Module_num_methods(self.0.as_mut().unwrap(), &mut num_methods).rs()? };
         Ok(num_methods)
     }
 
@@ -110,7 +106,7 @@ impl<'a> Module<'a> {
     // ///
     // /// true if the program is loaded, false otherwise.
     // pub fn is_loaded(&self) -> bool {
-    //     unsafe { et_c::extension::Module_is_loaded(self.0.as_ref()) }
+    //     unsafe { sys::extension::Module_is_loaded(self.0.as_ref()) }
     // }
 
     /// Get a list of method names available in the loaded program.
@@ -122,7 +118,7 @@ impl<'a> Module<'a> {
     pub fn method_names(&mut self) -> Result<HashSet<String>> {
         let mut names = Vec::new();
         let self_ = self.0.as_mut().unwrap();
-        unsafe { et_c::cpp::Module_method_names(self_, &mut names).rs()? };
+        unsafe { sys::cpp::Module_method_names(self_, &mut names).rs()? };
         Ok(names.into_iter().map(|s| s.to_string()).collect())
     }
 
@@ -149,15 +145,15 @@ impl<'a> Module<'a> {
         planned_memory: Option<&'a mut HierarchicalAllocator>,
         event_tracer: Option<&'a mut EventTracer>,
     ) -> Result<()> {
-        et_c::cxx::let_cxx_string!(method_name = method_name);
+        sys::cxx::let_cxx_string!(method_name = method_name);
         let event_tracer = event_tracer
-            .map(|tracer| tracer as *mut EventTracer as *mut et_c::cpp::EventTracer)
+            .map(|tracer| tracer as *mut EventTracer as *mut sys::cpp::EventTracer)
             .unwrap_or(std::ptr::null_mut());
         let planned_memory = planned_memory
-            .map(|allocator| (&mut allocator.0) as *mut et_c::cpp::HierarchicalAllocator)
+            .map(|allocator| (&mut allocator.0) as *mut sys::cpp::HierarchicalAllocator)
             .unwrap_or(std::ptr::null_mut());
         unsafe {
-            et_c::cpp::Module_load_method(
+            sys::cpp::Module_load_method(
                 self.0.as_mut().unwrap(),
                 &method_name,
                 planned_memory,
@@ -175,8 +171,8 @@ impl<'a> Module<'a> {
     /// # Returns
     /// True if the method is unloaded, false if no-op.
     pub fn unload_method(&mut self, method_name: &str) -> bool {
-        et_c::cxx::let_cxx_string!(method_name = method_name);
-        unsafe { et_c::cpp::Module_unload_method(self.0.as_mut().unwrap(), &method_name) }
+        sys::cxx::let_cxx_string!(method_name = method_name);
+        unsafe { sys::cpp::Module_unload_method(self.0.as_mut().unwrap(), &method_name) }
     }
 
     /// Checks if a specific method is loaded.
@@ -193,8 +189,8 @@ impl<'a> Module<'a> {
     ///
     /// If the method name is not a valid UTF-8 string or contains a null character.
     pub fn is_method_loaded(&self, method_name: &str) -> bool {
-        et_c::cxx::let_cxx_string!(method_name = method_name);
-        et_c::cpp::Module_is_method_loaded(self.0.as_ref().unwrap(), &method_name)
+        sys::cxx::let_cxx_string!(method_name = method_name);
+        sys::cpp::Module_is_method_loaded(self.0.as_ref().unwrap(), &method_name)
     }
 
     /// Get a method metadata struct by method name.
@@ -213,9 +209,9 @@ impl<'a> Module<'a> {
     ///
     /// If the method name is not a valid UTF-8 string or contains a null character.
     pub fn method_meta(&mut self, method_name: &str) -> Result<MethodMeta<'a>> {
-        et_c::cxx::let_cxx_string!(method_name = method_name);
+        sys::cxx::let_cxx_string!(method_name = method_name);
         let meta = try_c_new(|meta| unsafe {
-            et_c::cpp::Module_method_meta(self.0.as_mut().unwrap(), &method_name, meta)
+            sys::cpp::Module_method_meta(self.0.as_mut().unwrap(), &method_name, meta)
         })?;
         Ok(unsafe { MethodMeta::new(meta) })
     }
@@ -240,12 +236,12 @@ impl<'a> Module<'a> {
         method_name: &str,
         inputs: &[EValue],
     ) -> Result<Vec<EValue<'b>>> {
-        et_c::cxx::let_cxx_string!(method_name = method_name);
+        sys::cxx::let_cxx_string!(method_name = method_name);
         let inputs = unsafe {
-            NonTriviallyMovableVec::<et_c::EValueStorage>::new(inputs.len(), |i, p| {
-                et_c::executorch_EValue_copy(
+            NonTriviallyMovableVec::<sys::EValueStorage>::new(inputs.len(), |i, p| {
+                sys::executorch_EValue_copy(
                     inputs[i].cpp(),
-                    et_c::EValueRefMut {
+                    sys::EValueRefMut {
                         ptr: p.as_mut_ptr() as *mut _,
                     },
                 )
@@ -253,15 +249,15 @@ impl<'a> Module<'a> {
         };
         let inputs = ArrayRef::from_slice(inputs.as_slice());
         let mut outputs = try_c_new(|outputs| unsafe {
-            et_c::cpp::Module_execute(self.0.as_mut().unwrap(), &method_name, inputs.0, outputs)
+            sys::cpp::Module_execute(self.0.as_mut().unwrap(), &method_name, inputs.0, outputs)
         })?
         .rs();
         Ok(outputs
             .as_mut_slice()
             .iter_mut()
             .map(|val| unsafe {
-                EValue::move_from(et_c::EValueRefMut {
-                    ptr: val as *mut et_c::EValueStorage as *mut _,
+                EValue::move_from(sys::EValueRefMut {
+                    ptr: val as *mut sys::EValueStorage as *mut _,
                 })
             })
             .collect())
@@ -288,23 +284,23 @@ unsafe impl Send for Module<'_> {}
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum LoadMode {
     #[doc = " Load the whole file as a buffer."]
-    File = et_c::ModuleLoadMode::ModuleLoadMode_File as u32,
+    File = sys::ModuleLoadMode::ModuleLoadMode_File as u32,
     #[doc = " Use mmap to load pages into memory."]
-    Mmap = et_c::ModuleLoadMode::ModuleLoadMode_Mmap as u32,
+    Mmap = sys::ModuleLoadMode::ModuleLoadMode_Mmap as u32,
     #[doc = " Use memory locking and handle errors."]
-    MmapUseMlock = et_c::ModuleLoadMode::ModuleLoadMode_MmapUseMlock as u32,
+    MmapUseMlock = sys::ModuleLoadMode::ModuleLoadMode_MmapUseMlock as u32,
     #[doc = " Use memory locking and ignore errors."]
-    MmapUseMlockIgnoreErrors = et_c::ModuleLoadMode::ModuleLoadMode_MmapUseMlockIgnoreErrors as u32,
+    MmapUseMlockIgnoreErrors = sys::ModuleLoadMode::ModuleLoadMode_MmapUseMlockIgnoreErrors as u32,
 }
 impl IntoCpp for LoadMode {
-    type CppType = et_c::ModuleLoadMode;
+    type CppType = sys::ModuleLoadMode;
     fn cpp(self) -> Self::CppType {
         match self {
-            LoadMode::File => et_c::ModuleLoadMode::ModuleLoadMode_File,
-            LoadMode::Mmap => et_c::ModuleLoadMode::ModuleLoadMode_Mmap,
-            LoadMode::MmapUseMlock => et_c::ModuleLoadMode::ModuleLoadMode_MmapUseMlock,
+            LoadMode::File => sys::ModuleLoadMode::ModuleLoadMode_File,
+            LoadMode::Mmap => sys::ModuleLoadMode::ModuleLoadMode_Mmap,
+            LoadMode::MmapUseMlock => sys::ModuleLoadMode::ModuleLoadMode_MmapUseMlock,
             LoadMode::MmapUseMlockIgnoreErrors => {
-                et_c::ModuleLoadMode::ModuleLoadMode_MmapUseMlockIgnoreErrors
+                sys::ModuleLoadMode::ModuleLoadMode_MmapUseMlockIgnoreErrors
             }
         }
     }
