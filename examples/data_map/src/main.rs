@@ -71,7 +71,7 @@ fn main_program() {
     let data_map_loader = FileDataLoader::from_path(&data_file, None).unwrap();
     let data_map = FlatTensorDataMap::load(data_map_loader.as_ref()).unwrap();
     let mut method = program
-        .load_method(c"forward", &memory_manager, None, Some(&data_map))
+        .load_method(c"forward", &memory_manager, None, Some(data_map.as_ref()))
         .unwrap();
 
     let data = array![[1.0_f32, 2.0], [3.0, 4.0]];

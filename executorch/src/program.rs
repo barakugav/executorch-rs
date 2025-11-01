@@ -57,7 +57,7 @@ use std::marker::PhantomData;
 use std::ptr;
 
 use crate::data_loader::DataLoader;
-use crate::data_map::{data_map_ptr2dyn, NamedDataMap};
+use crate::data_map::NamedDataMap;
 use crate::evalue::{EValue, Tag};
 use crate::event_tracer::EventTracer;
 use crate::memory::MemoryManager;
@@ -121,11 +121,11 @@ impl<'a> Program<'a> {
     }
 
     /// Get the named data map from the program.
-    pub fn get_named_data_map(&self) -> Result<&dyn NamedDataMap> {
+    pub fn get_named_data_map(&self) -> Result<&NamedDataMap> {
         let data_map = try_c_new(|data_map| unsafe {
             sys::executorch_Program_get_named_data_map(&self.0, data_map)
         })?;
-        Ok(unsafe { data_map_ptr2dyn(data_map) })
+        Ok(unsafe { &*data_map.ptr.cast() })
     }
 
     /// Loads the named method and prepares it for execution.
@@ -145,7 +145,7 @@ impl<'a> Program<'a> {
         method_name: &CStr,
         memory_manager: &'b MemoryManager,
         event_tracer: Option<&'b mut EventTracer>,
-        named_data_map: Option<&'b dyn NamedDataMap>,
+        named_data_map: Option<&'b NamedDataMap>,
     ) -> Result<Method<'b>> {
         let memory_manager = memory_manager.0.get();
         let event_tracer = event_tracer
@@ -155,7 +155,7 @@ impl<'a> Program<'a> {
             ptr: event_tracer as *mut _,
         };
         let named_data_map = named_data_map
-            .map(|map| map.__named_data_map_ptr().ptr as *const _)
+            .map(|map| map as *const _ as *const _)
             .unwrap_or(ptr::null());
         let named_data_map = sys::NamedDataMapRef {
             ptr: named_data_map,
