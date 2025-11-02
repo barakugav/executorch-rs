@@ -994,6 +994,11 @@ enum ScalarType executorch_TensorInfo_scalar_type(const struct TensorInfo *self)
     auto ret = self_->scalar_type();
     return static_cast<ScalarType>(ret);
 }
+bool executorch_TensorInfo_is_memory_planned(const struct TensorInfo *self)
+{
+    auto self_ = checked_reinterpret_cast<executorch::runtime::TensorInfo>(self);
+    return self_->is_memory_planned();
+}
 size_t executorch_TensorInfo_nbytes(const struct TensorInfo *self)
 {
     auto self_ = checked_reinterpret_cast<executorch::runtime::TensorInfo>(self);

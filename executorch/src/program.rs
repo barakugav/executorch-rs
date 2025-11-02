@@ -431,6 +431,11 @@ impl<'a> TensorInfo<'a> {
         unsafe { sys::executorch_TensorInfo_scalar_type(&self.0) }.rs()
     }
 
+    /// Returns whether the tensor's memory was planned during export.
+    pub fn is_memory_planned(&self) -> bool {
+        unsafe { sys::executorch_TensorInfo_is_memory_planned(&self.0) }
+    }
+
     /// Returns the size of the tensor in bytes.
     pub fn nbytes(&self) -> usize {
         unsafe { sys::executorch_TensorInfo_nbytes(&self.0) }
@@ -660,6 +665,7 @@ mod tests {
             assert_eq!(tinfo.sizes(), &[1]);
             assert_eq!(tinfo.dim_order(), &[0]);
             assert_eq!(tinfo.scalar_type(), ScalarType::Float);
+            assert!(tinfo.is_memory_planned());
             assert_eq!(tinfo.nbytes(), 4);
         }
 
@@ -670,6 +676,7 @@ mod tests {
         assert_eq!(tinfo.sizes(), &[1]);
         assert_eq!(tinfo.dim_order(), &[0]);
         assert_eq!(tinfo.scalar_type(), ScalarType::Float);
+        assert!(tinfo.is_memory_planned());
         assert_eq!(tinfo.nbytes(), 4);
         assert!(method_meta.output_tensor_meta(1).is_err());
 

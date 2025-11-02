@@ -803,6 +803,7 @@ extern "C"
     struct ArrayRefI32 executorch_TensorInfo_sizes(const struct TensorInfo *self);
     struct ArrayRefU8 executorch_TensorInfo_dim_order(const struct TensorInfo *self);
     enum ScalarType executorch_TensorInfo_scalar_type(const struct TensorInfo *self);
+    bool executorch_TensorInfo_is_memory_planned(const struct TensorInfo *self);
     size_t executorch_TensorInfo_nbytes(const struct TensorInfo *self);
     struct ArrayRefChar executorch_TensorInfo_name(const struct TensorInfo *self);
 
