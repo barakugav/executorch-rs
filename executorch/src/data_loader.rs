@@ -210,21 +210,25 @@ mod file_data_loader {
     #[repr(u32)]
     pub enum MlockConfig {
         #[doc = " Do not call `mlock()` on loaded pages."]
-        NoMlock = sys::MmapDataLoaderMlockConfig::ModuleLoadMode_NoMlock as u32,
+        NoMlock = sys::MmapDataLoaderMlockConfig::MmapDataLoaderMlockConfig_NoMlock as u32,
         #[doc = " Call `mlock()` on loaded pages, failing if it fails."]
-        UseMlock = sys::MmapDataLoaderMlockConfig::ModuleLoadMode_UseMlock as u32,
+        UseMlock = sys::MmapDataLoaderMlockConfig::MmapDataLoaderMlockConfig_UseMlock as u32,
         #[doc = " Call `mlock()` on loaded pages, ignoring errors if it fails."]
         UseMlockIgnoreErrors =
-            sys::MmapDataLoaderMlockConfig::ModuleLoadMode_UseMlockIgnoreErrors as u32,
+            sys::MmapDataLoaderMlockConfig::MmapDataLoaderMlockConfig_UseMlockIgnoreErrors as u32,
     }
     impl IntoCpp for MlockConfig {
         type CppType = sys::MmapDataLoaderMlockConfig;
         fn cpp(self) -> Self::CppType {
             match self {
-                MlockConfig::NoMlock => sys::MmapDataLoaderMlockConfig::ModuleLoadMode_NoMlock,
-                MlockConfig::UseMlock => sys::MmapDataLoaderMlockConfig::ModuleLoadMode_UseMlock,
+                MlockConfig::NoMlock => {
+                    sys::MmapDataLoaderMlockConfig::MmapDataLoaderMlockConfig_NoMlock
+                }
+                MlockConfig::UseMlock => {
+                    sys::MmapDataLoaderMlockConfig::MmapDataLoaderMlockConfig_UseMlock
+                }
                 MlockConfig::UseMlockIgnoreErrors => {
-                    sys::MmapDataLoaderMlockConfig::ModuleLoadMode_UseMlockIgnoreErrors
+                    sys::MmapDataLoaderMlockConfig::MmapDataLoaderMlockConfig_UseMlockIgnoreErrors
                 }
             }
         }

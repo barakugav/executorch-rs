@@ -204,14 +204,14 @@ impl Drop for Program<'_> {
     }
 }
 
-#[repr(u32)]
+#[repr(u8)]
 #[doc = " Types of validation that the Program can do before parsing the data."]
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum ProgramVerification {
     #[doc = " Do minimal verification of the data, ensuring that the header appears\n correct.\n\n Has minimal runtime overhead."]
-    Minimal = sys::ProgramVerification::ProgramVerification_Minimal as u32,
+    Minimal = sys::ProgramVerification::ProgramVerification_Minimal as u8,
     #[doc = " Do full verification of the data, ensuring that internal pointers are\n self-consistent and that the data has not been truncated or obviously\n corrupted. May not catch all types of corruption, but should guard\n against illegal memory operations during parsing.\n\n Will have higher runtime overhead, scaling with the complexity of the\n proram data."]
-    InternalConsistency = sys::ProgramVerification::ProgramVerification_InternalConsistency as u32,
+    InternalConsistency = sys::ProgramVerification::ProgramVerification_InternalConsistency as u8,
 }
 impl IntoCpp for ProgramVerification {
     type CppType = sys::ProgramVerification;

@@ -6,80 +6,80 @@ use crate::util::{IntoCpp, IntoRust};
 ///
 /// The enum contain all the scalar types supported by the Cpp ExecuTorch library.
 /// Not all of these types are supported by the Rust library, see [`Scalar`].
-#[repr(u8)]
+#[repr(i8)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum ScalarType {
     /// 8-bit unsigned integer, `u8`
-    Byte = CScalarType::ScalarType_Byte as u8,
+    Byte = CScalarType::ScalarType_Byte as i8,
     /// 8-bit signed, integer, `i8`
-    Char = CScalarType::ScalarType_Char as u8,
+    Char = CScalarType::ScalarType_Char as i8,
     /// 16-bit signed integer, `i16`
-    Short = CScalarType::ScalarType_Short as u8,
+    Short = CScalarType::ScalarType_Short as i8,
     /// 32-bit signed integer, `i32`
-    Int = CScalarType::ScalarType_Int as u8,
+    Int = CScalarType::ScalarType_Int as i8,
     /// 64-bit signed integer, `i64`
-    Long = CScalarType::ScalarType_Long as u8,
+    Long = CScalarType::ScalarType_Long as i8,
     /// 16-bit floating point, [`executorch::scalar::f16`](`crate::scalar::f16`).
-    Half = CScalarType::ScalarType_Half as u8,
+    Half = CScalarType::ScalarType_Half as i8,
     /// 32-bit floating point, `f32`
-    Float = CScalarType::ScalarType_Float as u8,
+    Float = CScalarType::ScalarType_Float as i8,
     /// 64-bit floating point, `f64`
-    Double = CScalarType::ScalarType_Double as u8,
+    Double = CScalarType::ScalarType_Double as i8,
     /// 16-bit complex floating point, [`executorch::scalar::Complex<executorch::scalar::f16>`](`crate::scalar::Complex`).
-    ComplexHalf = CScalarType::ScalarType_ComplexHalf as u8,
+    ComplexHalf = CScalarType::ScalarType_ComplexHalf as i8,
     /// 32-bit complex floating point, [`executorch::scalar::Complex<f32>`](`crate::scalar::Complex`).
-    ComplexFloat = CScalarType::ScalarType_ComplexFloat as u8,
+    ComplexFloat = CScalarType::ScalarType_ComplexFloat as i8,
     /// 64-bit complex floating point, [`executorch::scalar::Complex<f64>`](`crate::scalar::Complex`).
-    ComplexDouble = CScalarType::ScalarType_ComplexDouble as u8,
+    ComplexDouble = CScalarType::ScalarType_ComplexDouble as i8,
     /// Boolean, `bool`
-    Bool = CScalarType::ScalarType_Bool as u8,
+    Bool = CScalarType::ScalarType_Bool as i8,
     /// 8-bit quantized integer, [`executorch::scalar::QInt8`](`crate::scalar::QInt8`).
-    QInt8 = CScalarType::ScalarType_QInt8 as u8,
+    QInt8 = CScalarType::ScalarType_QInt8 as i8,
     /// 8-bit quantized unsigned integer, [`executorch::scalar::QUInt8`](`crate::scalar::QUInt8`).
-    QUInt8 = CScalarType::ScalarType_QUInt8 as u8,
+    QUInt8 = CScalarType::ScalarType_QUInt8 as i8,
     /// 32-bit quantized integer, [`executorch::scalar::QInt32`](`crate::scalar::QInt32`).
-    QInt32 = CScalarType::ScalarType_QInt32 as u8,
+    QInt32 = CScalarType::ScalarType_QInt32 as i8,
     /// 16-bit floating point using the bfloat16 format, [`executorch::scalar::bf16`](`crate::scalar::bf16`).
-    BFloat16 = CScalarType::ScalarType_BFloat16 as u8,
+    BFloat16 = CScalarType::ScalarType_BFloat16 as i8,
     /// Two 4-bit unsigned quantized integers packed into a byte. [`executorch::scalar::QUInt4x2`](`crate::scalar::QUInt4x2`).
-    QUInt4x2 = CScalarType::ScalarType_QUInt4x2 as u8,
+    QUInt4x2 = CScalarType::ScalarType_QUInt4x2 as i8,
     /// Four 2-bit unsigned quantized integers packed into a byte. [`executorch::scalar::QUInt2x4`](`crate::scalar::QUInt2x4`).
-    QUInt2x4 = CScalarType::ScalarType_QUInt2x4 as u8,
+    QUInt2x4 = CScalarType::ScalarType_QUInt2x4 as i8,
     /// Eight 1-bit values packed into a byte. [`executorch::scalar::Bits1x8`](`crate::scalar::Bits1x8`).
-    Bits1x8 = CScalarType::ScalarType_Bits1x8 as u8,
+    Bits1x8 = CScalarType::ScalarType_Bits1x8 as i8,
     /// Four 2-bit values packed into a byte. [`executorch::scalar::Bits2x4`](`crate::scalar::Bits2x4`).
-    Bits2x4 = CScalarType::ScalarType_Bits2x4 as u8,
+    Bits2x4 = CScalarType::ScalarType_Bits2x4 as i8,
     /// Two 4-bit values packed into a byte. [`executorch::scalar::Bits4x2`](`crate::scalar::Bits4x2`).
-    Bits4x2 = CScalarType::ScalarType_Bits4x2 as u8,
+    Bits4x2 = CScalarType::ScalarType_Bits4x2 as i8,
     /// 8-bit bitfield (1 byte). [`executorch::scalar::Bits8`](`crate::scalar::Bits8`).
-    Bits8 = CScalarType::ScalarType_Bits8 as u8,
+    Bits8 = CScalarType::ScalarType_Bits8 as i8,
     /// 16-bit bitfield (2 bytes). [`executorch::scalar::Bits16`](`crate::scalar::Bits16`).
-    Bits16 = CScalarType::ScalarType_Bits16 as u8,
+    Bits16 = CScalarType::ScalarType_Bits16 as i8,
     /// 8-bit floating-point with 1 bit for the sign, 5 bits for the exponents, 2 bits for the mantissa.
     /// [`executorch::scalar::Float8_e5m2`](`crate::scalar::Float8_e5m2`).
     #[allow(non_camel_case_types)]
-    Float8_e5m2 = CScalarType::ScalarType_Float8_e5m2 as u8,
+    Float8_e5m2 = CScalarType::ScalarType_Float8_e5m2 as i8,
     /// 8-bit floating-point with 1 bit for the sign, 4 bits for the exponents, 3 bits for the mantissa,
     /// only nan values and no infinite values (FN).
     /// [`executorch::scalar::Float8_e4m3fn`](`crate::scalar::Float8_e4m3fn`).
     #[allow(non_camel_case_types)]
-    Float8_e4m3fn = CScalarType::ScalarType_Float8_e4m3fn as u8,
+    Float8_e4m3fn = CScalarType::ScalarType_Float8_e4m3fn as i8,
     /// 8-bit floating-point with 1 bit for the sign, 5 bits for the exponents, 2 bits for the mantissa,
     /// only nan values and no infinite values (FN), no negative zero (UZ).
     /// [`executorch::scalar::Float8_e5m2fnuz`](`crate::scalar::Float8_e5m2fnuz`).
     #[allow(non_camel_case_types)]
-    Float8_e5m2fnuz = CScalarType::ScalarType_Float8_e5m2fnuz as u8,
+    Float8_e5m2fnuz = CScalarType::ScalarType_Float8_e5m2fnuz as i8,
     /// 8-bit floating-point with 1 bit for the sign, 4 bits for the exponents, 3 bits for the mantissa,
     /// only nan values and no infinite values (FN), no negative zero (UZ).
     /// [`executorch::scalar::Float8_e4m3fnuz`](`crate::scalar::Float8_e4m3fnuz`).
     #[allow(non_camel_case_types)]
-    Float8_e4m3fnuz = CScalarType::ScalarType_Float8_e4m3fnuz as u8,
+    Float8_e4m3fnuz = CScalarType::ScalarType_Float8_e4m3fnuz as i8,
     /// 16-bit unsigned integer, `u16`
-    UInt16 = CScalarType::ScalarType_UInt16 as u8,
+    UInt16 = CScalarType::ScalarType_UInt16 as i8,
     /// 32-bit unsigned integer, `u32`
-    UInt32 = CScalarType::ScalarType_UInt32 as u8,
+    UInt32 = CScalarType::ScalarType_UInt32 as i8,
     /// 64-bit unsigned integer, `u64`
-    UInt64 = CScalarType::ScalarType_UInt64 as u8,
+    UInt64 = CScalarType::ScalarType_UInt64 as i8,
 }
 impl IntoRust for CScalarType {
     type RsType = ScalarType;
