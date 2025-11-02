@@ -93,6 +93,11 @@ impl<'a> Module<'a> {
         sys::cpp::Module_load(self.0.as_mut().unwrap(), verification).rs()
     }
 
+    /// Checks if the program is loaded.
+    pub fn is_loaded(&self) -> bool {
+        sys::cpp::Module_is_loaded(self.0.as_ref().unwrap())
+    }
+
     /// Get the number of methods available in the loaded program.
     pub fn num_methods(&mut self) -> Result<usize> {
         let mut num_methods = 0;
@@ -334,12 +339,16 @@ mod tests {
             ] {
                 // TODO: test with data files (.ptd)
                 let mut module = Module::new(&add_model_path(), &[], load_mode, None);
+                assert!(!module.is_loaded());
                 assert!(module.load(verification).is_ok());
+                assert!(module.is_loaded());
             }
         }
 
         let mut module = Module::from_file_path("non-existing-file.pte2");
+        assert!(!module.is_loaded());
         assert!(module.load(None).is_err());
+        assert!(!module.is_loaded());
     }
 
     #[test]
