@@ -40,7 +40,7 @@ impl<'a> Module<'a> {
     ///
     /// # Panics
     ///
-    /// If any of the file path or the data map path are not a valid UTF-8 string or contains a null character.
+    /// May panic if any of the file path or the data map path are not a valid UTF-8 string or contains a null character.
     pub fn new(
         file_path: &Path,
         data_files: &[&Path],
@@ -138,7 +138,7 @@ impl<'a> Module<'a> {
     ///
     /// # Panics
     ///
-    /// If the method name is not a valid UTF-8 string or contains a null character.
+    /// May panic if the method name is not a valid UTF-8 string or contains a null character.
     pub fn load_method(
         &mut self,
         method_name: &str,
@@ -166,10 +166,16 @@ impl<'a> Module<'a> {
     /// Unload a specific method from the program.
     ///
     /// # Arguments
+    ///
     /// - `method_name`: The name of the method to unload.
     ///
     /// # Returns
+    ///
     /// True if the method is unloaded, false if no-op.
+    ///
+    /// # Panics
+    ///
+    /// May panic if the method name is not a valid UTF-8 string or contains a null character.
     pub fn unload_method(&mut self, method_name: &str) -> bool {
         sys::cxx::let_cxx_string!(method_name = method_name);
         unsafe { sys::cpp::Module_unload_method(self.0.as_mut().unwrap(), &method_name) }
@@ -187,7 +193,7 @@ impl<'a> Module<'a> {
     ///
     /// # Panics
     ///
-    /// If the method name is not a valid UTF-8 string or contains a null character.
+    /// May panic if the method name is not a valid UTF-8 string or contains a null character.
     pub fn is_method_loaded(&self, method_name: &str) -> bool {
         sys::cxx::let_cxx_string!(method_name = method_name);
         sys::cpp::Module_is_method_loaded(self.0.as_ref().unwrap(), &method_name)
@@ -207,7 +213,7 @@ impl<'a> Module<'a> {
     ///
     /// # Panics
     ///
-    /// If the method name is not a valid UTF-8 string or contains a null character.
+    /// May panic if the method name contains a null character.
     pub fn method_meta(&mut self, method_name: &str) -> Result<MethodMeta<'a>> {
         sys::cxx::let_cxx_string!(method_name = method_name);
         let meta = try_c_new(|meta| unsafe {
@@ -230,7 +236,7 @@ impl<'a> Module<'a> {
     ///
     /// # Panics
     ///
-    /// If the method name is not a valid UTF-8 string or contains a null character.
+    /// May panic if the method name is not a valid UTF-8 string or contains a null character.
     pub fn execute<'b>(
         &'b mut self,
         method_name: &str,
