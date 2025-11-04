@@ -207,6 +207,7 @@ impl<'a> EValue<'a> {
     /// Panics if the value is of different type.
     /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
     /// [`tag`][Self::tag] method.
+    #[inline]
     #[track_caller]
     pub fn as_i64(&self) -> i64 {
         self.try_into().unwrap()
@@ -219,6 +220,7 @@ impl<'a> EValue<'a> {
     /// Panics if the value is of different type.
     /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
     /// [`tag`][Self::tag] method.
+    #[inline]
     #[track_caller]
     pub fn as_i64_list(&self) -> &[i64] {
         self.try_into().unwrap()
@@ -231,6 +233,7 @@ impl<'a> EValue<'a> {
     /// Panics if the value is of different type.
     /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
     /// [`tag`][Self::tag] method.
+    #[inline]
     #[track_caller]
     pub fn as_f64(&self) -> f64 {
         self.try_into().unwrap()
@@ -243,6 +246,7 @@ impl<'a> EValue<'a> {
     /// Panics if the value is of different type.
     /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
     /// [`tag`][Self::tag] method.
+    #[inline]
     #[track_caller]
     pub fn as_f64_list(&self) -> &[f64] {
         self.try_into().unwrap()
@@ -255,6 +259,7 @@ impl<'a> EValue<'a> {
     /// Panics if the value is of different type.
     /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
     /// [`tag`][Self::tag] method.
+    #[inline]
     #[track_caller]
     pub fn as_bool(&self) -> bool {
         self.try_into().unwrap()
@@ -267,6 +272,7 @@ impl<'a> EValue<'a> {
     /// Panics if the value is of different type.
     /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
     /// [`tag`][Self::tag] method.
+    #[inline]
     #[track_caller]
     pub fn as_bool_list(&self) -> &[bool] {
         self.try_into().unwrap()
@@ -279,6 +285,7 @@ impl<'a> EValue<'a> {
     /// Panics if the value is of different type.
     /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
     /// [`tag`][Self::tag] method.
+    #[inline]
     #[track_caller]
     pub fn as_chars(&self) -> &[std::ffi::c_char] {
         self.try_into().unwrap()
@@ -291,6 +298,7 @@ impl<'a> EValue<'a> {
     /// Panics if the value is not of type string, or the string is not a valid UTF-8.
     /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
     /// [`tag`][Self::tag] method.
+    #[inline]
     #[track_caller]
     pub fn as_str(&self) -> &str {
         self.try_into().unwrap()
@@ -304,6 +312,8 @@ impl<'a> EValue<'a> {
     /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
     /// [`tag`][Self::tag] method.
     #[cfg(feature = "std")]
+    #[inline]
+    #[track_caller]
     pub fn to_cstr(&self) -> std::ffi::CString {
         self.try_into().unwrap()
     }
@@ -315,6 +325,7 @@ impl<'a> EValue<'a> {
     /// Panics if the value is of different type.
     /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
     /// [`tag`][Self::tag] method.
+    #[inline]
     #[track_caller]
     pub fn as_tensor(&self) -> TensorAny<'_> {
         self.try_into().unwrap()
@@ -327,6 +338,8 @@ impl<'a> EValue<'a> {
     /// Panics if the value is of different type.
     /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
     /// [`tag`][Self::tag] method.
+    #[inline]
+    #[track_caller]
     pub fn as_tensor_list(&self) -> TensorList<'_> {
         self.try_into().unwrap()
     }
@@ -338,13 +351,13 @@ impl<'a> EValue<'a> {
     /// Panics if the value is of different type.
     /// To avoid panics, use the [`try_into`][TryInto::try_into] method or check the type of the value with the
     /// [`tag`][Self::tag] method.
+    #[inline]
+    #[track_caller]
     pub fn as_optional_tensor_list(&self) -> OptionalTensorList<'_> {
         self.try_into().unwrap()
     }
 
     /// Get the tag indicating the type of the value.
-    ///
-    /// Returns `None` if the inner Cpp tag is `None`.
     pub fn tag(&self) -> Tag {
         unsafe { sys::executorch_EValue_tag(self.cpp()) }.rs()
     }

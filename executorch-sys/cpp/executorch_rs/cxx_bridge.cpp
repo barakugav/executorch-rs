@@ -100,6 +100,10 @@ namespace executorch_rs
         auto ret = self.load(verification_);
         return static_cast<Error>(ret);
     }
+    bool Module_is_loaded(const executorch::extension::Module &self)
+    {
+        return self.is_loaded();
+    }
     static executorch::runtime::Error Module_num_methods_(executorch::extension::Module &self, size_t &method_num_out)
     {
         method_num_out = ET_UNWRAP(self.num_methods());

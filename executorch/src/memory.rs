@@ -396,7 +396,7 @@ impl<'a> MemoryManager<'a> {
 /// Cpp object is never moved, and the Rust object that keeps a pointer to the storage can be moved around freely as
 /// usual.
 ///
-/// The [`executorch`](crate) crate encapsulates Cpp objects which are trivially movable in Rust objects using the simple
+/// The [`executorch`](crate) crate encapsulates trivially movable Cpp objects as Rust objects using the simple
 /// `struct RustStruct(CppStruct)`, similar to the first example, but never does so for non-trivially movable objects.
 /// For such structs, Rust structs don't have an in-place field of the underlying Cpp object, rather a pointer.
 /// The pointer can point to one of three, according to what the Rust struct owns:
@@ -405,7 +405,7 @@ impl<'a> MemoryManager<'a> {
 ///   is deallocated.
 /// - Does not own the memory, owns the object: the pointer points to an allocated Cpp object in a [`Storage`], which is
 ///   pinned in memory, possibly on the stack (see later example). The destructor of the Cpp object is called when
-///   Rust object is dropped, but the [`Storage`] is not deallocated.
+///   the Rust object is dropped, but the [`Storage`] is not deallocated.
 /// - Does not own the memory, does not own the object: the pointer points to a Cpp object that is owned by another
 ///   entity, like a regular Rust reference. The destructor of the Cpp object is not called when the Rust object is
 ///   dropped and no deallocation is done.
@@ -461,12 +461,11 @@ impl<T: Storable> Storage<T> {
 ///
 /// Some types in the library required dedicated memory management, either to avoid heap allocations, to prevent moving
 /// the object, etc.
-/// The [`Storage`] struct helper function used to allocate memory for these types, see its description for more
-/// information.
+/// The [`Storage`] struct helps to allocate memory for these types, see its description for more information.
 /// The macro is a convenient way to create a pinned [`Storage`] object(s):
 /// - `storage!(T)` creates a single storage for type `T`, `Pin<&mut Storage<T>>`.
 /// - `storage!(T, [N])` creates an array on the stack, `Pin<&mut [Storage<T>, N]>`.
-/// - `storage!(T, (N))` creates a vector in the heap, `Pin<Box<[Storage<T>]>>`. Usually converted to
+/// - `storage!(T, (N))` creates a vector on the heap, `Pin<Box<[Storage<T>]>>`. Usually converted to
 ///   `Pin<&mut [Storage<T>, N]>` with [`as_mut()`](Pin::as_mut).
 ///
 /// ```rust,ignore

@@ -8,7 +8,7 @@
 //! let allocator = BufferMemoryAllocator::new(&mut buffer);
 //!
 //! let data_loader = BufferDataLoader::new(ADD_MODEL_BYTES);
-//! let program = Program::load(&data_loader, None).unwrap();
+//! let program = Program::load(data_loader.as_ref(), None).unwrap();
 //!
 //! let method_meta = program.method_meta(c"forward").unwrap();
 //!
@@ -57,7 +57,7 @@ use std::marker::PhantomData;
 use std::ptr;
 
 use crate::data_loader::DataLoader;
-use crate::data_map::{data_map_ptr2dyn, NamedDataMap};
+use crate::data_map::NamedDataMap;
 use crate::evalue::{EValue, Tag};
 use crate::event_tracer::EventTracer;
 use crate::memory::MemoryManager;
@@ -85,10 +85,12 @@ impl<'a> Program<'a> {
     ///
     /// A new instance of Program.
     pub fn load(
-        data_loader: &'a dyn DataLoader,
+        data_loader: &'a DataLoader,
         verification: Option<ProgramVerification>,
     ) -> Result<Self> {
-        let data_loader = data_loader.__data_loader_ptr();
+        let data_loader = sys::DataLoaderRefMut {
+            ptr: data_loader as *const _ as *mut _,
+        };
         let verification = verification.unwrap_or(ProgramVerification::Minimal).cpp();
         let program = try_c_new(|program| unsafe {
             sys::executorch_Program_load(data_loader, verification, program)
@@ -119,11 +121,11 @@ impl<'a> Program<'a> {
     }
 
     /// Get the named data map from the program.
-    pub fn get_named_data_map(&self) -> Result<&dyn NamedDataMap> {
+    pub fn get_named_data_map(&self) -> Result<&NamedDataMap> {
         let data_map = try_c_new(|data_map| unsafe {
             sys::executorch_Program_get_named_data_map(&self.0, data_map)
         })?;
-        Ok(unsafe { data_map_ptr2dyn(data_map) })
+        Ok(unsafe { &*data_map.ptr.cast() })
     }
 
     /// Loads the named method and prepares it for execution.
@@ -143,7 +145,7 @@ impl<'a> Program<'a> {
         method_name: &CStr,
         memory_manager: &'b MemoryManager,
         event_tracer: Option<&'b mut EventTracer>,
-        named_data_map: Option<&'b dyn NamedDataMap>,
+        named_data_map: Option<&'b NamedDataMap>,
     ) -> Result<Method<'b>> {
         let memory_manager = memory_manager.0.get();
         let event_tracer = event_tracer
@@ -153,7 +155,7 @@ impl<'a> Program<'a> {
             ptr: event_tracer as *mut _,
         };
         let named_data_map = named_data_map
-            .map(|map| map.__named_data_map_ptr().ptr as *const _)
+            .map(|map| map as *const _ as *const _)
             .unwrap_or(ptr::null());
         let named_data_map = sys::NamedDataMapRef {
             ptr: named_data_map,
@@ -429,6 +431,11 @@ impl<'a> TensorInfo<'a> {
         unsafe { sys::executorch_TensorInfo_scalar_type(&self.0) }.rs()
     }
 
+    /// Returns whether the tensor's memory was planned during export.
+    pub fn is_memory_planned(&self) -> bool {
+        unsafe { sys::executorch_TensorInfo_is_memory_planned(&self.0) }
+    }
+
     /// Returns the size of the tensor in bytes.
     pub fn nbytes(&self) -> usize {
         unsafe { sys::executorch_TensorInfo_nbytes(&self.0) }
@@ -548,6 +555,10 @@ impl<'a> Execution<'a> {
     }
 
     /// Execute the method.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if not all inputs were set before executing the method, or if the execution failed.
     pub fn execute(self) -> Result<Outputs<'a>> {
         if self.set_inputs != (1 << unsafe { sys::executorch_Method_inputs_size(self.method) }) - 1
         {
@@ -601,33 +612,36 @@ mod tests {
     #[test]
     fn load() {
         let loader = BufferDataLoader::new(ADD_MODEL_BYTES);
-        let program = Program::load(&loader, None);
+        let program = Program::load(loader.as_ref(), None);
         assert!(program.is_ok());
 
         let loader = BufferDataLoader::new(ADD_MODEL_BYTES);
-        let program = Program::load(&loader, Some(ProgramVerification::Minimal));
+        let program = Program::load(loader.as_ref(), Some(ProgramVerification::Minimal));
         assert!(program.is_ok());
 
         let loader = BufferDataLoader::new(ADD_MODEL_BYTES);
-        let program = Program::load(&loader, Some(ProgramVerification::InternalConsistency));
+        let program = Program::load(
+            loader.as_ref(),
+            Some(ProgramVerification::InternalConsistency),
+        );
         assert!(program.is_ok());
 
         let loader = BufferDataLoader::new(&[]);
-        let program = Program::load(&loader, None);
+        let program = Program::load(loader.as_ref(), None);
         assert!(program.is_err());
     }
 
     #[test]
     fn num_methods() {
         let loader = BufferDataLoader::new(ADD_MODEL_BYTES);
-        let program = Program::load(&loader, None).unwrap();
+        let program = Program::load(loader.as_ref(), None).unwrap();
         assert_eq!(program.num_methods(), 1);
     }
 
     #[test]
     fn get_method_name() {
         let loader = BufferDataLoader::new(ADD_MODEL_BYTES);
-        let program = Program::load(&loader, None).unwrap();
+        let program = Program::load(loader.as_ref(), None).unwrap();
         assert_eq!(program.get_method_name(0).ok(), Some("forward"));
         assert_eq!(program.get_method_name(1).ok(), None);
     }
@@ -635,7 +649,7 @@ mod tests {
     #[test]
     fn method_meta() {
         let loader = BufferDataLoader::new(ADD_MODEL_BYTES);
-        let program = Program::load(&loader, None).unwrap();
+        let program = Program::load(loader.as_ref(), None).unwrap();
         let method_meta = program.method_meta(c"forward").unwrap();
         assert!(program.method_meta(c"non-existing-method").is_err());
 
@@ -651,6 +665,7 @@ mod tests {
             assert_eq!(tinfo.sizes(), &[1]);
             assert_eq!(tinfo.dim_order(), &[0]);
             assert_eq!(tinfo.scalar_type(), ScalarType::Float);
+            assert!(tinfo.is_memory_planned());
             assert_eq!(tinfo.nbytes(), 4);
         }
 
@@ -661,6 +676,7 @@ mod tests {
         assert_eq!(tinfo.sizes(), &[1]);
         assert_eq!(tinfo.dim_order(), &[0]);
         assert_eq!(tinfo.scalar_type(), ScalarType::Float);
+        assert!(tinfo.is_memory_planned());
         assert_eq!(tinfo.nbytes(), 4);
         assert!(method_meta.output_tensor_meta(1).is_err());
 
@@ -695,8 +711,11 @@ mod tests {
         let allocator = BufferMemoryAllocator::new(&mut buffer);
 
         let data_loader = BufferDataLoader::new(ADD_MODEL_BYTES);
-        let program =
-            Program::load(&data_loader, Some(ProgramVerification::InternalConsistency)).unwrap();
+        let program = Program::load(
+            data_loader.as_ref(),
+            Some(ProgramVerification::InternalConsistency),
+        )
+        .unwrap();
 
         let method_meta = program.method_meta(c"forward").unwrap();
         let num_memory_planned_buffers = method_meta.num_memory_planned_buffers();
@@ -742,8 +761,11 @@ mod tests {
         let allocator = BufferMemoryAllocator::new(&mut buffer);
 
         let data_loader = BufferDataLoader::new(ADD_MODEL_BYTES);
-        let program =
-            Program::load(&data_loader, Some(ProgramVerification::InternalConsistency)).unwrap();
+        let program = Program::load(
+            data_loader.as_ref(),
+            Some(ProgramVerification::InternalConsistency),
+        )
+        .unwrap();
 
         let method_meta = program.method_meta(c"forward").unwrap();
         let num_memory_planned_buffers = method_meta.num_memory_planned_buffers();

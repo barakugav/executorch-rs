@@ -10,13 +10,12 @@ use crate::sys;
 
 /// Loads from a data source.
 ///
-/// This struct is like a base class for data loaders. All other data loaders implement this trait and other
-/// structs, such as [`Program`], take a reference to [`DataLoader`] instead of the concrete data loader type.
+/// This struct is like a base class for data loaders. All other data loaders implement `AsRef<DataLoader>`. Other
+/// structs such as [`Program`], take a reference to [`DataLoader`] instead of the concrete data loader type.
 ///
 /// [`Program`]: crate::program::Program
-pub trait DataLoader {
-    #[doc(hidden)]
-    fn __data_loader_ptr(&self) -> sys::DataLoaderRefMut;
+pub struct DataLoader {
+    _void: [core::ffi::c_void; 0],
 }
 
 /// A DataLoader that wraps a pre-allocated buffer. The FreeableBuffers
@@ -34,9 +33,10 @@ impl<'a> BufferDataLoader<'a> {
         Self(UnsafeCell::new(loader), PhantomData)
     }
 }
-impl DataLoader for BufferDataLoader<'_> {
-    fn __data_loader_ptr(&self) -> sys::DataLoaderRefMut {
-        unsafe { sys::executorch_BufferDataLoader_as_data_loader_mut(self.0.get()) }
+impl AsRef<DataLoader> for BufferDataLoader<'_> {
+    fn as_ref(&self) -> &DataLoader {
+        let loader = unsafe { sys::executorch_BufferDataLoader_as_data_loader_mut(self.0.get()) };
+        unsafe { &*loader.ptr.cast() }
     }
 }
 
@@ -118,9 +118,10 @@ mod file_data_loader {
             Ok(Self(UnsafeCell::new(loader)))
         }
     }
-    impl DataLoader for FileDataLoader {
-        fn __data_loader_ptr(&self) -> sys::DataLoaderRefMut {
-            unsafe { sys::executorch_FileDataLoader_as_data_loader_mut(self.0.get()) }
+    impl AsRef<DataLoader> for FileDataLoader {
+        fn as_ref(&self) -> &DataLoader {
+            let loader = unsafe { sys::executorch_FileDataLoader_as_data_loader_mut(self.0.get()) };
+            unsafe { &*loader.ptr.cast() }
         }
     }
     impl Drop for FileDataLoader {
@@ -188,9 +189,10 @@ mod file_data_loader {
             Ok(Self(UnsafeCell::new(loader)))
         }
     }
-    impl DataLoader for MmapDataLoader {
-        fn __data_loader_ptr(&self) -> sys::DataLoaderRefMut {
-            unsafe { sys::executorch_MmapDataLoader_as_data_loader_mut(self.0.get()) }
+    impl AsRef<DataLoader> for MmapDataLoader {
+        fn as_ref(&self) -> &DataLoader {
+            let loader = unsafe { sys::executorch_MmapDataLoader_as_data_loader_mut(self.0.get()) };
+            unsafe { &*loader.ptr.cast() }
         }
     }
     impl Drop for MmapDataLoader {

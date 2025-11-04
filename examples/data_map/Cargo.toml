@@ -12,4 +12,4 @@ executorch = { path = "../../executorch/", features = [
     "tensor-ptr",
     "flat-tensor",
 ] }
-ndarray = { version = "0.17", default-features = false }
+ndarray = { version = "0.17.1", default-features = false }

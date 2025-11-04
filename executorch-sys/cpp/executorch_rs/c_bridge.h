@@ -690,6 +690,7 @@ extern "C"
 #if defined(EXECUTORCH_RS_FLAT_TENSOR)
     // FlatTensorDataMap
     enum Error executorch_FlatTensorDataMap_load(struct DataLoaderRefMut loader, struct FlatTensorDataMap *out);
+    struct NamedDataMapRefMut executorch_FlatTensorDataMap_as_named_data_map_mut(struct FlatTensorDataMap *self);
 #endif
 
     // Tensor
@@ -802,6 +803,7 @@ extern "C"
     struct ArrayRefI32 executorch_TensorInfo_sizes(const struct TensorInfo *self);
     struct ArrayRefU8 executorch_TensorInfo_dim_order(const struct TensorInfo *self);
     enum ScalarType executorch_TensorInfo_scalar_type(const struct TensorInfo *self);
+    bool executorch_TensorInfo_is_memory_planned(const struct TensorInfo *self);
     size_t executorch_TensorInfo_nbytes(const struct TensorInfo *self);
     struct ArrayRefChar executorch_TensorInfo_name(const struct TensorInfo *self);
 

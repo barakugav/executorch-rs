@@ -68,6 +68,10 @@ pub(crate) mod ffi {
         #[namespace = "executorch_rs"]
         fn Module_load(self_: Pin<&mut Module>, verification: ProgramVerification) -> Error;
 
+        /// Checks if the program is loaded.
+        #[namespace = "executorch_rs"]
+        fn Module_is_loaded(self_: &Module) -> bool;
+
         /// Get the number of methods available in the loaded program.
         ///
         /// # Safety

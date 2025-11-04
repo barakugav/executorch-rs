@@ -34,7 +34,7 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-    executorch::platform::pal_init();
+    unsafe { executorch::platform::pal_init() };
 
     // Load the exported nanoGPT program, which was generated via the previous
     // steps.
