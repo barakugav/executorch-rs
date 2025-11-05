@@ -16,7 +16,7 @@ extern "C"
     /**
      * ExecuTorch Error type.
      */
-    enum Error
+    enum Error : uint32_t
     {
         /*
          * System errors.
@@ -98,7 +98,7 @@ extern "C"
     /**
      * Describes the presence of an ExecuTorch program header.
      */
-    enum ProgramHeaderStatus
+    enum ProgramHeaderStatus : uint32_t
     {
         /**
          * An ExecuTorch program header is present, and its version is compatible
@@ -126,7 +126,7 @@ extern "C"
     /**
      * Types of validation that the Program can do before parsing the data.
      */
-    enum ProgramVerification
+    enum ProgramVerification : uint8_t
     {
         /**
          * Do minimal verification of the data, ensuring that the header appears
@@ -154,20 +154,20 @@ extern "C"
      * typically ensure that they are not swapped out. The actual behavior
      * will depend on the host system.
      */
-    enum MmapDataLoaderMlockConfig
+    enum MmapDataLoaderMlockConfig : uint32_t
     {
         /// Do not call `mlock()` on loaded pages.
-        ModuleLoadMode_NoMlock,
+        MmapDataLoaderMlockConfig_NoMlock,
         /// Call `mlock()` on loaded pages, failing if it fails.
-        ModuleLoadMode_UseMlock,
+        MmapDataLoaderMlockConfig_UseMlock,
         /// Call `mlock()` on loaded pages, ignoring errors if it fails.
-        ModuleLoadMode_UseMlockIgnoreErrors,
+        MmapDataLoaderMlockConfig_UseMlockIgnoreErrors,
     };
 
     /**
      * Enum to define loading behavior.
      */
-    enum ModuleLoadMode
+    enum ModuleLoadMode : uint32_t
     {
         /// Load the whole file as a buffer.
         ModuleLoadMode_File,
@@ -179,7 +179,7 @@ extern "C"
         ModuleLoadMode_MmapUseMlockIgnoreErrors,
     };
 
-    enum Tag
+    enum Tag : uint32_t
     {
         Tag_None,
         Tag_Tensor,
@@ -195,7 +195,7 @@ extern "C"
         Tag_ListOptionalTensor,
     };
 
-    enum ScalarType
+    enum ScalarType : int8_t
     {
         ScalarType_Byte,
         ScalarType_Char,
@@ -249,7 +249,7 @@ extern "C"
      *
      * The rank of an ExecuTorch Tensors can never change, but shape sometimes can.
      */
-    enum TensorShapeDynamism
+    enum TensorShapeDynamism : uint8_t
     {
         /// Cannot change shape.
         TensorShapeDynamism_STATIC = 0,
@@ -833,7 +833,7 @@ extern "C"
      * Severity level of a log message. Values must map to printable 7-bit ASCII
      * uppercase letters.
      */
-    enum executorch_pal_log_level
+    enum executorch_pal_log_level : uint32_t
     {
         EXECUTORCH_PAL_LOG_LEVEL_DEBUG = 'D',
         EXECUTORCH_PAL_LOG_LEVEL_INFO = 'I',
