@@ -503,14 +503,14 @@ impl<'a> IntoEValue<'a> for &'a [bool] {
 impl<'a> IntoEValue<'a> for &'a [std::ffi::c_char] {
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a> {
-        let self_ = unsafe { std::mem::transmute::<&[std::ffi::c_char], &[FfiChar]>(self) };
+        let self_ = FfiChar::slice_from_ffi(self);
         let arr = ArrayRef::from_slice(self_);
         // Safety: the closure init the pointer
         unsafe { EValue::new_impl(|p| sys::executorch_EValue_new_from_string(p, arr.0)) }
     }
 
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
-        let self_ = unsafe { std::mem::transmute::<&[std::ffi::c_char], &[FfiChar]>(self) };
+        let self_ = FfiChar::slice_from_ffi(self);
         let arr = ArrayRef::from_slice(self_);
         // Safety: the closure init the pointer
         unsafe {
@@ -561,6 +561,7 @@ impl<'a> IntoEValue<'a> for RawTensor<'a> {
 impl<'a> IntoEValue<'a> for &'a RawTensor<'_> {
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a> {
+        // Safety: the closure init the pointer
         unsafe { EValue::new_impl(|p| sys::executorch_EValue_new_from_tensor(p, self.as_cpp())) }
     }
 
@@ -717,7 +718,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for &'a [std::ffi::c_char] {
     fn try_from(value: &'a EValue) -> Result<Self> {
         if value.tag() == Tag::String {
             let chars = unsafe { sys::executorch_EValue_as_string(value.cpp()).as_slice() };
-            let chars = unsafe { std::mem::transmute::<&[FfiChar], &[std::ffi::c_char]>(chars) };
+            let chars = FfiChar::slice_to_ffi(chars);
             Ok(chars)
         } else {
             Err(Error::InvalidType)

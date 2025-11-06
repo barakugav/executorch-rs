@@ -7,6 +7,7 @@ use executorch::module::Module;
 use executorch::tensor::{Tensor, TensorImpl};
 
 fn main() {
+    // Safety: we call pal_init once, before any other executorch operations, and before any thread is spawned
     unsafe { executorch::platform::pal_init() };
 
     let model_path = Path::new(env!("CARGO_MANIFEST_DIR"))

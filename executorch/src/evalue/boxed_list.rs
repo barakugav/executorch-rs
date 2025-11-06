@@ -1,3 +1,4 @@
+use core::ops::Not;
 use core::pin::Pin;
 use std::marker::PhantomData;
 use std::mem::MaybeUninit;
@@ -336,11 +337,12 @@ impl<'a> EValuePtrList<'a> {
     /// Returns Some(None) if the pointer at the given entry is null.
     fn get(&self, index: usize) -> Option<Option<EValue<'_>>> {
         let ptr = *self.as_slice().get(index)?;
-        Some(if ptr.ptr.is_null() {
-            None
-        } else {
-            Some(unsafe { EValue::from_inner_ref(ptr) })
-        })
+        Some(
+            ptr.ptr
+                .is_null()
+                .not()
+                .then(|| unsafe { EValue::from_inner_ref(ptr) }),
+        )
     }
 }
 /// An element within a [`EValuePtrList`].

@@ -105,15 +105,6 @@ impl<'a> Module<'a> {
         Ok(num_methods)
     }
 
-    // /// Checks if the program is loaded.
-    // ///
-    // /// # Returns
-    // ///
-    // /// true if the program is loaded, false otherwise.
-    // pub fn is_loaded(&self) -> bool {
-    //     unsafe { sys::extension::Module_is_loaded(self.0.as_ref()) }
-    // }
-
     /// Get a list of method names available in the loaded program.
     /// Loads the program and method if needed.
     ///
@@ -219,11 +210,15 @@ impl<'a> Module<'a> {
     /// # Panics
     ///
     /// May panic if the method name contains a null character.
-    pub fn method_meta(&mut self, method_name: &str) -> Result<MethodMeta<'a>> {
+    pub fn method_meta<'b>(&'b mut self, method_name: &str) -> Result<MethodMeta<'b>> {
         sys::cxx::let_cxx_string!(method_name = method_name);
-        let meta = try_c_new(|meta| unsafe {
-            sys::cpp::Module_method_meta(self.0.as_mut().unwrap(), &method_name, meta)
-        })?;
+        // Safety: sys::Module_method_meta writes to the pointer.
+        let meta = unsafe {
+            try_c_new(|meta| {
+                sys::cpp::Module_method_meta(self.0.as_mut().unwrap(), &method_name, meta)
+            })?
+        };
+        // Safety: the method metadata is valid as long as self is valid
         Ok(unsafe { MethodMeta::new(meta) })
     }
 
@@ -259,10 +254,13 @@ impl<'a> Module<'a> {
             })
         };
         let inputs = ArrayRef::from_slice(inputs.as_slice());
-        let mut outputs = try_c_new(|outputs| unsafe {
-            sys::cpp::Module_execute(self.0.as_mut().unwrap(), &method_name, inputs.0, outputs)
-        })?
-        .rs();
+        // Safety: sys::Module_execute writes to the pointer.
+        let mut outputs = unsafe {
+            try_c_new(|outputs| {
+                sys::cpp::Module_execute(self.0.as_mut().unwrap(), &method_name, inputs.0, outputs)
+            })?
+            .rs()
+        };
         Ok(outputs
             .as_mut_slice()
             .iter_mut()

@@ -112,9 +112,12 @@ mod file_data_loader {
         /// The `file_name` should be a valid UTF-8 string and not contains a null byte other than the one at the end.
         pub fn from_path_cstr(file_name: &CStr, alignment: Option<usize>) -> Result<Self> {
             let alignment = alignment.unwrap_or(16);
-            let loader = try_c_new(|loader| unsafe {
-                sys::executorch_FileDataLoader_new(file_name.as_ptr(), alignment, loader)
-            })?;
+            // Safety: sys::executorch_FileDataLoader_new writes to the pointer.
+            let loader = unsafe {
+                try_c_new(|loader| {
+                    sys::executorch_FileDataLoader_new(file_name.as_ptr(), alignment, loader)
+                })?
+            };
             Ok(Self(UnsafeCell::new(loader)))
         }
     }
@@ -183,9 +186,12 @@ mod file_data_loader {
         /// The `file_name` should be a valid UTF-8 string and not contains a null byte other than the one at the end.
         pub fn from_path_cstr(file_name: &CStr, mlock_config: Option<MlockConfig>) -> Result<Self> {
             let mlock_config = mlock_config.unwrap_or(MlockConfig::UseMlock).cpp();
-            let loader = try_c_new(|loader| unsafe {
-                sys::executorch_MmapDataLoader_new(file_name.as_ptr(), mlock_config, loader)
-            })?;
+            // Safety: sys::executorch_MmapDataLoader_new writes to the pointer.
+            let loader = unsafe {
+                try_c_new(|loader| {
+                    sys::executorch_MmapDataLoader_new(file_name.as_ptr(), mlock_config, loader)
+                })?
+            };
             Ok(Self(UnsafeCell::new(loader)))
         }
     }

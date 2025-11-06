@@ -24,12 +24,24 @@ impl<'a, T, const N: usize> TensorAccessorInner<'a, T, N> {
     }
 
     fn offset_of(&self, index: [usize; N]) -> Option<isize> {
+        // Safety: we check the index validity before calling the unsafe function
         self.is_valid_index(index)
-            .then(|| unsafe { self.offset_of_unchecked(index) })
+            .then(|| unsafe { self.offset_of_unchecked_impl(index) })
     }
 
+    /// # Safety
+    ///
+    /// The caller must ensure that the index is within bounds.
     unsafe fn offset_of_unchecked(&self, index: [usize; N]) -> isize {
         debug_assert!(self.is_valid_index(index));
+        // Safety: enforced by the caller
+        unsafe { self.offset_of_unchecked_impl(index) }
+    }
+
+    /// # Safety
+    ///
+    /// The caller must ensure that the index is within bounds.
+    unsafe fn offset_of_unchecked_impl(&self, index: [usize; N]) -> isize {
         let mut offset = 0isize;
         for (&idx, stride) in index.iter().zip(self.strides) {
             offset += idx as isize * stride as isize;

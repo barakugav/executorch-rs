@@ -4,6 +4,7 @@
 //! This enable using the library in embedded systems where dynamic memory allocation is not allowed, or when allocation
 //! is a performance bottleneck.
 
+use core::ops::Not;
 use std::cell::UnsafeCell;
 use std::marker::{PhantomData, PhantomPinned};
 use std::mem::MaybeUninit;
@@ -43,11 +44,9 @@ impl MemoryAllocator<'_> {
     pub fn allocate_raw(&self, size: usize, alignment: usize) -> Option<&mut [u8]> {
         let ptr =
             unsafe { sys::executorch_MemoryAllocator_allocate(self.0.get(), size, alignment) };
-        if ptr.is_null() {
-            None
-        } else {
-            Some(unsafe { std::slice::from_raw_parts_mut(ptr as *mut u8, size) })
-        }
+        ptr.is_null()
+            .not()
+            .then(|| unsafe { std::slice::from_raw_parts_mut(ptr as *mut u8, size) })
     }
 
     /// Allocates memory for a type `T` with uninitialized memory.
@@ -272,8 +271,10 @@ impl<'a> HierarchicalAllocator<'a> {
     ///   `buffers.size()` must be >= `MethodMeta::num_non_const_buffers()`.
     ///   `buffers[N].size()` must be >= `MethodMeta::non_const_buffer_size(N)`.
     pub fn new(buffers: &'a mut [Span<'a, u8>]) -> Self {
-        // Safety: safe because the memory layout of [Span<u8>] and [sys::SpanU8] is the same.
-        let buffers: &'a mut [sys::SpanU8] = unsafe { std::mem::transmute(buffers) };
+        // Safety: the memory layout of [Span<u8>] and [sys::SpanU8] is the same.
+        let buffers = unsafe {
+            std::mem::transmute::<&'a mut [Span<'a, u8>], &'a mut [sys::SpanU8]>(buffers)
+        };
         let buffers = sys::SpanSpanU8 {
             data: buffers.as_mut_ptr(),
             len: buffers.len(),

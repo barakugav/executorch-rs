@@ -468,6 +468,7 @@ impl<'a> RawTensorImpl<'a> {
             return Err(Error::InvalidArgument);
         }
 
+        // Safety: sys::executorch_TensorImpl_new writes to the pointer.
         let impl_ = unsafe {
             c_new(|this| {
                 sys::executorch_TensorImpl_new(

@@ -13,6 +13,7 @@ use executorch::util::Span;
 use ndarray::array;
 
 fn main() {
+    // Safety: we call pal_init once, before any other executorch operations, and before any thread is spawned
     unsafe { executorch::platform::pal_init() };
 
     println!("Running the model using a Module...");
