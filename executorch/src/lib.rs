@@ -58,7 +58,7 @@
 //! ## Cargo Features
 //! - `data-loader`:
 //!   Includes additional structs in the [`data_loader`] module for loading data. Without this feature the only
-//!   available data loader is `BufferDataLoader. `The `libextension_data_loader.a` static library is
+//!   available data loader is [`BufferDataLoader`](data_loader::BufferDataLoader). The `libextension_data_loader.a` static library is
 //!   required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON`.
 //! - `module`:
 //!   Includes the [`module`] API, a high-level API for loading and executing PyTorch models. It is an alternative to
@@ -72,11 +72,11 @@
 //!   static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_TENSOR=ON`.
 //!   Also includes the `std` feature.
 //! - `flat-tensor`:
-//!   Includes the `FlatTensorDataMap` struct that can read `.ptd` files with external tensors for models.
+//!   Includes the [`data_map::FlatTensorDataMap`] struct that can read `.ptd` files with external tensors for models.
 //!   The `libextension_flat_tensor.a` static library is required,
 //!   compile C++ `executorch` with `EXECUTORCH_BUILD_EXTENSION_FLAT_TENSOR=ON`.
 //! - `etdump`:
-//!   Includes the `ETDumpGen` struct, an implementation of an `EventTracer`, used for debugging and profiling.
+//!   Includes the [`event_tracer::ETDumpGen`] struct, an implementation of an `EventTracer`, used for debugging and profiling.
 //!   The `libetdump.a` static library is required, compile C++ `executorch` with `EXECUTORCH_BUILD_DEVTOOLS=ON` and
 //!   `EXECUTORCH_ENABLE_EVENT_TRACER=ON`.
 //!   In addition, the `flatcc` (or `flatcc_d`) library is required, available at `{CMAKE_DIR}/third-party/flatcc_ep/lib/`,
