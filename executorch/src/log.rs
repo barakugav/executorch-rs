@@ -8,8 +8,8 @@ macro_rules! file_cstr {
 
 macro_rules! log {
     ($level:ident, $($arg:tt)*) => {{
-        let timestamp = unsafe { $crate::sys::executorch_pal_current_ticks() };
-        let level = $crate::sys::executorch_pal_log_level::$level;
+        let timestamp = unsafe { executorch_sys::executorch_pal_current_ticks() };
+        let level = executorch_sys::executorch_pal_log_level::$level;
         let filename = crate::log::file_cstr!();
         let function = c"";
         let line = line!() as usize;

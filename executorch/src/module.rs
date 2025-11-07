@@ -12,12 +12,14 @@ use core::marker::PhantomData;
 use std::collections::HashSet;
 use std::path::Path;
 
+use executorch_sys as sys;
+
 use crate::evalue::EValue;
 use crate::event_tracer::{EventTracer, EventTracerPtr};
 use crate::memory::HierarchicalAllocator;
 use crate::program::{MethodMeta, ProgramVerification};
 use crate::util::{try_c_new, ArrayRef, IntoCpp, IntoRust, NonTriviallyMovableVec};
-use crate::{sys, Error, Result};
+use crate::{Error, Result};
 
 /// A facade class for loading programs and executing methods within them.
 ///

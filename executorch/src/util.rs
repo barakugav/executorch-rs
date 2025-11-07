@@ -13,7 +13,7 @@ use std::pin::Pin;
 #[cfg(feature = "alloc")]
 use crate::alloc;
 use crate::memory::{Storable, Storage};
-use crate::sys;
+use executorch_sys as sys;
 
 pub(crate) trait Destroy {
     /// Destroy the object without deallocating its memory.
@@ -586,7 +586,7 @@ pub(crate) fn path2cstring(path: &std::path::Path) -> Result<std::ffi::CString, 
 #[allow(unused)]
 pub(crate) mod cpp_vec {
     use super::IntoRust;
-    use crate::sys;
+    use executorch_sys as sys;
 
     // pub(crate) fn vec_as_slice<T: CppVecElement>(vec: &T::VecImpl) -> &[T] {
     //     unsafe { std::slice::from_raw_parts(vec.data, vec.len) }

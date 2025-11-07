@@ -2,10 +2,12 @@ use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
 use std::pin::Pin;
 
+use executorch_sys as sys;
+
 use super::{DimOrderType, RawTensor, RawTensorImpl, Scalar, ScalarType, SizesType, StridesType};
 use crate::memory::{MemoryAllocator, Storable, Storage};
 use crate::tensor::{TensorAccessor, TensorAccessorMut};
-use crate::{sys, Error, Result};
+use crate::{Error, Result};
 
 /// A minimal Tensor type whose API is a source compatible subset of at::Tensor.
 ///

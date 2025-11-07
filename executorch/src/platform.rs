@@ -3,10 +3,10 @@
 //!
 //! PAL functions are defined as C functions so a platform library implementer can use C in lieu of C++.
 
-use crate::sys;
 use core::ffi::CStr;
 use core::ops::Not;
 use core::ptr::NonNull;
+use executorch_sys as sys;
 
 /// Initialize the platform abstraction layer.
 ///

@@ -3,10 +3,12 @@ use core::pin::Pin;
 use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 
+use executorch_sys as sys;
+
 use crate::memory::{Storable, Storage};
 use crate::tensor::TensorAny;
 use crate::util::IntoCpp;
-use crate::{sys, Error, Result};
+use crate::{Error, Result};
 
 use super::{EValue, Tag};
 

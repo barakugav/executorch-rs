@@ -6,7 +6,7 @@
 use std::cell::UnsafeCell;
 use std::marker::PhantomData;
 
-use crate::sys;
+use executorch_sys as sys;
 
 /// Loads from a data source.
 ///
@@ -48,8 +48,10 @@ mod file_data_loader {
     use std::cell::UnsafeCell;
     use std::ffi::CStr;
 
+    use executorch_sys as sys;
+
     use crate::util::{try_c_new, IntoCpp};
-    use crate::{sys, Result};
+    use crate::Result;
 
     use super::DataLoader;
 

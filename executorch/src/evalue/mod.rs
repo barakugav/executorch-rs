@@ -6,12 +6,14 @@
 use std::ffi::CStr;
 use std::pin::Pin;
 
+use executorch_sys as sys;
+
 use crate::memory::{MemoryAllocator, Storable, Storage};
 use crate::tensor::{RawTensor, TensorAny, TensorBase};
 use crate::util::{
     ArrayRef, Destroy, FfiChar, IntoCpp, IntoRust, NonTriviallyMovable, __ArrayRefImpl, chars2str,
 };
-use crate::{sys, Error, Result};
+use crate::{Error, Result};
 
 /// A tag indicating the type of the value stored in an [`EValue`].
 #[repr(u32)]

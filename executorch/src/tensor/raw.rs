@@ -1,13 +1,15 @@
 use std::marker::PhantomData;
 use std::pin::Pin;
 
+use executorch_sys as sys;
+
 use crate::memory::{Storable, Storage};
 use crate::tensor::{
     DimOrderType, Scalar, ScalarType, SizesType, StridesType, TensorAccessor, TensorAccessorInner,
     TensorAccessorMut,
 };
 use crate::util::{Destroy, IntoCpp, IntoRust, NonTriviallyMovable, __ArrayRefImpl, c_new};
-use crate::{sys, Error, Result};
+use crate::{Error, Result};
 
 /// A raw tensor that does not own the underlying data.
 ///

@@ -11,7 +11,7 @@ pub struct EventTracer<'a>([std::ffi::c_void; 0], PhantomData<&'a ()>);
 /// A unique pointer to an EventTracer.
 #[cfg(feature = "module")]
 pub struct EventTracerPtr<'a>(
-    pub(crate) crate::sys::cxx::UniquePtr<crate::sys::cpp::EventTracer>,
+    pub(crate) executorch_sys::cxx::UniquePtr<executorch_sys::cpp::EventTracer>,
     PhantomData<&'a ()>,
 );
 
@@ -21,7 +21,7 @@ pub use etdump::*;
 mod etdump {
     use std::marker::PhantomData;
 
-    use crate::sys;
+    use executorch_sys as sys;
 
     use super::EventTracer;
 

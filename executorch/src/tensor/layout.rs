@@ -1,6 +1,6 @@
 use core::marker::PhantomData;
 
-use crate::sys;
+use executorch_sys as sys;
 
 use crate::tensor::ScalarType;
 use crate::util::{IntoRust, __ArrayRefImpl};

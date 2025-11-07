@@ -12,7 +12,7 @@ use std::ops::Deref;
 use std::pin::Pin;
 use std::ptr;
 
-use crate::sys;
+use executorch_sys as sys;
 use crate::util::Span;
 
 /// An allocator used to allocate objects for the runtime.

@@ -56,6 +56,8 @@ use std::ffi::CStr;
 use std::marker::PhantomData;
 use std::ptr;
 
+use executorch_sys as sys;
+
 use crate::data_loader::DataLoader;
 use crate::data_map::NamedDataMap;
 use crate::evalue::{EValue, Tag};
@@ -63,7 +65,7 @@ use crate::event_tracer::EventTracer;
 use crate::memory::MemoryManager;
 use crate::tensor::ScalarType;
 use crate::util::{try_c_new, ArrayRef, IntoCpp, IntoRust, __ArrayRefImpl, chars2str, FfiChar};
-use crate::{sys, Error, Result};
+use crate::{Error, Result};
 
 /// A deserialized ExecuTorch program binary.
 ///
