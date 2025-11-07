@@ -100,9 +100,12 @@ impl<'a> Module<'a> {
 
     /// Get the number of methods available in the loaded program.
     pub fn num_methods(&mut self) -> Result<usize> {
-        let mut num_methods = 0;
-        unsafe { sys::cpp::Module_num_methods(self.0.as_mut().unwrap(), &mut num_methods).rs()? };
-        Ok(num_methods)
+        // Safety: sys::Module_num_methods writes to the pointer.
+        unsafe {
+            try_c_new(|num_methods| {
+                sys::cpp::Module_num_methods(self.0.as_mut().unwrap(), num_methods)
+            })
+        }
     }
 
     /// Get a list of method names available in the loaded program.
@@ -112,9 +115,8 @@ impl<'a> Module<'a> {
     ///
     /// A set of strings containing the names of the methods, or an error if the program or method failed to load.
     pub fn method_names(&mut self) -> Result<HashSet<String>> {
-        let mut names = Vec::new();
         let self_ = self.0.as_mut().unwrap();
-        unsafe { sys::cpp::Module_method_names(self_, &mut names).rs()? };
+        let names = unsafe { try_c_new(|names| sys::cpp::Module_method_names(self_, names)) }?;
         Ok(names.into_iter().map(|s| s.to_string()).collect())
     }
 
