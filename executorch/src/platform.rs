@@ -3,10 +3,10 @@
 //!
 //! PAL functions are defined as C functions so a platform library implementer can use C in lieu of C++.
 
-use crate::sys;
 use core::ffi::CStr;
 use core::ops::Not;
 use core::ptr::NonNull;
+use executorch_sys as sys;
 
 /// Initialize the platform abstraction layer.
 ///
@@ -86,8 +86,11 @@ impl PlatformImpl {
         F: Fn() + Copy + Send + Sync + 'static,
     {
         Self::check_closure_is_valid_for_ffi::<F>();
-        unsafe extern "C" fn f_impl<F: Fn()>() {
-            let f = unsafe { NonNull::<F>::dangling().as_ref() };
+        unsafe extern "C" fn f_impl<F>()
+        where
+            F: Fn() + Copy + Send + Sync + 'static,
+        {
+            let f = PlatformImpl::closure_out_of_thin_air::<F>();
             f()
         }
         self.0.init = Some(f_impl::<F>);
@@ -109,8 +112,11 @@ impl PlatformImpl {
         F: Fn() + Copy + Send + Sync + 'static,
     {
         Self::check_closure_is_valid_for_ffi::<F>();
-        unsafe extern "C" fn f_impl<F: Fn()>() {
-            let f = unsafe { NonNull::<F>::dangling().as_ref() };
+        unsafe extern "C" fn f_impl<F>()
+        where
+            F: Fn() + Copy + Send + Sync + 'static,
+        {
+            let f = PlatformImpl::closure_out_of_thin_air::<F>();
             f()
         }
         self.0.abort = Some(f_impl::<F>);
@@ -132,8 +138,11 @@ impl PlatformImpl {
         F: Fn() -> Timestamp + Copy + Send + Sync + 'static,
     {
         Self::check_closure_is_valid_for_ffi::<F>();
-        unsafe extern "C" fn f_impl<F: Fn() -> Timestamp>() -> sys::executorch_timestamp_t {
-            let f = unsafe { NonNull::<F>::dangling().as_ref() };
+        unsafe extern "C" fn f_impl<F>() -> sys::executorch_timestamp_t
+        where
+            F: Fn() -> Timestamp + Copy + Send + Sync + 'static,
+        {
+            let f = PlatformImpl::closure_out_of_thin_air::<F>();
             f().0
         }
         self.0.current_ticks = Some(f_impl::<F>);
@@ -160,8 +169,11 @@ impl PlatformImpl {
         F: Fn() -> TickRatio + Copy + Send + Sync + 'static,
     {
         Self::check_closure_is_valid_for_ffi::<F>();
-        unsafe extern "C" fn f_impl<F: Fn() -> TickRatio>() -> sys::executorch_tick_ratio {
-            let f = unsafe { NonNull::<F>::dangling().as_ref() };
+        unsafe extern "C" fn f_impl<F>() -> sys::executorch_tick_ratio
+        where
+            F: Fn() -> TickRatio + Copy + Send + Sync + 'static,
+        {
+            let f = PlatformImpl::closure_out_of_thin_air::<F>();
             f().0
         }
         self.0.ticks_to_ns_multiplier = Some(f_impl::<F>);
@@ -181,7 +193,7 @@ impl PlatformImpl {
         F: Fn(LogEntry) + Copy + Send + Sync + 'static,
     {
         Self::check_closure_is_valid_for_ffi::<F>();
-        unsafe extern "C" fn f_impl<F: Fn(LogEntry)>(
+        unsafe extern "C" fn f_impl<F>(
             timestamp: sys::executorch_timestamp_t,
             level: sys::executorch_pal_log_level,
             filename: *const ::core::ffi::c_char,
@@ -189,7 +201,9 @@ impl PlatformImpl {
             line: usize,
             message: *const ::core::ffi::c_char,
             length: usize,
-        ) {
+        ) where
+            F: Fn(LogEntry) + Copy + Send + Sync + 'static,
+        {
             let timestamp = Timestamp(timestamp);
             let level = match level {
                 sys::executorch_pal_log_level::EXECUTORCH_PAL_LOG_LEVEL_DEBUG => LogLevel::Debug,
@@ -218,7 +232,7 @@ impl PlatformImpl {
                 .flatten()
                 .unwrap_or("? (invalid utf8 str)");
 
-            let f = unsafe { NonNull::<F>::dangling().as_ref() };
+            let f = PlatformImpl::closure_out_of_thin_air::<F>();
             f(LogEntry {
                 timestamp,
                 level,
@@ -249,10 +263,11 @@ impl PlatformImpl {
         F: Fn(usize) -> Option<NonNull<core::ffi::c_void>> + Copy + Send + Sync + 'static,
     {
         Self::check_closure_is_valid_for_ffi::<F>();
-        unsafe extern "C" fn f_impl<F: Fn(usize) -> Option<NonNull<core::ffi::c_void>>>(
-            size: usize,
-        ) -> *mut core::ffi::c_void {
-            let f = unsafe { NonNull::<F>::dangling().as_ref() };
+        unsafe extern "C" fn f_impl<F>(size: usize) -> *mut core::ffi::c_void
+        where
+            F: Fn(usize) -> Option<NonNull<core::ffi::c_void>> + Copy + Send + Sync + 'static,
+        {
+            let f = PlatformImpl::closure_out_of_thin_air::<F>();
             f(size)
                 .map(|ptr| ptr.as_ptr())
                 .unwrap_or(core::ptr::null_mut())
@@ -276,8 +291,11 @@ impl PlatformImpl {
         F: Fn(*mut core::ffi::c_void) + Copy + Send + Sync + 'static,
     {
         Self::check_closure_is_valid_for_ffi::<F>();
-        unsafe extern "C" fn f_impl<F: Fn(*mut core::ffi::c_void)>(ptr: *mut core::ffi::c_void) {
-            let f = unsafe { NonNull::<F>::dangling().as_ref() };
+        unsafe extern "C" fn f_impl<F>(ptr: *mut core::ffi::c_void)
+        where
+            F: Fn(*mut core::ffi::c_void) + Copy + Send + Sync + 'static,
+        {
+            let f = PlatformImpl::closure_out_of_thin_air::<F>();
             f(ptr)
         }
         self.0.free = Some(f_impl::<F>);
@@ -290,6 +308,12 @@ impl PlatformImpl {
             0,
             "Closure must be zero-sized to be used in FFI"
         );
+    }
+
+    fn closure_out_of_thin_air<F: Copy + Send + Sync + 'static>() -> &'static F {
+        debug_assert_eq!(core::mem::size_of::<F>(), 0);
+        // Safety: the closure is zero-sized, copy (and no drop), send, sync and 'static
+        unsafe { NonNull::<F>::dangling().as_ref() }
     }
 }
 impl Clone for PlatformImpl {
@@ -412,6 +436,7 @@ pub(crate) fn emit_log(
     let (msg, msg_len) = match fmt_res {
         Ok(()) if msg_buf.len < MAX_LOG_MESSAGE_LEN - 1 => {
             msg_buf.buf[msg_buf.len] = 0;
+            // Safety: we just wrote null byte at the end
             let msg = unsafe {
                 core::ffi::CStr::from_bytes_with_nul_unchecked(&msg_buf.buf[..msg_buf.len + 1])
             };
@@ -419,6 +444,7 @@ pub(crate) fn emit_log(
         }
         _ => {
             let msg_bytes = b"? (format error)\0";
+            // Safety: there is a `\0` at the end of the message bytes
             let msg = unsafe { core::ffi::CStr::from_bytes_with_nul_unchecked(msg_bytes) };
             (msg, msg_bytes.len() - 1)
         }
@@ -442,6 +468,7 @@ mod tests {
 
     #[ctor::ctor]
     fn pal_init() {
+        // Safety: we call pal_init once, before any other executorch operations, and before any thread is spawned
         unsafe { super::pal_init() };
     }
 }

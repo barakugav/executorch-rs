@@ -46,6 +46,7 @@ pub(crate) mod ffi {
         /// memory locking behavior.
         ///
         /// # Arguments
+        ///
         /// - `file_path`: The path to the ExecuTorch program file to load.
         /// - `data_files`: The path to one or more .ptd file/s.
         /// - `load_mode`: The loading mode to use.
@@ -61,9 +62,11 @@ pub(crate) mod ffi {
         /// Load the program if needed.
         ///
         /// # Arguments
+        ///
         /// - `verification`: The type of verification to do before returning success.
         ///
         /// # Returns
+        ///
         /// An Error to indicate success or failure of the loading process.
         #[namespace = "executorch_rs"]
         fn Module_load(self_: Pin<&mut Module>, verification: ProgramVerification) -> Error;
@@ -78,25 +81,28 @@ pub(crate) mod ffi {
         ///
         /// The `method_num_out` is valid only if the function returns `Error::Ok`.
         #[namespace = "executorch_rs"]
-        unsafe fn Module_num_methods(self_: Pin<&mut Module>, method_num_out: &mut usize) -> Error;
+        unsafe fn Module_num_methods(self_: Pin<&mut Module>, method_num_out: *mut usize) -> Error;
 
         /// Get a list of method names available in the loaded program.
         ///
         /// Loads the program and method if needed.
         ///
         /// # Arguments
-        /// - `method_names_out`: A mutable reference to a vector that will be filled with the method names.
+        ///
+        /// - `method_names_out`: A pointer to a (non initialized) vector that will be created and filled with
+        ///    the method names.
         ///
         /// # Returns
+        ///
         /// A error indicating whether the method names retrieval was successful or not.
         ///
         /// # Safety
-        /// The `method_names_out` vector must be valid for the lifetime of the function.
+        ///
         /// The `method_names_out` vector can be used only if the function returns `Error::Ok`.
         #[namespace = "executorch_rs"]
         unsafe fn Module_method_names(
             self_: Pin<&mut Module>,
-            method_names_out: &mut Vec<String>,
+            method_names_out: *mut Vec<String>,
         ) -> Error;
 
         /// Load a specific method from the program and set up memory management if
@@ -105,9 +111,11 @@ pub(crate) mod ffi {
         /// The loaded method is cached to reuse the next time it's executed.
         ///
         /// # Arguments
+        ///
         /// - `method_name`: The name of the method to load.
         ///
         /// # Returns
+        ///
         /// An Error to indicate success or failure.
         #[namespace = "executorch_rs"]
         unsafe fn Module_load_method(
@@ -123,6 +131,7 @@ pub(crate) mod ffi {
         /// - `method_name`: The name of the method to unload.
         ///
         /// # Returns
+        ///
         /// True if the method is unloaded, false if no-op.
         #[namespace = "executorch_rs"]
         unsafe fn Module_unload_method(self_: Pin<&mut Module>, method_name: &CxxString) -> bool;
@@ -130,9 +139,11 @@ pub(crate) mod ffi {
         /// Checks if a specific method is loaded.
         ///
         /// # Arguments
+        ///
         /// - `method_name`: The name of the method to check.
         ///
         /// # Returns
+        ///
         /// `true` if the method specified by `method_name` is loaded, `false` otherwise.
         #[namespace = "executorch_rs"]
         fn Module_is_method_loaded(self_: &Module, method_name: &CxxString) -> bool;
@@ -142,13 +153,16 @@ pub(crate) mod ffi {
         /// Loads the program if needed.
         ///
         /// # Arguments
+        ///
         /// - `method_name`: The name of the method to get the metadata for.
         /// - `method_meta_out`: A mutable reference to a `MethodMeta` struct that will be filled with the metadata.
         ///
         /// # Returns
+        ///
         /// A error indicating whether the metadata retrieval was successful or not.
         ///
         /// # Safety
+        ///
         /// The `method_meta_out` struct must be valid for the lifetime of the function.
         /// The `method_meta_out` struct can be used only if the function returns `Error::Ok`.
         #[namespace = "executorch_rs"]
@@ -162,14 +176,17 @@ pub(crate) mod ffi {
         /// output values. Loads the program and method before executing if needed.
         ///
         /// # Arguments
+        ///
         /// - `method_name`: The name of the method to execute.
         /// - `inputs`: A vector of input values to be passed to the method.
         /// - `outputs`: A mutable reference to a vector that will be filled with the output values from the method.
         ///
         /// # Returns
+        ///
         /// A error indicating whether the execution was successful or not.
         ///
         /// # Safety
+        ///
         /// The `outputs` vector must be valid for the lifetime of the function.
         /// The `outputs` vector can be used only if the function returns `Error::Ok`.
         #[namespace = "executorch_rs"]

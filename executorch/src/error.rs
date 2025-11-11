@@ -1,7 +1,7 @@
 //! Error types used in the [`executortorch`](crate) crate.
 
 use crate::util::IntoRust;
-use crate::sys;
+use executorch_sys as sys;
 
 /// ExecuTorch Error type.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -108,7 +108,7 @@ pub(crate) type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[cfg(test)]
 mod tests {
-    use crate::sys;
+    use executorch_sys as sys;
 
     use crate::util::IntoRust;
 

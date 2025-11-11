@@ -104,25 +104,26 @@ namespace executorch_rs
     {
         return self.is_loaded();
     }
-    static executorch::runtime::Error Module_num_methods_(executorch::extension::Module &self, size_t &method_num_out)
+    static executorch::runtime::Error Module_num_methods_(executorch::extension::Module &self, size_t *method_num_out)
     {
-        method_num_out = ET_UNWRAP(self.num_methods());
+        *method_num_out = ET_UNWRAP(self.num_methods());
         return executorch::runtime::Error::Ok;
     }
-    Error Module_num_methods(executorch::extension::Module &self, size_t &method_num_out)
+    Error Module_num_methods(executorch::extension::Module &self, size_t *method_num_out)
     {
         return static_cast<Error>(Module_num_methods_(self, method_num_out));
     }
-    static executorch::runtime::Error Module_method_names_(executorch::extension::Module &self, rust::Vec<rust::String> &method_names_out)
+    static executorch::runtime::Error Module_method_names_(executorch::extension::Module &self, rust::Vec<rust::String> *method_names_out)
     {
         std::unordered_set<std::string> method_names = ET_UNWRAP(self.method_names());
+        new (method_names_out) rust::Vec<rust::String>();
         for (const std::string &method_name : method_names)
         {
-            method_names_out.emplace_back(method_name);
+            method_names_out->emplace_back(method_name);
         }
         return executorch::runtime::Error::Ok;
     }
-    Error Module_method_names(executorch::extension::Module &self, rust::Vec<rust::String> &method_names_out)
+    Error Module_method_names(executorch::extension::Module &self, rust::Vec<rust::String> *method_names_out)
     {
         return static_cast<Error>(Module_method_names_(self, method_names_out));
     }

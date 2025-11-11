@@ -1,6 +1,6 @@
 use core::marker::PhantomData;
 
-use crate::sys;
+use executorch_sys as sys;
 
 use crate::tensor::ScalarType;
 use crate::util::{IntoRust, __ArrayRefImpl};
@@ -9,6 +9,11 @@ use crate::util::{IntoRust, __ArrayRefImpl};
 #[repr(transparent)]
 pub struct TensorLayout<'a>(sys::TensorLayout, PhantomData<&'a ()>);
 impl<'a> TensorLayout<'a> {
+    /// Create a new `TensorLayout` of a raw `sys::TensorLayout`.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure the given layout can live at least 'a.
     pub(crate) unsafe fn from_raw(raw: sys::TensorLayout) -> TensorLayout<'a> {
         Self(raw, PhantomData)
     }

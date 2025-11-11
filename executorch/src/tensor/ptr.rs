@@ -1,5 +1,7 @@
 use std::marker::PhantomData;
 
+use executorch_sys as sys;
+
 use sys::cxx::vector::VectorElement;
 use sys::cxx::{self, ExternType, SharedPtr, UniquePtr};
 
@@ -8,7 +10,7 @@ use super::{
     ViewMut,
 };
 use crate::util::{IntoCpp, IntoRust};
-use crate::{sys, Error, Result};
+use crate::{Error, Result};
 
 /// A smart pointer type for managing the lifetime of a Tensor.
 ///

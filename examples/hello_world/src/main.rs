@@ -8,6 +8,7 @@ use executorch::tensor_ptr;
 use ndarray::array;
 
 fn main() {
+    // Safety: we call pal_init once, before any other executorch operations, and before any thread is spawned
     unsafe { executorch::platform::pal_init() };
 
     let model_path = Path::new(env!("CARGO_MANIFEST_DIR"))

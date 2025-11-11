@@ -11,7 +11,7 @@ pub struct EventTracer<'a>([std::ffi::c_void; 0], PhantomData<&'a ()>);
 /// A unique pointer to an EventTracer.
 #[cfg(feature = "module")]
 pub struct EventTracerPtr<'a>(
-    pub(crate) crate::sys::cxx::UniquePtr<crate::sys::cpp::EventTracer>,
+    pub(crate) executorch_sys::cxx::UniquePtr<executorch_sys::cpp::EventTracer>,
     PhantomData<&'a ()>,
 );
 
@@ -21,7 +21,7 @@ pub use etdump::*;
 mod etdump {
     use std::marker::PhantomData;
 
-    use crate::sys;
+    use executorch_sys as sys;
 
     use super::EventTracer;
 
@@ -71,13 +71,22 @@ mod etdump {
                 Some(unsafe { std::slice::from_raw_parts(data.data, data.len) })
             }
         }
+
+        fn as_event_tracer_ptr(&self) -> *const EventTracer<'a> {
+            let self_ = (&self.0) as *const _ as *mut sys::ETDumpGen;
+            let tracer = unsafe { sys::executorch_ETDumpGen_as_event_tracer_mut(self_) };
+            let tracer = tracer.ptr as *mut EventTracer<'a>;
+            tracer as *const _
+        }
+    }
+    impl<'a> AsRef<EventTracer<'a>> for ETDumpGen<'a> {
+        fn as_ref(&self) -> &EventTracer<'a> {
+            unsafe { &*self.as_event_tracer_ptr() }
+        }
     }
     impl<'a> AsMut<EventTracer<'a>> for ETDumpGen<'a> {
         fn as_mut(&mut self) -> &mut EventTracer<'a> {
-            let self_ = (&mut self.0) as *mut sys::ETDumpGen;
-            let tracer = unsafe { sys::executorch_ETDumpGen_as_event_tracer_mut(self_) };
-            let tracer = tracer.ptr as *mut EventTracer<'a>;
-            unsafe { &mut *tracer }
+            unsafe { &mut *self.as_event_tracer_ptr().cast_mut() }
         }
     }
 }

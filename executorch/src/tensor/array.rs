@@ -1,7 +1,9 @@
 use ndarray::{ArrayBase, ArrayView, ArrayViewMut, ShapeBuilder};
 
+use executorch_sys as sys;
+
 use crate::util::IntoRust;
-use crate::{sys, Error, Result};
+use crate::{Error, Result};
 
 use super::{
     DataMut, DataTyped, DimOrderType, Scalar, SizesType, StridesType, TensorBase, TensorImpl,

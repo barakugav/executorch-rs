@@ -1,4 +1,4 @@
-use crate::sys::ScalarType as CScalarType;
+use executorch_sys::ScalarType as CScalarType;
 
 use crate::util::{IntoCpp, IntoRust};
 

@@ -13,7 +13,7 @@ use std::pin::Pin;
 #[cfg(feature = "alloc")]
 use crate::alloc;
 use crate::memory::{Storable, Storage};
-use crate::sys;
+use executorch_sys as sys;
 
 pub(crate) trait Destroy {
     /// Destroy the object without deallocating its memory.
@@ -86,10 +86,8 @@ impl<'a, T: Destroy> NonTriviallyMovable<'a, T> {
             init(p);
             Ok(())
         });
-        match res {
-            Ok(p) => p,
-            Err(_) => unsafe { std::hint::unreachable_unchecked() },
-        }
+        // Safety: we always return Ok from the closure to try_new_boxed
+        unsafe { res.unwrap_unchecked() }
     }
 
     /// Create a new [`NonTriviallyMovable`] object with an inner value in a [`Storage`].
@@ -229,15 +227,34 @@ impl<T: Destroy> Drop for NonTriviallyMovableVec<T> {
     }
 }
 
-pub(crate) fn try_c_new<T>(f: impl FnOnce(*mut T) -> sys::Error) -> crate::Result<T> {
+/// Try to create a new value by a function that accept uninitialized `*mut T` and may fail,
+/// usually by calling an FFI in place constructor.
+///
+/// # Safety
+///
+/// The inner value must be initialized by the given closure if `sys::Error::Error_Ok` is returned.
+pub(crate) unsafe fn try_c_new<T>(f: impl FnOnce(*mut T) -> sys::Error) -> crate::Result<T> {
     let mut value = MaybeUninit::uninit();
     let err = f(value.as_mut_ptr());
+    // Safety: enforced by the caller
     err.rs().map(|_| unsafe { value.assume_init() })
 }
-pub(crate) fn c_new<T>(f: impl FnOnce(*mut T)) -> T {
-    let mut value = MaybeUninit::uninit();
-    f(value.as_mut_ptr());
-    unsafe { value.assume_init() }
+
+/// Create a new value by a function that accept uninitialized `*mut T`, usually by calling an FFI in place constructor.
+///
+/// # Safety
+///
+/// The inner value must be initialized by the given closure.
+pub(crate) unsafe fn c_new<T>(f: impl FnOnce(*mut T)) -> T {
+    // Safety: enforced by the caller
+    let res = unsafe {
+        try_c_new(|ptr| {
+            f(ptr);
+            sys::Error::Error_Ok
+        })
+    };
+    // Safety: we always return Ok from the closure to try_c_new
+    unsafe { res.unwrap_unchecked() }
 }
 
 pub(crate) trait IntoRust {
@@ -271,6 +288,11 @@ pub(crate) struct ArrayRef<'a, T: ArrayRefElement>(
     PhantomData<&'a ()>,
 );
 impl<'a, T: ArrayRefElement> ArrayRef<'a, T> {
+    /// Create a new `ArrayRef` of a raw `sys::ArrayRefT`.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure the given array ref can live at least 'a.
     pub(crate) unsafe fn from_inner(arr: T::__ArrayRefImpl) -> Self {
         Self(arr, PhantomData)
     }
@@ -332,6 +354,25 @@ pub(crate) trait __ArrayRefImpl {
 /// This type is used to avoid trait conflicts with `i8` and `u8` on different platforms (for example Android aarch64).
 #[repr(transparent)]
 pub(crate) struct FfiChar(#[allow(unused)] std::ffi::c_char);
+impl FfiChar {
+    pub(crate) fn slice_from_ffi(slice: &[std::ffi::c_char]) -> &[FfiChar] {
+        assert_eq!(
+            core::alloc::Layout::new::<std::ffi::c_char>(),
+            core::alloc::Layout::new::<FfiChar>()
+        );
+        // Safety: FfiChar is a transparent wrapper around std::ffi::c_char
+        unsafe { std::slice::from_raw_parts(slice.as_ptr().cast(), slice.len()) }
+    }
+
+    pub(crate) fn slice_to_ffi(slice: &[FfiChar]) -> &[std::ffi::c_char] {
+        assert_eq!(
+            core::alloc::Layout::new::<std::ffi::c_char>(),
+            core::alloc::Layout::new::<FfiChar>()
+        );
+        // Safety: FfiChar is a transparent wrapper around std::ffi::c_char
+        unsafe { std::slice::from_raw_parts(slice.as_ptr().cast(), slice.len()) }
+    }
+}
 
 macro_rules! impl_array_ref {
     ($element:path, $array_ref:path) => {
@@ -367,7 +408,7 @@ impl ArrayRefElement for FfiChar {
 impl __ArrayRefImpl for sys::ArrayRefChar {
     type Element = FfiChar;
     unsafe fn from_slice(slice: &[FfiChar]) -> Self {
-        let slice = unsafe { std::mem::transmute::<&[FfiChar], &[std::ffi::c_char]>(slice) };
+        let slice = FfiChar::slice_to_ffi(slice);
         Self {
             data: slice.as_ptr(),
             len: slice.len(),
@@ -375,7 +416,7 @@ impl __ArrayRefImpl for sys::ArrayRefChar {
     }
     unsafe fn as_slice(&self) -> &'static [FfiChar] {
         let slice = unsafe { std::slice::from_raw_parts(self.data, self.len) };
-        unsafe { std::mem::transmute::<&[std::ffi::c_char], &[FfiChar]>(slice) }
+        FfiChar::slice_from_ffi(slice)
     }
     private_impl! {}
 }
@@ -545,7 +586,7 @@ pub(crate) fn path2cstring(path: &std::path::Path) -> Result<std::ffi::CString, 
 #[allow(unused)]
 pub(crate) mod cpp_vec {
     use super::IntoRust;
-    use crate::sys;
+    use executorch_sys as sys;
 
     // pub(crate) fn vec_as_slice<T: CppVecElement>(vec: &T::VecImpl) -> &[T] {
     //     unsafe { std::slice::from_raw_parts(vec.data, vec.len) }

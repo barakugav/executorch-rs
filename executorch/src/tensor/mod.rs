@@ -51,7 +51,7 @@ pub use array::*;
 
 mod fmt;
 
-use crate::sys;
+use executorch_sys as sys;
 
 /// A type that represents the sizes (dimensions) of a tensor.
 pub type SizesType = sys::SizesType;

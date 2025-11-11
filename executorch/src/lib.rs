@@ -148,9 +148,7 @@ use crate::__private::alloc;
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// The version of the ExecuTorch C++ library that this crate is compatible and linked with.
-pub const EXECUTORCH_CPP_VERSION: &str = sys::EXECUTORCH_CPP_VERSION;
-
-pub use executorch_sys as sys;
+pub const EXECUTORCH_CPP_VERSION: &str = executorch_sys::EXECUTORCH_CPP_VERSION;
 
 #[macro_use]
 mod private;
