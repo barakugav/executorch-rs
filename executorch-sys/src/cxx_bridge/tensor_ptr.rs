@@ -1,9 +1,8 @@
 // Clippy doesnt detect the 'Safety' comments in the cxx bridge.
 #![allow(clippy::missing_safety_doc)]
 
-/// Utility functions and structs used by the cxx bridge.
 pub mod cxx_util {
-    /// A wrapper around `std::any::Any` that can be used in the cxx bridge.
+    /// A wrapper around `std::any::Any` that can be used in a cxx bridge.
     ///
     /// This struct is useful to pass any Rust object to C++ code as `Box<RustAny>`, and the C++ code will call
     /// the destructor of the object when the `RustAny` object is dropped.
@@ -36,7 +35,7 @@ pub(crate) mod ffi {
         type ScalarType = crate::ScalarType;
         /// Redefinition of the [`TensorShapeDynamism`](crate::TensorShapeDynamism).
         type TensorShapeDynamism = crate::TensorShapeDynamism;
-        /// Redefinition of the [`Tensor`](crate::Tensor).
+        /// A minimal Tensor type whose API is a source compatible subset of at::Tensor.
         #[namespace = "executorch::aten"]
         type Tensor;
 

@@ -24,7 +24,7 @@ use crate::{Error, Result};
 /// A facade class for loading programs and executing methods within them.
 ///
 /// See the `hello_world` example for how to load and execute a module.
-pub struct Module<'a>(sys::cxx::UniquePtr<sys::cpp::Module>, PhantomData<&'a ()>);
+pub struct Module<'a>(sys::cxx::UniquePtr<sys::Module>, PhantomData<&'a ()>);
 impl<'a> Module<'a> {
     /// Constructs an instance by loading a program from a file with specified
     /// memory locking behavior.
@@ -59,7 +59,7 @@ impl<'a> Module<'a> {
         let event_tracer = event_tracer
             .map(|tracer| tracer.0)
             .unwrap_or(sys::cxx::UniquePtr::null());
-        let module = sys::cpp::Module_new(&file_path, &data_files, load_mode, event_tracer);
+        let module = sys::Module_new(&file_path, &data_files, load_mode, event_tracer);
         Self(module, PhantomData)
     }
 
@@ -92,21 +92,19 @@ impl<'a> Module<'a> {
     /// An Error to indicate success or failure of the loading process.
     pub fn load(&mut self, verification: Option<ProgramVerification>) -> Result<()> {
         let verification = verification.unwrap_or(ProgramVerification::Minimal).cpp();
-        sys::cpp::Module_load(self.0.as_mut().unwrap(), verification).rs()
+        sys::Module_load(self.0.as_mut().unwrap(), verification).rs()
     }
 
     /// Checks if the program is loaded.
     pub fn is_loaded(&self) -> bool {
-        sys::cpp::Module_is_loaded(self.0.as_ref().unwrap())
+        sys::Module_is_loaded(self.0.as_ref().unwrap())
     }
 
     /// Get the number of methods available in the loaded program.
     pub fn num_methods(&mut self) -> Result<usize> {
         // Safety: sys::Module_num_methods writes to the pointer.
         unsafe {
-            try_c_new(|num_methods| {
-                sys::cpp::Module_num_methods(self.0.as_mut().unwrap(), num_methods)
-            })
+            try_c_new(|num_methods| sys::Module_num_methods(self.0.as_mut().unwrap(), num_methods))
         }
     }
 
@@ -118,7 +116,7 @@ impl<'a> Module<'a> {
     /// A set of strings containing the names of the methods, or an error if the program or method failed to load.
     pub fn method_names(&mut self) -> Result<HashSet<String>> {
         let self_ = self.0.as_mut().unwrap();
-        let names = unsafe { try_c_new(|names| sys::cpp::Module_method_names(self_, names)) }?;
+        let names = unsafe { try_c_new(|names| sys::Module_method_names(self_, names)) }?;
         Ok(names.into_iter().map(|s| s.to_string()).collect())
     }
 
@@ -147,13 +145,13 @@ impl<'a> Module<'a> {
     ) -> Result<()> {
         sys::cxx::let_cxx_string!(method_name = method_name);
         let event_tracer = event_tracer
-            .map(|tracer| tracer as *mut EventTracer as *mut sys::cpp::EventTracer)
+            .map(|tracer| tracer as *mut EventTracer as *mut sys::EventTracer)
             .unwrap_or(std::ptr::null_mut());
         let planned_memory = planned_memory
-            .map(|allocator| (&mut allocator.0) as *mut sys::cpp::HierarchicalAllocator)
+            .map(|allocator| (&mut allocator.0) as *mut sys::HierarchicalAllocator)
             .unwrap_or(std::ptr::null_mut());
         unsafe {
-            sys::cpp::Module_load_method(
+            sys::Module_load_method(
                 self.0.as_mut().unwrap(),
                 &method_name,
                 planned_memory,
@@ -178,7 +176,7 @@ impl<'a> Module<'a> {
     /// May panic if the method name is not a valid UTF-8 string or contains a null character.
     pub fn unload_method(&mut self, method_name: &str) -> bool {
         sys::cxx::let_cxx_string!(method_name = method_name);
-        unsafe { sys::cpp::Module_unload_method(self.0.as_mut().unwrap(), &method_name) }
+        unsafe { sys::Module_unload_method(self.0.as_mut().unwrap(), &method_name) }
     }
 
     /// Checks if a specific method is loaded.
@@ -196,7 +194,7 @@ impl<'a> Module<'a> {
     /// May panic if the method name is not a valid UTF-8 string or contains a null character.
     pub fn is_method_loaded(&self, method_name: &str) -> bool {
         sys::cxx::let_cxx_string!(method_name = method_name);
-        sys::cpp::Module_is_method_loaded(self.0.as_ref().unwrap(), &method_name)
+        sys::Module_is_method_loaded(self.0.as_ref().unwrap(), &method_name)
     }
 
     /// Get a method metadata struct by method name.
@@ -218,9 +216,7 @@ impl<'a> Module<'a> {
         sys::cxx::let_cxx_string!(method_name = method_name);
         // Safety: sys::Module_method_meta writes to the pointer.
         let meta = unsafe {
-            try_c_new(|meta| {
-                sys::cpp::Module_method_meta(self.0.as_mut().unwrap(), &method_name, meta)
-            })?
+            try_c_new(|meta| sys::Module_method_meta(self.0.as_mut().unwrap(), &method_name, meta))?
         };
         // Safety: the method metadata is valid as long as self is valid
         Ok(unsafe { MethodMeta::new(meta) })
@@ -261,7 +257,7 @@ impl<'a> Module<'a> {
         // Safety: sys::Module_execute writes to the pointer.
         let mut outputs = unsafe {
             try_c_new(|outputs| {
-                sys::cpp::Module_execute(self.0.as_mut().unwrap(), &method_name, inputs.0, outputs)
+                sys::Module_execute(self.0.as_mut().unwrap(), &method_name, inputs.0, outputs)
             })?
             .rs()
         };

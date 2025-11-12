@@ -12,8 +12,8 @@ use std::ops::Deref;
 use std::pin::Pin;
 use std::ptr;
 
-use executorch_sys as sys;
 use crate::util::Span;
+use executorch_sys as sys;
 
 /// An allocator used to allocate objects for the runtime.
 ///
@@ -226,9 +226,7 @@ mod malloc_allocator {
     ///
     /// For systems with malloc(), this can be easier than using a fixed-sized
     /// MemoryAllocator.
-    pub struct MallocMemoryAllocator(
-        UnsafeCell<sys::cxx::UniquePtr<sys::cpp::MallocMemoryAllocator>>,
-    );
+    pub struct MallocMemoryAllocator(UnsafeCell<sys::cxx::UniquePtr<sys::MallocMemoryAllocator>>);
     impl Default for MallocMemoryAllocator {
         fn default() -> Self {
             Self::new()
@@ -237,7 +235,7 @@ mod malloc_allocator {
     impl MallocMemoryAllocator {
         /// Construct a new Malloc memory allocator.
         pub fn new() -> Self {
-            Self(UnsafeCell::new(sys::cpp::MallocMemoryAllocator_new()))
+            Self(UnsafeCell::new(sys::MallocMemoryAllocator_new()))
         }
     }
     impl AsRef<MemoryAllocator<'static>> for MallocMemoryAllocator {
@@ -248,7 +246,7 @@ mod malloc_allocator {
             // The returned allocator have a lifetime of 'static because it does not depend on any external buffer, malloc
             // objects are alive until the program ends.
             let self_ = unsafe { &mut *self.0.get() }.as_mut().unwrap();
-            let allocator = unsafe { sys::cpp::MallocMemoryAllocator_as_memory_allocator(self_) };
+            let allocator = unsafe { sys::MallocMemoryAllocator_as_memory_allocator(self_) };
             unsafe { MemoryAllocator::from_inner_ref(&*allocator) }
         }
     }
