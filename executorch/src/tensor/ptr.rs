@@ -44,7 +44,7 @@ use crate::{Error, Result};
 /// let tensor = Tensor::new(&tensor);
 /// let outputs = module.forward(&[tensor.into_evalue()]).unwrap();
 /// ```
-pub struct TensorPtr<'a, D>(SharedPtr<sys::cpp::Tensor>, PhantomData<(&'a (), D)>);
+pub struct TensorPtr<'a, D>(SharedPtr<sys::Tensor>, PhantomData<(&'a (), D)>);
 impl<S: Scalar> TensorPtr<'static, View<S>> {
     /// Create a new [`TensorPtr`] from an [`Array`](ndarray::Array).
     ///
@@ -99,7 +99,7 @@ impl<D> TensorPtr<'_, D> {
     {
         let tensor = self.0.as_ref().unwrap();
         let tensor = sys::TensorRef {
-            ptr: tensor as *const sys::cpp::Tensor as *const _,
+            ptr: tensor as *const sys::Tensor as *const _,
         };
         // Safety: the tensor is valid and the data is immutable.
         unsafe { TensorBase::from_inner_ref(tensor) }
@@ -112,7 +112,7 @@ impl<D> TensorPtr<'_, D> {
     {
         let tensor = self.0.as_ref().unwrap();
         let tensor = sys::TensorRefMut {
-            ptr: tensor as *const sys::cpp::Tensor as *mut sys::cpp::Tensor as *mut _,
+            ptr: tensor as *const sys::Tensor as *mut sys::Tensor as *mut _,
         };
         // Safety: the tensor is mutable, and we are the sole borrower.
         unsafe { TensorBase::from_inner_ref_mut(tensor) }
@@ -381,14 +381,14 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
         }
 
         let tensor = unsafe {
-            sys::cpp::TensorPtr_new(
+            sys::TensorPtr_new(
                 self.sizes,
                 data_ptr as *const u8 as *mut u8,
                 dim_order,
                 strides,
                 D::Scalar::TYPE.cpp(),
                 self.dynamism,
-                Box::new(sys::cpp::util::RustAny::new(Box::new(allocation_vec))),
+                Box::new(sys::util::RustAny::new(Box::new(allocation_vec))),
             )
         };
         Ok(TensorPtr(tensor, PhantomData))
@@ -453,14 +453,14 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
         }
 
         let tensor = unsafe {
-            sys::cpp::TensorPtr_new(
+            sys::TensorPtr_new(
                 self.sizes,
                 data_ptr as *const u8 as *mut u8,
                 dim_order,
                 strides,
                 D::Scalar::TYPE.cpp(),
                 self.dynamism,
-                Box::new(sys::cpp::util::RustAny::new(Box::new(allocation_vec))),
+                Box::new(sys::util::RustAny::new(Box::new(allocation_vec))),
             )
         };
         Ok(TensorPtr(tensor, PhantomData))

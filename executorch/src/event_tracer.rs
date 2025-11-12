@@ -11,7 +11,7 @@ pub struct EventTracer<'a>([std::ffi::c_void; 0], PhantomData<&'a ()>);
 /// A unique pointer to an EventTracer.
 #[cfg(feature = "module")]
 pub struct EventTracerPtr<'a>(
-    pub(crate) executorch_sys::cxx::UniquePtr<executorch_sys::cpp::EventTracer>,
+    pub(crate) executorch_sys::cxx::UniquePtr<executorch_sys::EventTracer>,
     PhantomData<&'a ()>,
 );
 
