@@ -1,6 +1,6 @@
 [package]
 publish = false
-name = "example-hello-world"
+name = "example-data-map"
 version = "0.0.0"
 edition = "2021"
 
