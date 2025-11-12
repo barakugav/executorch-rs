@@ -234,7 +234,7 @@ checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 
 [[package]]
 name = "executorch"
-version = "0.7.4"
+version = "0.8.0"
 dependencies = [
  "cfg-if",
  "ctor",
@@ -247,7 +247,7 @@ dependencies = [
 
 [[package]]
 name = "executorch-sys"
-version = "0.7.3"
+version = "0.8.0"
 dependencies = [
  "bindgen",
  "cc",
