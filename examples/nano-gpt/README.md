@@ -1,5 +1,7 @@
 # nano-gpt example
 
+**!! This example is currently broken due to a bug in the Cpp runtime library, and will be fixed in version 1.0.1 https://github.com/pytorch/executorch/issues/15285 !!**
+
 The example demonstrates how to use the `executorch` crate to run the `nano-gpt` model.
 
 To run the example, follow these steps (note that some steps should run from the Cpp `executorch` repository and some from `executorch-rs`):
