@@ -72,4 +72,4 @@ To run the example, follow these steps (note that some steps should run from the
 The llama model can be exported with many options, such as quantization, different data types (f32, bf16), different backends, kv caching, etc.
 This example use a specific set of options, as specified above.
 Different options require different export commands and modifications to the code and build script which you can play around with.
-See the [llama README](https://github.com/pytorch/executorch/blob/v1.0.0/examples/models/llama/README.md) at the Cpp executorch repository for more details.
+See the [llama README](https://github.com/pytorch/executorch/blob/v1.0.1/examples/models/llama/README.md) at the Cpp executorch repository for more details.
