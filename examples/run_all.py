@@ -26,10 +26,6 @@ for example in examples:
         ):
             extra_args = []
         case "nano-gpt":
-            # TODO: https://github.com/pytorch/executorch/issues/15285
-            # TODO: remove when we bump cpp lib to 1.0.1
-            print("Skipping nanogpt example...")
-            continue
             extra_args = [
                 *["--model", "nanogpt.pte"],
                 *["--tokenizer", "vocab.json"],
