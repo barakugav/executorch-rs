@@ -11,7 +11,8 @@
 //! a more detailed documentation can be found.
 //!
 //!
-//! To build the library, you need to build the C++ library first.
+//! To build the library, you need to build the C++ library yourself first.
+//! Currently the supported Cpp executorch version is `1.0.1`  (or `1.0.0`).
 //! The C++ library allow for great flexibility with many flags, customizing which modules, kernels, and extensions are
 //! built.
 //! Multiple static libraries are built, and the Rust library links to them.
