@@ -5,8 +5,32 @@ fn main() {
 
     println!("cargo::rustc-link-search=native={libs_dir}/kernels/portable/");
     println!("cargo::rustc-link-lib=static:+whole-archive=portable_kernels");
-    println!("cargo::rustc-link-lib=static:+whole-archive=portable_ops_lib");
 
     println!("cargo::rustc-link-search=native={libs_dir}/configurations/");
-    println!("cargo::rustc-link-lib=static=optimized_native_cpu_ops_lib");
+    println!("cargo::rustc-link-lib=static:+whole-archive=optimized_native_cpu_ops_lib");
+
+    println!("cargo::rustc-link-search=native={libs_dir}/kernels/optimized/");
+    println!("cargo::rustc-link-lib=static:+whole-archive=optimized_kernels");
+    println!("cargo::rustc-link-lib=static:+whole-archive=eigen_blas");
+    println!("cargo::rustc-link-lib=static:+whole-archive=cpublas");
+
+    println!("cargo::rustc-link-search=native={libs_dir}/extension/threadpool/");
+    println!("cargo::rustc-link-lib=static:+whole-archive=extension_threadpool");
+
+    println!("cargo::rustc-link-search=native={libs_dir}/backends/xnnpack/");
+    println!("cargo::rustc-link-search=native={libs_dir}/backends/xnnpack/third-party/XNNPACK/");
+    println!("cargo::rustc-link-search=native={libs_dir}/backends/xnnpack/third-party/cpuinfo/");
+    println!(
+        "cargo::rustc-link-search=native={libs_dir}/backends/xnnpack/third-party/pthreadpool/"
+    );
+    println!("cargo::rustc-link-lib=static:+whole-archive=xnnpack_backend");
+    println!("cargo::rustc-link-lib=static:+whole-archive=XNNPACK");
+    println!("cargo::rustc-link-lib=static:+whole-archive=xnnpack-microkernels-prod");
+    println!("cargo::rustc-link-lib=static:+whole-archive=cpuinfo");
+    println!("cargo::rustc-link-lib=static:+whole-archive=pthreadpool");
+
+    if cfg!(target_arch = "arm") || cfg!(target_arch = "aarch64") {
+        println!("cargo::rustc-link-search=native={libs_dir}/kleidiai/");
+        println!("cargo::rustc-link-lib=static:+whole-archive=kleidiai");
+    }
 }

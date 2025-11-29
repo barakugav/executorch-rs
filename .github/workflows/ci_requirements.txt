@@ -1,4 +1,4 @@
-# Copy of executorch/requirements-dev.txt as of v1.0.0
+# Copy of executorch/requirements-dev.txt as of v1.0.1
 cmake>=3.29, <4.0.0
 packaging>=24.2
 pip>=23

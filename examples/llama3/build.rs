@@ -4,8 +4,7 @@ fn main() {
         .expect("EXECUTORCH_RS_EXECUTORCH_LIB_DIR is not set, can't locate executorch static libs");
 
     println!("cargo::rustc-link-search=native={libs_dir}/kernels/portable/");
-    println!("cargo::rustc-link-lib=static=portable_kernels");
-    // println!("cargo::rustc-link-lib=static:+whole-archive=portable_ops_lib");
+    println!("cargo::rustc-link-lib=static:+whole-archive=portable_kernels");
 
     println!("cargo::rustc-link-search=native={libs_dir}/configurations/");
     println!("cargo::rustc-link-lib=static:+whole-archive=optimized_native_cpu_ops_lib");
