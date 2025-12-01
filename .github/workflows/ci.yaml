@@ -27,7 +27,7 @@ jobs:
     steps:
       ############ Setup ############
       - name: Repo checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Install C++ dependencies
@@ -190,7 +190,7 @@ jobs:
       checks: write
     steps:
       - name: Repo checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Rust toolchain
@@ -277,7 +277,7 @@ jobs:
       matrix:
         rust-version: ["msrv", "stable"]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Install toml-cli using cargo
         uses: baptiste0928/cargo-install@v3
         with:
