@@ -63,7 +63,7 @@ jobs:
       ############ Install executorch deps ############
       - name: Cache Cpp ExecuTorch compiled libraries
         id: cache-executorch-cpp-libs
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: etc/.dev-env/executorch/cmake-out
           key: cache-executorch-cpp-libs-${{ runner.OS }}-${{ hashFiles('etc/setup_dev_env.py') }}
