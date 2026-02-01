@@ -12,7 +12,7 @@
 //!
 //!
 //! To build the library, you need to build the C++ library yourself first.
-//! Currently the supported Cpp executorch version is `1.0.1`  (or `1.0.0`).
+//! Currently the supported Cpp executorch version is `1.1.0`.
 //! The C++ library allow for great flexibility with many flags, customizing which modules, kernels, and extensions are
 //! built.
 //! Multiple static libraries are built, and the Rust library links to them.
@@ -20,7 +20,7 @@
 //! ```bash
 //! # Clone the C++ library
 //! cd ${EXECUTORCH_CPP_DIR}
-//! git clone --depth 1 --branch v1.0.1 https://github.com/pytorch/executorch.git .
+//! git clone --depth 1 --branch v1.1.0 https://github.com/pytorch/executorch.git .
 //! git submodule sync --recursive
 //! git submodule update --init --recursive
 //!
@@ -134,7 +134,7 @@ extern crate core as std;
 extern crate link_cplusplus;
 
 /// The version of the ExecuTorch C++ library that this crate is compatible and linked with.
-pub const EXECUTORCH_CPP_VERSION: &str = "1.0.1";
+pub const EXECUTORCH_CPP_VERSION: &str = "1.1.0";
 
 mod c_bridge;
 pub use c_bridge::*;

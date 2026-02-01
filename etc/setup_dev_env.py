@@ -70,7 +70,7 @@ def clone_executorch():
                 "--depth",
                 "1",
                 "--branch",
-                "v1.0.1",
+                "v1.1.0",
                 "https://github.com/pytorch/executorch.git",
                 ".",
             ],
