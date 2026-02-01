@@ -9,4 +9,4 @@ zstd
 certifi
 lintrunner==0.12.7
 lintrunner-adapters==0.12.6
-torch==2.9.0
+torch==2.10.0

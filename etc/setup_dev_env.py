@@ -48,7 +48,7 @@ def main():
                 "install",
                 "-r",
                 DEV_EXECUTORCH_DIR / "requirements-dev.txt",
-                "torch==2.9.0",
+                "torch==2.10.0",
                 "--extra-index-url",
                 "https://download.pytorch.org/whl/test/cpu",
             ]
