@@ -87,7 +87,7 @@ def clone_executorch():
                     "--depth",
                     "1",
                     "--branch",
-                    "8.3",
+                    "9.0",
                     "https://github.com/apple/coremltools.git",
                 ],
                 cwd=DEV_EXECUTORCH_DIR / "backends" / "apple" / "coreml" / "scripts",
