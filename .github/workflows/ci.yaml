@@ -203,7 +203,7 @@ jobs:
             executorch
             executorch-sys
 
-      - uses: cargo-bins/cargo-binstall@v1.16.6
+      - uses: cargo-bins/cargo-binstall@v1.17.4
       - name: Install cross dependencies
         run: |
           if [[ "${{ matrix.target }}" == *"android"* ]]; then
