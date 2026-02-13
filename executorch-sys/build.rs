@@ -99,6 +99,7 @@ fn generate_bindings() {
         .opaque_type("TensorLayout")
         .opaque_type("MethodMeta")
         .opaque_type("Method")
+        .opaque_type("FreeableBuffer")
         .opaque_type("FlatTensorDataMap")
         .opaque_type("BufferDataLoader")
         .opaque_type("FileDataLoader")

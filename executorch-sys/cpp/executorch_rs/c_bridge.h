@@ -311,37 +311,48 @@ extern "C"
     {
         void *ptr;
     };
+    struct FreeableBuffer
+    {
+        union
+        {
+            struct
+            {
+                size_t _blob1[2];
+            };
+            struct
+            {
+                uint64_t _blob2;
+                size_t _blob3;
+            };
+        };
+        uint8_t _blob4;
+        size_t _blob5[2];
+    };
     struct Program
     {
 
-        // program_data_ (4)
-        //   free_fn_
-        //   free_fn_context_
-        //   data_
-        //   size_
+        // program_data_
+        struct FreeableBuffer _blob1;
         // loader_
         // internal_program_
         // segment_base_offset_
-        // constant_segment_data_ (4)
-        //   free_fn_
-        //   free_fn_context_
-        //   data_
-        //   size_
-        size_t _blob1[11];
+        size_t _blob2[3];
+        // constant_segment_data_
+        struct FreeableBuffer _blob3;
         // pte_data_map_
         struct // optional<PteDataMap>
         {
             union
             {
-                char _blob2_opt_dummy;
+                char _blob4_opt_dummy;
                 // vtable
                 // loader_
                 // segment_base_offset_
                 // named_data_
                 // segments_
-                size_t _blob2_opt_val[5];
+                size_t _blob4_opt_val[5];
             };
-            bool _blob2_opt_flag;
+            bool _blob4_opt_flag;
         };
     };
     struct TensorInfo
@@ -411,15 +422,15 @@ extern "C"
 #if defined(EXECUTORCH_RS_FLAT_TENSOR)
     struct FlatTensorDataMap
     {
-
         // vtable
         size_t _blob0[1];
         // header_
         uint64_t _blob1[4];
-        // flat_tensor_data_ (4)
+        // flat_tensor_data_
+        struct FreeableBuffer _blob2;
         // flat_tensor_
         // loader_
-        size_t _blob2[6];
+        size_t _blob3[2];
     };
 #endif
 

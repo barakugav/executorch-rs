@@ -47,6 +47,7 @@ namespace
     static_assert(is_equal_layout<struct TensorImpl, executorch::aten::TensorImpl>());
     static_assert(std::is_trivially_move_constructible_v<executorch::aten::TensorImpl>);
 
+    static_assert(is_equal_layout<struct FreeableBuffer, executorch::runtime::FreeableBuffer>());
     static_assert(is_equal_layout<struct Program, executorch::runtime::Program>());
     // Program is not trivially move constructible because it has a FreeableBuffer field that
     // has a custom move constructor.
