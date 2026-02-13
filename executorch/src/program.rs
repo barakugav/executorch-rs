@@ -534,9 +534,7 @@ impl Method<'_> {
     /// Result containing the attribute tensor on success, non-Ok on failure.
     #[cfg(feature = "alloc")]
     pub fn get_attribute<'b>(&'b mut self, name: &str) -> Result<crate::tensor::TensorAny<'b>> {
-        let name = crate::util::str2chars(name);
-        let name = FfiChar::slice_from_ffi(name);
-        let name = ArrayRef::from_slice(name);
+        let name = ArrayRef::from_chars(crate::util::str2chars(name));
 
         // Safety: sys::executorch_Method_get_attribute writes to the tensor pointer.
         let tensor = unsafe {

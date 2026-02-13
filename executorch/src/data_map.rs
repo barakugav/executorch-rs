@@ -5,7 +5,7 @@ use core::ffi::CStr;
 use executorch_sys as sys;
 
 use crate::tensor::TensorLayout;
-use crate::util::{try_c_new, ArrayRef, FfiChar};
+use crate::util::{try_c_new, ArrayRef};
 use crate::{Error, Result};
 
 /// Interface to access and retrieve data via name.
@@ -17,9 +17,7 @@ pub struct NamedDataMap {
 impl NamedDataMap {
     /// Get `TensorLayout` by key.
     pub fn get_tensor_layout<'a>(&'a self, key: &str) -> Result<TensorLayout<'a>> {
-        let key = crate::util::str2chars(key);
-        let key = FfiChar::slice_from_ffi(key);
-        let key = ArrayRef::from_slice(key);
+        let key = ArrayRef::from_chars(crate::util::str2chars(key));
 
         // Safety: sys::executorch_NamedDataMap_get_tensor_layout writes to the pointer.
         let layout = unsafe {

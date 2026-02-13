@@ -16,9 +16,10 @@
 #include <executorch/runtime/core/result.h>
 #include <executorch/runtime/platform/compiler.h>
 
+namespace executorch::extension::utils {
+
 using executorch::runtime::Error;
 using executorch::runtime::Result;
-namespace executorch::extension::utils {
 
 // Util to get alighment adjusted allocation size
 inline Result<size_t> get_aligned_size(size_t size, size_t alignment) {
