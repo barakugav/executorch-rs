@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use clap::Parser;
 use executorch::evalue::IntoEValue;
-use executorch::module::Module;
+use executorch::module::{Module, ModuleBuilder};
 use executorch::ndarray::{self, ArrayView2};
 use executorch::tensor::TensorPtr;
 
@@ -55,12 +55,9 @@ struct Gpt2 {
 }
 impl Gpt2 {
     pub fn new(model_path: &Path, vocab_file: &Path) -> Self {
-        let model = Module::new(
-            model_path,
-            &[],
-            Some(executorch::module::LoadMode::MmapUseMlockIgnoreErrors),
-            None,
-        );
+        let model = ModuleBuilder::new(model_path)
+            .load_mode(executorch::module::LoadMode::MmapUseMlockIgnoreErrors)
+            .build();
         let tokenizer = BasicTokenizer::from_file(vocab_file);
         Self { model, tokenizer }
     }

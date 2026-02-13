@@ -8,7 +8,7 @@ use executorch::evalue::{EValue, IntoEValue};
 use executorch::memory::{
     BufferMemoryAllocator, HierarchicalAllocator, MemoryAllocatorExt, MemoryManager,
 };
-use executorch::module::Module;
+use executorch::module::ModuleBuilder;
 use executorch::program::{Program, ProgramVerification};
 use executorch::tensor::TensorPtr;
 use executorch::util::Span;
@@ -27,7 +27,9 @@ fn main() {
 
 fn main_module() {
     let (model_path, data_file) = model_files();
-    let mut module = Module::new(&model_path, &[&data_file], None, None);
+    let mut module = ModuleBuilder::new(&model_path)
+        .data_files(&[&data_file])
+        .build();
 
     let data = array![[1.0_f32, 2.0], [3.0, 4.0]];
     let input = TensorPtr::from_array(data).unwrap();

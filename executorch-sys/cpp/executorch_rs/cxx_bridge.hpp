@@ -23,6 +23,9 @@ namespace executorch_rs
 #if defined(EXECUTORCH_RS_STD)
     std::unique_ptr<executorch::extension::MallocMemoryAllocator> MallocMemoryAllocator_new();
     struct MemoryAllocator *MallocMemoryAllocator_as_memory_allocator(executorch::extension::MallocMemoryAllocator &self);
+    std::unique_ptr<struct MemoryAllocator> MallocMemoryAllocator_into_memory_allocator_unique_ptr(std::unique_ptr<executorch::extension::MallocMemoryAllocator> self);
+
+    std::unique_ptr<struct MemoryAllocator> BufferMemoryAllocator_into_memory_allocator_unique_ptr(struct MemoryAllocator &self);
 #endif
 
 #if defined(EXECUTORCH_RS_TENSOR_PTR)
@@ -41,7 +44,9 @@ namespace executorch_rs
         const std::string &file_path,
         rust::Slice<const rust::Str> data_files,
         const ModuleLoadMode load_mode,
-        std::unique_ptr<executorch::runtime::EventTracer> event_tracer);
+        std::unique_ptr<executorch::runtime::EventTracer> event_tracer,
+        std::unique_ptr<struct MemoryAllocator> memory_allocator,
+        std::unique_ptr<struct MemoryAllocator> temp_allocator);
 
     Error Module_load(executorch::extension::Module &self, ProgramVerification verification);
     bool Module_is_loaded(const executorch::extension::Module &self);

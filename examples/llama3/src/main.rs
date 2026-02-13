@@ -6,7 +6,7 @@ use std::time::Instant;
 
 use clap::Parser;
 use executorch::evalue::{IntoEValue, Tag};
-use executorch::module::{LoadMode, Module};
+use executorch::module::Module;
 use executorch::ndarray::{ArrayView2, Ix1};
 use executorch::tensor::TensorPtr;
 use rand::distr::Distribution;
@@ -54,7 +54,7 @@ fn main() {
     // Safety: we call pal_init once, before any other executorch operations, and before any thread is spawned
     unsafe { executorch::platform::pal_init() };
 
-    let mut model = Module::new(&args.model, &[], Some(LoadMode::File), None);
+    let mut model = Module::new(&args.model);
     let tokenizer = Tokenizer::from_json(&args.tokenizer);
     let mut rng = if let Some(seed) = args.seed {
         rand::rngs::StdRng::seed_from_u64(seed)

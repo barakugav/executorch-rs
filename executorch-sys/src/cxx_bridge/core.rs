@@ -12,6 +12,15 @@ pub(crate) mod ffi {
         /// Redefinition of the [`MemoryAllocator`](crate::MemoryAllocator).
         type MemoryAllocator = crate::MemoryAllocator;
 
+        /// Convert a `MemoryAllocator` into a `UniquePtr<MemoryAllocator>`.
+        ///
+        /// The function moves the `MemoryAllocator` into a `UniquePtr`, and calls the destructor of the original
+        /// `MemoryAllocator`. It does not free the object itself though.
+        #[namespace = "executorch_rs"]
+        fn BufferMemoryAllocator_into_memory_allocator_unique_ptr(
+            self_: Pin<&mut MemoryAllocator>,
+        ) -> UniquePtr<MemoryAllocator>;
+
         /// Dynamically allocates memory using malloc() and frees all pointers at
         /// destruction time.
         ///
@@ -31,7 +40,16 @@ pub(crate) mod ffi {
         unsafe fn MallocMemoryAllocator_as_memory_allocator(
             self_: Pin<&mut MallocMemoryAllocator>,
         ) -> *mut MemoryAllocator;
+
+        /// Convert a `UniquePtr<MallocMemoryAllocator>` into a `UniquePtr<MemoryAllocator>`.
+        #[namespace = "executorch_rs"]
+        fn MallocMemoryAllocator_into_memory_allocator_unique_ptr(
+            self_: UniquePtr<MallocMemoryAllocator>,
+        ) -> UniquePtr<MemoryAllocator>;
+
     }
+
+    impl UniquePtr<MemoryAllocator> {}
 }
 
 unsafe impl ExternType for crate::ScalarType {
@@ -71,5 +89,5 @@ unsafe impl ExternType for crate::ProgramVerification {
 
 unsafe impl ExternType for crate::MemoryAllocator {
     type Id = type_id!("MemoryAllocator");
-    type Kind = cxx::kind::Trivial;
+    type Kind = cxx::kind::Opaque;
 }

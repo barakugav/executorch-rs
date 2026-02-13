@@ -24,6 +24,11 @@ use executorch_sys as sys;
 pub trait MemoryAllocator<'a> {
     #[doc(hidden)]
     fn _cpp_ptr(&self) -> *const sys::MemoryAllocator;
+    #[cfg(feature = "std")]
+    #[doc(hidden)]
+    fn _into_unique_ptr(self) -> sys::cxx::UniquePtr<sys::MemoryAllocator>
+    where
+        Self: Sized;
     private_decl! {}
 
     /// Allocates memory of a certain size and alignment.
@@ -208,6 +213,17 @@ impl<'a> MemoryAllocator<'a> for BufferMemoryAllocator<'a> {
     fn _cpp_ptr(&self) -> *const sys::MemoryAllocator {
         self.0.get()
     }
+    #[cfg(feature = "std")]
+    fn _into_unique_ptr(self) -> sys::cxx::UniquePtr<sys::MemoryAllocator>
+    where
+        Self: Sized,
+    {
+        let self_pin = core::pin::Pin::new(unsafe { &mut *self._cpp_ptr().cast_mut() });
+        let ptr = sys::BufferMemoryAllocator_into_memory_allocator_unique_ptr(self_pin);
+        #[allow(clippy::forget_non_drop)]
+        std::mem::forget(self); // destructor was called in the C++ function
+        ptr
+    }
     private_impl! {}
 }
 
@@ -243,6 +259,12 @@ mod malloc_allocator {
             // objects are alive until the program ends.
             let self_ = unsafe { &mut *self.0.get() }.as_mut().unwrap();
             unsafe { sys::MallocMemoryAllocator_as_memory_allocator(self_) }
+        }
+        fn _into_unique_ptr(self) -> sys::cxx::UniquePtr<sys::MemoryAllocator>
+        where
+            Self: Sized,
+        {
+            sys::MallocMemoryAllocator_into_memory_allocator_unique_ptr(self.0.into_inner())
         }
         private_impl! {}
     }
