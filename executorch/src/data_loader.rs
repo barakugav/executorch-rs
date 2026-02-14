@@ -10,12 +10,14 @@ use executorch_sys as sys;
 
 /// Loads from a data source.
 ///
-/// This struct is like a base class for data loaders. All other data loaders implement `AsRef<DataLoader>`. Other
-/// structs such as [`Program`], take a reference to [`DataLoader`] instead of the concrete data loader type.
+/// This trait is like a base class for data loaders.
+/// Other structs such as [`Program`], take a dyn reference to [`DataLoader`] instead of the concrete data loader type.
 ///
 /// [`Program`]: crate::program::Program
-pub struct DataLoader {
-    _void: [core::ffi::c_void; 0],
+pub trait DataLoader {
+    #[doc(hidden)]
+    fn _cpp_ptr(&self) -> *const core::ffi::c_void;
+    private_decl! {}
 }
 
 /// A DataLoader that wraps a pre-allocated buffer. The FreeableBuffers
@@ -33,11 +35,11 @@ impl<'a> BufferDataLoader<'a> {
         Self(UnsafeCell::new(loader), PhantomData)
     }
 }
-impl AsRef<DataLoader> for BufferDataLoader<'_> {
-    fn as_ref(&self) -> &DataLoader {
-        let loader = unsafe { sys::executorch_BufferDataLoader_as_data_loader_mut(self.0.get()) };
-        unsafe { &*loader.ptr.cast() }
+impl DataLoader for BufferDataLoader<'_> {
+    fn _cpp_ptr(&self) -> *const core::ffi::c_void {
+        unsafe { sys::executorch_BufferDataLoader_as_data_loader_mut(self.0.get()) }.ptr
     }
+    private_impl! {}
 }
 
 #[cfg(feature = "data-loader")]
@@ -123,11 +125,11 @@ mod file_data_loader {
             Ok(Self(UnsafeCell::new(loader)))
         }
     }
-    impl AsRef<DataLoader> for FileDataLoader {
-        fn as_ref(&self) -> &DataLoader {
-            let loader = unsafe { sys::executorch_FileDataLoader_as_data_loader_mut(self.0.get()) };
-            unsafe { &*loader.ptr.cast() }
+    impl DataLoader for FileDataLoader {
+        fn _cpp_ptr(&self) -> *const core::ffi::c_void {
+            unsafe { sys::executorch_FileDataLoader_as_data_loader_mut(self.0.get()) }.ptr
         }
+        private_impl! {}
     }
     impl Drop for FileDataLoader {
         fn drop(&mut self) {
@@ -197,11 +199,11 @@ mod file_data_loader {
             Ok(Self(UnsafeCell::new(loader)))
         }
     }
-    impl AsRef<DataLoader> for MmapDataLoader {
-        fn as_ref(&self) -> &DataLoader {
-            let loader = unsafe { sys::executorch_MmapDataLoader_as_data_loader_mut(self.0.get()) };
-            unsafe { &*loader.ptr.cast() }
+    impl DataLoader for MmapDataLoader {
+        fn _cpp_ptr(&self) -> *const core::ffi::c_void {
+            unsafe { sys::executorch_MmapDataLoader_as_data_loader_mut(self.0.get()) }.ptr
         }
+        private_impl! {}
     }
     impl Drop for MmapDataLoader {
         fn drop(&mut self) {

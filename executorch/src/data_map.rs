@@ -11,12 +11,13 @@ use crate::{Error, Result};
 /// Interface to access and retrieve data via name.
 ///
 /// See executorch-cpp/extension/flat_tensor/ for an example.
-pub struct NamedDataMap {
-    _void: [core::ffi::c_void; 0],
-}
-impl NamedDataMap {
+pub trait NamedDataMap {
+    #[doc(hidden)]
+    fn _cpp_ptr(&self) -> *const core::ffi::c_void;
+    private_decl! {}
+
     /// Get `TensorLayout` by key.
-    pub fn get_tensor_layout<'a>(&'a self, key: &str) -> Result<TensorLayout<'a>> {
+    fn get_tensor_layout<'a>(&'a self, key: &str) -> Result<TensorLayout<'a>> {
         let key = ArrayRef::from_chars(crate::util::str2chars(key));
 
         // Safety: sys::executorch_NamedDataMap_get_tensor_layout writes to the pointer.
@@ -24,7 +25,7 @@ impl NamedDataMap {
             try_c_new(|layout| {
                 sys::executorch_NamedDataMap_get_tensor_layout(
                     sys::NamedDataMapRef {
-                        ptr: self as *const _ as *mut _,
+                        ptr: self._cpp_ptr(),
                     },
                     key.0,
                     layout,
@@ -43,13 +44,13 @@ impl NamedDataMap {
     //       size_t size) const = 0;
 
     /// Get the number of keys in the NamedDataMap.
-    pub fn get_num_keys(&self) -> Result<u32> {
+    fn get_num_keys(&self) -> Result<u32> {
         // Safety: sys::executorch_NamedDataMap_get_num_keys writes to the pointer.
         unsafe {
             try_c_new(|num_keys| {
                 sys::executorch_NamedDataMap_get_num_keys(
                     sys::NamedDataMapRef {
-                        ptr: self as *const _ as *mut _,
+                        ptr: self._cpp_ptr(),
                     },
                     num_keys,
                 )
@@ -58,13 +59,13 @@ impl NamedDataMap {
     }
 
     /// Get the key at the given index.
-    pub fn get_key(&self, index: u32) -> Result<&str> {
+    fn get_key(&self, index: u32) -> Result<&str> {
         // Safety: sys::executorch_NamedDataMap_get_key writes to the pointer.
         let key = unsafe {
             try_c_new(|key| {
                 sys::executorch_NamedDataMap_get_key(
                     sys::NamedDataMapRef {
-                        ptr: self as *const _ as *mut _,
+                        ptr: self._cpp_ptr(),
                     },
                     index,
                     key,
@@ -74,6 +75,14 @@ impl NamedDataMap {
         let key = unsafe { CStr::from_ptr(key) };
         key.to_str().map_err(|_| Error::InvalidString)
     }
+}
+
+pub(crate) struct AbstractNamedDataMap([core::ffi::c_void; 0]);
+impl NamedDataMap for AbstractNamedDataMap {
+    fn _cpp_ptr(&self) -> *const core::ffi::c_void {
+        self as *const _ as *const _
+    }
+    private_impl! {}
 }
 
 #[cfg(feature = "flat-tensor")]
@@ -95,9 +104,9 @@ mod flat_tensor {
         ///
         /// * `data_loader` - loader The DataLoader that wraps the FlatTensor file.
         ///
-        pub fn load(data_loader: &'a DataLoader) -> Result<Self> {
+        pub fn load(data_loader: &'a dyn DataLoader) -> Result<Self> {
             let data_loader = sys::DataLoaderRefMut {
-                ptr: data_loader as *const _ as *mut _,
+                ptr: data_loader._cpp_ptr().cast_mut(),
             };
             // Safety: sys::executorch_FlatTensorDataMap_load writes to the pointer.
             let data_map = unsafe {
@@ -106,14 +115,15 @@ mod flat_tensor {
             Ok(Self(data_map, PhantomData))
         }
     }
-    impl AsRef<NamedDataMap> for FlatTensorDataMap<'_> {
-        fn as_ref(&self) -> &NamedDataMap {
-            let map = unsafe {
+    impl NamedDataMap for FlatTensorDataMap<'_> {
+        fn _cpp_ptr(&self) -> *const core::ffi::c_void {
+            unsafe {
                 sys::executorch_FlatTensorDataMap_as_named_data_map_mut(
                     &self.0 as *const _ as *mut _,
                 )
-            };
-            unsafe { &*map.ptr.cast() }
+            }
+            .ptr
         }
+        private_impl! {}
     }
 }

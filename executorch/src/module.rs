@@ -10,13 +10,14 @@
 
 use core::marker::PhantomData;
 use std::collections::HashSet;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use executorch_sys as sys;
+use executorch_sys::cxx::UniquePtr;
 
 use crate::evalue::EValue;
 use crate::event_tracer::{EventTracer, EventTracerPtr};
-use crate::memory::HierarchicalAllocator;
+use crate::memory::{HierarchicalAllocator, MemoryAllocator};
 use crate::program::{MethodMeta, ProgramVerification};
 use crate::util::{try_c_new, ArrayRef, IntoCpp, IntoRust, NonTriviallyMovableVec};
 use crate::{Error, Result};
@@ -26,60 +27,117 @@ use crate::{Error, Result};
 /// See the `hello_world` example for how to load and execute a module.
 pub struct Module<'a>(sys::cxx::UniquePtr<sys::Module>, PhantomData<&'a ()>);
 impl<'a> Module<'a> {
-    /// Constructs an instance by loading a program from a file with specified
-    /// memory locking behavior.
+    /// Constructs an instance by loading a program from a file.
+    ///
+    /// See [`ModuleBuilder`] for more configuration options such as loading modes, event tracers, and memory
+    /// allocators.
     ///
     /// # Arguments
     ///
     /// * `file_path` - The path to the ExecuTorch program file to load.
-    /// - `data_files` - The path to one or more .ptd file/s.
-    /// * `load_mode` - The loading mode to use. Defaults to `LoadMode::File`.
-    /// * `event_tracer` - A EventTracer used for tracking and logging events.
     ///
     /// # Returns
     ///
     /// A new instance of Module.
+    ///
+    /// # Panics
+    ///
+    /// May panic if the file path is not a valid UTF-8 string or contains a null character.
+    pub fn new(file_path: impl AsRef<Path>) -> Self {
+        ModuleBuilder::new(file_path).build()
+    }
+}
+
+/// A builder for constructing a [`Module`] with more configuration options.
+///
+/// Use the [`Module::new`] method for simpler construction when the defaults are sufficient.
+pub struct ModuleBuilder<'a> {
+    file_path: PathBuf,
+    data_files: Vec<PathBuf>,
+    load_mode: LoadMode,
+    event_tracer: Option<EventTracerPtr<'a>>,
+    memory_allocator: UniquePtr<sys::MemoryAllocator>,
+    temp_allocator: UniquePtr<sys::MemoryAllocator>,
+}
+impl<'a> ModuleBuilder<'a> {
+    /// Constructs a new ModuleBuilder with the given file path and default configuration.
+    ///
+    /// # Arguments
+    ///
+    /// * `file_path` - The path to the ExecuTorch program file to load.
+    pub fn new(file_path: impl AsRef<Path>) -> Self {
+        Self {
+            file_path: file_path.as_ref().to_path_buf(),
+            data_files: Vec::new(),
+            load_mode: LoadMode::File,
+            event_tracer: None,
+            memory_allocator: UniquePtr::null(),
+            temp_allocator: UniquePtr::null(),
+        }
+    }
+
+    /// Set the paths to one or more .ptd file/s.
+    pub fn data_files(mut self, data_files: &[&Path]) -> Self {
+        self.data_files = data_files.iter().map(|p| p.to_path_buf()).collect();
+        self
+    }
+
+    /// Set the loading mode for the module.
+    ///
+    /// Default is `LoadMode::File`.
+    pub fn load_mode(mut self, load_mode: LoadMode) -> Self {
+        self.load_mode = load_mode;
+        self
+    }
+
+    /// Set an EventTracer for the module to track and log events.
+    pub fn event_tracer(mut self, event_tracer: EventTracerPtr<'a>) -> Self {
+        self.event_tracer = Some(event_tracer);
+        self
+    }
+
+    /// Set the MemoryAllocator used for memory management.
+    pub fn memory_allocator(mut self, memory_allocator: impl MemoryAllocator<'a>) -> Self {
+        self.memory_allocator = memory_allocator._into_unique_ptr();
+        self
+    }
+
+    /// Set the MemoryAllocator to use when allocating temporary data during kernel or delegate execution.
+    pub fn temp_allocator(mut self, temp_allocator: impl MemoryAllocator<'a>) -> Self {
+        self.temp_allocator = temp_allocator._into_unique_ptr();
+        self
+    }
+
+    /// Build the Module with the specified configuration.
     ///
     /// # Panics
     ///
     /// May panic if any of the file path or the data map path are not a valid UTF-8 string or contains a null character.
-    pub fn new(
-        file_path: &Path,
-        data_files: &[&Path],
-        load_mode: Option<LoadMode>,
-        event_tracer: Option<EventTracerPtr<'a>>,
-    ) -> Self {
-        let data_files = data_files
+    pub fn build(self) -> Module<'a> {
+        let data_files = self
+            .data_files
             .iter()
             .map(|f| f.as_os_str().to_str().ok_or(Error::InvalidString).unwrap())
             .collect::<Vec<_>>();
-        sys::cxx::let_cxx_string!(file_path = file_path.as_os_str().as_encoded_bytes());
+        sys::cxx::let_cxx_string!(file_path = self.file_path.as_os_str().as_encoded_bytes());
 
-        let load_mode = load_mode.unwrap_or(LoadMode::File).cpp();
-        let event_tracer = event_tracer
+        let event_tracer = self
+            .event_tracer
             .map(|tracer| tracer.0)
             .unwrap_or(sys::cxx::UniquePtr::null());
-        let module = sys::Module_new(&file_path, &data_files, load_mode, event_tracer);
-        Self(module, PhantomData)
+        let module = sys::Module_new(
+            &file_path,
+            &data_files,
+            self.load_mode.cpp(),
+            event_tracer,
+            self.memory_allocator,
+            self.temp_allocator,
+        );
+        Module(module, PhantomData)
     }
+}
 
-    /// Constructs an instance by loading a program from a file.
-    ///
-    /// # Arguments
-    ///
-    /// * `file_path` - The path to the ExecuTorch program file to load.
-    ///
-    /// # Returns
-    ///
-    /// A new instance of Module.
-    ///
-    /// # Panics
-    ///
-    /// If the file path is not a valid UTF-8 string or contains a null character.
-    pub fn from_file_path(file_path: impl AsRef<Path>) -> Self {
-        Self::new(file_path.as_ref(), &[], None, None)
-    }
-
+impl<'a> Module<'a> {
     /// Loads the program using the specified data loader and memory allocator.
     ///
     /// # Arguments
@@ -319,6 +377,7 @@ impl IntoCpp for LoadMode {
 mod tests {
     use super::*;
 
+    use crate::memory::MallocMemoryAllocator;
     use crate::tests::add_model_path;
 
     #[test]
@@ -336,43 +395,61 @@ mod tests {
                 Some(ProgramVerification::InternalConsistency),
             ] {
                 // TODO: test with data files (.ptd)
-                let mut module = Module::new(&add_model_path(), &[], load_mode, None);
+                let mut builder = ModuleBuilder::new(&add_model_path());
+                if let Some(load_mode) = load_mode {
+                    builder = builder.load_mode(load_mode);
+                }
+                let mut module = builder.build();
+
                 assert!(!module.is_loaded());
                 assert!(module.load(verification).is_ok());
                 assert!(module.is_loaded());
             }
         }
 
-        let mut module = Module::from_file_path("non-existing-file.pte2");
+        let mut module = Module::new("non-existing-file.pte2");
         assert!(!module.is_loaded());
         assert!(module.load(None).is_err());
         assert!(!module.is_loaded());
     }
 
     #[test]
+    fn load_with_custom_memory_allocator() {
+        let main_allocator = MallocMemoryAllocator::new();
+        let temp_allocator = MallocMemoryAllocator::new();
+        let mut module = ModuleBuilder::new(&add_model_path())
+            .memory_allocator(main_allocator)
+            .temp_allocator(temp_allocator)
+            .build();
+        assert!(!module.is_loaded());
+        assert!(module.load(None).is_ok());
+        assert!(module.is_loaded());
+    }
+
+    #[test]
     fn method_names() {
-        let mut module = Module::from_file_path(add_model_path());
+        let mut module = Module::new(add_model_path());
         let names = module.method_names().unwrap();
         assert_eq!(names, HashSet::from_iter(["forward".to_string()]));
 
-        let mut module = Module::from_file_path("non-existing-file.pte2");
+        let mut module = Module::new("non-existing-file.pte2");
         assert!(module.method_names().is_err());
     }
 
     #[test]
     fn num_methods() {
-        let mut module = Module::from_file_path(add_model_path());
+        let mut module = Module::new(add_model_path());
         let num_methods = module.num_methods().unwrap();
         assert_eq!(num_methods, 1);
 
-        let mut module = Module::from_file_path("non-existing-file.pte2");
+        let mut module = Module::new("non-existing-file.pte2");
         assert!(module.num_methods().is_err());
     }
 
     #[cfg(tests_with_kernels)]
     #[test]
     fn load_method() {
-        let mut module = Module::from_file_path(add_model_path());
+        let mut module = Module::new(add_model_path());
         assert!(!module.is_method_loaded("forward"));
         assert!(module.load_method("forward", None, None).is_ok());
         assert!(module.is_method_loaded("forward"));
@@ -381,14 +458,14 @@ mod tests {
             .is_err());
         assert!(!module.is_method_loaded("non-existing-method"));
 
-        let mut module = Module::from_file_path("non-existing-file.pte2");
+        let mut module = Module::new("non-existing-file.pte2");
         assert!(module.load_method("forward", None, None).is_err());
     }
 
     #[cfg(tests_with_kernels)]
     #[test]
     fn unload_method() {
-        let mut module = Module::from_file_path(add_model_path());
+        let mut module = Module::new(add_model_path());
         assert!(!module.is_method_loaded("forward"));
         assert!(module.load_method("forward", None, None).is_ok());
         assert!(module.is_method_loaded("forward"));
@@ -404,7 +481,7 @@ mod tests {
         use crate::evalue::Tag;
         use crate::tensor::ScalarType;
 
-        let mut module = Module::from_file_path(add_model_path());
+        let mut module = Module::new(add_model_path());
         let method_meta = module.method_meta("forward").unwrap();
 
         assert_eq!(method_meta.name(), "forward");
@@ -439,7 +516,7 @@ mod tests {
             .memory_planned_buffer_size(method_meta.num_memory_planned_buffers())
             .is_err());
 
-        let mut module = Module::from_file_path("non-existing-file.pte2");
+        let mut module = Module::new("non-existing-file.pte2");
         assert!(module.method_meta("forward").is_err());
     }
 
@@ -449,7 +526,7 @@ mod tests {
         use crate::evalue::Tag;
         use crate::tensor::{Tensor, TensorImpl};
 
-        let mut module = Module::from_file_path(add_model_path());
+        let mut module = Module::new(add_model_path());
 
         let sizes = [1];
         let data = [1.0_f32];
@@ -499,7 +576,7 @@ mod tests {
         assert!(module.execute("non-existing-method", &inputs).is_err());
 
         // non-existing file
-        let mut module = Module::from_file_path("non-existing-file.pte2");
+        let mut module = Module::new("non-existing-file.pte2");
         let inputs = [
             EValue::new(Tensor::new(&tensor1)),
             EValue::new(Tensor::new(&tensor2)),

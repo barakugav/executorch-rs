@@ -39,6 +39,9 @@ pub(crate) mod ffi {
         #[namespace = "executorch::runtime"]
         type EventTracer;
 
+        /// An allocator used to allocate objects for the runtime.
+        type MemoryAllocator = crate::MemoryAllocator;
+
         /// Redefinition of the [`HierarchicalAllocator`](crate::HierarchicalAllocator).
         type HierarchicalAllocator = crate::HierarchicalAllocator;
 
@@ -57,6 +60,8 @@ pub(crate) mod ffi {
             data_files: &[&str],
             load_mode: ModuleLoadMode,
             event_tracer: UniquePtr<EventTracer>,
+            memory_allocator: UniquePtr<MemoryAllocator>,
+            temp_allocator: UniquePtr<MemoryAllocator>,
         ) -> UniquePtr<Module>;
 
         /// Load the program if needed.

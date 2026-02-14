@@ -61,7 +61,7 @@ fn custom_pal() {
     // Cause a error log message to be emitted by loading a program from an empty data loader
     let data_loader = executorch::data_loader::BufferDataLoader::new(&[]);
     let _ = executorch::program::Program::load(
-        data_loader.as_ref(),
+        &data_loader,
         Some(executorch::program::ProgramVerification::InternalConsistency),
     );
     assert_eq!(unsafe { EMIT_LOG_MESSAGE_CALLS_COUNT }, 1);

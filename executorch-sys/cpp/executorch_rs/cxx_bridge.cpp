@@ -47,6 +47,19 @@ namespace executorch_rs
         auto allocator = static_cast<executorch::runtime::MemoryAllocator *>(&self);
         return reinterpret_cast<struct MemoryAllocator *>(allocator);
     }
+    std::unique_ptr<struct MemoryAllocator> MallocMemoryAllocator_into_memory_allocator_unique_ptr(std::unique_ptr<executorch::extension::MallocMemoryAllocator> self)
+    {
+        std::unique_ptr<executorch::runtime::MemoryAllocator> ptr = std::move(self);
+        return std::unique_ptr<struct MemoryAllocator>(reinterpret_cast<struct MemoryAllocator *>(ptr.release()));
+    }
+
+    std::unique_ptr<struct MemoryAllocator> BufferMemoryAllocator_into_memory_allocator_unique_ptr(struct MemoryAllocator &self)
+    {
+        auto ptr = std::make_unique<struct MemoryAllocator>(std::move(self));
+        self.~MemoryAllocator();
+        return ptr;
+    }
+
 #endif
 
 #if defined(EXECUTORCH_RS_TENSOR_PTR)
@@ -79,8 +92,13 @@ namespace executorch_rs
         const std::string &file_path,
         rust::Slice<const rust::Str> data_files,
         const ModuleLoadMode load_mode,
-        std::unique_ptr<executorch::runtime::EventTracer> event_tracer)
+        std::unique_ptr<executorch::runtime::EventTracer> event_tracer,
+        std::unique_ptr<struct MemoryAllocator> memory_allocator,
+        std::unique_ptr<struct MemoryAllocator> temp_allocator)
     {
+        std::unique_ptr<executorch::runtime::MemoryAllocator> memory_allocator_(reinterpret_cast<executorch::runtime::MemoryAllocator *>(memory_allocator.release()));
+        std::unique_ptr<executorch::runtime::MemoryAllocator> temp_allocator_(reinterpret_cast<executorch::runtime::MemoryAllocator *>(temp_allocator.release()));
+
         std::vector<std::string> data_files_;
         for (const auto &data_file : data_files)
         {
@@ -91,7 +109,9 @@ namespace executorch_rs
             file_path,
             data_files_,
             load_mode_,
-            std::move(event_tracer));
+            std::move(event_tracer),
+            std::move(memory_allocator_),
+            std::move(temp_allocator_));
     }
 
     Error Module_load(executorch::extension::Module &self, ProgramVerification verification)

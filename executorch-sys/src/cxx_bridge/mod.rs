@@ -1,6 +1,8 @@
 mod core;
 pub use core::ffi::{
-    MallocMemoryAllocator, MallocMemoryAllocator_as_memory_allocator, MallocMemoryAllocator_new,
+    BufferMemoryAllocator_into_memory_allocator_unique_ptr, MallocMemoryAllocator,
+    MallocMemoryAllocator_as_memory_allocator,
+    MallocMemoryAllocator_into_memory_allocator_unique_ptr, MallocMemoryAllocator_new,
 };
 
 #[cfg(feature = "module")]

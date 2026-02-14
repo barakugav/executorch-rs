@@ -5,7 +5,7 @@ use std::pin::Pin;
 use executorch_sys as sys;
 
 use super::{DimOrderType, RawTensor, RawTensorImpl, Scalar, ScalarType, SizesType, StridesType};
-use crate::memory::{MemoryAllocator, Storable, Storage};
+use crate::memory::{MemoryAllocator, MemoryAllocatorExt, Storable, Storage};
 use crate::tensor::{TensorAccessor, TensorAccessorMut};
 use crate::{Error, Result};
 
@@ -489,8 +489,8 @@ impl<'a, S> Tensor<'a, S> {
     /// let tensor = Tensor::new_in_storage(&tensor_impl, storage);
     ///
     /// // The tensor is allocated using a memory allocator
-    /// let allocator: impl AsRef<MemoryAllocator> = ...; // usually global
-    /// let tensor = Tensor::new_in_storage(&tensor_impl, allocator.as_ref().allocate_pinned().unwrap());
+    /// let allocator: impl MemoryAllocator = ...; // usually global
+    /// let tensor = Tensor::new_in_storage(&tensor_impl, allocator.allocate_pinned().unwrap());
     /// ```
     /// Note that the tensor data is not copied, and the required allocation is small.
     /// See [`Storage`] for more information.
@@ -515,7 +515,7 @@ impl<'a, S> Tensor<'a, S> {
     /// If the allocation fails.
     pub fn new_in_allocator(
         tensor_impl: &'a TensorImpl<S>,
-        allocator: &'a MemoryAllocator<'a>,
+        allocator: &'a dyn MemoryAllocator<'a>,
     ) -> Self
     where
         S: Scalar,
@@ -562,8 +562,8 @@ impl<'a, S> TensorMut<'a, S> {
     /// let tensor = TensorMut::new_in_storage(&tensor_impl, storage);
     ///
     /// // The tensor is allocated using a memory allocator
-    /// let allocator: impl AsRef<MemoryAllocator> = ...; // usually global
-    /// let tensor = TensorMut::new_in_storage(&tensor_impl, allocator.as_ref().allocate_pinned().unwrap());
+    /// let allocator: impl MemoryAllocator = ...; // usually global
+    /// let tensor = TensorMut::new_in_storage(&tensor_impl, allocator.allocate_pinned().unwrap());
     /// ```
     /// Note that the tensor data is not copied, and the required allocation is small.
     /// See the [`Storage`] struct for more information.
