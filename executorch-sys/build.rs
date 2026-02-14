@@ -160,9 +160,22 @@ fn link_executorch() {
     if cfg!(feature = "module") {
         if let Some(libs_dir) = &libs_dir {
             println!("cargo::rustc-link-search=native={libs_dir}/extension/module/");
-            println!("cargo::rustc-link-search=native={libs_dir}/extension/flat_tensor/");
         }
         println!("cargo::rustc-link-lib=static:+whole-archive=extension_module_static");
+    }
+
+    let feature_named_data_map = cfg!(feature = "module");
+    if feature_named_data_map {
+        if let Some(libs_dir) = &libs_dir {
+            println!("cargo::rustc-link-search=native={libs_dir}/extension/named_data_map/");
+        }
+        println!("cargo::rustc-link-lib=static:+whole-archive=extension_named_data_map");
+    }
+
+    if cfg!(feature = "flat-tensor") {
+        if let Some(libs_dir) = &libs_dir {
+            println!("cargo::rustc-link-search=native={libs_dir}/extension/flat_tensor/");
+        }
         println!("cargo::rustc-link-lib=static:+whole-archive=extension_flat_tensor");
     }
 
