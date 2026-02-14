@@ -99,7 +99,6 @@ fn generate_bindings() {
         .opaque_type("TensorLayout")
         .opaque_type("MethodMeta")
         .opaque_type("Method")
-        .opaque_type("FreeableBuffer")
         .opaque_type("FlatTensorDataMap")
         .opaque_type("BufferDataLoader")
         .opaque_type("FileDataLoader")
@@ -109,6 +108,7 @@ fn generate_bindings() {
         .opaque_type("MemoryManager")
         .opaque_type("OptionalTensorStorage")
         .opaque_type("ETDumpGen")
+        .blocklist_item("FreeableBuffer")
         .blocklist_item(".*_bindgen_ty_.*")
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()));
     let bindings = builder.generate().expect("Unable to generate bindings");

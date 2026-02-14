@@ -17,4 +17,4 @@ pub use module::ffi::{
 #[cfg(feature = "tensor-ptr")]
 pub(crate) mod tensor_ptr;
 #[cfg(feature = "tensor-ptr")]
-pub use tensor_ptr::ffi::{Tensor, TensorPtr_new};
+pub use tensor_ptr::ffi::{Tensor, TensorPtr_clone, TensorPtr_new};

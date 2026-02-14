@@ -65,6 +65,14 @@ impl<S: Scalar> TensorPtr<'static, View<S>> {
     pub fn from_vec(vec: Vec<S>) -> Self {
         TensorPtrBuilder::<View<S>>::from_vec(vec).build().unwrap()
     }
+
+    /// Create a new [`TensorPtr`] with data copied from a tensor.
+    ///
+    /// If the given tensor has a data type different from the target tensor dtype (`S`), the data will be casted.
+    pub fn copy_of<D: Data>(tensor: &TensorBase<'_, D>) -> Self {
+        let tensor = unsafe { tensor.as_cpp().ptr.cast::<sys::Tensor>().as_ref().unwrap() };
+        TensorPtr(sys::TensorPtr_clone(tensor, S::TYPE.cpp()), PhantomData)
+    }
 }
 impl<'a, S: Scalar> TensorPtr<'a, View<S>> {
     /// Create a new [`TensorPtr`] from an [`Array`](ndarray::Array).
@@ -778,6 +786,31 @@ mod tests {
         )
         .build_mut()
         .is_err());
+    }
+
+    #[cfg(feature = "ndarray")]
+    #[test]
+    fn copy_of() {
+        let array = ndarray::array![[1, 2], [3, 4]];
+        let tensor1 = TensorPtr::from_array_view(array.view()).unwrap();
+
+        let tensor2 = TensorPtr::<View<i32>>::copy_of(&tensor1.as_tensor());
+        assert_eq!(tensor1.as_tensor().as_array::<ndarray::Ix2>(), array);
+        assert_eq!(tensor2.as_tensor().as_array::<ndarray::Ix2>(), array);
+
+        // cast to u8
+        let tensor2 = TensorPtr::<View<u8>>::copy_of(&tensor1.as_tensor());
+        assert_eq!(
+            tensor2.as_tensor().as_array::<ndarray::Ix2>(),
+            array.map(|&x| x as u8)
+        );
+
+        // cast to f32
+        let tensor2 = TensorPtr::<View<f32>>::copy_of(&tensor1.as_tensor());
+        assert_eq!(
+            tensor2.as_tensor().as_array::<ndarray::Ix2>(),
+            array.map(|&x| x as f32)
+        );
     }
 
     #[cfg(feature = "ndarray")]

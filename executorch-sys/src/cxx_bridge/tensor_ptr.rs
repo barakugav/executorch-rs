@@ -67,6 +67,21 @@ pub(crate) mod ffi {
             dynamism: TensorShapeDynamism,
             allocation: Box<RustAny>,
         ) -> SharedPtr<Tensor>;
+
+        /// Creates a TensorPtr that manages a new Tensor with the same properties
+        /// as the given Tensor, but with a copy of the data owned by the returned
+        /// TensorPtr, or nullptr if the original data is null.
+        ///
+        /// Arguments:
+        ///
+        /// - `tensor`: The Tensor to clone.
+        /// - `scalar_type`: The data type for the cloned tensor. The data will be
+        ///   cast from the source tensor's type.
+        ///
+        /// Returns a new TensorPtr that manages a Tensor with the specified type
+        /// and copied/cast data.
+        #[namespace = "executorch_rs"]
+        fn TensorPtr_clone(tensor: &Tensor, scalar_type: ScalarType) -> SharedPtr<Tensor>;
     }
 
     impl SharedPtr<Tensor> {}
