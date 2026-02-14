@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-// const EXECUTORCH_VERSION: &str = "1.0.1";
+// const EXECUTORCH_VERSION: &str = "1.1.0";
 
 fn main() {
     // TODO: verify on runtime we use the correct version of executorch
@@ -99,6 +99,7 @@ fn generate_bindings() {
         .opaque_type("TensorLayout")
         .opaque_type("MethodMeta")
         .opaque_type("Method")
+        .opaque_type("FreeableBuffer")
         .opaque_type("FlatTensorDataMap")
         .opaque_type("BufferDataLoader")
         .opaque_type("FileDataLoader")
@@ -159,9 +160,22 @@ fn link_executorch() {
     if cfg!(feature = "module") {
         if let Some(libs_dir) = &libs_dir {
             println!("cargo::rustc-link-search=native={libs_dir}/extension/module/");
-            println!("cargo::rustc-link-search=native={libs_dir}/extension/flat_tensor/");
         }
         println!("cargo::rustc-link-lib=static:+whole-archive=extension_module_static");
+    }
+
+    let feature_named_data_map = cfg!(feature = "module");
+    if feature_named_data_map {
+        if let Some(libs_dir) = &libs_dir {
+            println!("cargo::rustc-link-search=native={libs_dir}/extension/named_data_map/");
+        }
+        println!("cargo::rustc-link-lib=static:+whole-archive=extension_named_data_map");
+    }
+
+    if cfg!(feature = "flat-tensor") {
+        if let Some(libs_dir) = &libs_dir {
+            println!("cargo::rustc-link-search=native={libs_dir}/extension/flat_tensor/");
+        }
         println!("cargo::rustc-link-lib=static:+whole-archive=extension_flat_tensor");
     }
 

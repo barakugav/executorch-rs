@@ -286,17 +286,17 @@ extern "C"
             // as_bool
             bool _blob3;
             // as_string
-            size_t _blob4[2];
+            size_t _blob4;
             // as_double_list
-            size_t _blob5[2];
+            size_t _blob5;
             // as_bool_list
-            size_t _blob6[2];
+            size_t _blob6;
             // as_int_list
-            size_t _blob7[3];
+            size_t _blob7;
             // as_tensor_list
-            size_t _blob8[3];
+            size_t _blob8;
             // as_list_optional_tensor
-            size_t _blob9[3];
+            size_t _blob9;
             // as_tensor
             struct TensorStorage _blob10;
         };
@@ -311,37 +311,48 @@ extern "C"
     {
         void *ptr;
     };
+    struct FreeableBuffer
+    {
+        union
+        {
+            struct
+            {
+                size_t _blob1[2];
+            };
+            struct
+            {
+                uint64_t _blob2;
+                size_t _blob3;
+            };
+        };
+        uint8_t _blob4;
+        size_t _blob5[2];
+    };
     struct Program
     {
 
-        // program_data_ (4)
-        //   free_fn_
-        //   free_fn_context_
-        //   data_
-        //   size_
+        // program_data_
+        struct FreeableBuffer _blob1;
         // loader_
         // internal_program_
         // segment_base_offset_
-        // constant_segment_data_ (4)
-        //   free_fn_
-        //   free_fn_context_
-        //   data_
-        //   size_
-        size_t _blob1[11];
+        size_t _blob2[3];
+        // constant_segment_data_
+        struct FreeableBuffer _blob3;
         // pte_data_map_
         struct // optional<PteDataMap>
         {
             union
             {
-                char _blob2_opt_dummy;
+                char _blob4_opt_dummy;
                 // vtable
                 // loader_
                 // segment_base_offset_
                 // named_data_
                 // segments_
-                size_t _blob2_opt_val[5];
+                size_t _blob4_opt_val[5];
             };
-            bool _blob2_opt_flag;
+            bool _blob4_opt_flag;
         };
     };
     struct TensorInfo
@@ -411,15 +422,15 @@ extern "C"
 #if defined(EXECUTORCH_RS_FLAT_TENSOR)
     struct FlatTensorDataMap
     {
-
         // vtable
         size_t _blob0[1];
         // header_
         uint64_t _blob1[4];
-        // flat_tensor_data_ (4)
+        // flat_tensor_data_
+        struct FreeableBuffer _blob2;
         // flat_tensor_
         // loader_
-        size_t _blob2[6];
+        size_t _blob3[2];
     };
 #endif
 
@@ -600,17 +611,17 @@ extern "C"
     struct BoxedEvalueListI64
     {
         struct ArrayRefEValuePtr wrapped_vals;
-        struct SpanI64 unwrapped_vals;
+        int64_t *unwrapped_vals;
     };
     struct BoxedEvalueListTensor
     {
         struct ArrayRefEValuePtr wrapped_vals;
-        struct SpanTensor unwrapped_vals;
+        struct TensorRefMut unwrapped_vals;
     };
     struct BoxedEvalueListOptionalTensor
     {
         struct ArrayRefEValuePtr wrapped_vals;
-        struct SpanOptionalTensor unwrapped_vals;
+        struct OptionalTensorRefMut unwrapped_vals;
     };
 
     struct EventTracerRefMut
@@ -736,15 +747,15 @@ extern "C"
     // EValue
     void executorch_EValue_new_none(struct EValueRefMut self);
     void executorch_EValue_new_from_i64(struct EValueRefMut self, int64_t value);
-    void executorch_EValue_new_from_i64_list(struct EValueRefMut self, struct BoxedEvalueListI64 value);
+    void executorch_EValue_new_from_i64_list(struct EValueRefMut self, const struct BoxedEvalueListI64 *value);
     void executorch_EValue_new_from_f64(struct EValueRefMut self, double value);
-    void executorch_EValue_new_from_f64_list(struct EValueRefMut self, struct ArrayRefF64 value);
+    void executorch_EValue_new_from_f64_list(struct EValueRefMut self, const struct ArrayRefF64 *value);
     void executorch_EValue_new_from_bool(struct EValueRefMut self, bool value);
-    void executorch_EValue_new_from_bool_list(struct EValueRefMut self, struct ArrayRefBool value);
-    void executorch_EValue_new_from_string(struct EValueRefMut self, struct ArrayRefChar value);
+    void executorch_EValue_new_from_bool_list(struct EValueRefMut self, const struct ArrayRefBool *value);
+    void executorch_EValue_new_from_string(struct EValueRefMut self, const struct ArrayRefChar *value);
     void executorch_EValue_new_from_tensor(struct EValueRefMut self, struct TensorRef value);
-    void executorch_EValue_new_from_tensor_list(struct EValueRefMut self, struct BoxedEvalueListTensor value);
-    void executorch_EValue_new_from_optional_tensor_list(struct EValueRefMut self, struct BoxedEvalueListOptionalTensor value);
+    void executorch_EValue_new_from_tensor_list(struct EValueRefMut self, const struct BoxedEvalueListTensor *value);
+    void executorch_EValue_new_from_optional_tensor_list(struct EValueRefMut self, const struct BoxedEvalueListOptionalTensor *value);
     enum Tag executorch_EValue_tag(struct EValueRef self);
     int64_t executorch_EValue_as_i64(struct EValueRef self);
     struct ArrayRefI64 executorch_EValue_as_i64_list(struct EValueRef self);

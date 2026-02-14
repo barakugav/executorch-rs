@@ -3,7 +3,6 @@
 //! [`EValue`] is a type-erased value that can hold different types like scalars, lists or tensors. It is used to pass
 //! arguments to and return values from the runtime.
 
-use std::ffi::CStr;
 use std::pin::Pin;
 
 use executorch_sys as sys;
@@ -419,18 +418,18 @@ impl<'a> IntoEValue<'a> for i64 {
         }
     }
 }
-impl<'a> IntoEValue<'a> for BoxedEvalueList<'a, i64> {
+impl<'a> IntoEValue<'a> for &'a BoxedEvalueList<'_, i64> {
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a> {
         // Safety: the closure init the pointer
-        unsafe { EValue::new_impl(|p| sys::executorch_EValue_new_from_i64_list(p, self.0)) }
+        unsafe { EValue::new_impl(|p| sys::executorch_EValue_new_from_i64_list(p, &self.0)) }
     }
 
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
         // Safety: the closure init the pointer
         unsafe {
             EValue::new_in_storage_impl(
-                |p| sys::executorch_EValue_new_from_i64_list(p, self.0),
+                |p| sys::executorch_EValue_new_from_i64_list(p, &self.0),
                 storage,
             )
         }
@@ -450,20 +449,18 @@ impl<'a> IntoEValue<'a> for f64 {
         }
     }
 }
-impl<'a> IntoEValue<'a> for &'a [f64] {
+impl<'a> IntoEValue<'a> for &'a ArrayRef<'_, f64> {
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a> {
-        let arr = ArrayRef::from_slice(self);
         // Safety: the closure init the pointer
-        unsafe { EValue::new_impl(|p| sys::executorch_EValue_new_from_f64_list(p, arr.0)) }
+        unsafe { EValue::new_impl(|p| sys::executorch_EValue_new_from_f64_list(p, &self.0)) }
     }
 
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
-        let arr = ArrayRef::from_slice(self);
         // Safety: the closure init the pointer
         unsafe {
             EValue::new_in_storage_impl(
-                |p| sys::executorch_EValue_new_from_f64_list(p, arr.0),
+                |p| sys::executorch_EValue_new_from_f64_list(p, &self.0),
                 storage,
             )
         }
@@ -483,66 +480,60 @@ impl<'a> IntoEValue<'a> for bool {
         }
     }
 }
-impl<'a> IntoEValue<'a> for &'a [bool] {
+impl<'a> IntoEValue<'a> for &'a ArrayRef<'_, bool> {
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a> {
-        let arr = ArrayRef::from_slice(self);
         // Safety: the closure init the pointer
-        unsafe { EValue::new_impl(|p| sys::executorch_EValue_new_from_bool_list(p, arr.0)) }
+        unsafe { EValue::new_impl(|p| sys::executorch_EValue_new_from_bool_list(p, &self.0)) }
     }
 
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
-        let arr = ArrayRef::from_slice(self);
         // Safety: the closure init the pointer
         unsafe {
             EValue::new_in_storage_impl(
-                |p| sys::executorch_EValue_new_from_bool_list(p, arr.0),
+                |p| sys::executorch_EValue_new_from_bool_list(p, &self.0),
                 storage,
             )
         }
     }
 }
-impl<'a> IntoEValue<'a> for &'a [std::ffi::c_char] {
+impl<'a> IntoEValue<'a> for &'a ArrayRef<'_, FfiChar> {
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a> {
-        let self_ = FfiChar::slice_from_ffi(self);
-        let arr = ArrayRef::from_slice(self_);
         // Safety: the closure init the pointer
-        unsafe { EValue::new_impl(|p| sys::executorch_EValue_new_from_string(p, arr.0)) }
+        unsafe { EValue::new_impl(|p| sys::executorch_EValue_new_from_string(p, &self.0)) }
     }
 
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
-        let self_ = FfiChar::slice_from_ffi(self);
-        let arr = ArrayRef::from_slice(self_);
         // Safety: the closure init the pointer
         unsafe {
             EValue::new_in_storage_impl(
-                |p| sys::executorch_EValue_new_from_string(p, arr.0),
+                |p| sys::executorch_EValue_new_from_string(p, &self.0),
                 storage,
             )
         }
     }
 }
-impl<'a> IntoEValue<'a> for &'a str {
-    #[cfg(feature = "alloc")]
-    fn into_evalue(self) -> EValue<'a> {
-        crate::util::str2chars(self).into_evalue()
-    }
+// impl<'a> IntoEValue<'a> for &'a str {
+//     #[cfg(feature = "alloc")]
+//     fn into_evalue(self) -> EValue<'a> {
+//         crate::util::str2chars(self).into_evalue()
+//     }
 
-    fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
-        crate::util::str2chars(self).into_evalue_in_storage(storage)
-    }
-}
-impl<'a> IntoEValue<'a> for &'a CStr {
-    #[cfg(feature = "alloc")]
-    fn into_evalue(self) -> EValue<'a> {
-        crate::util::cstr2chars(self).into_evalue()
-    }
+//     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
+//         crate::util::str2chars(self).into_evalue_in_storage(storage)
+//     }
+// }
+// impl<'a> IntoEValue<'a> for &'a CStr {
+//     #[cfg(feature = "alloc")]
+//     fn into_evalue(self) -> EValue<'a> {
+//         crate::util::cstr2chars(self).into_evalue()
+//     }
 
-    fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
-        crate::util::cstr2chars(self).into_evalue_in_storage(storage)
-    }
-}
+//     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
+//         crate::util::cstr2chars(self).into_evalue_in_storage(storage)
+//     }
+// }
 impl<'a> IntoEValue<'a> for RawTensor<'a> {
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a> {
@@ -608,29 +599,29 @@ impl<'a, D: crate::tensor::Data> IntoEValue<'a> for &'a crate::tensor::TensorPtr
         self.as_tensor().into_evalue_in_storage(storage)
     }
 }
-impl<'a> IntoEValue<'a> for BoxedEvalueList<'a, TensorAny<'a>> {
+impl<'a> IntoEValue<'a> for &'a BoxedEvalueList<'a, TensorAny<'a>> {
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a> {
         // Safety: the closure init the pointer
-        unsafe { EValue::new_impl(|p| sys::executorch_EValue_new_from_tensor_list(p, self.0)) }
+        unsafe { EValue::new_impl(|p| sys::executorch_EValue_new_from_tensor_list(p, &self.0)) }
     }
 
     fn into_evalue_in_storage(self, storage: Pin<&'a mut Storage<EValue>>) -> EValue<'a> {
         // Safety: the closure init the pointer
         unsafe {
             EValue::new_in_storage_impl(
-                |p| sys::executorch_EValue_new_from_tensor_list(p, self.0),
+                |p| sys::executorch_EValue_new_from_tensor_list(p, &self.0),
                 storage,
             )
         }
     }
 }
-impl<'a> IntoEValue<'a> for BoxedEvalueList<'a, Option<TensorAny<'a>>> {
+impl<'a> IntoEValue<'a> for &'a BoxedEvalueList<'a, Option<TensorAny<'a>>> {
     #[cfg(feature = "alloc")]
     fn into_evalue(self) -> EValue<'a> {
         // Safety: the closure init the pointer
         unsafe {
-            EValue::new_impl(|p| sys::executorch_EValue_new_from_optional_tensor_list(p, self.0))
+            EValue::new_impl(|p| sys::executorch_EValue_new_from_optional_tensor_list(p, &self.0))
         }
     }
 
@@ -638,7 +629,7 @@ impl<'a> IntoEValue<'a> for BoxedEvalueList<'a, Option<TensorAny<'a>>> {
         // Safety: the closure init the pointer
         unsafe {
             EValue::new_in_storage_impl(
-                |p| sys::executorch_EValue_new_from_optional_tensor_list(p, self.0),
+                |p| sys::executorch_EValue_new_from_optional_tensor_list(p, &self.0),
                 storage,
             )
         }
@@ -961,7 +952,7 @@ mod tests {
             let mut unwrapped_vals = storage!(i64, (3));
             let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals.as_mut()).unwrap();
 
-            let evalue = EValue::new(list);
+            let evalue = EValue::new(&list);
             assert_eq!(evalue.tag(), Tag::ListInt);
             assert_eq!(evalue.as_i64_list(), &[42, 17, 6]);
 
@@ -982,7 +973,7 @@ mod tests {
             let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals).unwrap();
 
             let evalue_storage = storage!(EValue);
-            let evalue = EValue::new_in_storage(list, evalue_storage);
+            let evalue = EValue::new_in_storage(&list, evalue_storage);
             assert_eq!(evalue.tag(), Tag::ListInt);
             assert_eq!(evalue.as_i64_list(), &[42, 17, 6]);
         }
@@ -1009,10 +1000,11 @@ mod tests {
     #[test]
     fn f64_list() {
         let list = [42.0, 17.0, 6.0];
+        let list = ArrayRef::from_slice(list.as_slice());
 
         #[cfg(feature = "alloc")]
         {
-            let evalue = EValue::new(list.as_slice());
+            let evalue = EValue::new(&list);
             assert_eq!(evalue.tag(), Tag::ListDouble);
             assert_eq!(evalue.as_f64_list(), [42.0, 17.0, 6.0]);
 
@@ -1020,7 +1012,7 @@ mod tests {
         }
         {
             let storage = storage!(EValue);
-            let evalue = EValue::new_in_storage(list.as_slice(), storage);
+            let evalue = EValue::new_in_storage(&list, storage);
             assert_eq!(evalue.tag(), Tag::ListDouble);
             assert_eq!(evalue.as_f64_list(), [42.0, 17.0, 6.0]);
         }
@@ -1047,10 +1039,10 @@ mod tests {
     #[test]
     fn bool_list() {
         let list = [true, false, true];
-
+        let list = ArrayRef::from_slice(list.as_slice());
         #[cfg(feature = "alloc")]
         {
-            let evalue = EValue::new(list.as_slice());
+            let evalue = EValue::new(&list);
             assert_eq!(evalue.tag(), Tag::ListBool);
             assert_eq!(evalue.as_bool_list(), [true, false, true]);
 
@@ -1058,7 +1050,7 @@ mod tests {
         }
         {
             let storage = storage!(EValue);
-            let evalue = EValue::new_in_storage(list.as_slice(), storage);
+            let evalue = EValue::new_in_storage(&list, storage);
             assert_eq!(evalue.tag(), Tag::ListBool);
             assert_eq!(evalue.as_bool_list(), [true, false, true]);
         }
@@ -1068,10 +1060,11 @@ mod tests {
     fn string() {
         let string = c"hello world!";
         let chars = crate::util::cstr2chars(string);
+        let chars_ref = ArrayRef::from_chars(chars);
 
         #[cfg(feature = "alloc")]
         {
-            let evalue = EValue::new(string);
+            let evalue = EValue::new(&chars_ref);
             assert_eq!(evalue.tag(), Tag::String);
             assert_eq!(evalue.to_cstr().as_c_str(), string);
             assert_eq!(evalue.as_str(), string.to_str().unwrap());
@@ -1081,7 +1074,7 @@ mod tests {
         }
         {
             let storage = storage!(EValue);
-            let evalue = EValue::new_in_storage(string, storage);
+            let evalue = EValue::new_in_storage(&chars_ref, storage);
             assert_eq!(evalue.tag(), Tag::String);
             assert_eq!(evalue.as_str(), string.to_str().unwrap());
             assert_eq!(evalue.as_chars(), chars);
@@ -1198,7 +1191,7 @@ mod tests {
             let unwrapped_vals = storage!(TensorAny, [3]);
             let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals).unwrap();
 
-            let evalue = EValue::new(list);
+            let evalue = EValue::new(&list);
             assert_eq!(evalue.tag(), Tag::ListTensor);
             let tensor_list = evalue.as_tensor_list();
             assert_eq!(tensor_list.len(), 3);
@@ -1225,7 +1218,7 @@ mod tests {
             let unwrapped_vals = storage!(TensorAny, [3]);
             let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals).unwrap();
 
-            let evalue = EValue::new(list);
+            let evalue = EValue::new(&list);
             assert_eq!(evalue.tag(), Tag::ListTensor);
             let tensor_list = evalue.as_tensor_list();
             assert_eq!(tensor_list.len(), 3);
@@ -1274,7 +1267,7 @@ mod tests {
             let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals).unwrap();
 
             let evalue_storage = storage!(EValue);
-            let evalue = EValue::new_in_storage(list, evalue_storage);
+            let evalue = EValue::new_in_storage(&list, evalue_storage);
             assert_eq!(evalue.tag(), Tag::ListTensor);
             let tensor_list = evalue.as_tensor_list();
             assert_eq!(tensor_list.len(), 3);
@@ -1330,7 +1323,7 @@ mod tests {
             let unwrapped_vals = storage!(Option<TensorAny>, [4]);
             let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals).unwrap();
 
-            let evalue = EValue::new(list);
+            let evalue = EValue::new(&list);
             assert_eq!(evalue.tag(), Tag::ListOptionalTensor);
             let tensor_list = evalue.as_optional_tensor_list();
             assert_eq!(tensor_list.len(), 4);
@@ -1378,7 +1371,7 @@ mod tests {
             let unwrapped_vals = storage!(Option<TensorAny>, [4]);
             let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals).unwrap();
 
-            let evalue = EValue::new(list);
+            let evalue = EValue::new(&list);
             assert_eq!(evalue.tag(), Tag::ListOptionalTensor);
             let tensor_list = evalue.as_optional_tensor_list();
             assert_eq!(tensor_list.len(), 4);
@@ -1446,7 +1439,7 @@ mod tests {
             let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals).unwrap();
 
             let evalue_storage = storage!(EValue);
-            let evalue = EValue::new_in_storage(list, evalue_storage);
+            let evalue = EValue::new_in_storage(&list, evalue_storage);
             assert_eq!(evalue.tag(), Tag::ListOptionalTensor);
             let tensor_list = evalue.as_optional_tensor_list();
             assert_eq!(tensor_list.len(), 4);
@@ -1560,17 +1553,22 @@ mod tests {
                         TensorImpl::from_slice(&sizes, &data, &dim_order, &strides).unwrap();
                     check_evalue(EValue::new(Tensor::new(&tensor_impl)));
                 }
-                Tag::String => check_evalue(EValue::new(c"hello world!")),
+                Tag::String => {
+                    let chars = ArrayRef::from_cstr(c"hello world!");
+                    check_evalue(EValue::new(&chars))
+                }
                 Tag::Double => check_evalue(EValue::new(42.6)),
                 Tag::Int => check_evalue(EValue::new(17)),
                 Tag::Bool => check_evalue(EValue::new(true)),
                 Tag::ListBool => {
                     let bool_list = [true, false, false, true, true];
-                    check_evalue(EValue::new(bool_list.as_slice()))
+                    let bool_list = ArrayRef::from_slice(bool_list.as_slice());
+                    check_evalue(EValue::new(&bool_list))
                 }
                 Tag::ListDouble => {
                     let f64_list = [42.2_f64, 17.6, 55.9];
-                    check_evalue(EValue::new(f64_list.as_slice()))
+                    let f64_list = ArrayRef::from_slice(f64_list.as_slice());
+                    check_evalue(EValue::new(&f64_list))
                 }
                 Tag::ListInt => {
                     let values = [42_i64, 17, 99].map(EValue::new);
@@ -1578,7 +1576,7 @@ mod tests {
                     let mut unwrapped_vals = storage!(i64, (3));
                     let list =
                         BoxedEvalueList::new(&wrapped_vals, unwrapped_vals.as_mut()).unwrap();
-                    check_evalue(EValue::new(list));
+                    check_evalue(EValue::new(&list));
                 }
                 Tag::ListTensor => {
                     let data1: [i32; 3] = [42, 17, 6];
@@ -1611,7 +1609,7 @@ mod tests {
                     let wrapped_vals = EValuePtrList::new([&evalue1, &evalue2, &evalue3]);
                     let unwrapped_vals = storage!(TensorAny, [3]);
                     let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals).unwrap();
-                    check_evalue(EValue::new(list));
+                    check_evalue(EValue::new(&list));
                 }
                 Tag::ListOptionalTensor => {
                     let data1: [i32; 3] = [42, 17, 6];
@@ -1653,7 +1651,7 @@ mod tests {
                     ]);
                     let unwrapped_vals = storage!(Option<TensorAny>, [4]);
                     let list = BoxedEvalueList::new(&wrapped_vals, unwrapped_vals).unwrap();
-                    check_evalue(EValue::new(list));
+                    check_evalue(EValue::new(&list));
                 }
                 Tag::ListScalar => unimplemented!(),
             }

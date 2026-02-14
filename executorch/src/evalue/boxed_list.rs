@@ -148,7 +148,7 @@ macro_rules! ptr2ref {
     }};
 }
 macro_rules! impl_boxed_evalue_list {
-    ($element:path, $list_impl:path, $unwrapped_span_type:path, $element_tag:ident, $allow_null_element:expr $(, $unwrapped_type:ty)?) => {
+    ($element:path, $list_impl:path, $element_tag:ident, $allow_null_element:expr $(, $unwrapped_type:ty)?) => {
         impl<'a> BoxedEvalueListElement<'a> for $element {
             const __ELEMENT_TAG: Tag = Tag::$element_tag;
             const __ALLOW_NULL_ELEMENT: bool = $allow_null_element;
@@ -167,12 +167,7 @@ macro_rules! impl_boxed_evalue_list {
                 let unwrapped_vals_ptr = unwrapped_vals.as_mut_ptr() as *mut <Self::Element<'_> as Storable>::__Storage;
                 Ok(Self {
                     wrapped_vals,
-                    unwrapped_vals: {
-                        $unwrapped_span_type {
-                            data: ptr2ref!(unwrapped_vals_ptr $(, $unwrapped_type)?),
-                            len: unwrapped_vals.len(),
-                        }
-                    },
+                    unwrapped_vals: ptr2ref!(unwrapped_vals_ptr $(, $unwrapped_type)?),
                 })
             }
 
@@ -180,11 +175,10 @@ macro_rules! impl_boxed_evalue_list {
         }
     };
 }
-impl_boxed_evalue_list!(i64, sys::BoxedEvalueListI64, sys::SpanI64, Int, false);
+impl_boxed_evalue_list!(i64, sys::BoxedEvalueListI64, Int, false);
 impl_boxed_evalue_list!(
     Option<TensorAny<'a>>,
     sys::BoxedEvalueListOptionalTensor,
-    sys::SpanOptionalTensor,
     Tensor,
     true,
     sys::OptionalTensorRefMut
@@ -192,7 +186,6 @@ impl_boxed_evalue_list!(
 impl_boxed_evalue_list!(
     TensorAny<'a>,
     sys::BoxedEvalueListTensor,
-    sys::SpanTensor,
     Tensor,
     false,
     sys::TensorRefMut

@@ -40,6 +40,12 @@ namespace
 {
     using executorch_rs::is_equal_layout;
 
+    static_assert(is_equal_layout<struct ArrayRefF64, executorch::aten::ArrayRef<double>>());
+    static_assert(is_equal_layout<struct ArrayRefBool, executorch::aten::ArrayRef<bool>>());
+    static_assert(is_equal_layout<struct ArrayRefChar, executorch::aten::ArrayRef<char>>());
+    static_assert(is_equal_layout<struct BoxedEvalueListI64, executorch::runtime::BoxedEvalueList<int64_t>>());
+    static_assert(is_equal_layout<struct BoxedEvalueListTensor, executorch::runtime::BoxedEvalueList<executorch::aten::Tensor>>());
+    static_assert(is_equal_layout<struct BoxedEvalueListOptionalTensor, executorch::runtime::BoxedEvalueList<std::optional<executorch::aten::Tensor>>>());
     static_assert(is_equal_layout<struct EValueStorage, executorch::runtime::EValue>());
     static_assert(is_equal_layout<struct TensorStorage, executorch::aten::Tensor>());
     static_assert(is_equal_layout<struct OptionalTensorStorage, executorch::aten::optional<executorch::aten::Tensor>>());
@@ -47,6 +53,7 @@ namespace
     static_assert(is_equal_layout<struct TensorImpl, executorch::aten::TensorImpl>());
     static_assert(std::is_trivially_move_constructible_v<executorch::aten::TensorImpl>);
 
+    static_assert(is_equal_layout<struct FreeableBuffer, executorch::runtime::FreeableBuffer>());
     static_assert(is_equal_layout<struct Program, executorch::runtime::Program>());
     // Program is not trivially move constructible because it has a FreeableBuffer field that
     // has a custom move constructor.
@@ -520,10 +527,10 @@ static const executorch::aten::optional<executorch::aten::Tensor> *cast_optional
 {
     return reinterpret_cast<const executorch::aten::optional<executorch::aten::Tensor> *>(tensor.ptr);
 }
-static executorch::aten::optional<executorch::aten::Tensor> *cast_optional_tensor_mut(struct OptionalTensorRefMut tensor)
-{
-    return reinterpret_cast<executorch::aten::optional<executorch::aten::Tensor> *>(tensor.ptr);
-}
+// static executorch::aten::optional<executorch::aten::Tensor> *cast_optional_tensor_mut(struct OptionalTensorRefMut tensor)
+// {
+//     return reinterpret_cast<executorch::aten::optional<executorch::aten::Tensor> *>(tensor.ptr);
+// }
 struct TensorRef executorch_OptionalTensor_get(struct OptionalTensorRef self)
 {
     auto self_ = cast_optional_tensor(self);
@@ -611,44 +618,39 @@ void executorch_EValue_new_from_i64(struct EValueRefMut self, int64_t value)
     auto self_ = cast_evalue_mut(self);
     new (self_) executorch::runtime::EValue(value);
 }
-void executorch_EValue_new_from_i64_list(struct EValueRefMut self, struct BoxedEvalueListI64 value)
+void executorch_EValue_new_from_i64_list(struct EValueRefMut self, const struct BoxedEvalueListI64 *value)
 {
     auto self_ = cast_evalue_mut(self);
-    ET_CHECK(value.wrapped_vals.len == value.unwrapped_vals.len);
-    auto wrapped_vals =
-        const_cast<executorch::runtime::EValue **>(reinterpret_cast<const executorch::runtime::EValue *const *>(value.wrapped_vals.data));
-    executorch::runtime::BoxedEvalueList<int64_t> list(
-        wrapped_vals,
-        value.unwrapped_vals.data,
-        (int)value.wrapped_vals.len);
-    new (self_) executorch::runtime::EValue(list);
+    auto value_ = checked_reinterpret_cast<executorch::runtime::BoxedEvalueList<int64_t>>(value);
+    new (self_) executorch::runtime::EValue(const_cast<executorch::runtime::BoxedEvalueList<int64_t> *>(value_));
 }
 void executorch_EValue_new_from_f64(struct EValueRefMut self, double value)
 {
     auto self_ = cast_evalue_mut(self);
     new (self_) executorch::runtime::EValue(value);
 }
-void executorch_EValue_new_from_f64_list(struct EValueRefMut self, struct ArrayRefF64 value)
+void executorch_EValue_new_from_f64_list(struct EValueRefMut self, const struct ArrayRefF64 *value)
 {
     auto self_ = cast_evalue_mut(self);
-    executorch::aten::ArrayRef<double> value_(value.data, value.len);
-    new (self_) executorch::runtime::EValue(value_);
+    auto value_ = checked_reinterpret_cast<executorch::aten::ArrayRef<double>>(value);
+    new (self_) executorch::runtime::EValue(const_cast<executorch::aten::ArrayRef<double> *>(value_));
 }
 void executorch_EValue_new_from_bool(struct EValueRefMut self, bool value)
 {
     auto self_ = cast_evalue_mut(self);
     new (self_) executorch::runtime::EValue(value);
 }
-void executorch_EValue_new_from_bool_list(struct EValueRefMut self, struct ArrayRefBool value)
+void executorch_EValue_new_from_bool_list(struct EValueRefMut self, const struct ArrayRefBool *value)
 {
     auto self_ = cast_evalue_mut(self);
-    executorch::aten::ArrayRef<bool> value_(value.data, value.len);
-    new (self_) executorch::runtime::EValue(value_);
+    auto value_ = checked_reinterpret_cast<executorch::aten::ArrayRef<bool>>(value);
+    new (self_) executorch::runtime::EValue(const_cast<executorch::aten::ArrayRef<bool> *>(value_));
 }
-void executorch_EValue_new_from_string(struct EValueRefMut self, struct ArrayRefChar value)
+void executorch_EValue_new_from_string(struct EValueRefMut self, const struct ArrayRefChar *value)
 {
     auto self_ = cast_evalue_mut(self);
-    new (self_) executorch::runtime::EValue(value.data, value.len);
+    auto value_ = checked_reinterpret_cast<executorch::aten::ArrayRef<char>>(value);
+    new (self_) executorch::runtime::EValue(const_cast<executorch::aten::ArrayRef<char> *>(value_));
 }
 void executorch_EValue_new_from_tensor(struct EValueRefMut self, struct TensorRef value)
 {
@@ -656,30 +658,17 @@ void executorch_EValue_new_from_tensor(struct EValueRefMut self, struct TensorRe
     auto value_ = cast_tensor(value);
     new (self_) executorch::runtime::EValue(*value_);
 }
-void executorch_EValue_new_from_tensor_list(struct EValueRefMut self, struct BoxedEvalueListTensor value)
+void executorch_EValue_new_from_tensor_list(struct EValueRefMut self, const struct BoxedEvalueListTensor *value)
 {
     auto self_ = cast_evalue_mut(self);
-    ET_CHECK(value.wrapped_vals.len == value.unwrapped_vals.len);
-    auto wrapped_vals =
-        const_cast<executorch::runtime::EValue **>(reinterpret_cast<const executorch::runtime::EValue *const *>(value.wrapped_vals.data));
-    executorch::runtime::BoxedEvalueList<executorch::aten::Tensor> list(
-        wrapped_vals,
-        cast_tensor_mut(value.unwrapped_vals.data),
-        (int)value.wrapped_vals.len);
-    new (self_) executorch::runtime::EValue(list);
+    auto value_ = checked_reinterpret_cast<executorch::runtime::BoxedEvalueList<executorch::aten::Tensor>>(value);
+    new (self_) executorch::runtime::EValue(const_cast<executorch::runtime::BoxedEvalueList<executorch::aten::Tensor> *>(value_));
 }
-void executorch_EValue_new_from_optional_tensor_list(struct EValueRefMut self, struct BoxedEvalueListOptionalTensor value)
+void executorch_EValue_new_from_optional_tensor_list(struct EValueRefMut self, const struct BoxedEvalueListOptionalTensor *value)
 {
     auto self_ = cast_evalue_mut(self);
-    ET_CHECK(value.wrapped_vals.len == value.unwrapped_vals.len);
-    auto wrapped_vals =
-        const_cast<executorch::runtime::EValue **>(reinterpret_cast<const executorch::runtime::EValue *const *>(value.wrapped_vals.data));
-    auto unwrapped_vals = cast_optional_tensor_mut(value.unwrapped_vals.data);
-    executorch::runtime::BoxedEvalueList<executorch::aten::optional<executorch::aten::Tensor>> list(
-        wrapped_vals,
-        unwrapped_vals,
-        (int)value.wrapped_vals.len);
-    new (self_) executorch::runtime::EValue(list);
+    auto value_ = checked_reinterpret_cast<executorch::runtime::BoxedEvalueList<std::optional<executorch::aten::Tensor>>>(value);
+    new (self_) executorch::runtime::EValue(const_cast<executorch::runtime::BoxedEvalueList<std::optional<executorch::aten::Tensor>> *>(value_));
 }
 enum Tag executorch_EValue_tag(struct EValueRef self)
 {

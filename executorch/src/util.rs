@@ -283,10 +283,7 @@ pub(crate) trait IntoCpp {
 /// This is intended to be trivially copyable, so it should be passed by
 /// value.
 #[allow(unused)]
-pub(crate) struct ArrayRef<'a, T: ArrayRefElement>(
-    pub(crate) T::__ArrayRefImpl,
-    PhantomData<&'a ()>,
-);
+pub struct ArrayRef<'a, T: ArrayRefElement>(pub(crate) T::__ArrayRefImpl, PhantomData<&'a ()>);
 impl<'a, T: ArrayRefElement> ArrayRef<'a, T> {
     /// Create a new `ArrayRef` of a raw `sys::ArrayRefT`.
     ///
@@ -312,14 +309,34 @@ impl<'a, T: ArrayRefElement> ArrayRef<'a, T> {
         unsafe { self.0.as_slice() }
     }
 }
+impl<'a> ArrayRef<'a, FfiChar> {
+    /// Create an ArrayRef of characters from a CStr.
+    pub fn from_cstr(s: &'a CStr) -> Self {
+        Self::from_chars(crate::util::cstr2chars(s))
+    }
+    /// Create an ArrayRef of characters from a slice of `std::ffi::c_char`.
+    pub fn from_chars(chars: &'a [std::ffi::c_char]) -> Self {
+        Self::from_slice(FfiChar::slice_from_ffi(chars))
+    }
+}
 impl<T: ArrayRefElement + Debug + 'static> Debug for ArrayRef<'_, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         self.as_slice().fmt(f)
     }
 }
+impl<'a, T: ArrayRefElement> From<&'a [T]> for ArrayRef<'a, T> {
+    fn from(slice: &'a [T]) -> Self {
+        Self::from_slice(slice)
+    }
+}
+impl<'a, T: ArrayRefElement + 'static> From<ArrayRef<'a, T>> for &'a [T] {
+    fn from(arr: ArrayRef<'a, T>) -> Self {
+        arr.as_slice()
+    }
+}
 
 /// An element type that can be used in an ArrayRef.
-pub(crate) trait ArrayRefElement {
+pub trait ArrayRefElement {
     /// The Cpp type that represents an ArrayRef of this element type.
     #[doc(hidden)]
     type __ArrayRefImpl: __ArrayRefImpl<Element = Self>;
@@ -328,7 +345,7 @@ pub(crate) trait ArrayRefElement {
 
 /// A Cpp type that represents an ArrayRef of elements of type Element.
 #[doc(hidden)]
-pub(crate) trait __ArrayRefImpl {
+pub trait __ArrayRefImpl {
     /// The element type of the ArrayRef.
     type Element: ArrayRefElement<__ArrayRefImpl = Self>;
 
@@ -349,11 +366,11 @@ pub(crate) trait __ArrayRefImpl {
     private_decl! {}
 }
 
-/// Equivalent to C's `char` type.
+/// Equivalent to C's `char` type (like `std::ffi::c_char`).
 ///
 /// This type is used to avoid trait conflicts with `i8` and `u8` on different platforms (for example Android aarch64).
 #[repr(transparent)]
-pub(crate) struct FfiChar(#[allow(unused)] std::ffi::c_char);
+pub struct FfiChar(pub std::ffi::c_char);
 impl FfiChar {
     pub(crate) fn slice_from_ffi(slice: &[std::ffi::c_char]) -> &[FfiChar] {
         assert_eq!(
@@ -371,6 +388,16 @@ impl FfiChar {
         );
         // Safety: FfiChar is a transparent wrapper around std::ffi::c_char
         unsafe { std::slice::from_raw_parts(slice.as_ptr().cast(), slice.len()) }
+    }
+}
+impl From<std::ffi::c_char> for FfiChar {
+    fn from(c: std::ffi::c_char) -> Self {
+        Self(c)
+    }
+}
+impl From<FfiChar> for std::ffi::c_char {
+    fn from(c: FfiChar) -> Self {
+        c.0
     }
 }
 
