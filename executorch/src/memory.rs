@@ -8,7 +8,6 @@ use core::ops::Not;
 use std::cell::UnsafeCell;
 use std::marker::{PhantomData, PhantomPinned};
 use std::mem::MaybeUninit;
-use std::ops::Deref;
 use std::pin::Pin;
 use std::ptr;
 
@@ -22,12 +21,10 @@ use executorch_sys as sys;
 /// objects to implement the [`NoDrop`] trait.
 /// When using [`allocate_raw`](MemoryAllocator::allocate_raw) as a way to allocate bytes and than populate an object in
 /// them, the user is responsible dropping the allocated object when it is no longer needed.
-pub struct MemoryAllocator<'a>(UnsafeCell<sys::MemoryAllocator>, PhantomData<&'a ()>);
-impl MemoryAllocator<'_> {
-    unsafe fn from_inner_ref(allocator: &sys::MemoryAllocator) -> &Self {
-        // Safety: Self has a single field of (UnsafeCell of) sys::MemoryAllocator
-        unsafe { std::mem::transmute(allocator) }
-    }
+pub trait MemoryAllocator<'a> {
+    #[doc(hidden)]
+    fn _cpp_ptr(&self) -> *const sys::MemoryAllocator;
+    private_decl! {}
 
     /// Allocates memory of a certain size and alignment.
     ///
@@ -41,14 +38,17 @@ impl MemoryAllocator<'_> {
     /// A mutable reference to the allocated memory, or [`None`] if allocation failed due to insufficient memory or
     /// an alignment that is not a power of 2.
     #[allow(clippy::mut_from_ref)]
-    pub fn allocate_raw(&self, size: usize, alignment: usize) -> Option<&mut [u8]> {
-        let ptr =
-            unsafe { sys::executorch_MemoryAllocator_allocate(self.0.get(), size, alignment) };
+    fn allocate_raw(&self, size: usize, alignment: usize) -> Option<&mut [u8]> {
+        let ptr = unsafe {
+            sys::executorch_MemoryAllocator_allocate(self._cpp_ptr().cast_mut(), size, alignment)
+        };
         ptr.is_null()
             .not()
             .then(|| unsafe { std::slice::from_raw_parts_mut(ptr as *mut u8, size) })
     }
-
+}
+/// An extension trait for [`MemoryAllocator`] that provides convenient methods to allocate memory for Rust types.
+pub trait MemoryAllocatorExt<'a>: MemoryAllocator<'a> {
     /// Allocates memory for a type `T` with uninitialized memory.
     ///
     /// Once a valid object is written to the allocated memory by the user, its also the responsibility of user to
@@ -58,7 +58,7 @@ impl MemoryAllocator<'_> {
     ///
     /// A mutable reference to the allocated memory, or [`None`] if allocation failed due to insufficient memory.
     #[allow(clippy::mut_from_ref)]
-    pub fn allocate_uninit<T>(&self) -> Option<&mut MaybeUninit<T>> {
+    fn allocate_uninit<T>(&self) -> Option<&mut MaybeUninit<T>> {
         let ptr = self.allocate_raw(std::mem::size_of::<T>(), std::mem::align_of::<T>())?;
         let ptr = ptr.as_mut_ptr() as *mut MaybeUninit<T>;
         Some(unsafe { &mut *ptr })
@@ -73,7 +73,7 @@ impl MemoryAllocator<'_> {
     ///
     /// A mutable reference to the allocated memory, or [`None`] if allocation failed due to insufficient memory.
     #[allow(clippy::mut_from_ref)]
-    pub fn allocate<T>(&self) -> Option<&mut T>
+    fn allocate<T>(&self) -> Option<&mut T>
     where
         T: NoDrop + Default,
     {
@@ -91,7 +91,7 @@ impl MemoryAllocator<'_> {
     ///
     /// A pinned mutable reference to the allocated memory, or [`None`] if allocation failed due to insufficient memory.
     #[allow(clippy::mut_from_ref)]
-    pub fn allocate_pinned<T>(&self) -> Option<Pin<&mut T>>
+    fn allocate_pinned<T>(&self) -> Option<Pin<&mut T>>
     where
         T: NoDrop + Default,
     {
@@ -113,7 +113,7 @@ impl MemoryAllocator<'_> {
     ///
     /// A mutable reference to the allocated array, or [`None`] if allocation failed due to insufficient memory.
     #[allow(clippy::mut_from_ref)]
-    pub fn allocate_arr<T>(&self, len: usize) -> Option<&mut [T]>
+    fn allocate_arr<T>(&self, len: usize) -> Option<&mut [T]>
     where
         T: NoDrop + Default,
     {
@@ -134,7 +134,7 @@ impl MemoryAllocator<'_> {
     ///
     /// A mutable reference to the allocated array, or [`None`] if allocation failed due to insufficient memory.
     #[allow(clippy::mut_from_ref)]
-    pub fn allocate_arr_fn<T>(&self, len: usize, f: impl Fn(usize) -> T) -> Option<&mut [T]>
+    fn allocate_arr_fn<T>(&self, len: usize, f: impl Fn(usize) -> T) -> Option<&mut [T]>
     where
         T: NoDrop,
     {
@@ -159,6 +159,7 @@ impl MemoryAllocator<'_> {
         Some(slice)
     }
 }
+impl<'a, T: MemoryAllocator<'a> + ?Sized> MemoryAllocatorExt<'a> for T {}
 
 /// A marker trait indicating it's OK to not drop an instance of that type.
 ///
@@ -203,16 +204,11 @@ impl<'a> BufferMemoryAllocator<'a> {
         Self(UnsafeCell::new(allocator), PhantomData)
     }
 }
-impl<'a> AsRef<MemoryAllocator<'a>> for BufferMemoryAllocator<'a> {
-    fn as_ref(&self) -> &MemoryAllocator<'a> {
-        unsafe { MemoryAllocator::from_inner_ref(&*self.0.get()) }
+impl<'a> MemoryAllocator<'a> for BufferMemoryAllocator<'a> {
+    fn _cpp_ptr(&self) -> *const sys::MemoryAllocator {
+        self.0.get()
     }
-}
-impl<'a> Deref for BufferMemoryAllocator<'a> {
-    type Target = MemoryAllocator<'a>;
-    fn deref(&self) -> &Self::Target {
-        self.as_ref()
-    }
+    private_impl! {}
 }
 
 #[cfg(feature = "std")]
@@ -238,23 +234,17 @@ mod malloc_allocator {
             Self(UnsafeCell::new(sys::MallocMemoryAllocator_new()))
         }
     }
-    impl AsRef<MemoryAllocator<'static>> for MallocMemoryAllocator {
-        fn as_ref(&self) -> &MemoryAllocator<'static> {
+    impl MemoryAllocator<'static> for MallocMemoryAllocator {
+        fn _cpp_ptr(&self) -> *const sys::MemoryAllocator {
             // Safety: MallocMemoryAllocator contains a single field of (UnsafeCell of) sys::MemoryAllocator which is a
             // sub class of sys::MemoryAllocator, and MemoryAllocator contains a single field of (UnsafeCell of)
             // sys::MemoryAllocator.
             // The returned allocator have a lifetime of 'static because it does not depend on any external buffer, malloc
             // objects are alive until the program ends.
             let self_ = unsafe { &mut *self.0.get() }.as_mut().unwrap();
-            let allocator = unsafe { sys::MallocMemoryAllocator_as_memory_allocator(self_) };
-            unsafe { MemoryAllocator::from_inner_ref(&*allocator) }
+            unsafe { sys::MallocMemoryAllocator_as_memory_allocator(self_) }
         }
-    }
-    impl Deref for MallocMemoryAllocator {
-        type Target = MemoryAllocator<'static>;
-        fn deref(&self) -> &Self::Target {
-            self.as_ref()
-        }
+        private_impl! {}
     }
 }
 
@@ -320,18 +310,20 @@ impl<'a> MemoryManager<'a> {
     ///   Must outlive the Method that uses it. May be [`None`] if the Method does not use kernels or delegates that
     ///   allocate temporary data. This allocator will be reset after every kernel or delegate call during execution.
     pub fn new(
-        method_allocator: &'a MemoryAllocator<'a>,
+        method_allocator: &'a dyn MemoryAllocator<'a>,
         planned_memory: Option<&'a mut HierarchicalAllocator>,
-        temp_allocator: Option<&'a MemoryAllocator<'a>>,
+        temp_allocator: Option<&'a dyn MemoryAllocator<'a>>,
     ) -> Self {
         let planned_memory = planned_memory
             .map(|x| &mut x.0 as *mut _)
             .unwrap_or(ptr::null_mut());
-        let temp_allocator = temp_allocator.map(|x| x.0.get()).unwrap_or(ptr::null_mut());
+        let temp_allocator = temp_allocator
+            .map(|x| x._cpp_ptr().cast_mut())
+            .unwrap_or(ptr::null_mut());
         Self(
             UnsafeCell::new(unsafe {
                 sys::executorch_MemoryManager_new(
-                    method_allocator.0.get(),
+                    method_allocator._cpp_ptr().cast_mut(),
                     planned_memory,
                     temp_allocator,
                 )
@@ -435,8 +427,8 @@ impl<'a> MemoryManager<'a> {
 ///   let evalue = EValue::new(tensor);
 ///
 ///   // Create an EValue in a memory allocated by the allocator
-///   let allocator: impl AsRef<MemoryAllocator> = ...; // usually global
-///   let evalue = EValue::new_in_storage(tensor, allocator.as_ref().allocate_pinned().unwrap());
+///   let allocator: impl MemoryAllocator = ...; // usually global
+///   let evalue = EValue::new_in_storage(tensor, allocator.allocate_pinned().unwrap());
 ///   ```
 #[repr(transparent)]
 pub struct Storage<T: Storable>(MaybeUninit<T::__Storage>, PhantomPinned);
@@ -520,8 +512,6 @@ impl_default_storable!(i8, i16, i32, i64, u8, u16, u32, u64, f32, f64);
 
 #[cfg(test)]
 mod tests {
-    use core::ops::Deref;
-
     use super::*;
 
     #[test]
@@ -552,7 +542,7 @@ mod tests {
 
     fn test_memory_allocator<'a, T>(mut allocator_init: impl FnMut(usize) -> T, is_bounded: bool)
     where
-        T: Deref<Target = super::MemoryAllocator<'a>>,
+        T: super::MemoryAllocator<'a>,
     {
         let sizes = [1, 2, 4, 5, 8, 13, 31];
         let alignments = [1, 2, 4, 8, 16, 32];

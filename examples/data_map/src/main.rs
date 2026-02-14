@@ -5,7 +5,9 @@ use std::path::{Path, PathBuf};
 use executorch::data_loader::FileDataLoader;
 use executorch::data_map::FlatTensorDataMap;
 use executorch::evalue::{EValue, IntoEValue};
-use executorch::memory::{BufferMemoryAllocator, HierarchicalAllocator, MemoryManager};
+use executorch::memory::{
+    BufferMemoryAllocator, HierarchicalAllocator, MemoryAllocatorExt, MemoryManager,
+};
 use executorch::module::Module;
 use executorch::program::{Program, ProgramVerification};
 use executorch::tensor::TensorPtr;
@@ -46,11 +48,8 @@ fn main_program() {
     let allocator = BufferMemoryAllocator::new(&mut buffer);
 
     let data_loader = FileDataLoader::from_path(&model_path, None).unwrap();
-    let program = Program::load(
-        data_loader.as_ref(),
-        Some(ProgramVerification::InternalConsistency),
-    )
-    .unwrap();
+    let program =
+        Program::load(&data_loader, Some(ProgramVerification::InternalConsistency)).unwrap();
 
     let method_meta = program.method_meta(c"forward").unwrap();
 
@@ -70,9 +69,9 @@ fn main_program() {
     let memory_manager = MemoryManager::new(&allocator, Some(&mut planned_memory), None);
 
     let data_map_loader = FileDataLoader::from_path(&data_file, None).unwrap();
-    let data_map = FlatTensorDataMap::load(data_map_loader.as_ref()).unwrap();
+    let data_map = FlatTensorDataMap::load(&data_map_loader).unwrap();
     let mut method = program
-        .load_method(c"forward", &memory_manager, None, Some(data_map.as_ref()))
+        .load_method(c"forward", &memory_manager, None, Some(&data_map))
         .unwrap();
 
     let data = array![[1.0_f32, 2.0], [3.0, 4.0]];

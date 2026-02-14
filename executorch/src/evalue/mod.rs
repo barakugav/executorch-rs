@@ -7,7 +7,7 @@ use std::pin::Pin;
 
 use executorch_sys as sys;
 
-use crate::memory::{MemoryAllocator, Storable, Storage};
+use crate::memory::{MemoryAllocator, MemoryAllocatorExt, Storable, Storage};
 use crate::tensor::{RawTensor, TensorAny, TensorBase};
 use crate::util::{
     ArrayRef, Destroy, FfiChar, IntoCpp, IntoRust, NonTriviallyMovable, __ArrayRefImpl, chars2str,
@@ -130,8 +130,8 @@ impl<'a> EValue<'a> {
     /// let evalue = EValue::new_in_storage(value, storage);
     ///
     /// // The value is allocated using a memory allocator
-    /// let allocator: impl AsRef<MemoryAllocator> = ...; // usually global
-    /// let evalue = EValue::new_in_storage(value, allocator.as_ref().allocate_pinned().unwrap());
+    /// let allocator: impl MemoryAllocator = ...; // usually global
+    /// let evalue = EValue::new_in_storage(value, allocator.allocate_pinned().unwrap());
     /// ```
     /// Note that the inner data is not copied, and the required allocation is small.
     /// See [`Storage`] for more information.
@@ -152,7 +152,7 @@ impl<'a> EValue<'a> {
     /// If the allocation fails.
     pub fn new_in_allocator(
         value: impl IntoEValue<'a>,
-        allocator: &'a MemoryAllocator<'a>,
+        allocator: &'a dyn MemoryAllocator<'a>,
     ) -> Self {
         let storage = allocator
             .allocate_pinned()
