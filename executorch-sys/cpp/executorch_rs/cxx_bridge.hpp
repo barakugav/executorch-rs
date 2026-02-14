@@ -37,6 +37,9 @@ namespace executorch_rs
         ScalarType scalar_type,
         TensorShapeDynamism dynamism,
         rust::Box<executorch_rs::cxx_util::RustAny> allocation);
+    std::shared_ptr<executorch::aten::Tensor> TensorPtr_clone(
+        const executorch::aten::Tensor &tensor,
+        ScalarType scalar_type);
 #endif
 
 #if defined(EXECUTORCH_RS_MODULE)

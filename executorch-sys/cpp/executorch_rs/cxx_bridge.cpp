@@ -85,6 +85,14 @@ namespace executorch_rs
             static_cast<executorch::aten::TensorShapeDynamism>(dynamism),
             [allocation_ptr = allocation_ptr](void *) mutable {});
     }
+
+    std::shared_ptr<executorch::aten::Tensor> TensorPtr_clone(
+        const executorch::aten::Tensor &tensor,
+        ScalarType scalar_type)
+    {
+        return executorch::extension::clone_tensor_ptr(
+            tensor, static_cast<executorch::aten::ScalarType>(scalar_type));
+    }
 #endif
 
 #if defined(EXECUTORCH_RS_MODULE)
