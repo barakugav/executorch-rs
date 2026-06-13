@@ -1,4 +1,4 @@
-# Copy of executorch/requirements-dev.txt as of v1.1.0
+# Copy of executorch/requirements-dev.txt as of v1.2.0
 
 cmake>=3.29, <4.0.0  # For building binary targets in the wheel.
 packaging>=24.2 # Lower bound required by setuptools
@@ -9,5 +9,5 @@ wheel  # For building the pip package archive.
 zstd  # Imported by resolve_buck.py.
 certifi  # Imported by resolve_buck.py.
 lintrunner==0.12.7
-lintrunner-adapters==0.12.6
-torch==2.10.0
+lintrunner-adapters==0.13.0
+torch==2.11.0
