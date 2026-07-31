@@ -56,6 +56,8 @@ pub(crate) mod ffi {
         /// - `data_files`: The path to one or more .ptd file/s.
         /// - `load_mode`: The loading mode to use.
         /// - `event_tracer`: An EventTracer used for tracking and logging events, or null if not needed.
+        /// - `share_memory_arenas`: When true, all methods loaded by this Module share a single set of
+        ///   memory-planned buffers.
         #[namespace = "executorch_rs"]
         fn Module_new(
             file_path: &CxxString,
@@ -64,6 +66,7 @@ pub(crate) mod ffi {
             event_tracer: UniquePtr<EventTracer>,
             memory_allocator: UniquePtr<ET_MemoryAllocator>,
             temp_allocator: UniquePtr<ET_MemoryAllocator>,
+            share_memory_arenas: bool,
         ) -> UniquePtr<Module>;
 
         /// Load the program if needed.

@@ -49,7 +49,8 @@ namespace executorch_rs
         const ET_ModuleLoadMode load_mode,
         std::unique_ptr<executorch::runtime::EventTracer> event_tracer,
         std::unique_ptr<struct ET_MemoryAllocator> memory_allocator,
-        std::unique_ptr<struct ET_MemoryAllocator> temp_allocator);
+        std::unique_ptr<struct ET_MemoryAllocator> temp_allocator,
+        bool share_memory_arenas);
 
     ET_Error Module_load(executorch::extension::Module &self, ET_ProgramVerification verification);
     bool Module_is_loaded(const executorch::extension::Module &self);

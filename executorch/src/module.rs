@@ -58,6 +58,7 @@ pub struct ModuleBuilder<'a> {
     event_tracer: Option<EventTracerPtr<'a>>,
     memory_allocator: UniquePtr<sys::ET_MemoryAllocator>,
     temp_allocator: UniquePtr<sys::ET_MemoryAllocator>,
+    share_memory_arenas: bool,
 }
 impl<'a> ModuleBuilder<'a> {
     /// Constructs a new ModuleBuilder with the given file path and default configuration.
@@ -73,6 +74,7 @@ impl<'a> ModuleBuilder<'a> {
             event_tracer: None,
             memory_allocator: UniquePtr::null(),
             temp_allocator: UniquePtr::null(),
+            share_memory_arenas: false,
         }
     }
 
@@ -108,6 +110,30 @@ impl<'a> ModuleBuilder<'a> {
         self
     }
 
+    /// Share a single set of memory-planned buffers across all methods loaded by this Module.
+    ///
+    /// When true, all methods loaded by this Module
+    /// share the same memory-planned buffers for mem_id=1 (activation memory)
+    /// and mem_id=2 (shared mutable buffer memory), sized to the max
+    /// across all methods. mem_id>2 indicates a custom memory plan, and those
+    /// receive fresh memory buffers. share_memory_arenas is required for models
+    /// exported with share_mutable_buffers=true, where methods access shared
+    /// mutable state (e.g., set/get state). When enabled, outputs from one method
+    /// may be invalidated by executing another method, since their output tensors
+    /// can alias the same underlying buffer. Consume or copy outputs before
+    /// calling execute again. NOTE: This class is not thread-safe and performs
+    /// no internal synchronization. Calling execute concurrently on the same
+    /// Module instance from multiple threads is unsafe, regardless of whether
+    /// share_memory_arenas is true or false. When share_memory_arenas is true,
+    /// methods may overwrite each other's data in the shared memory arenas,
+    /// increasing aliasing and the risk of unintended overwrites.
+    ///
+    /// (comments are from CPP, lifetimes are enforced in Rust so no unsafe here)
+    pub fn share_memory_arenas(mut self, share_memory_arenas: bool) -> Self {
+        self.share_memory_arenas = share_memory_arenas;
+        self
+    }
+
     /// Build the Module with the specified configuration.
     ///
     /// # Panics
@@ -132,6 +158,7 @@ impl<'a> ModuleBuilder<'a> {
             event_tracer,
             self.memory_allocator,
             self.temp_allocator,
+            self.share_memory_arenas,
         );
         Module(module, PhantomData)
     }
@@ -421,6 +448,16 @@ mod tests {
         let mut module = ModuleBuilder::new(&add_model_path())
             .memory_allocator(main_allocator)
             .temp_allocator(temp_allocator)
+            .build();
+        assert!(!module.is_loaded());
+        assert!(module.load(None).is_ok());
+        assert!(module.is_loaded());
+    }
+
+    #[test]
+    fn share_memory_arenas() {
+        let mut module = ModuleBuilder::new(&add_model_path())
+            .share_memory_arenas(true)
             .build();
         assert!(!module.is_loaded());
         assert!(module.load(None).is_ok());

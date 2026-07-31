@@ -16,6 +16,8 @@ pub enum Error {
     InvalidState = ET_Error::ET_Error_InvalidState as u32,
     /// Status indicating there are no more steps of execution to run
     EndOfMethod = ET_Error::ET_Error_EndOfMethod as u32,
+    /// Status indicating a resource has already been loaded.
+    AlreadyLoaded = ET_Error::ET_Error_AlreadyLoaded as u32,
 
     /* Logical errors */
     //
@@ -80,6 +82,7 @@ impl IntoRust for ET_Error {
             ET_Error::ET_Error_Internal => Error::Internal,
             ET_Error::ET_Error_InvalidState => Error::InvalidState,
             ET_Error::ET_Error_EndOfMethod => Error::EndOfMethod,
+            ET_Error::ET_Error_AlreadyLoaded => Error::AlreadyLoaded,
             ET_Error::ET_Error_NotSupported => Error::NotSupported,
             ET_Error::ET_Error_NotImplemented => Error::NotImplemented,
             ET_Error::ET_Error_InvalidArgument => Error::InvalidArgument,
@@ -136,6 +139,10 @@ mod tests {
         assert!(matches!(
             ET_Error::ET_Error_EndOfMethod.rs(),
             Err(Error::EndOfMethod)
+        ));
+        assert!(matches!(
+            ET_Error::ET_Error_AlreadyLoaded.rs(),
+            Err(Error::AlreadyLoaded)
         ));
         assert!(matches!(
             ET_Error::ET_Error_NotSupported.rs(),
