@@ -22,12 +22,12 @@ use crate::{Error, Result};
 /// The struct does not enforce any mutability rules, and the caller must ensure that the tensor
 /// is used correctly according to its mutability.
 pub struct RawTensor<'a>(
-    NonTriviallyMovable<'a, sys::TensorStorage>,
+    NonTriviallyMovable<'a, sys::ET_TensorStorage>,
     // phantom for the lifetime of the TensorImpl we depends on
     PhantomData<&'a ()>,
 );
 impl<'a> RawTensor<'a> {
-    pub(crate) fn new_impl(tensor: NonTriviallyMovable<'a, sys::TensorStorage>) -> Self {
+    pub(crate) fn new_impl(tensor: NonTriviallyMovable<'a, sys::ET_TensorStorage>) -> Self {
         Self(tensor, PhantomData)
     }
 
@@ -40,12 +40,12 @@ impl<'a> RawTensor<'a> {
     /// its mutability.
     #[cfg(feature = "alloc")]
     pub unsafe fn new(tensor_impl: &'a RawTensorImpl) -> Self {
-        let impl_ = &tensor_impl.0 as *const sys::TensorImpl;
+        let impl_ = &tensor_impl.0 as *const sys::ET_TensorImpl;
         let impl_ = impl_.cast_mut();
         // Safety: the closure init the pointer
         let tensor = unsafe {
-            NonTriviallyMovable::new_boxed(|p: *mut sys::TensorStorage| {
-                let p = sys::TensorRefMut { ptr: p as *mut _ };
+            NonTriviallyMovable::new_boxed(|p: *mut sys::ET_TensorStorage| {
+                let p = sys::ET_TensorRefMut { ptr: p as *mut _ };
                 sys::executorch_Tensor_new(p, impl_)
             })
         };
@@ -63,13 +63,13 @@ impl<'a> RawTensor<'a> {
         tensor_impl: &'a RawTensorImpl,
         storage: Pin<&'a mut Storage<RawTensor<'_>>>,
     ) -> Self {
-        let impl_ = &tensor_impl.0 as *const sys::TensorImpl;
+        let impl_ = &tensor_impl.0 as *const sys::ET_TensorImpl;
         let impl_ = impl_.cast_mut();
         // Safety: the closure init the pointer
         let tensor = unsafe {
             NonTriviallyMovable::new_in_storage(
-                |p: *mut sys::TensorStorage| {
-                    let p = sys::TensorRefMut { ptr: p as *mut _ };
+                |p: *mut sys::ET_TensorStorage| {
+                    let p = sys::ET_TensorRefMut { ptr: p as *mut _ };
                     sys::executorch_Tensor_new(p, impl_)
                 },
                 storage,
@@ -86,9 +86,9 @@ impl<'a> RawTensor<'a> {
     /// and that the tensor is compatible with the data generic.
     /// The created tensor should not be modified as we take an immutable reference to the given
     /// Cpp tensor reference.
-    pub(crate) unsafe fn from_inner_ref(tensor: sys::TensorRef) -> Self {
+    pub(crate) unsafe fn from_inner_ref(tensor: sys::ET_TensorRef) -> Self {
         debug_assert!(!tensor.ptr.is_null());
-        let tensor = unsafe { &*(tensor.ptr as *const sys::TensorStorage) };
+        let tensor = unsafe { &*(tensor.ptr as *const sys::ET_TensorStorage) };
         Self::new_impl(NonTriviallyMovable::from_ref(tensor))
     }
 
@@ -98,16 +98,16 @@ impl<'a> RawTensor<'a> {
     ///
     /// The caller must ensure that the given tensor is valid for the lifetime of the new tensor.
     #[allow(unused)]
-    pub(crate) unsafe fn from_inner_ref_mut(tensor: sys::TensorRefMut) -> Self {
+    pub(crate) unsafe fn from_inner_ref_mut(tensor: sys::ET_TensorRefMut) -> Self {
         debug_assert!(!tensor.ptr.is_null());
-        let tensor = unsafe { &mut *(tensor.ptr as *mut sys::TensorStorage) };
+        let tensor = unsafe { &mut *(tensor.ptr as *mut sys::ET_TensorStorage) };
         Self::new_impl(NonTriviallyMovable::from_mut_ref(tensor))
     }
 
     /// Get the underlying Cpp tensor.
-    pub(crate) fn as_cpp(&self) -> sys::TensorRef {
-        sys::TensorRef {
-            ptr: self.0.as_ref() as *const sys::TensorStorage as *const _,
+    pub(crate) fn as_cpp(&self) -> sys::ET_TensorRef {
+        sys::ET_TensorRef {
+            ptr: self.0.as_ref() as *const sys::ET_TensorStorage as *const _,
         }
     }
 
@@ -117,10 +117,10 @@ impl<'a> RawTensor<'a> {
     ///
     /// The caller can not move out of the returned mut reference, and should use this function only
     /// if the tensor was created with a mutable tensor impl.
-    pub(crate) unsafe fn as_cpp_mut(&mut self) -> Option<sys::TensorRefMut> {
+    pub(crate) unsafe fn as_cpp_mut(&mut self) -> Option<sys::ET_TensorRefMut> {
         // Safety: the caller does not move out of the returned mut reference.
-        Some(sys::TensorRefMut {
-            ptr: unsafe { self.0.as_mut()? } as *mut sys::TensorStorage as *mut _,
+        Some(sys::ET_TensorRefMut {
+            ptr: unsafe { self.0.as_mut()? } as *mut sys::ET_TensorStorage as *mut _,
         })
     }
 
@@ -220,7 +220,7 @@ impl<'a> RawTensor<'a> {
     /// The caller should call this function only if the tensor was created with a mutable tensor impl.
     pub fn as_data_mut_ptr(&mut self) -> Option<*mut ()> {
         let tensor = unsafe { self.as_cpp_mut()? };
-        let tensor = sys::TensorRef { ptr: tensor.ptr };
+        let tensor = sys::ET_TensorRef { ptr: tensor.ptr };
         let ptr = unsafe { sys::executorch_Tensor_mutable_data_ptr(tensor) };
         debug_assert!(!ptr.is_null());
         Some(ptr as *mut ())
@@ -230,7 +230,7 @@ impl<'a> RawTensor<'a> {
         let index = unsafe {
             sys::executorch_Tensor_coordinate_to_index(
                 self.as_cpp(),
-                sys::ArrayRefUsizeType::from_slice(coordinate),
+                sys::ET_ArrayRefUsizeType::from_slice(coordinate),
             )
         };
         if index < 0 {
@@ -247,7 +247,7 @@ impl<'a> RawTensor<'a> {
             let index = unsafe {
                 sys::executorch_Tensor_coordinate_to_index_unchecked(
                     self.as_cpp(),
-                    sys::ArrayRefUsizeType::from_slice(coordinate),
+                    sys::ET_ArrayRefUsizeType::from_slice(coordinate),
                 )
             };
             index as usize
@@ -387,17 +387,17 @@ impl<'a> RawTensor<'a> {
         Some(TensorAccessorMut(self.accessor_inner()?))
     }
 }
-impl Destroy for sys::TensorStorage {
+impl Destroy for sys::ET_TensorStorage {
     unsafe fn destroy(&mut self) {
         unsafe {
-            sys::executorch_Tensor_destructor(sys::TensorRefMut {
+            sys::executorch_Tensor_destructor(sys::ET_TensorRefMut {
                 ptr: self as *mut Self as *mut _,
             })
         }
     }
 }
 impl Storable for RawTensor<'_> {
-    type __Storage = sys::TensorStorage;
+    type __Storage = sys::ET_TensorStorage;
 }
 
 /// A raw tensor implementation.
@@ -409,7 +409,7 @@ impl Storable for RawTensor<'_> {
 /// tensor generics).
 /// The struct does not enforce any mutability rules, and the caller must ensure that the tensor
 /// is used correctly according to its mutability.
-pub struct RawTensorImpl<'a>(sys::TensorImpl, PhantomData<&'a ()>);
+pub struct RawTensorImpl<'a>(sys::ET_TensorImpl, PhantomData<&'a ()>);
 impl<'a> RawTensorImpl<'a> {
     /// Create a new TensorImpl from a pointer to the data.
     ///
@@ -481,7 +481,7 @@ impl<'a> RawTensorImpl<'a> {
                     data as *mut _,
                     dim_order as *mut DimOrderType,
                     strides as *mut StridesType,
-                    sys::TensorShapeDynamism::TensorShapeDynamism_STATIC,
+                    sys::ET_TensorShapeDynamism::ET_TensorShapeDynamism_STATIC,
                 )
             })
         };

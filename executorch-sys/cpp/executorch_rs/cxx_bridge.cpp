@@ -18,11 +18,11 @@ namespace executorch_rs
         std::move(vec.begin(), vec.end(), arr);
         return arr;
     }
-    VecEValue VecEValue_new(std::vector<executorch::runtime::EValue> &&vec)
+    ET_VecEValue VecEValue_new(std::vector<executorch::runtime::EValue> &&vec)
     {
         executorch::runtime::EValue *arr = vec_to_array(std::move(vec));
-        return VecEValue{
-            .data = EValueRefMut{.ptr = arr},
+        return ET_VecEValue{
+            .data = ET_EValueRefMut{.ptr = arr},
             .len = vec.size(),
             .cap = vec.size(),
         };
@@ -30,11 +30,11 @@ namespace executorch_rs
 #endif
 
     template <typename T>
-    static Error extract_result(const executorch::runtime::Result<T> &&result, T *output)
+    static ET_Error extract_result(const executorch::runtime::Result<T> &&result, T *output)
     {
         if (result.ok())
             *output = std::move(result.get());
-        return static_cast<Error>(result.error());
+        return static_cast<ET_Error>(result.error());
     }
 
 #if defined(EXECUTORCH_RS_STD)
@@ -42,21 +42,21 @@ namespace executorch_rs
     {
         return std::make_unique<executorch::extension::MallocMemoryAllocator>();
     }
-    struct MemoryAllocator *MallocMemoryAllocator_as_memory_allocator(executorch::extension::MallocMemoryAllocator &self)
+    struct ET_MemoryAllocator *MallocMemoryAllocator_as_memory_allocator(executorch::extension::MallocMemoryAllocator &self)
     {
         auto allocator = static_cast<executorch::runtime::MemoryAllocator *>(&self);
-        return reinterpret_cast<struct MemoryAllocator *>(allocator);
+        return reinterpret_cast<struct ET_MemoryAllocator *>(allocator);
     }
-    std::unique_ptr<struct MemoryAllocator> MallocMemoryAllocator_into_memory_allocator_unique_ptr(std::unique_ptr<executorch::extension::MallocMemoryAllocator> self)
+    std::unique_ptr<struct ET_MemoryAllocator> MallocMemoryAllocator_into_memory_allocator_unique_ptr(std::unique_ptr<executorch::extension::MallocMemoryAllocator> self)
     {
         std::unique_ptr<executorch::runtime::MemoryAllocator> ptr = std::move(self);
-        return std::unique_ptr<struct MemoryAllocator>(reinterpret_cast<struct MemoryAllocator *>(ptr.release()));
+        return std::unique_ptr<struct ET_MemoryAllocator>(reinterpret_cast<struct ET_MemoryAllocator *>(ptr.release()));
     }
 
-    std::unique_ptr<struct MemoryAllocator> BufferMemoryAllocator_into_memory_allocator_unique_ptr(struct MemoryAllocator &self)
+    std::unique_ptr<struct ET_MemoryAllocator> BufferMemoryAllocator_into_memory_allocator_unique_ptr(struct ET_MemoryAllocator &self)
     {
-        auto ptr = std::make_unique<struct MemoryAllocator>(std::move(self));
-        self.~MemoryAllocator();
+        auto ptr = std::make_unique<struct ET_MemoryAllocator>(std::move(self));
+        self.~ET_MemoryAllocator();
         return ptr;
     }
 
@@ -68,8 +68,8 @@ namespace executorch_rs
         uint8_t *data,
         std::unique_ptr<std::vector<uint8_t>> dim_order,
         std::unique_ptr<std::vector<int32_t>> strides,
-        ScalarType scalar_type,
-        TensorShapeDynamism dynamism,
+        ET_ScalarType scalar_type,
+        ET_TensorShapeDynamism dynamism,
         rust::Box<executorch_rs::cxx_util::RustAny> allocation)
     {
         // std::function must be copyable, so we need to wrap the allocation in a shared_ptr
@@ -88,7 +88,7 @@ namespace executorch_rs
 
     std::shared_ptr<executorch::aten::Tensor> TensorPtr_clone(
         const executorch::aten::Tensor &tensor,
-        ScalarType scalar_type)
+        ET_ScalarType scalar_type)
     {
         return executorch::extension::clone_tensor_ptr(
             tensor, static_cast<executorch::aten::ScalarType>(scalar_type));
@@ -99,10 +99,10 @@ namespace executorch_rs
     std::unique_ptr<executorch::extension::Module> Module_new(
         const std::string &file_path,
         rust::Slice<const rust::Str> data_files,
-        const ModuleLoadMode load_mode,
+        const ET_ModuleLoadMode load_mode,
         std::unique_ptr<executorch::runtime::EventTracer> event_tracer,
-        std::unique_ptr<struct MemoryAllocator> memory_allocator,
-        std::unique_ptr<struct MemoryAllocator> temp_allocator)
+        std::unique_ptr<struct ET_MemoryAllocator> memory_allocator,
+        std::unique_ptr<struct ET_MemoryAllocator> temp_allocator)
     {
         std::unique_ptr<executorch::runtime::MemoryAllocator> memory_allocator_(reinterpret_cast<executorch::runtime::MemoryAllocator *>(memory_allocator.release()));
         std::unique_ptr<executorch::runtime::MemoryAllocator> temp_allocator_(reinterpret_cast<executorch::runtime::MemoryAllocator *>(temp_allocator.release()));
@@ -122,11 +122,11 @@ namespace executorch_rs
             std::move(temp_allocator_));
     }
 
-    Error Module_load(executorch::extension::Module &self, ProgramVerification verification)
+    ET_Error Module_load(executorch::extension::Module &self, ET_ProgramVerification verification)
     {
         auto verification_ = static_cast<executorch::runtime::Program::Verification>(verification);
         auto ret = self.load(verification_);
-        return static_cast<Error>(ret);
+        return static_cast<ET_Error>(ret);
     }
     bool Module_is_loaded(const executorch::extension::Module &self)
     {
@@ -137,9 +137,9 @@ namespace executorch_rs
         *method_num_out = ET_UNWRAP(self.num_methods());
         return executorch::runtime::Error::Ok;
     }
-    Error Module_num_methods(executorch::extension::Module &self, size_t *method_num_out)
+    ET_Error Module_num_methods(executorch::extension::Module &self, size_t *method_num_out)
     {
-        return static_cast<Error>(Module_num_methods_(self, method_num_out));
+        return static_cast<ET_Error>(Module_num_methods_(self, method_num_out));
     }
     static executorch::runtime::Error Module_method_names_(executorch::extension::Module &self, rust::Vec<rust::String> *method_names_out)
     {
@@ -151,15 +151,15 @@ namespace executorch_rs
         }
         return executorch::runtime::Error::Ok;
     }
-    Error Module_method_names(executorch::extension::Module &self, rust::Vec<rust::String> *method_names_out)
+    ET_Error Module_method_names(executorch::extension::Module &self, rust::Vec<rust::String> *method_names_out)
     {
-        return static_cast<Error>(Module_method_names_(self, method_names_out));
+        return static_cast<ET_Error>(Module_method_names_(self, method_names_out));
     }
-    Error Module_load_method(executorch::extension::Module &self, const std::string &method_name, HierarchicalAllocator *planned_memory, executorch::runtime::EventTracer *event_tracer)
+    ET_Error Module_load_method(executorch::extension::Module &self, const std::string &method_name, ET_HierarchicalAllocator *planned_memory, executorch::runtime::EventTracer *event_tracer)
     {
         auto planned_memory_ = checked_reinterpret_cast<executorch::runtime::HierarchicalAllocator>(planned_memory);
         auto ret = self.load_method(method_name, planned_memory_, event_tracer);
-        return static_cast<Error>(ret);
+        return static_cast<ET_Error>(ret);
     }
     bool Module_unload_method(executorch::extension::Module &self, const std::string &method_name)
     {
@@ -169,12 +169,12 @@ namespace executorch_rs
     {
         return self.is_method_loaded(method_name);
     }
-    Error Module_method_meta(executorch::extension::Module &self, const std::string &method_name, MethodMeta *method_meta_out)
+    ET_Error Module_method_meta(executorch::extension::Module &self, const std::string &method_name, ET_MethodMeta *method_meta_out)
     {
         auto method_meta_out_ = checked_reinterpret_cast<executorch::runtime::MethodMeta>(method_meta_out);
         return extract_result(self.method_meta(method_name), method_meta_out_);
     }
-    static executorch::runtime::Error Module_execute_(executorch::extension::Module &self, const std::string &method_name, ArrayRefEValue inputs, VecEValue *outputs)
+    static executorch::runtime::Error Module_execute_(executorch::extension::Module &self, const std::string &method_name, ET_ArrayRefEValue inputs, ET_VecEValue *outputs)
     {
         auto inputs_data = reinterpret_cast<const executorch::runtime::EValue *>(inputs.data.ptr);
         std::vector<executorch::runtime::EValue> inputs_vec(inputs_data, inputs_data + inputs.len);
@@ -185,9 +185,9 @@ namespace executorch_rs
         *outputs = VecEValue_new(std::move(outputs_));
         return executorch::runtime::Error::Ok;
     }
-    Error Module_execute(executorch::extension::Module &self, const std::string &method_name, ArrayRefEValue inputs, VecEValue *outputs)
+    ET_Error Module_execute(executorch::extension::Module &self, const std::string &method_name, ET_ArrayRefEValue inputs, ET_VecEValue *outputs)
     {
-        return static_cast<Error>(Module_execute_(self, method_name, inputs, outputs));
+        return static_cast<ET_Error>(Module_execute_(self, method_name, inputs, outputs));
     }
 #endif
 }

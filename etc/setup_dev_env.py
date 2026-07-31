@@ -4,6 +4,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import warnings
 from pathlib import Path
 
 DEV_EXECUTORCH_DIR = (
@@ -32,6 +33,7 @@ def main():
     # TODO setup a venv here
 
     clone_executorch()
+    patch_flatcc_werror()
 
     subprocess.check_call([sys.executable, "-m", "ensurepip"])
     if not args.skip_executorch_python:
@@ -135,6 +137,24 @@ def build_executorch_with_dev_cfg():
         ["cmake", "--build", "cmake-out", "-j" + str(multiprocessing.cpu_count() + 1)],
         cwd=DEV_EXECUTORCH_DIR,
     )
+
+
+def patch_flatcc_werror():
+    # flatcc compiles with -Werror by default (its own FLATCC_ALLOW_WERROR option).
+    # AppleClang 21+ (on the macos-latest runner) emits new warnings its old code
+    # trips, which -Werror turns into hard build failures. Flip the option default
+    # to OFF. A source patch is used rather than CFLAGS/-D flags because flatcc is
+    # built as an ExternalProject (flatcc_ep) with a fixed CMAKE_ARGS list that the
+    # outer cmake's flags/env don't reliably reach; patching its own CMakeLists
+    # covers both the ExternalProject and the in-tree flatccrt build.
+    flatcc_cmake = DEV_EXECUTORCH_DIR / "third-party" / "flatcc" / "CMakeLists.txt"
+    text = flatcc_cmake.read_text()
+    needle = 'option (FLATCC_ALLOW_WERROR "allow -Werror to be configured" ON)'
+    patched = needle.replace(" ON)", " OFF)")
+    if needle in text:
+        flatcc_cmake.write_text(text.replace(needle, patched))
+    elif patched not in text:
+        warnings.warn(f"could not patch FLATCC_ALLOW_WERROR in {flatcc_cmake}")
 
 
 if __name__ == "__main__":

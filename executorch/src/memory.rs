@@ -23,10 +23,10 @@ use executorch_sys as sys;
 /// them, the user is responsible dropping the allocated object when it is no longer needed.
 pub trait MemoryAllocator<'a> {
     #[doc(hidden)]
-    fn _cpp_ptr(&self) -> *const sys::MemoryAllocator;
+    fn _cpp_ptr(&self) -> *const sys::ET_MemoryAllocator;
     #[cfg(feature = "std")]
     #[doc(hidden)]
-    fn _into_unique_ptr(self) -> sys::cxx::UniquePtr<sys::MemoryAllocator>
+    fn _into_unique_ptr(self) -> sys::cxx::UniquePtr<sys::ET_MemoryAllocator>
     where
         Self: Sized;
     private_decl! {}
@@ -189,7 +189,7 @@ unsafe impl<T: crate::util::SpanElement> NoDrop for crate::util::Span<'_, T> {}
 /// allocation is simply checking space and growing the cur_ pointer with each
 /// allocation request.
 pub struct BufferMemoryAllocator<'a>(
-    pub(crate) UnsafeCell<sys::MemoryAllocator>,
+    pub(crate) UnsafeCell<sys::ET_MemoryAllocator>,
     PhantomData<&'a ()>,
 );
 impl<'a> BufferMemoryAllocator<'a> {
@@ -210,11 +210,11 @@ impl<'a> BufferMemoryAllocator<'a> {
     }
 }
 impl<'a> MemoryAllocator<'a> for BufferMemoryAllocator<'a> {
-    fn _cpp_ptr(&self) -> *const sys::MemoryAllocator {
+    fn _cpp_ptr(&self) -> *const sys::ET_MemoryAllocator {
         self.0.get()
     }
     #[cfg(feature = "std")]
-    fn _into_unique_ptr(self) -> sys::cxx::UniquePtr<sys::MemoryAllocator>
+    fn _into_unique_ptr(self) -> sys::cxx::UniquePtr<sys::ET_MemoryAllocator>
     where
         Self: Sized,
     {
@@ -251,16 +251,16 @@ mod malloc_allocator {
         }
     }
     impl MemoryAllocator<'static> for MallocMemoryAllocator {
-        fn _cpp_ptr(&self) -> *const sys::MemoryAllocator {
-            // Safety: MallocMemoryAllocator contains a single field of (UnsafeCell of) sys::MemoryAllocator which is a
-            // sub class of sys::MemoryAllocator, and MemoryAllocator contains a single field of (UnsafeCell of)
-            // sys::MemoryAllocator.
+        fn _cpp_ptr(&self) -> *const sys::ET_MemoryAllocator {
+            // Safety: MallocMemoryAllocator contains a single field of (UnsafeCell of) sys::ET_MemoryAllocator which is a
+            // sub class of sys::ET_MemoryAllocator, and MemoryAllocator contains a single field of (UnsafeCell of)
+            // sys::ET_MemoryAllocator.
             // The returned allocator have a lifetime of 'static because it does not depend on any external buffer, malloc
             // objects are alive until the program ends.
             let self_ = unsafe { &mut *self.0.get() }.as_mut().unwrap();
             unsafe { sys::MallocMemoryAllocator_as_memory_allocator(self_) }
         }
-        fn _into_unique_ptr(self) -> sys::cxx::UniquePtr<sys::MemoryAllocator>
+        fn _into_unique_ptr(self) -> sys::cxx::UniquePtr<sys::ET_MemoryAllocator>
         where
             Self: Sized,
         {
@@ -271,7 +271,10 @@ mod malloc_allocator {
 }
 
 /// A group of buffers that can be used to represent a device's memory hierarchy.
-pub struct HierarchicalAllocator<'a>(pub(crate) sys::HierarchicalAllocator, PhantomData<&'a ()>);
+pub struct HierarchicalAllocator<'a>(
+    pub(crate) sys::ET_HierarchicalAllocator,
+    PhantomData<&'a ()>,
+);
 impl<'a> HierarchicalAllocator<'a> {
     /// Constructs a new HierarchicalAllocator.
     ///
@@ -281,11 +284,11 @@ impl<'a> HierarchicalAllocator<'a> {
     ///   `buffers.size()` must be >= `MethodMeta::num_non_const_buffers()`.
     ///   `buffers[N].size()` must be >= `MethodMeta::non_const_buffer_size(N)`.
     pub fn new(buffers: &'a mut [Span<'a, u8>]) -> Self {
-        // Safety: the memory layout of [Span<u8>] and [sys::SpanU8] is the same.
+        // Safety: the memory layout of [Span<u8>] and [sys::ET_SpanU8] is the same.
         let buffers = unsafe {
-            std::mem::transmute::<&'a mut [Span<'a, u8>], &'a mut [sys::SpanU8]>(buffers)
+            std::mem::transmute::<&'a mut [Span<'a, u8>], &'a mut [sys::ET_SpanU8]>(buffers)
         };
-        let buffers = sys::SpanSpanU8 {
+        let buffers = sys::ET_SpanSpanU8 {
             data: buffers.as_mut_ptr(),
             len: buffers.len(),
         };
@@ -313,7 +316,7 @@ impl Drop for HierarchicalAllocator<'_> {
 /// memory (e.g., for things like scratch space). But we do suggest that backends
 /// and kernels use these provided allocators whenever possible.
 pub struct MemoryManager<'a>(
-    pub(crate) UnsafeCell<sys::MemoryManager>,
+    pub(crate) UnsafeCell<sys::ET_MemoryManager>,
     PhantomData<&'a ()>,
 );
 impl<'a> MemoryManager<'a> {

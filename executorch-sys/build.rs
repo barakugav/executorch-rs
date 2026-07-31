@@ -20,16 +20,6 @@ fn main() {
         "cargo::rerun-if-changed={}",
         third_party_dir().to_str().unwrap()
     );
-
-    let check_cfg = rustc_version().map(|v| v >= 80).unwrap_or(false);
-    println!("cargo::rerun-if-env-changed=EXECUTORCH_RS_DENY_WARNINGS");
-    let deny_warnings = std::env::var("EXECUTORCH_RS_DENY_WARNINGS").as_deref() == Ok("1");
-    if check_cfg {
-        println!("cargo:rustc-check-cfg=cfg(deny_warnings)");
-    }
-    if deny_warnings {
-        println!("cargo:rustc-cfg=deny_warnings");
-    }
 }
 
 fn build_c_bridge() {
@@ -91,24 +81,24 @@ fn generate_bindings() {
         })
         .no_copy(".*")
         .manually_drop_union(".*")
-        .opaque_type("EValueStorage")
-        .opaque_type("TensorStorage")
-        .opaque_type("TensorImpl")
-        .opaque_type("Program")
-        .opaque_type("TensorInfo")
-        .opaque_type("TensorLayout")
-        .opaque_type("MethodMeta")
-        .opaque_type("Method")
-        .opaque_type("FlatTensorDataMap")
-        .opaque_type("BufferDataLoader")
-        .opaque_type("FileDataLoader")
-        .opaque_type("MmapDataLoader")
-        .opaque_type("MemoryAllocator")
-        .opaque_type("HierarchicalAllocator")
-        .opaque_type("MemoryManager")
-        .opaque_type("OptionalTensorStorage")
-        .opaque_type("ETDumpGen")
-        .blocklist_item("FreeableBuffer")
+        .opaque_type("ET_EValueStorage")
+        .opaque_type("ET_TensorStorage")
+        .opaque_type("ET_TensorImpl")
+        .opaque_type("ET_Program")
+        .opaque_type("ET_TensorInfo")
+        .opaque_type("ET_TensorLayout")
+        .opaque_type("ET_MethodMeta")
+        .opaque_type("ET_Method")
+        .opaque_type("ET_FlatTensorDataMap")
+        .opaque_type("ET_BufferDataLoader")
+        .opaque_type("ET_FileDataLoader")
+        .opaque_type("ET_MmapDataLoader")
+        .opaque_type("ET_MemoryAllocator")
+        .opaque_type("ET_HierarchicalAllocator")
+        .opaque_type("ET_MemoryManager")
+        .opaque_type("ET_OptionalTensorStorage")
+        .opaque_type("ET_DumpGen")
+        .blocklist_item("ET_FreeableBuffer")
         .blocklist_item(".*_bindgen_ty_.*")
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()));
     let bindings = builder.generate().expect("Unable to generate bindings");

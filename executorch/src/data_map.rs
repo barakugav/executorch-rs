@@ -24,7 +24,7 @@ pub trait NamedDataMap {
         let layout = unsafe {
             try_c_new(|layout| {
                 sys::executorch_NamedDataMap_get_tensor_layout(
-                    sys::NamedDataMapRef {
+                    sys::ET_NamedDataMapRef {
                         ptr: self._cpp_ptr(),
                     },
                     key.0,
@@ -49,7 +49,7 @@ pub trait NamedDataMap {
         unsafe {
             try_c_new(|num_keys| {
                 sys::executorch_NamedDataMap_get_num_keys(
-                    sys::NamedDataMapRef {
+                    sys::ET_NamedDataMapRef {
                         ptr: self._cpp_ptr(),
                     },
                     num_keys,
@@ -64,7 +64,7 @@ pub trait NamedDataMap {
         let key = unsafe {
             try_c_new(|key| {
                 sys::executorch_NamedDataMap_get_key(
-                    sys::NamedDataMapRef {
+                    sys::ET_NamedDataMapRef {
                         ptr: self._cpp_ptr(),
                     },
                     index,
@@ -96,7 +96,7 @@ mod flat_tensor {
     use super::*;
 
     /// A NamedDataMap implementation for FlatTensor-serialized data.
-    pub struct FlatTensorDataMap<'a>(sys::FlatTensorDataMap, PhantomData<&'a ()>);
+    pub struct FlatTensorDataMap<'a>(sys::ET_FlatTensorDataMap, PhantomData<&'a ()>);
     impl<'a> FlatTensorDataMap<'a> {
         /// Creates a new DataMap that wraps FlatTensor data.
         ///
@@ -105,7 +105,7 @@ mod flat_tensor {
         /// * `data_loader` - loader The DataLoader that wraps the FlatTensor file.
         ///
         pub fn load(data_loader: &'a dyn DataLoader) -> Result<Self> {
-            let data_loader = sys::DataLoaderRefMut {
+            let data_loader = sys::ET_DataLoaderRefMut {
                 ptr: data_loader._cpp_ptr().cast_mut(),
             };
             // Safety: sys::executorch_FlatTensorDataMap_load writes to the pointer.

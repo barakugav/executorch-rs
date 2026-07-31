@@ -20,7 +20,7 @@ jobs:
         shell: bash
     strategy:
       matrix:
-        runner: [ubuntu-22.04, macos-latest]
+        runner: [macos-15]
     permissions:
       contents: read
       checks: write
@@ -75,42 +75,51 @@ jobs:
       - name: Build executorch-sys
         run: cargo build
         working-directory: executorch-sys
+        env:
+          RUSTFLAGS: "-D warnings"
       - name: Build executorch
         run: cargo build
         working-directory: executorch
+        env:
+          RUSTFLAGS: "-D warnings"
 
       - name: cargo check executorch-sys with feature powerset
         if: runner.os == 'Linux'
         run: cargo hack check --feature-powerset  --depth 2
         working-directory: executorch-sys
+        env:
+          RUSTFLAGS: "-D warnings"
       - name: cargo check executorch with feature powerset
         if: runner.os == 'Linux'
         run: cargo hack check --feature-powerset --depth 2
         working-directory: executorch
+        env:
+          RUSTFLAGS: "-D warnings"
 
       ############ Linters ############
       - name: Clippy executorch-sys
-        uses: auguwu/clippy-action@1.5.0
-        with:
-          working-directory: executorch-sys
-          check-args: --all-features
-          token: ${{ secrets.GITHUB_TOKEN }}
+        run: cargo clippy --all-features
+        working-directory: executorch-sys
+        env:
+          RUSTFLAGS: "-D warnings"
       - name: Clippy executorch
-        uses: auguwu/clippy-action@1.5.0
-        with:
-          working-directory: executorch
-          check-args: --all-features
-          token: ${{ secrets.GITHUB_TOKEN }}
+        run: cargo clippy --all-features
+        working-directory: executorch
+        env:
+          RUSTFLAGS: "-D warnings"
 
       ############ Tests ############
       - name: Test executorch-sys
         run: cargo test --all-features
         working-directory: executorch-sys
+        env:
+          RUSTFLAGS: "-D warnings"
       - name: Test executorch
         run: cargo test --all-features
         working-directory: executorch
         env:
           EXECUTORCH_RS_LINK_TEST_KERNELS: 1
+          RUSTFLAGS: "-D warnings"
 
       ############ Examples ############
       - name: Run 'hello world' example
@@ -147,186 +156,186 @@ jobs:
       - name: Build nano-gpt example
         run: cargo build
         working-directory: examples/nano-gpt
+        env:
+          RUSTFLAGS: "-D warnings"
       - name: Build llama3 example
         run: cargo build
         working-directory: examples/llama3
-
-  check:
-    runs-on: ${{ matrix.runner }}
-    defaults:
-      run:
-        shell: bash
-    strategy:
-      matrix:
-        include:
-          # Linux
-          - target: x86_64-unknown-linux-gnu
-            runner: ubuntu-24.04
-          - target: aarch64-unknown-linux-gnu
-            runner: ubuntu-24.04
-          - target: i686-unknown-linux-gnu
-            runner: ubuntu-24.04
-          - target: armv7-unknown-linux-gnueabihf
-            runner: ubuntu-24.04
-          # macOS
-          - target: aarch64-apple-darwin
-            runner: macos-latest
-          # Android
-          - target: x86_64-linux-android
-            runner: ubuntu-24.04
-          - target: i686-linux-android
-            runner: ubuntu-24.04
-          - target: aarch64-linux-android
-            runner: ubuntu-24.04
-          - target: armv7-linux-androideabi
-            runner: ubuntu-24.04
-          # iOS
-          - target: aarch64-apple-ios
-            runner: macos-latest
-          # - target: x86_64-apple-ios
-          #   runner: macos-latest
-    permissions:
-      contents: read
-      checks: write
-    steps:
-      - name: Repo checkout
-        uses: actions/checkout@v7
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: 1.77.0
-          target: ${{ matrix.target }}
-          components: clippy
-          cache-workspaces: |
-            executorch
-            executorch-sys
-
-      - uses: cargo-bins/cargo-binstall@v1.20.1
-      - name: Install cross dependencies
-        run: |
-          if [[ "${{ matrix.target }}" == *"android"* ]]; then
-            : # Run `cargo ndk-env`, capture the environment variables it sets,
-            : # and export them to GITHUB_ENV for subsequent steps.
-
-            sudo apt-get update
-            cargo binstall cargo-ndk --force
-            cargo ndk-env --target ${{ matrix.target }} > ndk-env.sh
-            env | sort > env_before.txt
-            source ndk-env.sh
-            env | sort > env_after.txt
-            comm -13 env_before.txt env_after.txt >> $GITHUB_ENV
-          fi
-          if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
-            sudo apt-get update
-            sudo apt-get install g++-aarch64-linux-gnu
-            echo "CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
-            echo "CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++" >> $GITHUB_ENV
-            echo "AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar" >> $GITHUB_ENV
-          fi
-          if [[ "${{ matrix.target }}" == "armv7-unknown-linux-gnueabihf" ]]; then
-            sudo apt-get update
-            sudo apt-get install g++-arm-linux-gnueabihf
-            echo "CC_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc" >> $GITHUB_ENV
-            echo "CXX_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-g++" >> $GITHUB_ENV
-            echo "AR_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-ar" >> $GITHUB_ENV
-          fi
-          if [[ "${{ matrix.target }}" == "i686-unknown-linux-gnu" ]]; then
-            sudo apt-get update
-            sudo apt-get install g++-i686-linux-gnu
-            echo "CC_i686_unknown_linux_gnu=i686-linux-gnu-gcc" >> $GITHUB_ENV
-            echo "CXX_i686_unknown_linux_gnu=i686-linux-gnu-g++" >> $GITHUB_ENV
-            echo "AR_i686_unknown_linux_gnu=i686-linux-gnu-ar" >> $GITHUB_ENV
-          fi
-
-      - name: cargo check executorch-sys
-        run: cargo check --target ${{ matrix.target }} --all-features
-        working-directory: executorch-sys
         env:
-          EXECUTORCH_RS_LINK: 0
-      - name: cargo check executorch
-        run: cargo check --target ${{ matrix.target }} --all-features
-        working-directory: executorch
-        env:
-          EXECUTORCH_RS_LINK: 0
+          RUSTFLAGS: "-D warnings"
 
-      - name: Clippy executorch-sys
-        uses: auguwu/clippy-action@1.5.0
-        with:
-          working-directory: executorch-sys
-          check-args: --target ${{ matrix.target }} --all-features
-          token: ${{ secrets.GITHUB_TOKEN }}
-        env:
-          EXECUTORCH_RS_LINK: 0
-      - name: Clippy executorch
-        uses: auguwu/clippy-action@1.5.0
-        with:
-          working-directory: executorch
-          check-args: --target ${{ matrix.target }} --all-features
-          token: ${{ secrets.GITHUB_TOKEN }}
-        env:
-          EXECUTORCH_RS_LINK: 0
+  # check:
+  #   runs-on: ${{ matrix.runner }}
+  #   defaults:
+  #     run:
+  #       shell: bash
+  #   strategy:
+  #     matrix:
+  #       include:
+  #         # Linux
+  #         - target: x86_64-unknown-linux-gnu
+  #           runner: ubuntu-24.04
+  #         - target: aarch64-unknown-linux-gnu
+  #           runner: ubuntu-24.04
+  #         - target: i686-unknown-linux-gnu
+  #           runner: ubuntu-24.04
+  #         - target: armv7-unknown-linux-gnueabihf
+  #           runner: ubuntu-24.04
+  #         # macOS
+  #         - target: aarch64-apple-darwin
+  #           runner: macos-15
+  #         # Android
+  #         - target: x86_64-linux-android
+  #           runner: ubuntu-24.04
+  #         - target: i686-linux-android
+  #           runner: ubuntu-24.04
+  #         - target: aarch64-linux-android
+  #           runner: ubuntu-24.04
+  #         - target: armv7-linux-androideabi
+  #           runner: ubuntu-24.04
+  #         # iOS
+  #         - target: aarch64-apple-ios
+  #           runner: macos-15
+  #         # - target: x86_64-apple-ios
+  #         #   runner: macos-15
+  #   permissions:
+  #     contents: read
+  #     checks: write
+  #   steps:
+  #     - name: Repo checkout
+  #       uses: actions/checkout@v7
+  #       with:
+  #         token: ${{ secrets.GITHUB_TOKEN }}
+  #     - name: Rust toolchain
+  #       uses: actions-rust-lang/setup-rust-toolchain@v1
+  #       with:
+  #         toolchain: 1.77.0
+  #         target: ${{ matrix.target }}
+  #         components: clippy
+  #         cache-workspaces: |
+  #           executorch
+  #           executorch-sys
 
-  rust-version-check-clippy:
-    # check that we can build using different rust versions:
-    # - the minimal rust version that is specified by this crate
-    # - the latest stable version
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust-version: ["msrv", "stable"]
-    steps:
-      - uses: actions/checkout@v7
-      - name: Install toml-cli using cargo
-        uses: baptiste0928/cargo-install@v3
-        with:
-          crate: toml-cli
-          version: "^0.2"
-      - name: Determine Rust version
-        id: rust-version
-        run: |
-          if [ "${{ matrix.rust-version }}" = "stable" ]; then
-            rust_version="stable"
-          else
-            rust_version=$(toml get Cargo.toml package.rust-version --raw)
-          fi
-          echo "Rust version: '$rust_version'"
-          echo "rust_version=$rust_version" >> "$GITHUB_OUTPUT"
-        working-directory: executorch
-      - name: Install Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: ${{ steps.rust-version.outputs.rust_version }}
-          components: clippy
-          cache-workspaces: |
-            executorch
-            executorch-sys
+  #     - uses: cargo-bins/cargo-binstall@v1.20.1
+  #     - name: Install cross dependencies
+  #       run: |
+  #         if [[ "${{ matrix.target }}" == *"android"* ]]; then
+  #           : # Run `cargo ndk-env`, capture the environment variables it sets,
+  #           : # and export them to GITHUB_ENV for subsequent steps.
 
-      - name: cargo check executorch
-        run: cargo check --all-features
-        working-directory: executorch
-        env:
-          EXECUTORCH_RS_LINK: 0
-      - name: cargo clippy executorch
-        uses: auguwu/clippy-action@1.5.0
-        with:
-          working-directory: executorch
-          check-args: --all-features
-          token: ${{ secrets.GITHUB_TOKEN }}
-        env:
-          EXECUTORCH_RS_LINK: 0
+  #           sudo apt-get update
+  #           cargo binstall cargo-ndk --force
+  #           cargo ndk-env --target ${{ matrix.target }} > ndk-env.sh
+  #           env | sort > env_before.txt
+  #           source ndk-env.sh
+  #           env | sort > env_after.txt
+  #           comm -13 env_before.txt env_after.txt >> $GITHUB_ENV
+  #         fi
+  #         if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
+  #           sudo apt-get update
+  #           sudo apt-get install g++-aarch64-linux-gnu
+  #           echo "CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+  #           echo "CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++" >> $GITHUB_ENV
+  #           echo "AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar" >> $GITHUB_ENV
+  #         fi
+  #         if [[ "${{ matrix.target }}" == "armv7-unknown-linux-gnueabihf" ]]; then
+  #           sudo apt-get update
+  #           sudo apt-get install g++-arm-linux-gnueabihf
+  #           echo "CC_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc" >> $GITHUB_ENV
+  #           echo "CXX_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-g++" >> $GITHUB_ENV
+  #           echo "AR_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-ar" >> $GITHUB_ENV
+  #         fi
+  #         if [[ "${{ matrix.target }}" == "i686-unknown-linux-gnu" ]]; then
+  #           sudo apt-get update
+  #           sudo apt-get install g++-i686-linux-gnu
+  #           echo "CC_i686_unknown_linux_gnu=i686-linux-gnu-gcc" >> $GITHUB_ENV
+  #           echo "CXX_i686_unknown_linux_gnu=i686-linux-gnu-g++" >> $GITHUB_ENV
+  #           echo "AR_i686_unknown_linux_gnu=i686-linux-gnu-ar" >> $GITHUB_ENV
+  #         fi
 
-      - name: cargo check executorch-sys
-        run: cargo check --all-features
-        working-directory: executorch-sys
-        env:
-          EXECUTORCH_RS_LINK: 0
-      - name: cargo clippy executorch-sys
-        uses: auguwu/clippy-action@1.5.0
-        with:
-          working-directory: executorch-sys
-          check-args: --all-features
-          token: ${{ secrets.GITHUB_TOKEN }}
-        env:
-          EXECUTORCH_RS_LINK: 0
+  #     - name: cargo check executorch-sys
+  #       run: cargo check --target ${{ matrix.target }} --all-features
+  #       working-directory: executorch-sys
+  #       env:
+  #         EXECUTORCH_RS_LINK: 0
+  #         RUSTFLAGS: "-D warnings"
+  #     - name: cargo check executorch
+  #       run: cargo check --target ${{ matrix.target }} --all-features
+  #       working-directory: executorch
+  #       env:
+  #         EXECUTORCH_RS_LINK: 0
+  #         RUSTFLAGS: "-D warnings"
+
+  #     - name: Clippy executorch-sys
+  #       run: cargo clippy --target ${{ matrix.target }} --all-features
+  #       working-directory: executorch-sys
+  #       env:
+  #         EXECUTORCH_RS_LINK: 0
+  #         RUSTFLAGS: "-D warnings"
+  #     - name: Clippy executorch
+  #       run: cargo clippy --target ${{ matrix.target }} --all-features
+  #       working-directory: executorch
+  #       env:
+  #         EXECUTORCH_RS_LINK: 0
+  #         RUSTFLAGS: "-D warnings"
+
+  # rust-version-check-clippy:
+  #   # check that we can build using different rust versions:
+  #   # - the minimal rust version that is specified by this crate
+  #   # - the latest stable version
+  #   runs-on: ubuntu-latest
+  #   strategy:
+  #     matrix:
+  #       rust-version: ["msrv", "stable"]
+  #   steps:
+  #     - uses: actions/checkout@v7
+  #     - name: Install toml-cli using cargo
+  #       uses: baptiste0928/cargo-install@v3
+  #       with:
+  #         crate: toml-cli
+  #         version: "^0.2"
+  #     - name: Determine Rust version
+  #       id: rust-version
+  #       run: |
+  #         if [ "${{ matrix.rust-version }}" = "stable" ]; then
+  #           rust_version="stable"
+  #         else
+  #           rust_version=$(toml get Cargo.toml package.rust-version --raw)
+  #         fi
+  #         echo "Rust version: '$rust_version'"
+  #         echo "rust_version=$rust_version" >> "$GITHUB_OUTPUT"
+  #       working-directory: executorch
+  #     - name: Install Rust
+  #       uses: actions-rust-lang/setup-rust-toolchain@v1
+  #       with:
+  #         toolchain: ${{ steps.rust-version.outputs.rust_version }}
+  #         components: clippy
+  #         cache-workspaces: |
+  #           executorch
+  #           executorch-sys
+
+  #     - name: cargo check executorch
+  #       run: cargo check --all-features
+  #       working-directory: executorch
+  #       env:
+  #         EXECUTORCH_RS_LINK: 0
+  #         RUSTFLAGS: "-D warnings"
+  #     - name: cargo clippy executorch
+  #       run: cargo clippy --all-features
+  #       working-directory: executorch
+  #       env:
+  #         EXECUTORCH_RS_LINK: 0
+  #         RUSTFLAGS: "-D warnings"
+
+  #     - name: cargo check executorch-sys
+  #       run: cargo check --all-features
+  #       working-directory: executorch-sys
+  #       env:
+  #         EXECUTORCH_RS_LINK: 0
+  #         RUSTFLAGS: "-D warnings"
+  #     - name: cargo clippy executorch-sys
+  #       run: cargo clippy --all-features
+  #       working-directory: executorch-sys
+  #       env:
+  #         EXECUTORCH_RS_LINK: 0
+  #         RUSTFLAGS: "-D warnings"

@@ -22,10 +22,10 @@ namespace executorch_rs
 {
 #if defined(EXECUTORCH_RS_STD)
     std::unique_ptr<executorch::extension::MallocMemoryAllocator> MallocMemoryAllocator_new();
-    struct MemoryAllocator *MallocMemoryAllocator_as_memory_allocator(executorch::extension::MallocMemoryAllocator &self);
-    std::unique_ptr<struct MemoryAllocator> MallocMemoryAllocator_into_memory_allocator_unique_ptr(std::unique_ptr<executorch::extension::MallocMemoryAllocator> self);
+    struct ET_MemoryAllocator *MallocMemoryAllocator_as_memory_allocator(executorch::extension::MallocMemoryAllocator &self);
+    std::unique_ptr<struct ET_MemoryAllocator> MallocMemoryAllocator_into_memory_allocator_unique_ptr(std::unique_ptr<executorch::extension::MallocMemoryAllocator> self);
 
-    std::unique_ptr<struct MemoryAllocator> BufferMemoryAllocator_into_memory_allocator_unique_ptr(struct MemoryAllocator &self);
+    std::unique_ptr<struct ET_MemoryAllocator> BufferMemoryAllocator_into_memory_allocator_unique_ptr(struct ET_MemoryAllocator &self);
 #endif
 
 #if defined(EXECUTORCH_RS_TENSOR_PTR)
@@ -34,31 +34,31 @@ namespace executorch_rs
         uint8_t *data,
         std::unique_ptr<std::vector<uint8_t>> dim_order,
         std::unique_ptr<std::vector<int32_t>> strides,
-        ScalarType scalar_type,
-        TensorShapeDynamism dynamism,
+        ET_ScalarType scalar_type,
+        ET_TensorShapeDynamism dynamism,
         rust::Box<executorch_rs::cxx_util::RustAny> allocation);
     std::shared_ptr<executorch::aten::Tensor> TensorPtr_clone(
         const executorch::aten::Tensor &tensor,
-        ScalarType scalar_type);
+        ET_ScalarType scalar_type);
 #endif
 
 #if defined(EXECUTORCH_RS_MODULE)
     std::unique_ptr<executorch::extension::Module> Module_new(
         const std::string &file_path,
         rust::Slice<const rust::Str> data_files,
-        const ModuleLoadMode load_mode,
+        const ET_ModuleLoadMode load_mode,
         std::unique_ptr<executorch::runtime::EventTracer> event_tracer,
-        std::unique_ptr<struct MemoryAllocator> memory_allocator,
-        std::unique_ptr<struct MemoryAllocator> temp_allocator);
+        std::unique_ptr<struct ET_MemoryAllocator> memory_allocator,
+        std::unique_ptr<struct ET_MemoryAllocator> temp_allocator);
 
-    Error Module_load(executorch::extension::Module &self, ProgramVerification verification);
+    ET_Error Module_load(executorch::extension::Module &self, ET_ProgramVerification verification);
     bool Module_is_loaded(const executorch::extension::Module &self);
-    Error Module_num_methods(executorch::extension::Module &self, size_t *method_num_out);
-    Error Module_method_names(executorch::extension::Module &self, rust::Vec<rust::String> *method_names_out);
-    Error Module_load_method(executorch::extension::Module &self, const std::string &method_name, HierarchicalAllocator *planned_memory, executorch::runtime::EventTracer *event_tracer);
+    ET_Error Module_num_methods(executorch::extension::Module &self, size_t *method_num_out);
+    ET_Error Module_method_names(executorch::extension::Module &self, rust::Vec<rust::String> *method_names_out);
+    ET_Error Module_load_method(executorch::extension::Module &self, const std::string &method_name, ET_HierarchicalAllocator *planned_memory, executorch::runtime::EventTracer *event_tracer);
     bool Module_unload_method(executorch::extension::Module &self, const std::string &method_name);
     bool Module_is_method_loaded(const executorch::extension::Module &self, const std::string &method_name);
-    Error Module_method_meta(executorch::extension::Module &self, const std::string &method_name, MethodMeta *method_meta_out);
-    Error Module_execute(executorch::extension::Module &self, const std::string &method_name, ArrayRefEValue inputs, VecEValue *outputs);
+    ET_Error Module_method_meta(executorch::extension::Module &self, const std::string &method_name, ET_MethodMeta *method_meta_out);
+    ET_Error Module_execute(executorch::extension::Module &self, const std::string &method_name, ET_ArrayRefEValue inputs, ET_VecEValue *outputs);
 #endif
 }

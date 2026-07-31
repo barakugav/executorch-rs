@@ -1,7 +1,7 @@
 //! Error types used in the [`executortorch`](crate) crate.
 
 use crate::util::IntoRust;
-use executorch_sys as sys;
+use executorch_sys::ET_Error;
 
 /// ExecuTorch Error type.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -11,52 +11,52 @@ pub enum Error {
     /* System errors */
     //
     /// An internal error occurred.
-    Internal = sys::Error::Error_Internal as u32,
+    Internal = ET_Error::ET_Error_Internal as u32,
     /// Status indicating the executor is in an invalid state for a target
-    InvalidState = sys::Error::Error_InvalidState as u32,
+    InvalidState = ET_Error::ET_Error_InvalidState as u32,
     /// Status indicating there are no more steps of execution to run
-    EndOfMethod = sys::Error::Error_EndOfMethod as u32,
+    EndOfMethod = ET_Error::ET_Error_EndOfMethod as u32,
 
     /* Logical errors */
     //
     /// Operation is not supported in the current context.
-    NotSupported = sys::Error::Error_NotSupported as u32,
+    NotSupported = ET_Error::ET_Error_NotSupported as u32,
     /// Operation is not yet implemented.
-    NotImplemented = sys::Error::Error_NotImplemented as u32,
+    NotImplemented = ET_Error::ET_Error_NotImplemented as u32,
     /// User provided an invalid argument.
-    InvalidArgument = sys::Error::Error_InvalidArgument as u32,
+    InvalidArgument = ET_Error::ET_Error_InvalidArgument as u32,
     /// Object is an invalid type for the operation.
-    InvalidType = sys::Error::Error_InvalidType as u32,
+    InvalidType = ET_Error::ET_Error_InvalidType as u32,
     /// Operator(s) missing in the operator registry.
-    OperatorMissing = sys::Error::Error_OperatorMissing as u32,
+    OperatorMissing = ET_Error::ET_Error_OperatorMissing as u32,
     /// Registration error: Exceeding the maximum number of kernels.
-    RegistrationExceedingMaxKernels = sys::Error::Error_RegistrationExceedingMaxKernels as u32,
+    RegistrationExceedingMaxKernels = ET_Error::ET_Error_RegistrationExceedingMaxKernels as u32,
     /// Registration error: The kernel is already registered.
-    RegistrationAlreadyRegistered = sys::Error::Error_RegistrationAlreadyRegistered as u32,
+    RegistrationAlreadyRegistered = ET_Error::ET_Error_RegistrationAlreadyRegistered as u32,
 
     /* Resource errors */
     //
     /// Requested resource could not be found.
-    NotFound = sys::Error::Error_NotFound as u32,
+    NotFound = ET_Error::ET_Error_NotFound as u32,
     /// Could not allocate the requested memory.
-    MemoryAllocationFailed = sys::Error::Error_MemoryAllocationFailed as u32,
+    MemoryAllocationFailed = ET_Error::ET_Error_MemoryAllocationFailed as u32,
     /// Could not access a resource.
-    AccessFailed = sys::Error::Error_AccessFailed as u32,
+    AccessFailed = ET_Error::ET_Error_AccessFailed as u32,
     /// Error caused by the contents of a program.
-    InvalidProgram = sys::Error::Error_InvalidProgram as u32,
+    InvalidProgram = ET_Error::ET_Error_InvalidProgram as u32,
     /// Error caused by the contents of external data.
-    InvalidExternalData = sys::Error::Error_InvalidExternalData as u32,
+    InvalidExternalData = ET_Error::ET_Error_InvalidExternalData as u32,
     /// Does not have enough resources to perform the requested operation.
-    OutOfResources = sys::Error::Error_OutOfResources as u32,
+    OutOfResources = ET_Error::ET_Error_OutOfResources as u32,
 
     /* Delegate errors */
     //
     /// Init stage: Backend receives an incompatible delegate version.
-    DelegateInvalidCompatibility = sys::Error::Error_DelegateInvalidCompatibility as u32,
+    DelegateInvalidCompatibility = ET_Error::ET_Error_DelegateInvalidCompatibility as u32,
     /// Init stage: Backend fails to allocate memory.
-    DelegateMemoryAllocationFailed = sys::Error::Error_DelegateMemoryAllocationFailed as u32,
+    DelegateMemoryAllocationFailed = ET_Error::ET_Error_DelegateMemoryAllocationFailed as u32,
     /// Execute stage: The handle is invalid.
-    DelegateInvalidHandle = sys::Error::Error_DelegateInvalidHandle as u32,
+    DelegateInvalidHandle = ET_Error::ET_Error_DelegateInvalidHandle as u32,
 
     /// Invalid string.
     ///
@@ -72,34 +72,36 @@ impl std::fmt::Display for Error {
 #[cfg(any(error_in_core, feature = "std"))]
 impl std::error::Error for Error {}
 
-impl IntoRust for sys::Error {
+impl IntoRust for ET_Error {
     type RsType = Result<()>;
     fn rs(self) -> Self::RsType {
         Err(match self {
-            sys::Error::Error_Ok => return Ok(()),
-            sys::Error::Error_Internal => Error::Internal,
-            sys::Error::Error_InvalidState => Error::InvalidState,
-            sys::Error::Error_EndOfMethod => Error::EndOfMethod,
-            sys::Error::Error_NotSupported => Error::NotSupported,
-            sys::Error::Error_NotImplemented => Error::NotImplemented,
-            sys::Error::Error_InvalidArgument => Error::InvalidArgument,
-            sys::Error::Error_InvalidType => Error::InvalidType,
-            sys::Error::Error_OperatorMissing => Error::OperatorMissing,
-            sys::Error::Error_RegistrationExceedingMaxKernels => {
+            ET_Error::ET_Error_Ok => return Ok(()),
+            ET_Error::ET_Error_Internal => Error::Internal,
+            ET_Error::ET_Error_InvalidState => Error::InvalidState,
+            ET_Error::ET_Error_EndOfMethod => Error::EndOfMethod,
+            ET_Error::ET_Error_NotSupported => Error::NotSupported,
+            ET_Error::ET_Error_NotImplemented => Error::NotImplemented,
+            ET_Error::ET_Error_InvalidArgument => Error::InvalidArgument,
+            ET_Error::ET_Error_InvalidType => Error::InvalidType,
+            ET_Error::ET_Error_OperatorMissing => Error::OperatorMissing,
+            ET_Error::ET_Error_RegistrationExceedingMaxKernels => {
                 Error::RegistrationExceedingMaxKernels
             }
-            sys::Error::Error_RegistrationAlreadyRegistered => Error::RegistrationAlreadyRegistered,
-            sys::Error::Error_NotFound => Error::NotFound,
-            sys::Error::Error_MemoryAllocationFailed => Error::MemoryAllocationFailed,
-            sys::Error::Error_AccessFailed => Error::AccessFailed,
-            sys::Error::Error_InvalidProgram => Error::InvalidProgram,
-            sys::Error::Error_InvalidExternalData => Error::InvalidExternalData,
-            sys::Error::Error_OutOfResources => Error::OutOfResources,
-            sys::Error::Error_DelegateInvalidCompatibility => Error::DelegateInvalidCompatibility,
-            sys::Error::Error_DelegateMemoryAllocationFailed => {
+            ET_Error::ET_Error_RegistrationAlreadyRegistered => {
+                Error::RegistrationAlreadyRegistered
+            }
+            ET_Error::ET_Error_NotFound => Error::NotFound,
+            ET_Error::ET_Error_MemoryAllocationFailed => Error::MemoryAllocationFailed,
+            ET_Error::ET_Error_AccessFailed => Error::AccessFailed,
+            ET_Error::ET_Error_InvalidProgram => Error::InvalidProgram,
+            ET_Error::ET_Error_InvalidExternalData => Error::InvalidExternalData,
+            ET_Error::ET_Error_OutOfResources => Error::OutOfResources,
+            ET_Error::ET_Error_DelegateInvalidCompatibility => Error::DelegateInvalidCompatibility,
+            ET_Error::ET_Error_DelegateMemoryAllocationFailed => {
                 Error::DelegateMemoryAllocationFailed
             }
-            sys::Error::Error_DelegateInvalidHandle => Error::DelegateInvalidHandle,
+            ET_Error::ET_Error_DelegateInvalidHandle => Error::DelegateInvalidHandle,
         })
     }
 }
@@ -108,7 +110,7 @@ pub(crate) type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[cfg(test)]
 mod tests {
-    use executorch_sys as sys;
+    use executorch_sys::ET_Error;
 
     use crate::util::IntoRust;
 
@@ -122,73 +124,73 @@ mod tests {
 
     #[test]
     fn cerror_to_error() {
-        assert!(matches!(sys::Error::Error_Ok.rs(), Ok(())));
+        assert!(matches!(ET_Error::ET_Error_Ok.rs(), Ok(())));
         assert!(matches!(
-            sys::Error::Error_Internal.rs(),
+            ET_Error::ET_Error_Internal.rs(),
             Err(Error::Internal)
         ));
         assert!(matches!(
-            sys::Error::Error_InvalidState.rs(),
+            ET_Error::ET_Error_InvalidState.rs(),
             Err(Error::InvalidState)
         ));
         assert!(matches!(
-            sys::Error::Error_EndOfMethod.rs(),
+            ET_Error::ET_Error_EndOfMethod.rs(),
             Err(Error::EndOfMethod)
         ));
         assert!(matches!(
-            sys::Error::Error_NotSupported.rs(),
+            ET_Error::ET_Error_NotSupported.rs(),
             Err(Error::NotSupported)
         ));
         assert!(matches!(
-            sys::Error::Error_NotImplemented.rs(),
+            ET_Error::ET_Error_NotImplemented.rs(),
             Err(Error::NotImplemented)
         ));
         assert!(matches!(
-            sys::Error::Error_InvalidArgument.rs(),
+            ET_Error::ET_Error_InvalidArgument.rs(),
             Err(Error::InvalidArgument)
         ));
         assert!(matches!(
-            sys::Error::Error_InvalidType.rs(),
+            ET_Error::ET_Error_InvalidType.rs(),
             Err(Error::InvalidType)
         ));
         assert!(matches!(
-            sys::Error::Error_OperatorMissing.rs(),
+            ET_Error::ET_Error_OperatorMissing.rs(),
             Err(Error::OperatorMissing)
         ));
         assert!(matches!(
-            sys::Error::Error_NotFound.rs(),
+            ET_Error::ET_Error_NotFound.rs(),
             Err(Error::NotFound)
         ));
         assert!(matches!(
-            sys::Error::Error_MemoryAllocationFailed.rs(),
+            ET_Error::ET_Error_MemoryAllocationFailed.rs(),
             Err(Error::MemoryAllocationFailed)
         ));
         assert!(matches!(
-            sys::Error::Error_AccessFailed.rs(),
+            ET_Error::ET_Error_AccessFailed.rs(),
             Err(Error::AccessFailed)
         ));
         assert!(matches!(
-            sys::Error::Error_InvalidProgram.rs(),
+            ET_Error::ET_Error_InvalidProgram.rs(),
             Err(Error::InvalidProgram)
         ));
         assert!(matches!(
-            sys::Error::Error_InvalidExternalData.rs(),
+            ET_Error::ET_Error_InvalidExternalData.rs(),
             Err(Error::InvalidExternalData)
         ));
         assert!(matches!(
-            sys::Error::Error_OutOfResources.rs(),
+            ET_Error::ET_Error_OutOfResources.rs(),
             Err(Error::OutOfResources)
         ));
         assert!(matches!(
-            sys::Error::Error_DelegateInvalidCompatibility.rs(),
+            ET_Error::ET_Error_DelegateInvalidCompatibility.rs(),
             Err(Error::DelegateInvalidCompatibility)
         ));
         assert!(matches!(
-            sys::Error::Error_DelegateMemoryAllocationFailed.rs(),
+            ET_Error::ET_Error_DelegateMemoryAllocationFailed.rs(),
             Err(Error::DelegateMemoryAllocationFailed)
         ));
         assert!(matches!(
-            sys::Error::Error_DelegateInvalidHandle.rs(),
+            ET_Error::ET_Error_DelegateInvalidHandle.rs(),
             Err(Error::DelegateInvalidHandle)
         ));
     }

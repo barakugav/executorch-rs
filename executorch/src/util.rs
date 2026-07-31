@@ -232,8 +232,8 @@ impl<T: Destroy> Drop for NonTriviallyMovableVec<T> {
 ///
 /// # Safety
 ///
-/// The inner value must be initialized by the given closure if `sys::Error::Error_Ok` is returned.
-pub(crate) unsafe fn try_c_new<T>(f: impl FnOnce(*mut T) -> sys::Error) -> crate::Result<T> {
+/// The inner value must be initialized by the given closure if `sys::ET_Error::ET_Error_Ok` is returned.
+pub(crate) unsafe fn try_c_new<T>(f: impl FnOnce(*mut T) -> sys::ET_Error) -> crate::Result<T> {
     let mut value = MaybeUninit::uninit();
     let err = f(value.as_mut_ptr());
     // Safety: enforced by the caller
@@ -250,7 +250,7 @@ pub(crate) unsafe fn c_new<T>(f: impl FnOnce(*mut T)) -> T {
     let res = unsafe {
         try_c_new(|ptr| {
             f(ptr);
-            sys::Error::Error_Ok
+            sys::ET_Error::ET_Error_Ok
         })
     };
     // Safety: we always return Ok from the closure to try_c_new
@@ -422,17 +422,17 @@ macro_rules! impl_array_ref {
         }
     };
 }
-impl_array_ref!(u8, sys::ArrayRefU8);
-impl_array_ref!(i32, sys::ArrayRefI32);
-impl_array_ref!(i64, sys::ArrayRefI64);
-impl_array_ref!(f64, sys::ArrayRefF64);
-impl_array_ref!(usize, sys::ArrayRefUsizeType);
-impl_array_ref!(bool, sys::ArrayRefBool);
+impl_array_ref!(u8, sys::ET_ArrayRefU8);
+impl_array_ref!(i32, sys::ET_ArrayRefI32);
+impl_array_ref!(i64, sys::ET_ArrayRefI64);
+impl_array_ref!(f64, sys::ET_ArrayRefF64);
+impl_array_ref!(usize, sys::ET_ArrayRefUsizeType);
+impl_array_ref!(bool, sys::ET_ArrayRefBool);
 impl ArrayRefElement for FfiChar {
-    type __ArrayRefImpl = sys::ArrayRefChar;
+    type __ArrayRefImpl = sys::ET_ArrayRefChar;
     private_impl! {}
 }
-impl __ArrayRefImpl for sys::ArrayRefChar {
+impl __ArrayRefImpl for sys::ET_ArrayRefChar {
     type Element = FfiChar;
     unsafe fn from_slice(slice: &[FfiChar]) -> Self {
         let slice = FfiChar::slice_to_ffi(slice);
@@ -447,24 +447,24 @@ impl __ArrayRefImpl for sys::ArrayRefChar {
     }
     private_impl! {}
 }
-// impl_array_ref!(sys::Tensor, sys::ArrayRefTensor);
-// impl_array_ref!(sys::EValue, sys::ArrayRefEValue);
-impl ArrayRefElement for sys::EValueStorage {
-    type __ArrayRefImpl = sys::ArrayRefEValue;
+// impl_array_ref!(sys::Tensor, sys::ET_ArrayRefTensor);
+// impl_array_ref!(sys::EValue, sys::ET_ArrayRefEValue);
+impl ArrayRefElement for sys::ET_EValueStorage {
+    type __ArrayRefImpl = sys::ET_ArrayRefEValue;
     private_impl! {}
 }
-impl __ArrayRefImpl for sys::ArrayRefEValue {
-    type Element = sys::EValueStorage;
-    unsafe fn from_slice(slice: &[sys::EValueStorage]) -> Self {
+impl __ArrayRefImpl for sys::ET_ArrayRefEValue {
+    type Element = sys::ET_EValueStorage;
+    unsafe fn from_slice(slice: &[sys::ET_EValueStorage]) -> Self {
         Self {
-            data: sys::EValueRef {
+            data: sys::ET_EValueRef {
                 ptr: slice.as_ptr() as *const _,
             },
             len: slice.len(),
         }
     }
-    unsafe fn as_slice(&self) -> &'static [sys::EValueStorage] {
-        let data = self.data.ptr as *const sys::EValueStorage;
+    unsafe fn as_slice(&self) -> &'static [sys::ET_EValueStorage] {
+        let data = self.data.ptr as *const sys::ET_EValueStorage;
         unsafe { std::slice::from_raw_parts(data, self.len) }
     }
     private_impl! {}
@@ -565,7 +565,7 @@ macro_rules! impl_span {
         }
     };
 }
-impl_span!(u8, sys::SpanU8);
+impl_span!(u8, sys::ET_SpanU8);
 
 pub(crate) fn cstr2chars(s: &CStr) -> &[std::ffi::c_char] {
     unsafe { std::slice::from_raw_parts(s.as_ptr(), s.to_bytes().len()) }
@@ -666,12 +666,12 @@ pub(crate) mod cpp_vec {
         fn as_mut_slice(&mut self) -> &mut [Self::Element];
     }
     impl CppVecElement for std::ffi::c_char {
-        type VecImpl = sys::VecChar;
+        type VecImpl = sys::ET_VecChar;
         fn drop_vec(vec: &mut CppVec<Self>) {
             unsafe { sys::executorch_VecChar_destructor(&mut vec.0) }
         }
     }
-    impl CppVecImpl for sys::VecChar {
+    impl CppVecImpl for sys::ET_VecChar {
         type Element = std::ffi::c_char;
         fn as_slice(&self) -> &[std::ffi::c_char] {
             unsafe { std::slice::from_raw_parts(self.data, self.len) }
@@ -680,35 +680,35 @@ pub(crate) mod cpp_vec {
             unsafe { std::slice::from_raw_parts_mut(self.data, self.len) }
         }
     }
-    impl CppVecElement for sys::EValueStorage {
-        type VecImpl = sys::VecEValue;
+    impl CppVecElement for sys::ET_EValueStorage {
+        type VecImpl = sys::ET_VecEValue;
         fn drop_vec(vec: &mut CppVec<Self>) {
             unsafe { sys::executorch_VecEValue_destructor(&mut vec.0) }
         }
     }
-    impl CppVecImpl for sys::VecEValue {
-        type Element = sys::EValueStorage;
-        fn as_slice(&self) -> &[sys::EValueStorage] {
-            let data = self.data.ptr as *const sys::EValueStorage;
+    impl CppVecImpl for sys::ET_VecEValue {
+        type Element = sys::ET_EValueStorage;
+        fn as_slice(&self) -> &[sys::ET_EValueStorage] {
+            let data = self.data.ptr as *const sys::ET_EValueStorage;
             unsafe { std::slice::from_raw_parts(data, self.len) }
         }
-        fn as_mut_slice(&mut self) -> &mut [sys::EValueStorage] {
-            let data = self.data.ptr as *mut sys::EValueStorage;
+        fn as_mut_slice(&mut self) -> &mut [sys::ET_EValueStorage] {
+            let data = self.data.ptr as *mut sys::ET_EValueStorage;
             unsafe { std::slice::from_raw_parts_mut(data, self.len) }
         }
     }
-    impl CppVecElement for sys::VecChar {
-        type VecImpl = sys::VecVecChar;
+    impl CppVecElement for sys::ET_VecChar {
+        type VecImpl = sys::ET_VecVecChar;
         fn drop_vec(vec: &mut CppVec<Self>) {
             unsafe { sys::executorch_VecVecChar_destructor(&mut vec.0) }
         }
     }
-    impl CppVecImpl for sys::VecVecChar {
-        type Element = sys::VecChar;
-        fn as_slice(&self) -> &[sys::VecChar] {
+    impl CppVecImpl for sys::ET_VecVecChar {
+        type Element = sys::ET_VecChar;
+        fn as_slice(&self) -> &[sys::ET_VecChar] {
             unsafe { std::slice::from_raw_parts(self.data, self.len) }
         }
-        fn as_mut_slice(&mut self) -> &mut [sys::VecChar] {
+        fn as_mut_slice(&mut self) -> &mut [sys::ET_VecChar] {
             unsafe { std::slice::from_raw_parts_mut(self.data, self.len) }
         }
     }

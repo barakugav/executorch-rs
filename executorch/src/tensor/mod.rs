@@ -54,13 +54,13 @@ mod fmt;
 use executorch_sys as sys;
 
 /// A type that represents the sizes (dimensions) of a tensor.
-pub type SizesType = sys::SizesType;
+pub type SizesType = sys::ET_SizesType;
 /// A type that represents the order of the dimensions of a tensor.
-pub type DimOrderType = sys::DimOrderType;
+pub type DimOrderType = sys::ET_DimOrderType;
 /// A type that represents the strides of a tensor.
 ///
 /// Strides are in units of the elements size, not in bytes.
-pub type StridesType = sys::StridesType;
+pub type StridesType = sys::ET_StridesType;
 
 pub use scalar::{Scalar, ScalarType};
 

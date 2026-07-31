@@ -1,7 +1,6 @@
-#![cfg_attr(deny_warnings, deny(warnings))]
 // some new clippy::lint annotations are supported in latest Rust but not recognized by older versions
-#![cfg_attr(deny_warnings, allow(unknown_lints))]
-#![cfg_attr(deny_warnings, deny(missing_docs))]
+#![allow(unknown_lints)]
+#![deny(missing_docs)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 //! Unsafe bindings for ExecuTorch - On-device AI across mobile, embedded and edge for PyTorch.
@@ -92,8 +91,8 @@
 //! ## Cargo Features
 //! By default the `std` feature is enabled.
 //! - `data-loader`:
-//!   Includes the [`FileDataLoader`] and [`MmapDataLoader`] structs. Without this feature the only available
-//!   data loader is [`BufferDataLoader`]. The `libextension_data_loader.a` static library is required, compile C++
+//!   Includes the [`ET_FileDataLoader`] and [`ET_MmapDataLoader`] structs. Without this feature the only available
+//!   data loader is [`ET_BufferDataLoader`]. The `libextension_data_loader.a` static library is required, compile C++
 //!   `executorch` with `EXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON`.
 //! - `module`:
 //!   Includes the `Module` struct, a high-level API for loading and executing PyTorch models. It is an alternative to
@@ -120,9 +119,9 @@
 //!   Enable the standard library. This feature is enabled by default, but can be disabled to build `executorch` in a `no_std` environment.
 //!   NOTE: no_std is still WIP, see <https://github.com/pytorch/executorch/issues/4561>
 //!
-//! [`FileDataLoader`]: crate::FileDataLoader
-//! [`MmapDataLoader`]: crate::MmapDataLoader
-//! [`BufferDataLoader`]: crate::BufferDataLoader
+//! [`ET_FileDataLoader`]: crate::ET_FileDataLoader
+//! [`ET_MmapDataLoader`]: crate::ET_MmapDataLoader
+//! [`ET_BufferDataLoader`]: crate::ET_BufferDataLoader
 //! [`Module`]: crate::Module
 
 #![cfg_attr(not(feature = "std"), no_std)]

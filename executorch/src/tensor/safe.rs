@@ -72,7 +72,7 @@ impl<'a, D> TensorBase<'a, D> {
     /// The caller must ensure that the given tensor is valid for the lifetime of the new tensor,
     /// and that the tensor is compatible with the data generic. `D` must be immutable as we take immutable reference
     /// to the given tensor.
-    pub(crate) unsafe fn from_inner_ref(tensor: sys::TensorRef) -> Self
+    pub(crate) unsafe fn from_inner_ref(tensor: sys::ET_TensorRef) -> Self
     where
         D: Data,
     {
@@ -86,7 +86,7 @@ impl<'a, D> TensorBase<'a, D> {
     /// The caller must ensure that the given tensor is valid for the lifetime of the new tensor,
     /// and that the tensor is compatible with the data generic.
     #[allow(unused)]
-    pub(crate) unsafe fn from_inner_ref_mut(tensor: sys::TensorRefMut) -> Self
+    pub(crate) unsafe fn from_inner_ref_mut(tensor: sys::ET_TensorRefMut) -> Self
     where
         D: Data,
     {
@@ -137,7 +137,7 @@ impl<'a, D> TensorBase<'a, D> {
     }
 
     /// Get the underlying Cpp tensor.
-    pub(crate) fn as_cpp(&self) -> sys::TensorRef {
+    pub(crate) fn as_cpp(&self) -> sys::ET_TensorRef {
         self.0.as_cpp()
     }
 
@@ -146,7 +146,7 @@ impl<'a, D> TensorBase<'a, D> {
     /// # Safety
     ///
     /// The caller can not move out of the returned mut reference.
-    pub(crate) unsafe fn as_cpp_mut(&mut self) -> sys::TensorRefMut
+    pub(crate) unsafe fn as_cpp_mut(&mut self) -> sys::ET_TensorRefMut
     where
         D: DataMut,
     {
@@ -435,7 +435,7 @@ impl<'a, D> TensorBase<'a, D> {
     }
 }
 impl<D> Storable for TensorBase<'_, D> {
-    type __Storage = sys::TensorStorage;
+    type __Storage = sys::ET_TensorStorage;
 }
 
 impl<D: DataTyped> Index<&[usize]> for TensorBase<'_, D> {
@@ -882,7 +882,7 @@ impl Data for ViewMutAny {
 impl DataMut for ViewMutAny {}
 
 impl Storable for Option<TensorAny<'_>> {
-    type __Storage = sys::OptionalTensorStorage;
+    type __Storage = sys::ET_OptionalTensorStorage;
 }
 
 #[cfg(test)]
