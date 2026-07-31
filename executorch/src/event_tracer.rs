@@ -30,7 +30,7 @@ mod etdump {
     /// It is the mechanism through which all forms of profiling and debugging data is extracted from the runtime.
     /// Users can’t parse ETDump directly; instead, they should pass it into the Inspector API, which deserializes the data,
     /// offering interfaces for flexible analysis and debugging.
-    pub struct ETDumpGen<'a>(sys::ETDumpGen, PhantomData<&'a ()>);
+    pub struct ETDumpGen<'a>(sys::ET_DumpGen, PhantomData<&'a ()>);
     #[cfg(feature = "std")]
     impl Default for ETDumpGen<'static> {
         fn default() -> Self {
@@ -50,7 +50,7 @@ mod etdump {
             let (data, len) = buffer
                 .map(|b| (b.as_mut_ptr(), b.len()))
                 .unwrap_or((std::ptr::null_mut(), 0));
-            let buffer = sys::SpanU8 { data, len };
+            let buffer = sys::ET_SpanU8 { data, len };
 
             let self_ = unsafe { sys::executorch_ETDumpGen_new(buffer) };
             Self(self_, PhantomData)
@@ -73,7 +73,7 @@ mod etdump {
         }
 
         fn as_event_tracer_ptr(&self) -> *const EventTracer<'a> {
-            let self_ = (&self.0) as *const _ as *mut sys::ETDumpGen;
+            let self_ = (&self.0) as *const _ as *mut sys::ET_DumpGen;
             let tracer = unsafe { sys::executorch_ETDumpGen_as_event_tracer_mut(self_) };
             let tracer = tracer.ptr as *mut EventTracer<'a>;
             tracer as *const _

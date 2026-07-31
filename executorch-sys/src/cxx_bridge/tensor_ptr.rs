@@ -1,5 +1,7 @@
 // Clippy doesnt detect the 'Safety' comments in the cxx bridge.
 #![allow(clippy::missing_safety_doc)]
+// The ET_-prefixed C bridge type names are not UpperCamelCase.
+#![allow(non_camel_case_types)]
 
 pub mod cxx_util {
     /// A wrapper around `std::any::Any` that can be used in a cxx bridge.
@@ -31,10 +33,10 @@ pub(crate) mod ffi {
     unsafe extern "C++" {
         include!("executorch-sys/cpp/executorch_rs/cxx_bridge.hpp");
 
-        /// Redefinition of the [`ScalarType`](crate::ScalarType).
-        type ScalarType = crate::ScalarType;
-        /// Redefinition of the [`TensorShapeDynamism`](crate::TensorShapeDynamism).
-        type TensorShapeDynamism = crate::TensorShapeDynamism;
+        /// Redefinition of the [`ET_ScalarType`](crate::ET_ScalarType).
+        type ET_ScalarType = crate::ET_ScalarType;
+        /// Redefinition of the [`ET_TensorShapeDynamism`](crate::ET_TensorShapeDynamism).
+        type ET_TensorShapeDynamism = crate::ET_TensorShapeDynamism;
         /// A minimal Tensor type whose API is a source compatible subset of at::Tensor.
         #[namespace = "executorch::aten"]
         type Tensor;
@@ -63,8 +65,8 @@ pub(crate) mod ffi {
             data: *mut u8,
             dim_order: UniquePtr<CxxVector<u8>>,
             strides: UniquePtr<CxxVector<i32>>,
-            scalar_type: ScalarType,
-            dynamism: TensorShapeDynamism,
+            scalar_type: ET_ScalarType,
+            dynamism: ET_TensorShapeDynamism,
             allocation: Box<RustAny>,
         ) -> SharedPtr<Tensor>;
 
@@ -81,7 +83,7 @@ pub(crate) mod ffi {
         /// Returns a new TensorPtr that manages a Tensor with the specified type
         /// and copied/cast data.
         #[namespace = "executorch_rs"]
-        fn TensorPtr_clone(tensor: &Tensor, scalar_type: ScalarType) -> SharedPtr<Tensor>;
+        fn TensorPtr_clone(tensor: &Tensor, scalar_type: ET_ScalarType) -> SharedPtr<Tensor>;
     }
 
     impl SharedPtr<Tensor> {}

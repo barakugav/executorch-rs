@@ -7,14 +7,14 @@ use crate::util::{IntoRust, __ArrayRefImpl};
 
 /// Describes the layout of a tensor.
 #[repr(transparent)]
-pub struct TensorLayout<'a>(sys::TensorLayout, PhantomData<&'a ()>);
+pub struct TensorLayout<'a>(sys::ET_TensorLayout, PhantomData<&'a ()>);
 impl<'a> TensorLayout<'a> {
-    /// Create a new `TensorLayout` of a raw `sys::TensorLayout`.
+    /// Create a new `TensorLayout` of a raw `sys::ET_TensorLayout`.
     ///
     /// # Safety
     ///
     /// The caller must ensure the given layout can live at least 'a.
-    pub(crate) unsafe fn from_raw(raw: sys::TensorLayout) -> TensorLayout<'a> {
+    pub(crate) unsafe fn from_raw(raw: sys::ET_TensorLayout) -> TensorLayout<'a> {
         Self(raw, PhantomData)
     }
 

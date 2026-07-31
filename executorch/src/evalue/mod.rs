@@ -5,7 +5,7 @@
 
 use std::pin::Pin;
 
-use executorch_sys as sys;
+use executorch_sys::{self as sys, ET_Tag};
 
 use crate::memory::{MemoryAllocator, MemoryAllocatorExt, Storable, Storage};
 use crate::tensor::{RawTensor, TensorAny, TensorBase};
@@ -19,47 +19,47 @@ use crate::{Error, Result};
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum Tag {
     /// Tag for an empty EValue.
-    None = sys::Tag::Tag_None as u32,
+    None = ET_Tag::ET_Tag_None as u32,
     /// Tag for value [`TensorAny`].
-    Tensor = sys::Tag::Tag_Tensor as u32,
+    Tensor = ET_Tag::ET_Tag_Tensor as u32,
     /// Tag for value `&[c_char]`.
-    String = sys::Tag::Tag_String as u32,
+    String = ET_Tag::ET_Tag_String as u32,
     /// Tag for value `f64`.
-    Double = sys::Tag::Tag_Double as u32,
+    Double = ET_Tag::ET_Tag_Double as u32,
     /// Tag for value `i64`.
-    Int = sys::Tag::Tag_Int as u32,
+    Int = ET_Tag::ET_Tag_Int as u32,
     /// Tag for value `bool`.
-    Bool = sys::Tag::Tag_Bool as u32,
+    Bool = ET_Tag::ET_Tag_Bool as u32,
     /// Tag for value `&[bool]`.
-    ListBool = sys::Tag::Tag_ListBool as u32,
+    ListBool = ET_Tag::ET_Tag_ListBool as u32,
     /// Tag for value `&[f64]`.
-    ListDouble = sys::Tag::Tag_ListDouble as u32,
+    ListDouble = ET_Tag::ET_Tag_ListDouble as u32,
     /// Tag for value `&[i64]`.
-    ListInt = sys::Tag::Tag_ListInt as u32,
+    ListInt = ET_Tag::ET_Tag_ListInt as u32,
     /// Tag for value `&[TensorAny]`.
-    ListTensor = sys::Tag::Tag_ListTensor as u32,
+    ListTensor = ET_Tag::ET_Tag_ListTensor as u32,
     /// unsupported at the moment.
-    ListScalar = sys::Tag::Tag_ListScalar as u32,
+    ListScalar = ET_Tag::ET_Tag_ListScalar as u32,
     /// Tag for value `&[Option<TensorAny>]`.
-    ListOptionalTensor = sys::Tag::Tag_ListOptionalTensor as u32,
+    ListOptionalTensor = ET_Tag::ET_Tag_ListOptionalTensor as u32,
 }
 
-impl IntoRust for sys::Tag {
+impl IntoRust for ET_Tag {
     type RsType = Tag;
     fn rs(self) -> Self::RsType {
         match self {
-            sys::Tag::Tag_None => Tag::None,
-            sys::Tag::Tag_Tensor => Tag::Tensor,
-            sys::Tag::Tag_String => Tag::String,
-            sys::Tag::Tag_Double => Tag::Double,
-            sys::Tag::Tag_Int => Tag::Int,
-            sys::Tag::Tag_Bool => Tag::Bool,
-            sys::Tag::Tag_ListBool => Tag::ListBool,
-            sys::Tag::Tag_ListDouble => Tag::ListDouble,
-            sys::Tag::Tag_ListInt => Tag::ListInt,
-            sys::Tag::Tag_ListTensor => Tag::ListTensor,
-            sys::Tag::Tag_ListScalar => Tag::ListScalar,
-            sys::Tag::Tag_ListOptionalTensor => Tag::ListOptionalTensor,
+            ET_Tag::ET_Tag_None => Tag::None,
+            ET_Tag::ET_Tag_Tensor => Tag::Tensor,
+            ET_Tag::ET_Tag_String => Tag::String,
+            ET_Tag::ET_Tag_Double => Tag::Double,
+            ET_Tag::ET_Tag_Int => Tag::Int,
+            ET_Tag::ET_Tag_Bool => Tag::Bool,
+            ET_Tag::ET_Tag_ListBool => Tag::ListBool,
+            ET_Tag::ET_Tag_ListDouble => Tag::ListDouble,
+            ET_Tag::ET_Tag_ListInt => Tag::ListInt,
+            ET_Tag::ET_Tag_ListTensor => Tag::ListTensor,
+            ET_Tag::ET_Tag_ListScalar => Tag::ListScalar,
+            ET_Tag::ET_Tag_ListOptionalTensor => Tag::ListOptionalTensor,
         }
     }
 }
@@ -67,7 +67,7 @@ impl IntoRust for sys::Tag {
 /// Aggregate typing system similar to IValue only slimmed down with less
 /// functionality, no dependencies on atomic, and fewer supported types to better
 /// suit embedded systems (ie no intrusive ptr)
-pub struct EValue<'a>(NonTriviallyMovable<'a, sys::EValueStorage>);
+pub struct EValue<'a>(NonTriviallyMovable<'a, sys::ET_EValueStorage>);
 impl<'a> EValue<'a> {
     /// Create a new [`EValue`] on the heap.
     ///
@@ -80,8 +80,9 @@ impl<'a> EValue<'a> {
     ///
     /// The closure must initialize the value correctly, otherwise the value will be in an invalid state.
     #[cfg(feature = "alloc")]
-    unsafe fn new_impl(init: impl FnOnce(sys::EValueRefMut)) -> Self {
-        let init = |ptr: *mut sys::EValueStorage| init(sys::EValueRefMut { ptr: ptr as *mut _ });
+    unsafe fn new_impl(init: impl FnOnce(sys::ET_EValueRefMut)) -> Self {
+        let init =
+            |ptr: *mut sys::ET_EValueStorage| init(sys::ET_EValueRefMut { ptr: ptr as *mut _ });
         Self(unsafe { NonTriviallyMovable::new_boxed(init) })
     }
 
@@ -109,10 +110,11 @@ impl<'a> EValue<'a> {
     ///
     /// The closure must initialize the value correctly, otherwise the value will be in an invalid state.
     unsafe fn new_in_storage_impl(
-        init: impl FnOnce(sys::EValueRefMut),
+        init: impl FnOnce(sys::ET_EValueRefMut),
         storage: Pin<&'a mut Storage<EValue>>,
     ) -> Self {
-        let init = |ptr: *mut sys::EValueStorage| init(sys::EValueRefMut { ptr: ptr as *mut _ });
+        let init =
+            |ptr: *mut sys::ET_EValueStorage| init(sys::ET_EValueRefMut { ptr: ptr as *mut _ });
         Self(unsafe { NonTriviallyMovable::new_in_storage(init, storage) })
     }
 
@@ -161,8 +163,8 @@ impl<'a> EValue<'a> {
         Self::new_in_storage(value, storage)
     }
 
-    pub(crate) unsafe fn from_inner_ref(value: sys::EValueRef) -> Self {
-        let value = value.ptr as *const sys::EValueStorage;
+    pub(crate) unsafe fn from_inner_ref(value: sys::ET_EValueRef) -> Self {
+        let value = value.ptr as *const sys::ET_EValueStorage;
         assert!(!value.is_null());
         let value = unsafe { &*value };
         Self(NonTriviallyMovable::from_ref(value))
@@ -175,10 +177,10 @@ impl<'a> EValue<'a> {
     /// The given value should not be used after this function is called, and its Cpp destructor should be called.
     #[cfg(feature = "alloc")]
     #[allow(unused)]
-    pub(crate) unsafe fn move_from(value: sys::EValueRefMut) -> Self {
+    pub(crate) unsafe fn move_from(value: sys::ET_EValueRefMut) -> Self {
         Self(unsafe {
-            NonTriviallyMovable::new_boxed(|p: *mut sys::EValueStorage| {
-                sys::executorch_EValue_move(value, sys::EValueRefMut { ptr: p as *mut _ })
+            NonTriviallyMovable::new_boxed(|p: *mut sys::ET_EValueStorage| {
+                sys::executorch_EValue_move(value, sys::ET_EValueRefMut { ptr: p as *mut _ })
             })
         })
     }
@@ -363,26 +365,26 @@ impl<'a> EValue<'a> {
         unsafe { sys::executorch_EValue_tag(self.cpp()) }.rs()
     }
 }
-impl Destroy for sys::EValueStorage {
+impl Destroy for sys::ET_EValueStorage {
     unsafe fn destroy(&mut self) {
         unsafe {
-            sys::executorch_EValue_destructor(sys::EValueRefMut {
+            sys::executorch_EValue_destructor(sys::ET_EValueRefMut {
                 ptr: self as *mut Self as *mut _,
             })
         }
     }
 }
 impl IntoCpp for &EValue<'_> {
-    type CppType = sys::EValueRef;
+    type CppType = sys::ET_EValueRef;
     fn cpp(self) -> Self::CppType {
-        sys::EValueRef {
-            ptr: self.0.as_ref() as *const sys::EValueStorage as *const _,
+        sys::ET_EValueRef {
+            ptr: self.0.as_ref() as *const sys::ET_EValueStorage as *const _,
         }
     }
 }
 
 impl Storable for EValue<'_> {
-    type __Storage = sys::EValueStorage;
+    type __Storage = sys::ET_EValueStorage;
 }
 
 /// A type that can be converted into an [`EValue`].
@@ -749,7 +751,7 @@ impl<'a> TryFrom<&'a EValue<'_>> for TensorAny<'a> {
 //     fn try_from(mut value: EValue<'a>) -> Result<Tensor<'a>> {
 //         match value.tag() {
 //             Some(Tag::Tensor) => Ok(unsafe {
-//                 value.0.tag = sys::Tag::None;
+//                 value.0.tag = ET_Tag::None;
 //                 let inner = ManuallyDrop::take(&mut value.0.payload.as_tensor);
 //                 Tensor::from_inner(inner)
 //             }),
@@ -803,11 +805,11 @@ impl std::fmt::Debug for EValue<'_> {
 }
 
 /// A list of tensors.
-pub struct TensorList<'a>(&'a [sys::TensorStorage]);
+pub struct TensorList<'a>(&'a [sys::ET_TensorStorage]);
 impl TensorList<'_> {
     /// Safety: the array must be valid for the lifetime of the returned list.
-    unsafe fn from_array_ref(array: sys::ArrayRefTensor) -> Self {
-        let data = array.data.ptr as *const sys::TensorStorage;
+    unsafe fn from_array_ref(array: sys::ET_ArrayRefTensor) -> Self {
+        let data = array.data.ptr as *const sys::ET_TensorStorage;
         Self(unsafe { std::slice::from_raw_parts(data, array.len) })
     }
 
@@ -824,8 +826,8 @@ impl TensorList<'_> {
     /// Get the tensor at the given index.
     pub fn get(&self, index: usize) -> Option<TensorAny<'_>> {
         self.0.get(index).map(|t| unsafe {
-            TensorAny::from_inner_ref(sys::TensorRef {
-                ptr: t as *const sys::TensorStorage as *const _,
+            TensorAny::from_inner_ref(sys::ET_TensorRef {
+                ptr: t as *const sys::ET_TensorStorage as *const _,
             })
         })
     }
@@ -842,11 +844,11 @@ impl std::fmt::Debug for TensorList<'_> {
 }
 
 /// A list of optional tensors.
-pub struct OptionalTensorList<'a>(&'a [sys::OptionalTensorStorage]);
+pub struct OptionalTensorList<'a>(&'a [sys::ET_OptionalTensorStorage]);
 impl OptionalTensorList<'_> {
     /// Safety: the array must be valid for the lifetime of the returned list.
-    unsafe fn from_array_ref(array: sys::ArrayRefOptionalTensor) -> Self {
-        let data = array.data.ptr as *const sys::OptionalTensorStorage;
+    unsafe fn from_array_ref(array: sys::ET_ArrayRefOptionalTensor) -> Self {
+        let data = array.data.ptr as *const sys::ET_OptionalTensorStorage;
         Self(unsafe { std::slice::from_raw_parts(data, array.len) })
     }
 
@@ -869,8 +871,8 @@ impl OptionalTensorList<'_> {
     /// - `Some(Some(tensor))` if the tensor at the index is not `None`.
     pub fn get(&self, index: usize) -> Option<Option<TensorAny<'_>>> {
         self.0.get(index).map(|tensor| {
-            let tensor = sys::OptionalTensorRef {
-                ptr: tensor as *const sys::OptionalTensorStorage as *const _,
+            let tensor = sys::ET_OptionalTensorRef {
+                ptr: tensor as *const sys::ET_OptionalTensorStorage as *const _,
             };
             let tensor = unsafe { sys::executorch_OptionalTensor_get(tensor) };
             if tensor.ptr.is_null() {

@@ -12,14 +12,14 @@ mod c_link {
 }
 pub use c_link::*;
 
-impl Copy for Error {}
-impl Copy for ScalarType {}
-impl Copy for Tag {}
-impl Copy for TensorShapeDynamism {}
-impl Copy for ProgramHeaderStatus {}
-impl Copy for ProgramVerification {}
-impl Copy for MmapDataLoaderMlockConfig {}
-impl Copy for ModuleLoadMode {}
+impl Copy for ET_Error {}
+impl Copy for ET_ScalarType {}
+impl Copy for ET_Tag {}
+impl Copy for ET_TensorShapeDynamism {}
+impl Copy for ET_ProgramHeaderStatus {}
+impl Copy for ET_ProgramVerification {}
+impl Copy for ET_MmapDataLoaderMlockConfig {}
+impl Copy for ET_ModuleLoadMode {}
 
 macro_rules! impl_ref_clone_copy {
     ($name:ty) => {
@@ -33,34 +33,34 @@ macro_rules! impl_ref_clone_copy {
 }
 
 // Ref and RefMut
-impl_ref_clone_copy!(EValueRef);
-impl_ref_clone_copy!(EValueRefMut);
-impl_ref_clone_copy!(TensorRef);
-impl_ref_clone_copy!(TensorRefMut);
-impl_ref_clone_copy!(OptionalTensorRef);
-impl_ref_clone_copy!(OptionalTensorRefMut);
-impl_ref_clone_copy!(DataLoaderRefMut);
-impl_ref_clone_copy!(EventTracerRefMut);
+impl_ref_clone_copy!(ET_EValueRef);
+impl_ref_clone_copy!(ET_EValueRefMut);
+impl_ref_clone_copy!(ET_TensorRef);
+impl_ref_clone_copy!(ET_TensorRefMut);
+impl_ref_clone_copy!(ET_OptionalTensorRef);
+impl_ref_clone_copy!(ET_OptionalTensorRefMut);
+impl_ref_clone_copy!(ET_DataLoaderRefMut);
+impl_ref_clone_copy!(ET_EventTracerRefMut);
 
 // ArrayRef
-impl_ref_clone_copy!(ArrayRefBool);
-impl_ref_clone_copy!(ArrayRefChar);
-impl_ref_clone_copy!(ArrayRefDimOrderType);
-impl_ref_clone_copy!(ArrayRefEValue);
-impl_ref_clone_copy!(ArrayRefEValuePtr);
-impl_ref_clone_copy!(ArrayRefF64);
-impl_ref_clone_copy!(ArrayRefI32);
-impl_ref_clone_copy!(ArrayRefI64);
-impl_ref_clone_copy!(ArrayRefOptionalTensor);
-impl_ref_clone_copy!(ArrayRefSizesType);
-impl_ref_clone_copy!(ArrayRefStridesType);
-impl_ref_clone_copy!(ArrayRefTensor);
-impl_ref_clone_copy!(ArrayRefU8);
-impl_ref_clone_copy!(ArrayRefUsizeType);
+impl_ref_clone_copy!(ET_ArrayRefBool);
+impl_ref_clone_copy!(ET_ArrayRefChar);
+impl_ref_clone_copy!(ET_ArrayRefDimOrderType);
+impl_ref_clone_copy!(ET_ArrayRefEValue);
+impl_ref_clone_copy!(ET_ArrayRefEValuePtr);
+impl_ref_clone_copy!(ET_ArrayRefF64);
+impl_ref_clone_copy!(ET_ArrayRefI32);
+impl_ref_clone_copy!(ET_ArrayRefI64);
+impl_ref_clone_copy!(ET_ArrayRefOptionalTensor);
+impl_ref_clone_copy!(ET_ArrayRefSizesType);
+impl_ref_clone_copy!(ET_ArrayRefStridesType);
+impl_ref_clone_copy!(ET_ArrayRefTensor);
+impl_ref_clone_copy!(ET_ArrayRefU8);
+impl_ref_clone_copy!(ET_ArrayRefUsizeType);
 
 // Span
-impl_ref_clone_copy!(SpanI64);
-impl_ref_clone_copy!(SpanOptionalTensor);
-impl_ref_clone_copy!(SpanSpanU8);
-impl_ref_clone_copy!(SpanTensor);
-impl_ref_clone_copy!(SpanU8);
+impl_ref_clone_copy!(ET_SpanI64);
+impl_ref_clone_copy!(ET_SpanOptionalTensor);
+impl_ref_clone_copy!(ET_SpanSpanU8);
+impl_ref_clone_copy!(ET_SpanTensor);
+impl_ref_clone_copy!(ET_SpanU8);

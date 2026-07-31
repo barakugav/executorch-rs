@@ -70,7 +70,7 @@ use crate::{Error, Result};
 /// A deserialized ExecuTorch program binary.
 ///
 /// See the `examples/no_std` example for how to load and execute a program.
-pub struct Program<'a>(sys::Program, PhantomData<&'a ()>);
+pub struct Program<'a>(sys::ET_Program, PhantomData<&'a ()>);
 impl<'a> Program<'a> {
     /// Loads a Program from the provided loader. The Program will hold a pointer
     /// to the loader, which must outlive the returned Program instance.
@@ -90,7 +90,7 @@ impl<'a> Program<'a> {
         data_loader: &'a dyn DataLoader,
         verification: Option<ProgramVerification>,
     ) -> Result<Self> {
-        let data_loader = sys::DataLoaderRefMut {
+        let data_loader = sys::ET_DataLoaderRefMut {
             ptr: data_loader._cpp_ptr().cast_mut(),
         };
         let verification = verification.unwrap_or(ProgramVerification::Minimal).cpp();
@@ -159,13 +159,13 @@ impl<'a> Program<'a> {
         let event_tracer = event_tracer
             .map(|tracer| tracer as *mut EventTracer)
             .unwrap_or(ptr::null_mut());
-        let event_tracer = sys::EventTracerRefMut {
+        let event_tracer = sys::ET_EventTracerRefMut {
             ptr: event_tracer as *mut _,
         };
         let named_data_map = named_data_map
             .map(|map| map._cpp_ptr())
             .unwrap_or(ptr::null());
-        let named_data_map = sys::NamedDataMapRef {
+        let named_data_map = sys::ET_NamedDataMapRef {
             ptr: named_data_map,
         };
         // Safety: sys::executorch_Program_load_method writes to the pointer.
@@ -224,17 +224,20 @@ impl Drop for Program<'_> {
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum ProgramVerification {
     #[doc = " Do minimal verification of the data, ensuring that the header appears\n correct.\n\n Has minimal runtime overhead."]
-    Minimal = sys::ProgramVerification::ProgramVerification_Minimal as u8,
+    Minimal = sys::ET_ProgramVerification::ET_ProgramVerification_Minimal as u8,
     #[doc = " Do full verification of the data, ensuring that internal pointers are\n self-consistent and that the data has not been truncated or obviously\n corrupted. May not catch all types of corruption, but should guard\n against illegal memory operations during parsing.\n\n Will have higher runtime overhead, scaling with the complexity of the\n proram data."]
-    InternalConsistency = sys::ProgramVerification::ProgramVerification_InternalConsistency as u8,
+    InternalConsistency =
+        sys::ET_ProgramVerification::ET_ProgramVerification_InternalConsistency as u8,
 }
 impl IntoCpp for ProgramVerification {
-    type CppType = sys::ProgramVerification;
+    type CppType = sys::ET_ProgramVerification;
     fn cpp(self) -> Self::CppType {
         match self {
-            ProgramVerification::Minimal => sys::ProgramVerification::ProgramVerification_Minimal,
+            ProgramVerification::Minimal => {
+                sys::ET_ProgramVerification::ET_ProgramVerification_Minimal
+            }
             ProgramVerification::InternalConsistency => {
-                sys::ProgramVerification::ProgramVerification_InternalConsistency
+                sys::ET_ProgramVerification::ET_ProgramVerification_InternalConsistency
             }
         }
     }
@@ -245,26 +248,32 @@ impl IntoCpp for ProgramVerification {
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum HeaderStatus {
     #[doc = " An ExecuTorch program header is present, and its version is compatible\n with this version of the runtime."]
-    CompatibleVersion = sys::ProgramHeaderStatus::ProgramHeaderStatus_CompatibleVersion as u32,
+    CompatibleVersion =
+        sys::ET_ProgramHeaderStatus::ET_ProgramHeaderStatus_CompatibleVersion as u32,
     #[doc = " An ExecuTorch program header is present, but its version is not\n compatible with this version of the runtime."]
-    IncompatibleVersion = sys::ProgramHeaderStatus::ProgramHeaderStatus_IncompatibleVersion as u32,
+    IncompatibleVersion =
+        sys::ET_ProgramHeaderStatus::ET_ProgramHeaderStatus_IncompatibleVersion as u32,
     #[doc = " An ExecuTorch program header is not present."]
-    NotPresent = sys::ProgramHeaderStatus::ProgramHeaderStatus_NotPresent as u32,
+    NotPresent = sys::ET_ProgramHeaderStatus::ET_ProgramHeaderStatus_NotPresent as u32,
     #[doc = " The data provided was too short to find the program header."]
-    ShortData = sys::ProgramHeaderStatus::ProgramHeaderStatus_ShortData as u32,
+    ShortData = sys::ET_ProgramHeaderStatus::ET_ProgramHeaderStatus_ShortData as u32,
 }
-impl IntoRust for sys::ProgramHeaderStatus {
+impl IntoRust for sys::ET_ProgramHeaderStatus {
     type RsType = HeaderStatus;
     fn rs(self) -> Self::RsType {
         match self {
-            sys::ProgramHeaderStatus::ProgramHeaderStatus_CompatibleVersion => {
+            sys::ET_ProgramHeaderStatus::ET_ProgramHeaderStatus_CompatibleVersion => {
                 HeaderStatus::CompatibleVersion
             }
-            sys::ProgramHeaderStatus::ProgramHeaderStatus_IncompatibleVersion => {
+            sys::ET_ProgramHeaderStatus::ET_ProgramHeaderStatus_IncompatibleVersion => {
                 HeaderStatus::IncompatibleVersion
             }
-            sys::ProgramHeaderStatus::ProgramHeaderStatus_NotPresent => HeaderStatus::NotPresent,
-            sys::ProgramHeaderStatus::ProgramHeaderStatus_ShortData => HeaderStatus::ShortData,
+            sys::ET_ProgramHeaderStatus::ET_ProgramHeaderStatus_NotPresent => {
+                HeaderStatus::NotPresent
+            }
+            sys::ET_ProgramHeaderStatus::ET_ProgramHeaderStatus_ShortData => {
+                HeaderStatus::ShortData
+            }
         }
     }
 }
@@ -274,14 +283,14 @@ impl IntoRust for sys::ProgramHeaderStatus {
 /// The program used to create a MethodMeta object must outlive the MethodMeta.
 /// It is separate from Method so that this information can be accessed without
 /// paying the initialization cost of loading the full Method.
-pub struct MethodMeta<'a>(sys::MethodMeta, PhantomData<&'a ()>);
+pub struct MethodMeta<'a>(sys::ET_MethodMeta, PhantomData<&'a ()>);
 impl MethodMeta<'_> {
-    /// Create a new `MethodMeta` of a raw `sys::MethodMeta`.
+    /// Create a new `MethodMeta` of a raw `sys::ET_MethodMeta`.
     ///
     /// # Safety
     ///
     /// The caller must ensure the given meta can live at least the created struct's lifetime.
-    pub(crate) unsafe fn new(meta: sys::MethodMeta) -> Self {
+    pub(crate) unsafe fn new(meta: sys::ET_MethodMeta) -> Self {
         Self(meta, PhantomData)
     }
 
@@ -443,14 +452,14 @@ impl MethodMeta<'_> {
 ///
 /// The program used to create the MethodMeta object that created this
 /// TensorInfo must outlive this TensorInfo.
-pub struct TensorInfo<'a>(sys::TensorInfo, PhantomData<&'a ()>);
+pub struct TensorInfo<'a>(sys::ET_TensorInfo, PhantomData<&'a ()>);
 impl<'a> TensorInfo<'a> {
-    /// Create a new `TensorInfo` of a raw `sys::TensorInfo`.
+    /// Create a new `TensorInfo` of a raw `sys::ET_TensorInfo`.
     ///
     /// # Safety
     ///
     /// The caller must ensure the given layout can live at least 'a.
-    pub(crate) unsafe fn new(info: sys::TensorInfo) -> Self {
+    pub(crate) unsafe fn new(info: sys::ET_TensorInfo) -> Self {
         Self(info, PhantomData)
     }
 
@@ -512,7 +521,7 @@ impl std::fmt::Debug for TensorInfo<'_> {
 
 /// An executable method of an ExecuTorch program. Maps to a python method like
 /// `forward()` on the original `nn.Module`.
-pub struct Method<'a>(sys::Method, PhantomData<&'a ()>);
+pub struct Method<'a>(sys::ET_Method, PhantomData<&'a ()>);
 impl Method<'_> {
     /// Starts the execution of the method.
     pub fn start_execution(&mut self) -> Execution<'_> {
@@ -539,10 +548,12 @@ impl Method<'_> {
 
         // Safety: sys::executorch_Method_get_attribute writes to the tensor pointer.
         let tensor = unsafe {
-            crate::util::NonTriviallyMovable::try_new_boxed(|tensor: *mut sys::TensorStorage| {
-                let tensor = sys::TensorRefMut { ptr: tensor.cast() };
-                sys::executorch_Method_get_attribute(&mut self.0, name.0, tensor).rs()
-            })?
+            crate::util::NonTriviallyMovable::try_new_boxed(
+                |tensor: *mut sys::ET_TensorStorage| {
+                    let tensor = sys::ET_TensorRefMut { ptr: tensor.cast() };
+                    sys::executorch_Method_get_attribute(&mut self.0, name.0, tensor).rs()
+                },
+            )?
         };
 
         // Safety: The created tensor is immutable, therefore there is no risk for UB
@@ -561,11 +572,11 @@ impl Drop for Method<'_> {
 
 /// An method execution builder used to set inputs and execute the method.
 pub struct Execution<'a> {
-    method: &'a mut sys::Method,
+    method: &'a mut sys::ET_Method,
     set_inputs: u64,
 }
 impl<'a> Execution<'a> {
-    fn new(method: &'a mut sys::Method) -> Self {
+    fn new(method: &'a mut sys::ET_Method) -> Self {
         assert!(
             unsafe { sys::executorch_Method_inputs_size(method) } <= u64::BITS as usize,
             "more that 64 inputs for method, unsupported"
@@ -612,10 +623,10 @@ impl<'a> Execution<'a> {
 ///
 /// Access the outputs of a method execution by indexing into the Outputs object.
 pub struct Outputs<'a> {
-    method: &'a mut sys::Method,
+    method: &'a mut sys::ET_Method,
 }
 impl<'a> Outputs<'a> {
-    fn new(method: &'a mut sys::Method) -> Self {
+    fn new(method: &'a mut sys::ET_Method) -> Self {
         Self { method }
     }
 

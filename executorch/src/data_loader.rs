@@ -25,7 +25,7 @@ pub trait DataLoader {
 ///
 /// This can be used to wrap data that is directly embedded into the firmware
 /// image, or to wrap data that was allocated elsewhere.
-pub struct BufferDataLoader<'a>(UnsafeCell<sys::BufferDataLoader>, PhantomData<&'a ()>);
+pub struct BufferDataLoader<'a>(UnsafeCell<sys::ET_BufferDataLoader>, PhantomData<&'a ()>);
 impl<'a> BufferDataLoader<'a> {
     /// Creates a new BufferDataLoader that wraps the given data.
     pub fn new(data: &'a [u8]) -> Self {
@@ -62,7 +62,7 @@ mod file_data_loader {
     ///
     /// Note that this will keep the file open for the duration of its lifetime, to
     /// avoid the overhead of opening it again for every load() call.
-    pub struct FileDataLoader(UnsafeCell<sys::FileDataLoader>);
+    pub struct FileDataLoader(UnsafeCell<sys::ET_FileDataLoader>);
     impl FileDataLoader {
         /// Creates a new FileDataLoader given a [`Path`](std::path::Path).
         ///
@@ -142,7 +142,7 @@ mod file_data_loader {
     ///
     /// Note that this will keep the file open for the duration of its lifetime, to
     /// avoid the overhead of opening it again for every load() call.
-    pub struct MmapDataLoader(UnsafeCell<sys::MmapDataLoader>);
+    pub struct MmapDataLoader(UnsafeCell<sys::ET_MmapDataLoader>);
     impl MmapDataLoader {
         /// Creates a new MmapDataLoader from a [`Path`](std::path::Path).
         ///
@@ -220,25 +220,26 @@ mod file_data_loader {
     #[repr(u32)]
     pub enum MlockConfig {
         #[doc = " Do not call `mlock()` on loaded pages."]
-        NoMlock = sys::MmapDataLoaderMlockConfig::MmapDataLoaderMlockConfig_NoMlock as u32,
+        NoMlock = sys::ET_MmapDataLoaderMlockConfig::ET_MmapDataLoaderMlockConfig_NoMlock as u32,
         #[doc = " Call `mlock()` on loaded pages, failing if it fails."]
-        UseMlock = sys::MmapDataLoaderMlockConfig::MmapDataLoaderMlockConfig_UseMlock as u32,
+        UseMlock = sys::ET_MmapDataLoaderMlockConfig::ET_MmapDataLoaderMlockConfig_UseMlock as u32,
         #[doc = " Call `mlock()` on loaded pages, ignoring errors if it fails."]
         UseMlockIgnoreErrors =
-            sys::MmapDataLoaderMlockConfig::MmapDataLoaderMlockConfig_UseMlockIgnoreErrors as u32,
+            sys::ET_MmapDataLoaderMlockConfig::ET_MmapDataLoaderMlockConfig_UseMlockIgnoreErrors
+                as u32,
     }
     impl IntoCpp for MlockConfig {
-        type CppType = sys::MmapDataLoaderMlockConfig;
+        type CppType = sys::ET_MmapDataLoaderMlockConfig;
         fn cpp(self) -> Self::CppType {
             match self {
                 MlockConfig::NoMlock => {
-                    sys::MmapDataLoaderMlockConfig::MmapDataLoaderMlockConfig_NoMlock
+                    sys::ET_MmapDataLoaderMlockConfig::ET_MmapDataLoaderMlockConfig_NoMlock
                 }
                 MlockConfig::UseMlock => {
-                    sys::MmapDataLoaderMlockConfig::MmapDataLoaderMlockConfig_UseMlock
+                    sys::ET_MmapDataLoaderMlockConfig::ET_MmapDataLoaderMlockConfig_UseMlock
                 }
                 MlockConfig::UseMlockIgnoreErrors => {
-                    sys::MmapDataLoaderMlockConfig::MmapDataLoaderMlockConfig_UseMlockIgnoreErrors
+                    sys::ET_MmapDataLoaderMlockConfig::ET_MmapDataLoaderMlockConfig_UseMlockIgnoreErrors
                 }
             }
         }

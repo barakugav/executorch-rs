@@ -106,7 +106,7 @@ impl<D> TensorPtr<'_, D> {
         D: Data,
     {
         let tensor = self.0.as_ref().unwrap();
-        let tensor = sys::TensorRef {
+        let tensor = sys::ET_TensorRef {
             ptr: tensor as *const sys::Tensor as *const _,
         };
         // Safety: the tensor is valid and the data is immutable.
@@ -119,7 +119,7 @@ impl<D> TensorPtr<'_, D> {
         D: DataMut,
     {
         let tensor = self.0.as_ref().unwrap();
-        let tensor = sys::TensorRefMut {
+        let tensor = sys::ET_TensorRefMut {
             ptr: tensor as *const sys::Tensor as *mut sys::Tensor as *mut _,
         };
         // Safety: the tensor is mutable, and we are the sole borrower.
@@ -133,7 +133,7 @@ pub struct TensorPtrBuilder<'a, D: DataTyped> {
     sizes: UniquePtr<cxx::Vector<SizesType>>,
     data: TensorPtrBuilderData<'a, D>,
     strides: Option<UniquePtr<cxx::Vector<StridesType>>>,
-    dynamism: sys::TensorShapeDynamism,
+    dynamism: sys::ET_TensorShapeDynamism,
 }
 enum TensorPtrBuilderData<'a, D: DataTyped> {
     Vec { data: Vec<D::Scalar>, offset: usize },
@@ -173,7 +173,7 @@ impl<D: DataTyped> TensorPtrBuilder<'static, D> {
                     offset: data_offset,
                 }
             },
-            dynamism: sys::TensorShapeDynamism::TensorShapeDynamism_STATIC,
+            dynamism: sys::ET_TensorShapeDynamism::ET_TensorShapeDynamism_STATIC,
         }
     }
 
@@ -193,7 +193,7 @@ impl<D: DataTyped> TensorPtrBuilder<'static, D> {
             sizes: cxx_vec([data.len() as SizesType]),
             data: TensorPtrBuilderData::Vec { data, offset: 0 },
             strides: None,
-            dynamism: sys::TensorShapeDynamism::TensorShapeDynamism_STATIC,
+            dynamism: sys::ET_TensorShapeDynamism::ET_TensorShapeDynamism_STATIC,
         }
     }
 }
@@ -211,7 +211,7 @@ impl<'a, S: Scalar> TensorPtrBuilder<'a, View<S>> {
                     .iter()
                     .map(|&s| s as StridesType),
             )),
-            dynamism: sys::TensorShapeDynamism::TensorShapeDynamism_STATIC,
+            dynamism: sys::ET_TensorShapeDynamism::ET_TensorShapeDynamism_STATIC,
         }
     }
 
@@ -224,7 +224,7 @@ impl<'a, S: Scalar> TensorPtrBuilder<'a, View<S>> {
             sizes: cxx_vec([data.len() as SizesType]),
             data: TensorPtrBuilderData::Slice(data),
             strides: None,
-            dynamism: sys::TensorShapeDynamism::TensorShapeDynamism_STATIC,
+            dynamism: sys::ET_TensorShapeDynamism::ET_TensorShapeDynamism_STATIC,
         }
     }
 
@@ -246,7 +246,7 @@ impl<'a, S: Scalar> TensorPtrBuilder<'a, View<S>> {
             data: TensorPtrBuilderData::Ptr(data, PhantomData),
             strides: None,
             sizes: cxx_vec(sizes),
-            dynamism: sys::TensorShapeDynamism::TensorShapeDynamism_STATIC,
+            dynamism: sys::ET_TensorShapeDynamism::ET_TensorShapeDynamism_STATIC,
         }
     }
 }
@@ -267,7 +267,7 @@ impl<'a, S: Scalar> TensorPtrBuilder<'a, ViewMut<S>> {
                     .iter()
                     .map(|&s| s as StridesType),
             )),
-            dynamism: sys::TensorShapeDynamism::TensorShapeDynamism_STATIC,
+            dynamism: sys::ET_TensorShapeDynamism::ET_TensorShapeDynamism_STATIC,
         }
     }
 
@@ -280,7 +280,7 @@ impl<'a, S: Scalar> TensorPtrBuilder<'a, ViewMut<S>> {
             sizes: cxx_vec([data.len() as SizesType]),
             data: TensorPtrBuilderData::SliceMut(data),
             strides: None,
-            dynamism: sys::TensorShapeDynamism::TensorShapeDynamism_STATIC,
+            dynamism: sys::ET_TensorShapeDynamism::ET_TensorShapeDynamism_STATIC,
         }
     }
 
@@ -302,7 +302,7 @@ impl<'a, S: Scalar> TensorPtrBuilder<'a, ViewMut<S>> {
             data: TensorPtrBuilderData::PtrMut(data, PhantomData),
             strides: None,
             sizes: cxx_vec(sizes),
-            dynamism: sys::TensorShapeDynamism::TensorShapeDynamism_STATIC,
+            dynamism: sys::ET_TensorShapeDynamism::ET_TensorShapeDynamism_STATIC,
         }
     }
 }

@@ -56,8 +56,8 @@ pub struct ModuleBuilder<'a> {
     data_files: Vec<PathBuf>,
     load_mode: LoadMode,
     event_tracer: Option<EventTracerPtr<'a>>,
-    memory_allocator: UniquePtr<sys::MemoryAllocator>,
-    temp_allocator: UniquePtr<sys::MemoryAllocator>,
+    memory_allocator: UniquePtr<sys::ET_MemoryAllocator>,
+    temp_allocator: UniquePtr<sys::ET_MemoryAllocator>,
 }
 impl<'a> ModuleBuilder<'a> {
     /// Constructs a new ModuleBuilder with the given file path and default configuration.
@@ -206,7 +206,7 @@ impl<'a> Module<'a> {
             .map(|tracer| tracer as *mut EventTracer as *mut sys::EventTracer)
             .unwrap_or(std::ptr::null_mut());
         let planned_memory = planned_memory
-            .map(|allocator| (&mut allocator.0) as *mut sys::HierarchicalAllocator)
+            .map(|allocator| (&mut allocator.0) as *mut sys::ET_HierarchicalAllocator)
             .unwrap_or(std::ptr::null_mut());
         unsafe {
             sys::Module_load_method(
@@ -302,10 +302,10 @@ impl<'a> Module<'a> {
     ) -> Result<Vec<EValue<'b>>> {
         sys::cxx::let_cxx_string!(method_name = method_name);
         let inputs = unsafe {
-            NonTriviallyMovableVec::<sys::EValueStorage>::new(inputs.len(), |i, p| {
+            NonTriviallyMovableVec::<sys::ET_EValueStorage>::new(inputs.len(), |i, p| {
                 sys::executorch_EValue_copy(
                     inputs[i].cpp(),
-                    sys::EValueRefMut {
+                    sys::ET_EValueRefMut {
                         ptr: p.as_mut_ptr() as *mut _,
                     },
                 )
@@ -323,8 +323,8 @@ impl<'a> Module<'a> {
             .as_mut_slice()
             .iter_mut()
             .map(|val| unsafe {
-                EValue::move_from(sys::EValueRefMut {
-                    ptr: val as *mut sys::EValueStorage as *mut _,
+                EValue::move_from(sys::ET_EValueRefMut {
+                    ptr: val as *mut sys::ET_EValueStorage as *mut _,
                 })
             })
             .collect())
@@ -351,23 +351,24 @@ unsafe impl Send for Module<'_> {}
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum LoadMode {
     #[doc = " Load the whole file as a buffer."]
-    File = sys::ModuleLoadMode::ModuleLoadMode_File as u32,
+    File = sys::ET_ModuleLoadMode::ET_ModuleLoadMode_File as u32,
     #[doc = " Use mmap to load pages into memory."]
-    Mmap = sys::ModuleLoadMode::ModuleLoadMode_Mmap as u32,
+    Mmap = sys::ET_ModuleLoadMode::ET_ModuleLoadMode_Mmap as u32,
     #[doc = " Use memory locking and handle errors."]
-    MmapUseMlock = sys::ModuleLoadMode::ModuleLoadMode_MmapUseMlock as u32,
+    MmapUseMlock = sys::ET_ModuleLoadMode::ET_ModuleLoadMode_MmapUseMlock as u32,
     #[doc = " Use memory locking and ignore errors."]
-    MmapUseMlockIgnoreErrors = sys::ModuleLoadMode::ModuleLoadMode_MmapUseMlockIgnoreErrors as u32,
+    MmapUseMlockIgnoreErrors =
+        sys::ET_ModuleLoadMode::ET_ModuleLoadMode_MmapUseMlockIgnoreErrors as u32,
 }
 impl IntoCpp for LoadMode {
-    type CppType = sys::ModuleLoadMode;
+    type CppType = sys::ET_ModuleLoadMode;
     fn cpp(self) -> Self::CppType {
         match self {
-            LoadMode::File => sys::ModuleLoadMode::ModuleLoadMode_File,
-            LoadMode::Mmap => sys::ModuleLoadMode::ModuleLoadMode_Mmap,
-            LoadMode::MmapUseMlock => sys::ModuleLoadMode::ModuleLoadMode_MmapUseMlock,
+            LoadMode::File => sys::ET_ModuleLoadMode::ET_ModuleLoadMode_File,
+            LoadMode::Mmap => sys::ET_ModuleLoadMode::ET_ModuleLoadMode_Mmap,
+            LoadMode::MmapUseMlock => sys::ET_ModuleLoadMode::ET_ModuleLoadMode_MmapUseMlock,
             LoadMode::MmapUseMlockIgnoreErrors => {
-                sys::ModuleLoadMode::ModuleLoadMode_MmapUseMlockIgnoreErrors
+                sys::ET_ModuleLoadMode::ET_ModuleLoadMode_MmapUseMlockIgnoreErrors
             }
         }
     }

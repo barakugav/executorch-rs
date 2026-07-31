@@ -1,5 +1,7 @@
 // Clippy doesnt detect the 'Safety' comments in the cxx bridge.
 #![allow(clippy::missing_safety_doc)]
+// The ET_-prefixed C bridge type names are not UpperCamelCase.
+#![allow(non_camel_case_types)]
 
 use cxx::{type_id, ExternType};
 
@@ -10,40 +12,40 @@ pub(crate) mod ffi {
         include!("executorch-sys/cpp/executorch_rs/cxx_bridge.hpp");
 
         /// Cpp executorch error type.
-        type Error = crate::Error;
+        type ET_Error = crate::ET_Error;
 
-        /// Types of validation that a `Program` can do before parsing the data.
-        type ProgramVerification = crate::ProgramVerification;
+        /// Types of validation that a `ET_Program` can do before parsing the data.
+        type ET_ProgramVerification = crate::ET_ProgramVerification;
 
         /// Describes a method in an ExecuTorch program.
         ///
-        /// The program used to create a MethodMeta object must outlive the MethodMeta.
-        /// It is separate from Method so that this information can be accessed without
-        /// paying the initialization cost of loading the full Method.
-        type MethodMeta = crate::MethodMeta;
+        /// The program used to create a ET_MethodMeta object must outlive the ET_MethodMeta.
+        /// It is separate from ET_Method so that this information can be accessed without
+        /// paying the initialization cost of loading the full ET_Method.
+        type ET_MethodMeta = crate::ET_MethodMeta;
 
         /// A facade class for loading programs and executing methods within them.
         #[namespace = "executorch::extension"]
         type Module;
 
         /// Enum to define loading behavior.
-        type ModuleLoadMode = crate::ModuleLoadMode;
+        type ET_ModuleLoadMode = crate::ET_ModuleLoadMode;
 
         /// A specification of `ArrayRef<EValue>`.
-        type ArrayRefEValue = crate::ArrayRefEValue;
+        type ET_ArrayRefEValue = crate::ET_ArrayRefEValue;
 
         /// A vector of `EValue`.
-        type VecEValue = crate::VecEValue;
+        type ET_VecEValue = crate::ET_VecEValue;
 
         /// EventTracer is a class that users can inherit and implement to log/serialize/stream etc.
         #[namespace = "executorch::runtime"]
         type EventTracer;
 
         /// An allocator used to allocate objects for the runtime.
-        type MemoryAllocator = crate::MemoryAllocator;
+        type ET_MemoryAllocator = crate::ET_MemoryAllocator;
 
-        /// Redefinition of the [`HierarchicalAllocator`](crate::HierarchicalAllocator).
-        type HierarchicalAllocator = crate::HierarchicalAllocator;
+        /// Redefinition of the [`ET_HierarchicalAllocator`](crate::ET_HierarchicalAllocator).
+        type ET_HierarchicalAllocator = crate::ET_HierarchicalAllocator;
 
         /// Constructs an instance by loading a program from a file with specified
         /// memory locking behavior.
@@ -58,10 +60,10 @@ pub(crate) mod ffi {
         fn Module_new(
             file_path: &CxxString,
             data_files: &[&str],
-            load_mode: ModuleLoadMode,
+            load_mode: ET_ModuleLoadMode,
             event_tracer: UniquePtr<EventTracer>,
-            memory_allocator: UniquePtr<MemoryAllocator>,
-            temp_allocator: UniquePtr<MemoryAllocator>,
+            memory_allocator: UniquePtr<ET_MemoryAllocator>,
+            temp_allocator: UniquePtr<ET_MemoryAllocator>,
         ) -> UniquePtr<Module>;
 
         /// Load the program if needed.
@@ -72,9 +74,9 @@ pub(crate) mod ffi {
         ///
         /// # Returns
         ///
-        /// An Error to indicate success or failure of the loading process.
+        /// An ET_Error to indicate success or failure of the loading process.
         #[namespace = "executorch_rs"]
-        fn Module_load(self_: Pin<&mut Module>, verification: ProgramVerification) -> Error;
+        fn Module_load(self_: Pin<&mut Module>, verification: ET_ProgramVerification) -> ET_Error;
 
         /// Checks if the program is loaded.
         #[namespace = "executorch_rs"]
@@ -84,9 +86,12 @@ pub(crate) mod ffi {
         ///
         /// # Safety
         ///
-        /// The `method_num_out` is valid only if the function returns `Error::Ok`.
+        /// The `method_num_out` is valid only if the function returns `ET_Error::Ok`.
         #[namespace = "executorch_rs"]
-        unsafe fn Module_num_methods(self_: Pin<&mut Module>, method_num_out: *mut usize) -> Error;
+        unsafe fn Module_num_methods(
+            self_: Pin<&mut Module>,
+            method_num_out: *mut usize,
+        ) -> ET_Error;
 
         /// Get a list of method names available in the loaded program.
         ///
@@ -103,12 +108,12 @@ pub(crate) mod ffi {
         ///
         /// # Safety
         ///
-        /// The `method_names_out` vector can be used only if the function returns `Error::Ok`.
+        /// The `method_names_out` vector can be used only if the function returns `ET_Error::Ok`.
         #[namespace = "executorch_rs"]
         unsafe fn Module_method_names(
             self_: Pin<&mut Module>,
             method_names_out: *mut Vec<String>,
-        ) -> Error;
+        ) -> ET_Error;
 
         /// Load a specific method from the program and set up memory management if
         /// needed.
@@ -121,14 +126,14 @@ pub(crate) mod ffi {
         ///
         /// # Returns
         ///
-        /// An Error to indicate success or failure.
+        /// An ET_Error to indicate success or failure.
         #[namespace = "executorch_rs"]
         unsafe fn Module_load_method(
             self_: Pin<&mut Module>,
             method_name: &CxxString,
-            planned_memory: *mut HierarchicalAllocator,
+            planned_memory: *mut ET_HierarchicalAllocator,
             event_tracer: *mut EventTracer,
-        ) -> Error;
+        ) -> ET_Error;
 
         /// Unload a specific method from the program.
         ///
@@ -160,7 +165,7 @@ pub(crate) mod ffi {
         /// # Arguments
         ///
         /// - `method_name`: The name of the method to get the metadata for.
-        /// - `method_meta_out`: A mutable reference to a `MethodMeta` struct that will be filled with the metadata.
+        /// - `method_meta_out`: A mutable reference to a `ET_MethodMeta` struct that will be filled with the metadata.
         ///
         /// # Returns
         ///
@@ -169,13 +174,13 @@ pub(crate) mod ffi {
         /// # Safety
         ///
         /// The `method_meta_out` struct must be valid for the lifetime of the function.
-        /// The `method_meta_out` struct can be used only if the function returns `Error::Ok`.
+        /// The `method_meta_out` struct can be used only if the function returns `ET_Error::Ok`.
         #[namespace = "executorch_rs"]
         unsafe fn Module_method_meta(
             self_: Pin<&mut Module>,
             method_name: &CxxString,
-            method_meta_out: *mut MethodMeta,
-        ) -> Error;
+            method_meta_out: *mut ET_MethodMeta,
+        ) -> ET_Error;
 
         /// Execute a specific method with the given input values and retrieve the
         /// output values. Loads the program and method before executing if needed.
@@ -193,23 +198,23 @@ pub(crate) mod ffi {
         /// # Safety
         ///
         /// The `outputs` vector must be valid for the lifetime of the function.
-        /// The `outputs` vector can be used only if the function returns `Error::Ok`.
+        /// The `outputs` vector can be used only if the function returns `ET_Error::Ok`.
         #[namespace = "executorch_rs"]
         unsafe fn Module_execute(
             self_: Pin<&mut Module>,
             method_name: &CxxString,
-            inputs: ArrayRefEValue,
-            outputs: *mut VecEValue,
-        ) -> Error;
+            inputs: ET_ArrayRefEValue,
+            outputs: *mut ET_VecEValue,
+        ) -> ET_Error;
     }
 }
 
-unsafe impl ExternType for crate::HierarchicalAllocator {
-    type Id = type_id!("HierarchicalAllocator");
+unsafe impl ExternType for crate::ET_HierarchicalAllocator {
+    type Id = type_id!("ET_HierarchicalAllocator");
     type Kind = cxx::kind::Trivial;
 }
 
-unsafe impl ExternType for crate::ModuleLoadMode {
-    type Id = type_id!("ModuleLoadMode");
+unsafe impl ExternType for crate::ET_ModuleLoadMode {
+    type Id = type_id!("ET_ModuleLoadMode");
     type Kind = cxx::kind::Trivial;
 }
