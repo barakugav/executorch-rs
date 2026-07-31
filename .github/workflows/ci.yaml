@@ -20,7 +20,7 @@ jobs:
         shell: bash
     strategy:
       matrix:
-        runner: [ubuntu-22.04, macos-latest]
+        runner: [ubuntu-22.04, macos-15]
     permissions:
       contents: read
       checks: write
@@ -183,7 +183,7 @@ jobs:
             runner: ubuntu-24.04
           # macOS
           - target: aarch64-apple-darwin
-            runner: macos-latest
+            runner: macos-15
           # Android
           - target: x86_64-linux-android
             runner: ubuntu-24.04
@@ -195,9 +195,9 @@ jobs:
             runner: ubuntu-24.04
           # iOS
           - target: aarch64-apple-ios
-            runner: macos-latest
+            runner: macos-15
           # - target: x86_64-apple-ios
-          #   runner: macos-latest
+          #   runner: macos-15
     permissions:
       contents: read
       checks: write
