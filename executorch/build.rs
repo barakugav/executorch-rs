@@ -10,15 +10,6 @@ fn main() {
         println!("cargo:rustc-cfg=error_in_core");
     }
 
-    println!("cargo::rerun-if-env-changed=EXECUTORCH_RS_DENY_WARNINGS");
-    let deny_warnings = std::env::var("EXECUTORCH_RS_DENY_WARNINGS").as_deref() == Ok("1");
-    if check_cfg {
-        println!("cargo:rustc-check-cfg=cfg(deny_warnings)");
-    }
-    if deny_warnings {
-        println!("cargo:rustc-cfg=deny_warnings");
-    }
-
     println!("cargo::rerun-if-env-changed=EXECUTORCH_RS_LINK_TEST_KERNELS");
     if check_cfg {
         println!("cargo:rustc-check-cfg=cfg(tests_with_kernels)");

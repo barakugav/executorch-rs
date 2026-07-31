@@ -75,18 +75,26 @@ jobs:
       - name: Build executorch-sys
         run: cargo build
         working-directory: executorch-sys
+        env:
+          RUSTFLAGS: "-D warnings"
       - name: Build executorch
         run: cargo build
         working-directory: executorch
+        env:
+          RUSTFLAGS: "-D warnings"
 
       - name: cargo check executorch-sys with feature powerset
         if: runner.os == 'Linux'
         run: cargo hack check --feature-powerset  --depth 2
         working-directory: executorch-sys
+        env:
+          RUSTFLAGS: "-D warnings"
       - name: cargo check executorch with feature powerset
         if: runner.os == 'Linux'
         run: cargo hack check --feature-powerset --depth 2
         working-directory: executorch
+        env:
+          RUSTFLAGS: "-D warnings"
 
       ############ Linters ############
       - name: Clippy executorch-sys
@@ -95,22 +103,29 @@ jobs:
           working-directory: executorch-sys
           check-args: --all-features
           token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          RUSTFLAGS: "-D warnings"
       - name: Clippy executorch
         uses: auguwu/clippy-action@1.5.0
         with:
           working-directory: executorch
           check-args: --all-features
           token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          RUSTFLAGS: "-D warnings"
 
       ############ Tests ############
       - name: Test executorch-sys
         run: cargo test --all-features
         working-directory: executorch-sys
+        env:
+          RUSTFLAGS: "-D warnings"
       - name: Test executorch
         run: cargo test --all-features
         working-directory: executorch
         env:
           EXECUTORCH_RS_LINK_TEST_KERNELS: 1
+          RUSTFLAGS: "-D warnings"
 
       ############ Examples ############
       - name: Run 'hello world' example
@@ -147,9 +162,13 @@ jobs:
       - name: Build nano-gpt example
         run: cargo build
         working-directory: examples/nano-gpt
+        env:
+          RUSTFLAGS: "-D warnings"
       - name: Build llama3 example
         run: cargo build
         working-directory: examples/llama3
+        env:
+          RUSTFLAGS: "-D warnings"
 
   check:
     runs-on: ${{ matrix.runner }}
@@ -245,11 +264,13 @@ jobs:
         working-directory: executorch-sys
         env:
           EXECUTORCH_RS_LINK: 0
+          RUSTFLAGS: "-D warnings"
       - name: cargo check executorch
         run: cargo check --target ${{ matrix.target }} --all-features
         working-directory: executorch
         env:
           EXECUTORCH_RS_LINK: 0
+          RUSTFLAGS: "-D warnings"
 
       - name: Clippy executorch-sys
         uses: auguwu/clippy-action@1.5.0
@@ -259,6 +280,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
         env:
           EXECUTORCH_RS_LINK: 0
+          RUSTFLAGS: "-D warnings"
       - name: Clippy executorch
         uses: auguwu/clippy-action@1.5.0
         with:
@@ -267,6 +289,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
         env:
           EXECUTORCH_RS_LINK: 0
+          RUSTFLAGS: "-D warnings"
 
   rust-version-check-clippy:
     # check that we can build using different rust versions:
@@ -308,6 +331,7 @@ jobs:
         working-directory: executorch
         env:
           EXECUTORCH_RS_LINK: 0
+          RUSTFLAGS: "-D warnings"
       - name: cargo clippy executorch
         uses: auguwu/clippy-action@1.5.0
         with:
@@ -316,12 +340,14 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
         env:
           EXECUTORCH_RS_LINK: 0
+          RUSTFLAGS: "-D warnings"
 
       - name: cargo check executorch-sys
         run: cargo check --all-features
         working-directory: executorch-sys
         env:
           EXECUTORCH_RS_LINK: 0
+          RUSTFLAGS: "-D warnings"
       - name: cargo clippy executorch-sys
         uses: auguwu/clippy-action@1.5.0
         with:
@@ -330,3 +356,4 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
         env:
           EXECUTORCH_RS_LINK: 0
+          RUSTFLAGS: "-D warnings"

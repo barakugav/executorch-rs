@@ -20,16 +20,6 @@ fn main() {
         "cargo::rerun-if-changed={}",
         third_party_dir().to_str().unwrap()
     );
-
-    let check_cfg = rustc_version().map(|v| v >= 80).unwrap_or(false);
-    println!("cargo::rerun-if-env-changed=EXECUTORCH_RS_DENY_WARNINGS");
-    let deny_warnings = std::env::var("EXECUTORCH_RS_DENY_WARNINGS").as_deref() == Ok("1");
-    if check_cfg {
-        println!("cargo:rustc-check-cfg=cfg(deny_warnings)");
-    }
-    if deny_warnings {
-        println!("cargo:rustc-cfg=deny_warnings");
-    }
 }
 
 fn build_c_bridge() {
