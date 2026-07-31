@@ -98,19 +98,13 @@ jobs:
 
       ############ Linters ############
       - name: Clippy executorch-sys
-        uses: auguwu/clippy-action@1.5.0
-        with:
-          working-directory: executorch-sys
-          check-args: --all-features
-          token: ${{ secrets.GITHUB_TOKEN }}
+        run: cargo clippy --all-features
+        working-directory: executorch-sys
         env:
           RUSTFLAGS: "-D warnings"
       - name: Clippy executorch
-        uses: auguwu/clippy-action@1.5.0
-        with:
-          working-directory: executorch
-          check-args: --all-features
-          token: ${{ secrets.GITHUB_TOKEN }}
+        run: cargo clippy --all-features
+        working-directory: executorch
         env:
           RUSTFLAGS: "-D warnings"
 
@@ -273,20 +267,14 @@ jobs:
           RUSTFLAGS: "-D warnings"
 
       - name: Clippy executorch-sys
-        uses: auguwu/clippy-action@1.5.0
-        with:
-          working-directory: executorch-sys
-          check-args: --target ${{ matrix.target }} --all-features
-          token: ${{ secrets.GITHUB_TOKEN }}
+        run: cargo clippy --target ${{ matrix.target }} --all-features
+        working-directory: executorch-sys
         env:
           EXECUTORCH_RS_LINK: 0
           RUSTFLAGS: "-D warnings"
       - name: Clippy executorch
-        uses: auguwu/clippy-action@1.5.0
-        with:
-          working-directory: executorch
-          check-args: --target ${{ matrix.target }} --all-features
-          token: ${{ secrets.GITHUB_TOKEN }}
+        run: cargo clippy --target ${{ matrix.target }} --all-features
+        working-directory: executorch
         env:
           EXECUTORCH_RS_LINK: 0
           RUSTFLAGS: "-D warnings"
@@ -333,11 +321,8 @@ jobs:
           EXECUTORCH_RS_LINK: 0
           RUSTFLAGS: "-D warnings"
       - name: cargo clippy executorch
-        uses: auguwu/clippy-action@1.5.0
-        with:
-          working-directory: executorch
-          check-args: --all-features
-          token: ${{ secrets.GITHUB_TOKEN }}
+        run: cargo clippy --all-features
+        working-directory: executorch
         env:
           EXECUTORCH_RS_LINK: 0
           RUSTFLAGS: "-D warnings"
@@ -349,11 +334,8 @@ jobs:
           EXECUTORCH_RS_LINK: 0
           RUSTFLAGS: "-D warnings"
       - name: cargo clippy executorch-sys
-        uses: auguwu/clippy-action@1.5.0
-        with:
-          working-directory: executorch-sys
-          check-args: --all-features
-          token: ${{ secrets.GITHUB_TOKEN }}
+        run: cargo clippy --all-features
+        working-directory: executorch-sys
         env:
           EXECUTORCH_RS_LINK: 0
           RUSTFLAGS: "-D warnings"
