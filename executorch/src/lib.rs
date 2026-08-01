@@ -153,6 +153,7 @@ pub const EXECUTORCH_CPP_VERSION: &str = executorch_sys::EXECUTORCH_CPP_VERSION;
 mod private;
 pub mod data_loader;
 pub mod data_map;
+pub mod device;
 mod error;
 pub mod evalue;
 pub mod event_tracer;

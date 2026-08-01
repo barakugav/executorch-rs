@@ -60,6 +60,7 @@ use executorch_sys as sys;
 
 use crate::data_loader::DataLoader;
 use crate::data_map::{AbstractNamedDataMap, NamedDataMap};
+use crate::device::Device;
 use crate::evalue::{EValue, Tag};
 use crate::event_tracer::EventTracer;
 use crate::memory::MemoryManager;
@@ -427,6 +428,30 @@ impl MethodMeta<'_> {
         Ok(size as usize)
     }
 
+    /// Get the device placement for the specified memory-planned buffer.
+    ///
+    /// For CPU-only programs (no non_const_buffer_device in the PTE), all buffers
+    /// default to Device{CPU, 0}. For programs with device annotations, returns
+    /// the device type and index that the buffer should be allocated on.
+    ///
+    /// # Arguments
+    ///
+    /// * `index` - The index of the buffer to look up (0-based, same
+    ///   indexing as `memory_planned_buffer_size()`).
+    ///
+    /// # Returns
+    ///
+    /// The device on success, or an error on failure.
+    pub fn memory_planned_buffer_device(&self, index: usize) -> Result<Device> {
+        // Safety: sys::executorch_MethodMeta_memory_planned_buffer_device writes to the pointer.
+        let device = unsafe {
+            try_c_new(|device| {
+                sys::executorch_MethodMeta_memory_planned_buffer_device(&self.0, index, device)
+            })?
+        };
+        Ok(device.rs())
+    }
+
     /// Check to see if a backend is used in this method.
     pub fn uses_backend(&self, backend_name: &CStr) -> bool {
         unsafe { sys::executorch_MethodMeta_uses_backend(&self.0, backend_name.as_ptr()) }
@@ -731,9 +756,16 @@ mod tests {
 
         for i in 0..method_meta.num_memory_planned_buffers() {
             assert!(method_meta.memory_planned_buffer_size(i).is_ok());
+            assert!(method_meta
+                .memory_planned_buffer_device(i)
+                .unwrap()
+                .is_cpu());
         }
         assert!(method_meta
             .memory_planned_buffer_size(method_meta.num_memory_planned_buffers())
+            .is_err());
+        assert!(method_meta
+            .memory_planned_buffer_device(method_meta.num_memory_planned_buffers())
             .is_err());
 
         for i in 0..method_meta.num_backends() {

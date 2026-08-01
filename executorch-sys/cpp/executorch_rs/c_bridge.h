@@ -238,6 +238,14 @@ extern "C"
         ET_ScalarType_UInt64,
     };
 
+    /// Represents the type of compute device.
+    /// Note: ExecuTorch Device is distinct from PyTorch Device.
+    enum ET_DeviceType : int8_t
+    {
+        ET_DeviceType_CPU = 0,
+        ET_DeviceType_CUDA = 1,
+    };
+
     /**
      * The type used for elements of `Tensor.sizes()`.
      */
@@ -363,6 +371,11 @@ extern "C"
             };
             bool _blob4_opt_flag;
         };
+    };
+    struct ET_Device
+    {
+        enum ET_DeviceType type;
+        int8_t index;
     };
     struct ET_TensorInfo
     {
@@ -730,6 +743,7 @@ extern "C"
     size_t executorch_Tensor_dim(struct ET_TensorRef self);
     size_t executorch_Tensor_numel(struct ET_TensorRef self);
     enum ET_ScalarType executorch_Tensor_scalar_type(struct ET_TensorRef self);
+    struct ET_Device executorch_Tensor_device(struct ET_TensorRef self);
     size_t executorch_Tensor_element_size(struct ET_TensorRef self);
     struct ET_ArrayRefSizesType executorch_Tensor_sizes(struct ET_TensorRef self);
     struct ET_ArrayRefDimOrderType executorch_Tensor_dim_order(struct ET_TensorRef self);
@@ -816,6 +830,7 @@ extern "C"
     size_t executorch_MethodMeta_num_attributes(const struct ET_MethodMeta *self);
     enum ET_Error executorch_MethodMeta_attribute_tensor_meta(const struct ET_MethodMeta *self, size_t index, struct ET_TensorInfo *tensor_info_out);
     enum ET_Error executorch_MethodMeta_memory_planned_buffer_size(const struct ET_MethodMeta *self, size_t index, int64_t *size_out);
+    enum ET_Error executorch_MethodMeta_memory_planned_buffer_device(const struct ET_MethodMeta *self, size_t index, struct ET_Device *device_out);
     bool executorch_MethodMeta_uses_backend(const struct ET_MethodMeta *self, const char *backend_name);
     size_t executorch_MethodMeta_num_backends(const struct ET_MethodMeta *self);
     enum ET_Error executorch_MethodMeta_get_backend_name(const struct ET_MethodMeta *self, size_t index, const char **backend_name_out);

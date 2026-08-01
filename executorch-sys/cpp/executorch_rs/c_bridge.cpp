@@ -63,6 +63,9 @@ namespace
     //
     // static_assert(std::is_trivially_move_constructible_v<executorch::runtime::Program>);
 
+    static_assert(is_equal_layout<struct ET_Device, executorch::runtime::etensor::Device>());
+    static_assert(std::is_trivially_move_constructible_v<executorch::runtime::etensor::Device>);
+
     static_assert(is_equal_layout<struct ET_TensorInfo, executorch::runtime::TensorInfo>());
     static_assert(std::is_trivially_move_constructible_v<executorch::runtime::TensorInfo>);
 
@@ -432,6 +435,12 @@ enum ET_ScalarType executorch_Tensor_scalar_type(struct ET_TensorRef self)
     auto self_ = cast_tensor(self);
     auto ret = self_->scalar_type();
     return static_cast<ET_ScalarType>(ret);
+}
+struct ET_Device executorch_Tensor_device(struct ET_TensorRef self)
+{
+    auto self_ = cast_tensor(self);
+    auto d = self_->unsafeGetTensorImpl()->device();
+    return ET_Device{static_cast<ET_DeviceType>(d.type()), static_cast<int8_t>(d.index())};
 }
 size_t executorch_Tensor_element_size(struct ET_TensorRef self)
 {
@@ -941,6 +950,16 @@ enum ET_Error executorch_MethodMeta_memory_planned_buffer_size(const struct ET_M
 {
     auto self_ = checked_reinterpret_cast<executorch::runtime::MethodMeta>(self);
     return extract_result(self_->memory_planned_buffer_size(index), size_out);
+}
+enum ET_Error executorch_MethodMeta_memory_planned_buffer_device(const struct ET_MethodMeta *self, size_t index, struct ET_Device *device_out)
+{
+    auto self_ = checked_reinterpret_cast<executorch::runtime::MethodMeta>(self);
+    auto result = self_->memory_planned_buffer_device(index);
+    if (!result.ok())
+        return static_cast<ET_Error>(result.error());
+    auto d = result.get();
+    *device_out = ET_Device{static_cast<ET_DeviceType>(d.type()), static_cast<int8_t>(d.index())};
+    return ET_Error::ET_Error_Ok;
 }
 bool executorch_MethodMeta_uses_backend(const struct ET_MethodMeta *self, const char *backend_name)
 {

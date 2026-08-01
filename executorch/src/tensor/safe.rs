@@ -5,6 +5,7 @@ use std::pin::Pin;
 use executorch_sys as sys;
 
 use super::{DimOrderType, RawTensor, RawTensorImpl, Scalar, ScalarType, SizesType, StridesType};
+use crate::device::Device;
 use crate::memory::{MemoryAllocator, MemoryAllocatorExt, Storable, Storage};
 use crate::tensor::{TensorAccessor, TensorAccessorMut};
 use crate::{Error, Result};
@@ -186,6 +187,11 @@ impl<'a, D> TensorBase<'a, D> {
     /// Returns the type of the elements in the tensor (int32, float, bool, etc).
     pub fn scalar_type(&self) -> ScalarType {
         self.0.scalar_type()
+    }
+
+    /// Returns the device on which this tensor's data resides.
+    pub fn device(&self) -> Device {
+        self.0.device()
     }
 
     /// Returns the size in bytes of one element of the tensor.
@@ -938,6 +944,8 @@ mod tests {
             assert_eq!(tensor.dim_order(), &[0, 1]);
             assert_eq!(tensor.strides(), &[3, 1]);
             assert_eq!(tensor.as_data_ptr(), data.as_ptr());
+            assert!(tensor.device().is_cpu());
+            assert_eq!(tensor.device().index(), 0);
         }
     }
 
