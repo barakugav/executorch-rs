@@ -1,15 +1,14 @@
 from pathlib import Path
 
 import torch
-from torch.export import export
-
 from executorch.exir import to_edge_transform_and_lower
+from torch.export import export
 
 
 # A simple PyTorch model that adds two input tensors
 class Add(torch.nn.Module):
     def __init__(self):
-        super(Add, self).__init__()
+        super().__init__()
 
     def forward(self, x: torch.Tensor, y: torch.Tensor):
         return x + y

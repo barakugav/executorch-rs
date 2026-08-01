@@ -2,9 +2,8 @@ import shutil
 from pathlib import Path
 
 import torch
-from torch.export import export
-
 from executorch.exir import ExecutorchBackendConfig, to_edge_transform_and_lower
+from torch.export import export
 
 
 class ModuleAddMul(torch.nn.Module):
