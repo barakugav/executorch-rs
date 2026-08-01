@@ -39,7 +39,7 @@ with open("model.pte", "wb") as file:
 ```
 
 Execute the model in Rust:
-```rust,ignore
+```rust
 use executorch::evalue::{EValue, IntoEValue};
 use executorch::module::Module;
 use executorch::tensor_ptr;

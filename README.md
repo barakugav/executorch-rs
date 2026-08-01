@@ -39,7 +39,7 @@ with open("model.pte", "wb") as file:
 ```
 
 Execute the model in Rust:
-```rust,ignore
+```rust
 use executorch::evalue::{EValue, IntoEValue};
 use executorch::module::Module;
 use executorch::tensor_ptr;
@@ -65,6 +65,21 @@ To use the library you must compile the C++ executorch library yourself, as ther
 determines which modules, backends, and operations are supported. See the `executorch-sys` crate for more info.
 Currently the supported Cpp executorch version is `1.3.1`.
 
+The table below shows which version of the Rust crate is compatible with which C++ ExecuTorch version:
+
+| Rust crate | C++ library |
+| ---------- | ----------- |
+| 0.11.x     | 1.3.1       |
+| 0.10.x     | 1.2.0       |
+| 0.9.x      | 1.1.0       |
+| 0.8.x      | 1.0.1       |
+| 0.7.x      | 0.7.0       |
+| 0.6.x      | 0.6.0       |
+| 0.5.x      | 0.5.0       |
+| 0.4.x      | 0.4.0       |
+| 0.3.x      | 0.3.0       |
+| 0.2.x      | 0.3.0       |
+| 0.1.x      | 0.2.1       |
 
 ## Cargo Features
 - `data-loader`:
