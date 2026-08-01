@@ -394,7 +394,8 @@ extern "C"
         // merged_data_map_
         // external_constants_
         // n_external_constants_
-        size_t _blob1[17];
+        // kernel_registry_ (2)
+        size_t _blob1[19];
         // init_state_;
         uint8_t _blob2[1];
     };

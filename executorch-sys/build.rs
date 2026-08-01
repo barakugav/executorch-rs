@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-// const EXECUTORCH_VERSION: &str = "1.2.0";
+// const EXECUTORCH_VERSION: &str = "1.3.1";
 
 fn main() {
     // TODO: verify on runtime we use the correct version of executorch
