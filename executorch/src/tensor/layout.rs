@@ -3,7 +3,7 @@ use core::marker::PhantomData;
 use executorch_sys as sys;
 
 use crate::tensor::ScalarType;
-use crate::util::{IntoRust, __ArrayRefImpl};
+use crate::util::{__ArrayRefImpl, IntoRust};
 
 /// Describes the layout of a tensor.
 #[repr(transparent)]

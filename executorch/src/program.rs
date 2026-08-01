@@ -66,7 +66,7 @@ use crate::evalue::{EValue, Tag};
 use crate::event_tracer::EventTracer;
 use crate::memory::MemoryManager;
 use crate::tensor::ScalarType;
-use crate::util::{try_c_new, ArrayRef, IntoCpp, IntoRust, __ArrayRefImpl, chars2str, FfiChar};
+use crate::util::{__ArrayRefImpl, ArrayRef, FfiChar, IntoCpp, IntoRust, chars2str, try_c_new};
 use crate::{Error, Result};
 
 /// A deserialized ExecuTorch program binary.
@@ -486,7 +486,7 @@ impl MethodMeta<'_> {
 /// The program used to create the MethodMeta object that created this
 /// TensorInfo must outlive this TensorInfo.
 pub struct TensorInfo<'a>(sys::ET_TensorInfo, PhantomData<&'a ()>);
-impl<'a> TensorInfo<'a> {
+impl TensorInfo<'_> {
     /// Create a new `TensorInfo` of a raw `sys::ET_TensorInfo`.
     ///
     /// # Safety
@@ -764,17 +764,23 @@ mod tests {
 
         for i in 0..method_meta.num_memory_planned_buffers() {
             assert!(method_meta.memory_planned_buffer_size(i).is_ok());
-            assert!(method_meta
-                .memory_planned_buffer_device(i)
-                .unwrap()
-                .is_cpu());
+            assert!(
+                method_meta
+                    .memory_planned_buffer_device(i)
+                    .unwrap()
+                    .is_cpu()
+            );
         }
-        assert!(method_meta
-            .memory_planned_buffer_size(method_meta.num_memory_planned_buffers())
-            .is_err());
-        assert!(method_meta
-            .memory_planned_buffer_device(method_meta.num_memory_planned_buffers())
-            .is_err());
+        assert!(
+            method_meta
+                .memory_planned_buffer_size(method_meta.num_memory_planned_buffers())
+                .is_err()
+        );
+        assert!(
+            method_meta
+                .memory_planned_buffer_device(method_meta.num_memory_planned_buffers())
+                .is_err()
+        );
 
         for i in 0..method_meta.num_backends() {
             let backend_name = method_meta.get_backend_name(i).unwrap();
@@ -812,12 +818,16 @@ mod tests {
         let mut planned_memory = HierarchicalAllocator::new(planned_arenas);
         let memory_manager = MemoryManager::new(&allocator, Some(&mut planned_memory), None);
 
-        assert!(program
-            .load_method(c"non-existing-method", &memory_manager, None, None, None)
-            .is_err());
-        assert!(program
-            .load_method(c"forward", &memory_manager, None, None, None)
-            .is_ok());
+        assert!(
+            program
+                .load_method(c"non-existing-method", &memory_manager, None, None, None)
+                .is_err()
+        );
+        assert!(
+            program
+                .load_method(c"forward", &memory_manager, None, None, None)
+                .is_ok()
+        );
 
         // Backend options are accepted (and ignored by the delegate-free ADD model).
         use crate::backend_options::{BackendOption, LoadBackendOptionsMap};
@@ -826,15 +836,17 @@ mod tests {
         backend_options
             .set_options("XnnpackBackend", &opts)
             .unwrap();
-        assert!(program
-            .load_method(
-                c"forward",
-                &memory_manager,
-                None,
-                None,
-                Some(&backend_options)
-            )
-            .is_ok());
+        assert!(
+            program
+                .load_method(
+                    c"forward",
+                    &memory_manager,
+                    None,
+                    None,
+                    Some(&backend_options)
+                )
+                .is_ok()
+        );
     }
 
     #[test]

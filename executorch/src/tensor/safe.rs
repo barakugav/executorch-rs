@@ -40,7 +40,7 @@ impl<'a, D> TensorBase<'a, D> {
     where
         D: Data,
     {
-        Self::from_raw_tensor(RawTensor::new(&tensor_impl.0))
+        unsafe { Self::from_raw_tensor(RawTensor::new(&tensor_impl.0)) }
     }
 
     /// Create a new tensor in the given storage.
@@ -55,15 +55,15 @@ impl<'a, D> TensorBase<'a, D> {
     where
         D: Data,
     {
-        // Safety: the storage is identical
-        let storage = unsafe {
-            std::mem::transmute::<
+        unsafe {
+            // Safety: the storage is identical
+            let storage = std::mem::transmute::<
                 Pin<&'a mut Storage<TensorBase<'_, D>>>,
                 Pin<&'a mut Storage<RawTensor<'_>>>,
-            >(storage)
-        };
-        let tensor = RawTensor::new_in_storage(&tensor_impl.0, storage);
-        Self::from_raw_tensor(tensor)
+            >(storage);
+            let tensor = RawTensor::new_in_storage(&tensor_impl.0, storage);
+            Self::from_raw_tensor(tensor)
+        }
     }
 
     /// Create a new tensor from an immutable Cpp reference.
@@ -77,7 +77,7 @@ impl<'a, D> TensorBase<'a, D> {
     where
         D: Data,
     {
-        Self::from_raw_tensor(RawTensor::from_inner_ref(tensor))
+        unsafe { Self::from_raw_tensor(RawTensor::from_inner_ref(tensor)) }
     }
 
     /// Create a new mutable tensor from a mutable Cpp reference.
@@ -91,7 +91,7 @@ impl<'a, D> TensorBase<'a, D> {
     where
         D: Data,
     {
-        Self::from_raw_tensor(RawTensor::from_inner_ref_mut(tensor))
+        unsafe { Self::from_raw_tensor(RawTensor::from_inner_ref_mut(tensor)) }
     }
 
     /// Create a new tensor with the same internal data as the given tensor, but with different data generic.
@@ -104,7 +104,7 @@ impl<'a, D> TensorBase<'a, D> {
         D: Data,
         D2: Data,
     {
-        Self::from_raw_tensor(tensor.0)
+        unsafe { Self::from_raw_tensor(tensor.0) }
     }
 
     /// Create a new tensor referencing the same internal data as the given tensor, but with different data generic.
@@ -118,7 +118,7 @@ impl<'a, D> TensorBase<'a, D> {
         D: Data,
         D2: Data,
     {
-        Self::from_inner_ref(tensor.as_cpp())
+        unsafe { Self::from_inner_ref(tensor.as_cpp()) }
     }
 
     /// Create a new mutable tensor referencing the same internal data as the given tensor, but with different data
@@ -132,9 +132,11 @@ impl<'a, D> TensorBase<'a, D> {
         D: Data,
         D2: DataMut,
     {
-        // Safety: we are not moving out of the mut reference of the inner tensor
-        let inner = unsafe { tensor.as_cpp_mut() };
-        Self::from_inner_ref_mut(inner)
+        unsafe {
+            // Safety: we are not moving out of the mut reference of the inner tensor
+            let inner = tensor.as_cpp_mut();
+            Self::from_inner_ref_mut(inner)
+        }
     }
 
     /// Get the underlying Cpp tensor.
@@ -151,9 +153,11 @@ impl<'a, D> TensorBase<'a, D> {
     where
         D: DataMut,
     {
-        let tensor = self.0.as_cpp_mut();
-        // Safety: D: DataMut meaning the Tensor (and the TensorImpl) are mutable
-        unsafe { tensor.unwrap_unchecked() }
+        unsafe {
+            let tensor = self.0.as_cpp_mut();
+            // Safety: D: DataMut meaning the Tensor (and the TensorImpl) are mutable
+            tensor.unwrap_unchecked()
+        }
     }
 
     /// Returns the size of the tensor in bytes.
@@ -629,9 +633,11 @@ impl<'a, D> TensorImplBase<'a, D> {
         D: Data,
         S: Scalar,
     {
-        let impl_ =
-            RawTensorImpl::from_ptr_impl(sizes, data, data_len, dim_order, strides, mutable)?;
-        Ok(Self(impl_, PhantomData))
+        unsafe {
+            let impl_ =
+                RawTensorImpl::from_ptr_impl(sizes, data, data_len, dim_order, strides, mutable)?;
+            Ok(Self(impl_, PhantomData))
+        }
     }
 }
 

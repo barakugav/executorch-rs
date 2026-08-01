@@ -3,7 +3,7 @@
 // The ET_-prefixed C bridge type names are not UpperCamelCase.
 #![allow(non_camel_case_types)]
 
-use cxx::{type_id, ExternType};
+use cxx::{ExternType, type_id};
 
 #[cxx::bridge]
 pub(crate) mod ffi {

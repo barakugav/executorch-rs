@@ -52,8 +52,8 @@ mod file_data_loader {
 
     use executorch_sys as sys;
 
-    use crate::util::{try_c_new, IntoCpp};
     use crate::Result;
+    use crate::util::{IntoCpp, try_c_new};
 
     use super::DataLoader;
 
@@ -260,11 +260,11 @@ mod tests {
     #[cfg(feature = "data-loader")]
     use crate::data_loader::{FileDataLoader, MlockConfig, MmapDataLoader};
 
-    #[cfg(all(feature = "data-loader", feature = "std"))]
-    use crate::tests::add_model_path;
     use crate::tests::ADD_MODEL_BYTES;
     #[cfg(feature = "data-loader")]
     use crate::tests::ADD_MODEL_PATH_CSTR;
+    #[cfg(all(feature = "data-loader", feature = "std"))]
+    use crate::tests::add_model_path;
 
     #[test]
     fn buffer_loader() {
@@ -295,11 +295,10 @@ mod tests {
         assert!(MmapDataLoader::from_path(&add_model_path(), None).is_ok());
         assert!(MmapDataLoader::from_path(&add_model_path(), Some(MlockConfig::NoMlock)).is_ok());
         assert!(MmapDataLoader::from_path(&add_model_path(), Some(MlockConfig::UseMlock)).is_ok());
-        assert!(MmapDataLoader::from_path(
-            &add_model_path(),
-            Some(MlockConfig::UseMlockIgnoreErrors)
-        )
-        .is_ok());
+        assert!(
+            MmapDataLoader::from_path(&add_model_path(), Some(MlockConfig::UseMlockIgnoreErrors))
+                .is_ok()
+        );
         assert!(
             MmapDataLoader::from_path(&add_model_path(), Some(MlockConfig::UseMadvise)).is_ok()
         );
@@ -315,11 +314,13 @@ mod tests {
             MmapDataLoader::from_path_cstr(ADD_MODEL_PATH_CSTR, Some(MlockConfig::UseMlock))
                 .is_ok()
         );
-        assert!(MmapDataLoader::from_path_cstr(
-            ADD_MODEL_PATH_CSTR,
-            Some(MlockConfig::UseMlockIgnoreErrors)
-        )
-        .is_ok());
+        assert!(
+            MmapDataLoader::from_path_cstr(
+                ADD_MODEL_PATH_CSTR,
+                Some(MlockConfig::UseMlockIgnoreErrors)
+            )
+            .is_ok()
+        );
         assert!(
             MmapDataLoader::from_path_cstr(ADD_MODEL_PATH_CSTR, Some(MlockConfig::UseMadvise))
                 .is_ok()

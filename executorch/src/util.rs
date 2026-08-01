@@ -82,12 +82,14 @@ impl<'a, T: Destroy> NonTriviallyMovable<'a, T> {
     pub(crate) unsafe fn new_boxed(init: impl FnOnce(*mut T)) -> Self {
         use core::convert::Infallible;
 
-        let res = Self::try_new_boxed::<Infallible>(|p| {
-            init(p);
-            Ok(())
-        });
-        // Safety: we always return Ok from the closure to try_new_boxed
-        unsafe { res.unwrap_unchecked() }
+        unsafe {
+            let res = Self::try_new_boxed::<Infallible>(|p| {
+                init(p);
+                Ok(())
+            });
+            // Safety: we always return Ok from the closure to try_new_boxed
+            res.unwrap_unchecked()
+        }
     }
 
     /// Create a new [`NonTriviallyMovable`] object with an inner value in a [`Storage`].
@@ -209,7 +211,7 @@ impl<T: Destroy> NonTriviallyMovableVec<T> {
     }
 
     pub(crate) fn as_slice(&self) -> &[T] {
-        &self.0 .1
+        &self.0.1
     }
 
     // pub(crate) fn as_mut_slice(&mut self) -> &mut [T] {

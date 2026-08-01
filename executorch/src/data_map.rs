@@ -5,7 +5,7 @@ use core::ffi::CStr;
 use executorch_sys as sys;
 
 use crate::tensor::TensorLayout;
-use crate::util::{try_c_new, ArrayRef};
+use crate::util::{ArrayRef, try_c_new};
 use crate::{Error, Result};
 
 /// Interface to access and retrieve data via name.

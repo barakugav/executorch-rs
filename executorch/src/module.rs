@@ -20,14 +20,14 @@ use crate::evalue::EValue;
 use crate::event_tracer::{EventTracer, EventTracerPtr};
 use crate::memory::{HierarchicalAllocator, MemoryAllocator};
 use crate::program::{MethodMeta, ProgramVerification};
-use crate::util::{try_c_new, ArrayRef, IntoCpp, IntoRust, NonTriviallyMovableVec};
+use crate::util::{ArrayRef, IntoCpp, IntoRust, NonTriviallyMovableVec, try_c_new};
 use crate::{Error, Result};
 
 /// A facade class for loading programs and executing methods within them.
 ///
 /// See the `hello_world` example for how to load and execute a module.
 pub struct Module<'a>(sys::cxx::UniquePtr<sys::Module>, PhantomData<&'a ()>);
-impl<'a> Module<'a> {
+impl Module<'_> {
     /// Constructs an instance by loading a program from a file.
     ///
     /// See [`ModuleBuilder`] for more configuration options such as loading modes, event tracers, and memory
@@ -449,7 +449,7 @@ mod tests {
                 Some(ProgramVerification::InternalConsistency),
             ] {
                 // TODO: test with data files (.ptd)
-                let mut builder = ModuleBuilder::new(&add_model_path());
+                let mut builder = ModuleBuilder::new(add_model_path());
                 if let Some(load_mode) = load_mode {
                     builder = builder.load_mode(load_mode);
                 }
@@ -493,7 +493,7 @@ mod tests {
     fn load_with_custom_memory_allocator() {
         let main_allocator = MallocMemoryAllocator::new();
         let temp_allocator = MallocMemoryAllocator::new();
-        let mut module = ModuleBuilder::new(&add_model_path())
+        let mut module = ModuleBuilder::new(add_model_path())
             .memory_allocator(main_allocator)
             .temp_allocator(temp_allocator)
             .build();
@@ -504,7 +504,7 @@ mod tests {
 
     #[test]
     fn share_memory_arenas() {
-        let mut module = ModuleBuilder::new(&add_model_path())
+        let mut module = ModuleBuilder::new(add_model_path())
             .share_memory_arenas(true)
             .build();
         assert!(!module.is_loaded());
@@ -539,9 +539,11 @@ mod tests {
         assert!(!module.is_method_loaded("forward"));
         assert!(module.load_method("forward", None, None).is_ok());
         assert!(module.is_method_loaded("forward"));
-        assert!(module
-            .load_method("non-existing-method", None, None)
-            .is_err());
+        assert!(
+            module
+                .load_method("non-existing-method", None, None)
+                .is_err()
+        );
         assert!(!module.is_method_loaded("non-existing-method"));
 
         let mut module = Module::new("non-existing-file.pte2");
@@ -598,9 +600,11 @@ mod tests {
         for i in 0..method_meta.num_memory_planned_buffers() {
             assert!(method_meta.memory_planned_buffer_size(i).is_ok());
         }
-        assert!(method_meta
-            .memory_planned_buffer_size(method_meta.num_memory_planned_buffers())
-            .is_err());
+        assert!(
+            method_meta
+                .memory_planned_buffer_size(method_meta.num_memory_planned_buffers())
+                .is_err()
+        );
 
         let mut module = Module::new("non-existing-file.pte2");
         assert!(module.method_meta("forward").is_err());

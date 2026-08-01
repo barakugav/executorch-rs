@@ -1,11 +1,11 @@
 fn main() {
     let rustv = rustc_version();
-    let check_cfg = rustv.map(|v| v >= 80).unwrap_or(false);
+    let check_cfg = rustv.is_some_and(|v| v >= 80);
 
     if check_cfg {
         println!("cargo:rustc-check-cfg=cfg(error_in_core)");
     }
-    if rustv.map(|v| v >= 81).unwrap_or(false) {
+    if rustv.is_some_and(|v| v >= 81) {
         // core::error::Error
         println!("cargo:rustc-cfg=error_in_core");
     }

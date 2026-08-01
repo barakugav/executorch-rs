@@ -10,7 +10,7 @@ use executorch_sys::{self as sys, ET_Tag};
 use crate::memory::{MemoryAllocator, MemoryAllocatorExt, Storable, Storage};
 use crate::tensor::{RawTensor, TensorAny, TensorBase};
 use crate::util::{
-    ArrayRef, Destroy, FfiChar, IntoCpp, IntoRust, NonTriviallyMovable, __ArrayRefImpl, chars2str,
+    __ArrayRefImpl, ArrayRef, Destroy, FfiChar, IntoCpp, IntoRust, NonTriviallyMovable, chars2str,
 };
 use crate::{Error, Result};
 

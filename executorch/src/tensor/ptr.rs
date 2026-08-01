@@ -350,7 +350,7 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
             .strides
             .unwrap_or_else(|| standard_layout_strides(&self.sizes));
         assert_eq!(ndim, strides.len(), "Invalid strides length");
-        let mut dim_order = cxx_vec(std::iter::repeat(0 as DimOrderType).take(ndim));
+        let mut dim_order = cxx_vec(std::iter::repeat_n(0 as DimOrderType, ndim));
         unsafe {
             sys::executorch_stride_to_dim_order(
                 strides.as_ref().unwrap().as_slice().as_ptr(),
@@ -486,7 +486,7 @@ where
 }
 
 fn standard_layout_strides(sizes: &cxx::Vector<SizesType>) -> UniquePtr<cxx::Vector<StridesType>> {
-    let mut strides = cxx_vec(std::iter::repeat(0 as SizesType).take(sizes.len()));
+    let mut strides = cxx_vec(std::iter::repeat_n(0 as SizesType, sizes.len()));
     let mut stride = 1;
     for i in (0..sizes.len()).rev() {
         strides.as_mut().unwrap().index_mut(i).unwrap().set(stride);
@@ -738,54 +738,74 @@ mod tests {
     fn from_array_invalid_strides() {
         use ndarray::{Array, ShapeBuilder};
 
-        assert!(TensorPtr::from_array(
-            Array::from_shape_vec((3,).strides((1,)), (0..3).collect()).unwrap()
-        )
-        .is_ok());
-        assert!(TensorPtr::from_array(
-            Array::from_shape_vec((3,).strides((10,)), (0..30).collect()).unwrap()
-        )
-        .is_err());
+        assert!(
+            TensorPtr::from_array(
+                Array::from_shape_vec((3,).strides((1,)), (0..3).collect()).unwrap()
+            )
+            .is_ok()
+        );
+        assert!(
+            TensorPtr::from_array(
+                Array::from_shape_vec((3,).strides((10,)), (0..30).collect()).unwrap()
+            )
+            .is_err()
+        );
 
-        assert!(TensorPtr::from_array(
-            Array::from_shape_vec((2, 3).strides((3, 1)), (0..6).collect()).unwrap()
-        )
-        .is_ok());
-        assert!(TensorPtr::from_array(
-            Array::from_shape_vec((2, 3).strides((1, 2)), (0..6).collect()).unwrap()
-        )
-        .is_ok());
-        assert!(TensorPtr::from_array(
-            Array::from_shape_vec((2, 3).strides((2, 4)), (0..12).collect()).unwrap()
-        )
-        .is_err());
+        assert!(
+            TensorPtr::from_array(
+                Array::from_shape_vec((2, 3).strides((3, 1)), (0..6).collect()).unwrap()
+            )
+            .is_ok()
+        );
+        assert!(
+            TensorPtr::from_array(
+                Array::from_shape_vec((2, 3).strides((1, 2)), (0..6).collect()).unwrap()
+            )
+            .is_ok()
+        );
+        assert!(
+            TensorPtr::from_array(
+                Array::from_shape_vec((2, 3).strides((2, 4)), (0..12).collect()).unwrap()
+            )
+            .is_err()
+        );
 
-        assert!(TensorPtrBuilder::<ViewMut<i32>>::from_array(
-            Array::from_shape_vec((3,).strides((1,)), (0..3).collect()).unwrap()
-        )
-        .build_mut()
-        .is_ok());
-        assert!(TensorPtrBuilder::<ViewMut<i32>>::from_array(
-            Array::from_shape_vec((3,).strides((10,)), (0..30).collect()).unwrap()
-        )
-        .build_mut()
-        .is_err());
+        assert!(
+            TensorPtrBuilder::<ViewMut<i32>>::from_array(
+                Array::from_shape_vec((3,).strides((1,)), (0..3).collect()).unwrap()
+            )
+            .build_mut()
+            .is_ok()
+        );
+        assert!(
+            TensorPtrBuilder::<ViewMut<i32>>::from_array(
+                Array::from_shape_vec((3,).strides((10,)), (0..30).collect()).unwrap()
+            )
+            .build_mut()
+            .is_err()
+        );
 
-        assert!(TensorPtrBuilder::<ViewMut<i32>>::from_array(
-            Array::from_shape_vec((2, 3).strides((3, 1)), (0..6).collect()).unwrap()
-        )
-        .build_mut()
-        .is_ok());
-        assert!(TensorPtrBuilder::<ViewMut<i32>>::from_array(
-            Array::from_shape_vec((2, 3).strides((1, 2)), (0..6).collect()).unwrap()
-        )
-        .build_mut()
-        .is_err());
-        assert!(TensorPtrBuilder::<ViewMut<i32>>::from_array(
-            Array::from_shape_vec((2, 3).strides((2, 4)), (0..12).collect()).unwrap()
-        )
-        .build_mut()
-        .is_err());
+        assert!(
+            TensorPtrBuilder::<ViewMut<i32>>::from_array(
+                Array::from_shape_vec((2, 3).strides((3, 1)), (0..6).collect()).unwrap()
+            )
+            .build_mut()
+            .is_ok()
+        );
+        assert!(
+            TensorPtrBuilder::<ViewMut<i32>>::from_array(
+                Array::from_shape_vec((2, 3).strides((1, 2)), (0..6).collect()).unwrap()
+            )
+            .build_mut()
+            .is_err()
+        );
+        assert!(
+            TensorPtrBuilder::<ViewMut<i32>>::from_array(
+                Array::from_shape_vec((2, 3).strides((2, 4)), (0..12).collect()).unwrap()
+            )
+            .build_mut()
+            .is_err()
+        );
     }
 
     #[cfg(feature = "ndarray")]

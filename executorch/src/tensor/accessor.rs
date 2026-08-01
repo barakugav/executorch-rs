@@ -67,7 +67,7 @@ impl<'a, T, const N: usize> TensorAccessorInner<'a, T, N> {
 /// If you know the rank (number of dimensions) and the type of the tensor elements at compile time,
 /// you can use this accessor to access the tensor elements efficiently.
 pub struct TensorAccessor<'a, T, const N: usize>(pub(crate) TensorAccessorInner<'a, T, N>);
-impl<'a, T, const N: usize> TensorAccessor<'a, T, N> {
+impl<T, const N: usize> TensorAccessor<'_, T, N> {
     /// Get a reference to the tensor element at the given index.
     ///
     /// Returns the element at the given index, or `None` if the index is out of bounds.
@@ -86,7 +86,7 @@ impl<'a, T, const N: usize> TensorAccessor<'a, T, N> {
         unsafe { &*self.0.data.offset(offset) }
     }
 }
-impl<'a, T> Index<usize> for TensorAccessor<'a, T, 1> {
+impl<T> Index<usize> for TensorAccessor<'_, T, 1> {
     type Output = T;
     #[inline]
     #[track_caller]
@@ -94,7 +94,7 @@ impl<'a, T> Index<usize> for TensorAccessor<'a, T, 1> {
         self.get([index]).unwrap()
     }
 }
-impl<'a, T, const N: usize> Index<[usize; N]> for TensorAccessor<'a, T, N> {
+impl<T, const N: usize> Index<[usize; N]> for TensorAccessor<'_, T, N> {
     type Output = T;
     #[inline]
     #[track_caller]
@@ -110,7 +110,7 @@ impl<'a, T, const N: usize> Index<[usize; N]> for TensorAccessor<'a, T, N> {
 /// This is similar to [TensorAccessor], but allows for mutable access to the tensor elements.
 /// See the immutable accessor for more details.
 pub struct TensorAccessorMut<'a, T, const N: usize>(pub(crate) TensorAccessorInner<'a, T, N>);
-impl<'a, T, const N: usize> TensorAccessorMut<'a, T, N> {
+impl<T, const N: usize> TensorAccessorMut<'_, T, N> {
     /// Get a reference to the tensor element at the given index.
     ///
     /// Returns the element at the given index, or `None` if the index is out of bounds.
@@ -147,7 +147,7 @@ impl<'a, T, const N: usize> TensorAccessorMut<'a, T, N> {
         unsafe { &mut *self.0.data.cast_mut().offset(offset) }
     }
 }
-impl<'a, T> Index<usize> for TensorAccessorMut<'a, T, 1> {
+impl<T> Index<usize> for TensorAccessorMut<'_, T, 1> {
     type Output = T;
     #[inline]
     #[track_caller]
@@ -155,7 +155,7 @@ impl<'a, T> Index<usize> for TensorAccessorMut<'a, T, 1> {
         self.get([index]).unwrap()
     }
 }
-impl<'a, T, const N: usize> Index<[usize; N]> for TensorAccessorMut<'a, T, N> {
+impl<T, const N: usize> Index<[usize; N]> for TensorAccessorMut<'_, T, N> {
     type Output = T;
     #[inline]
     #[track_caller]
@@ -163,14 +163,14 @@ impl<'a, T, const N: usize> Index<[usize; N]> for TensorAccessorMut<'a, T, N> {
         self.get(index).unwrap()
     }
 }
-impl<'a, T> IndexMut<usize> for TensorAccessorMut<'a, T, 1> {
+impl<T> IndexMut<usize> for TensorAccessorMut<'_, T, 1> {
     #[inline]
     #[track_caller]
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         self.get_mut([index]).unwrap()
     }
 }
-impl<'a, T, const N: usize> IndexMut<[usize; N]> for TensorAccessorMut<'a, T, N> {
+impl<T, const N: usize> IndexMut<[usize; N]> for TensorAccessorMut<'_, T, N> {
     #[inline]
     #[track_caller]
     fn index_mut(&mut self, index: [usize; N]) -> &mut Self::Output {
