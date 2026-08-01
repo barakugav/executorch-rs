@@ -37,6 +37,7 @@ def main():
             "runtime/core/**/*.h",
             "runtime/executor/**/*.h",
             "runtime/platform/**/*.h",
+            "runtime/kernel/operator_registry.h",
             "runtime/backend/options.h",
             "runtime/backend/backend_options_map.h",
             "extension/data_loader/**/*.h",
@@ -62,6 +63,8 @@ def main():
             "extension/data_loader/mman.h",
             "extension/data_loader/mman_windows.h",
             "extension/module/bundled_module.h",  # TODO
+            "runtime/core/device_allocator.h",  # TODO
+            "runtime/core/device_memory_buffer.h",  # TODO
             "extension/flat_tensor/serialize/serialize.h",
             "**/test/**",
             "**/testing_util/**",
