@@ -219,14 +219,19 @@ mod file_data_loader {
     #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
     #[repr(u32)]
     pub enum MlockConfig {
-        #[doc = " Do not call `mlock()` on loaded pages."]
+        /// Do not call `mlock()` on loaded pages.
         NoMlock = sys::ET_MmapDataLoaderMlockConfig::ET_MmapDataLoaderMlockConfig_NoMlock as u32,
-        #[doc = " Call `mlock()` on loaded pages, failing if it fails."]
+        /// Call `mlock()` on loaded pages, failing if it fails.
         UseMlock = sys::ET_MmapDataLoaderMlockConfig::ET_MmapDataLoaderMlockConfig_UseMlock as u32,
-        #[doc = " Call `mlock()` on loaded pages, ignoring errors if it fails."]
+        /// Call `mlock()` on loaded pages, ignoring errors if it fails.
         UseMlockIgnoreErrors =
             sys::ET_MmapDataLoaderMlockConfig::ET_MmapDataLoaderMlockConfig_UseMlockIgnoreErrors
                 as u32,
+        /// Use madvise(MADV_WILLNEED | MADV_SEQUENTIAL) instead of mlock.
+        /// Tells the kernel to prefetch pages eagerly and optimize for
+        /// sequential reads, without pinning them in RAM.
+        UseMadvise =
+            sys::ET_MmapDataLoaderMlockConfig::ET_MmapDataLoaderMlockConfig_UseMadvise as u32,
     }
     impl IntoCpp for MlockConfig {
         type CppType = sys::ET_MmapDataLoaderMlockConfig;
@@ -240,6 +245,9 @@ mod file_data_loader {
                 }
                 MlockConfig::UseMlockIgnoreErrors => {
                     sys::ET_MmapDataLoaderMlockConfig::ET_MmapDataLoaderMlockConfig_UseMlockIgnoreErrors
+                }
+                MlockConfig::UseMadvise => {
+                    sys::ET_MmapDataLoaderMlockConfig::ET_MmapDataLoaderMlockConfig_UseMadvise
                 }
             }
         }
@@ -292,6 +300,9 @@ mod tests {
             Some(MlockConfig::UseMlockIgnoreErrors)
         )
         .is_ok());
+        assert!(
+            MmapDataLoader::from_path(&add_model_path(), Some(MlockConfig::UseMadvise)).is_ok()
+        );
     }
 
     #[cfg(feature = "data-loader")]
@@ -309,5 +320,9 @@ mod tests {
             Some(MlockConfig::UseMlockIgnoreErrors)
         )
         .is_ok());
+        assert!(
+            MmapDataLoader::from_path_cstr(ADD_MODEL_PATH_CSTR, Some(MlockConfig::UseMadvise))
+                .is_ok()
+        );
     }
 }

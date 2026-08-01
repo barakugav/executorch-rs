@@ -373,19 +373,21 @@ impl<'a> Module<'a> {
 }
 unsafe impl Send for Module<'_> {}
 
-#[repr(u32)]
-#[doc = " Enum to define loading behavior."]
+/// Enum to define loading behavior.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[repr(u32)]
 pub enum LoadMode {
-    #[doc = " Load the whole file as a buffer."]
+    /// Load the whole file as a buffer.
     File = sys::ET_ModuleLoadMode::ET_ModuleLoadMode_File as u32,
-    #[doc = " Use mmap to load pages into memory."]
+    /// Use mmap to load pages into memory.
     Mmap = sys::ET_ModuleLoadMode::ET_ModuleLoadMode_Mmap as u32,
-    #[doc = " Use memory locking and handle errors."]
+    /// Use memory locking and handle errors.
     MmapUseMlock = sys::ET_ModuleLoadMode::ET_ModuleLoadMode_MmapUseMlock as u32,
-    #[doc = " Use memory locking and ignore errors."]
+    /// Use memory locking and ignore errors.
     MmapUseMlockIgnoreErrors =
         sys::ET_ModuleLoadMode::ET_ModuleLoadMode_MmapUseMlockIgnoreErrors as u32,
+    /// Use mmap with madvise(MADV_WILLNEED | MADV_SEQUENTIAL) hints.
+    MmapUseMadvise = sys::ET_ModuleLoadMode::ET_ModuleLoadMode_MmapUseMadvise as u32,
 }
 impl IntoCpp for LoadMode {
     type CppType = sys::ET_ModuleLoadMode;
@@ -397,6 +399,7 @@ impl IntoCpp for LoadMode {
             LoadMode::MmapUseMlockIgnoreErrors => {
                 sys::ET_ModuleLoadMode::ET_ModuleLoadMode_MmapUseMlockIgnoreErrors
             }
+            LoadMode::MmapUseMadvise => sys::ET_ModuleLoadMode::ET_ModuleLoadMode_MmapUseMadvise,
         }
     }
 }
@@ -416,6 +419,7 @@ mod tests {
             Some(LoadMode::Mmap),
             Some(LoadMode::MmapUseMlock),
             Some(LoadMode::MmapUseMlockIgnoreErrors),
+            Some(LoadMode::MmapUseMadvise),
         ] {
             for verification in [
                 None,

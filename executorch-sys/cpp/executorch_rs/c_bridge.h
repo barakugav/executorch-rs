@@ -165,6 +165,10 @@ extern "C"
         ET_MmapDataLoaderMlockConfig_UseMlock,
         /// Call `mlock()` on loaded pages, ignoring errors if it fails.
         ET_MmapDataLoaderMlockConfig_UseMlockIgnoreErrors,
+        /// Use madvise(MADV_WILLNEED | MADV_SEQUENTIAL) instead of mlock.
+        /// Tells the kernel to prefetch pages eagerly and optimize for
+        /// sequential reads, without pinning them in RAM.
+        ET_MmapDataLoaderMlockConfig_UseMadvise,
     };
 
     /**
@@ -180,6 +184,8 @@ extern "C"
         ET_ModuleLoadMode_MmapUseMlock,
         /// Use memory locking and ignore errors.
         ET_ModuleLoadMode_MmapUseMlockIgnoreErrors,
+        /// Use mmap with madvise(MADV_WILLNEED | MADV_SEQUENTIAL) hints.
+        ET_ModuleLoadMode_MmapUseMadvise,
     };
 
     enum ET_Tag : uint32_t
