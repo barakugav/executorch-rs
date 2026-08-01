@@ -5,13 +5,13 @@
 //! [`Program::load_method`](crate::program::Program::load_method) or the `Module` load
 //! methods to configure per-delegate behavior at load time.
 
-use core::ffi::{c_char, c_int, CStr};
+use core::ffi::{CStr, c_char, c_int};
 use core::marker::PhantomData;
 use std::mem::MaybeUninit;
 
 use executorch_sys as sys;
 
-use crate::util::{c_new, str2chars, try_c_new, ArrayRef, IntoRust};
+use crate::util::{ArrayRef, IntoRust, c_new, str2chars, try_c_new};
 use crate::{Error, Result};
 
 /// A single per-backend key/value option, such as `num_threads = 4`.

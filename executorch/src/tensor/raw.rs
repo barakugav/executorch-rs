@@ -9,7 +9,7 @@ use crate::tensor::{
     DimOrderType, Scalar, ScalarType, SizesType, StridesType, TensorAccessor, TensorAccessorInner,
     TensorAccessorMut,
 };
-use crate::util::{Destroy, IntoCpp, IntoRust, NonTriviallyMovable, __ArrayRefImpl, c_new};
+use crate::util::{__ArrayRefImpl, Destroy, IntoCpp, IntoRust, NonTriviallyMovable, c_new};
 use crate::{Error, Result};
 
 /// A raw tensor that does not own the underlying data.
@@ -446,7 +446,7 @@ impl<'a> RawTensorImpl<'a> {
         dim_order: &'a [DimOrderType],
         strides: &'a [StridesType],
     ) -> Result<Self> {
-        Self::from_ptr_impl(sizes, data, None, dim_order, strides, false)
+        unsafe { Self::from_ptr_impl(sizes, data, None, dim_order, strides, false) }
     }
 
     pub(crate) unsafe fn from_ptr_impl<S: Scalar>(
@@ -610,13 +610,13 @@ impl<'a> RawTensorImpl<'a> {
         if let Err(err) = check_shape_strides_impl(sizes, data_len, dim_order, strides, mutable) {
             let err_msg = match err {
                 TensorError::ShapeStridesDimOrderLenNotEq => {
-                                "Sizes, strides, and dim_order must have the same length"
-                            },
+                    "Sizes, strides, and dim_order must have the same length"
+                }
                 TensorError::Overflow => "shape product or strides max (abs) offset overflowed",
                 TensorError::OutOfBounds => "shape and strides lead to out-of-bounds accesses",
                 TensorError::MultipleMutReferences => {
-                                "shape and strides allow to reference the same element with two different indices, invalid for mutable arrays"
-                            }
+                    "shape and strides allow to reference the same element with two different indices, invalid for mutable arrays"
+                }
                 TensorError::TooManyDimensions => "too many dimensions, maximum supported is 16",
             };
             crate::log::error!("{err_msg}");

@@ -117,7 +117,7 @@ fn link_executorch() {
 
     let link_enabled = std::env::var("EXECUTORCH_RS_LINK").as_deref() != Ok("0");
 
-    let check_cfg = rustc_version().map(|v| v >= 80).unwrap_or(false);
+    let check_cfg = rustc_version().is_some_and(|v| v >= 80);
 
     if check_cfg {
         println!("cargo::rustc-check-cfg=cfg(link_cxx)");
@@ -133,7 +133,9 @@ fn link_executorch() {
 
     let libs_dir = std::env::var("EXECUTORCH_RS_EXECUTORCH_LIB_DIR").ok();
     if libs_dir.is_none() {
-        println!("cargo::warning=EXECUTORCH_RS_EXECUTORCH_LIB_DIR is not set, can't locate executorch static libs");
+        println!(
+            "cargo::warning=EXECUTORCH_RS_EXECUTORCH_LIB_DIR is not set, can't locate executorch static libs"
+        );
     }
 
     if let Some(libs_dir) = &libs_dir {

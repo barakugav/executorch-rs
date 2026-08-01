@@ -2,7 +2,7 @@
 publish = false
 name = "example-data-map"
 version = "0.0.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 executorch = { path = "../../executorch/", features = [

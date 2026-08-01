@@ -262,7 +262,7 @@ impl_dim_arr!(6);
 #[cfg(feature = "alloc")]
 impl<T: Clone + Copy + Default> DimArr<T> for crate::alloc::Vec<T> {
     fn zeros(ndim: usize) -> Self {
-        crate::alloc::Vec::from_iter(std::iter::repeat(T::default()).take(ndim))
+        std::iter::repeat_n(T::default(), ndim).collect()
     }
 }
 
@@ -300,7 +300,7 @@ mod fixed_dim_impl {
 #[cfg(test)]
 mod tests {
     #[cfg(feature = "std")]
-    use ndarray::{arr1, arr2, Array3, Ix3};
+    use ndarray::{Array3, Ix3, arr1, arr2};
 
     #[allow(unused_imports)]
     use crate::tensor::*;
@@ -433,26 +433,34 @@ mod tests {
     fn invalid_strides() {
         use ndarray::{Array, ShapeBuilder};
 
-        assert!(ArrayStorage::new(
-            Array::from_shape_vec((3,).strides((1,)), (0..3).collect()).unwrap()
-        )
-        .is_ok());
-        assert!(ArrayStorage::new(
-            Array::from_shape_vec((3,).strides((10,)), (0..30).collect()).unwrap()
-        )
-        .is_err());
+        assert!(
+            ArrayStorage::new(Array::from_shape_vec((3,).strides((1,)), (0..3).collect()).unwrap())
+                .is_ok()
+        );
+        assert!(
+            ArrayStorage::new(
+                Array::from_shape_vec((3,).strides((10,)), (0..30).collect()).unwrap()
+            )
+            .is_err()
+        );
 
-        assert!(ArrayStorage::new(
-            Array::from_shape_vec((2, 3).strides((3, 1)), (0..6).collect()).unwrap()
-        )
-        .is_ok());
-        assert!(ArrayStorage::new(
-            Array::from_shape_vec((2, 3).strides((1, 2)), (0..6).collect()).unwrap()
-        )
-        .is_ok());
-        assert!(ArrayStorage::new(
-            Array::from_shape_vec((2, 3).strides((2, 4)), (0..12).collect()).unwrap()
-        )
-        .is_err());
+        assert!(
+            ArrayStorage::new(
+                Array::from_shape_vec((2, 3).strides((3, 1)), (0..6).collect()).unwrap()
+            )
+            .is_ok()
+        );
+        assert!(
+            ArrayStorage::new(
+                Array::from_shape_vec((2, 3).strides((1, 2)), (0..6).collect()).unwrap()
+            )
+            .is_ok()
+        );
+        assert!(
+            ArrayStorage::new(
+                Array::from_shape_vec((2, 3).strides((2, 4)), (0..12).collect()).unwrap()
+            )
+            .is_err()
+        );
     }
 }
