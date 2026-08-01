@@ -22,6 +22,7 @@ import torch
 from torch.export import export
 from executorch.exir import to_edge_transform_and_lower
 
+
 class Add(torch.nn.Module):
     def __init__(self):
         super(Add, self).__init__()
@@ -62,7 +63,7 @@ See `example/hello_world` for a complete example.
 ## Build
 To use the library you must compile the C++ executorch library yourself, as there are many configurations that
 determines which modules, backends, and operations are supported. See the `executorch-sys` crate for more info.
-Currently the supported Cpp executorch version is `1.2.0`.
+Currently the supported Cpp executorch version is `1.3.1`.
 
 
 ## Cargo Features

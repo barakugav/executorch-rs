@@ -20,6 +20,7 @@ impl Copy for ET_ProgramHeaderStatus {}
 impl Copy for ET_ProgramVerification {}
 impl Copy for ET_MmapDataLoaderMlockConfig {}
 impl Copy for ET_ModuleLoadMode {}
+impl Copy for ET_DeviceType {}
 
 macro_rules! impl_ref_clone_copy {
     ($name:ty) => {
@@ -64,3 +65,5 @@ impl_ref_clone_copy!(ET_SpanOptionalTensor);
 impl_ref_clone_copy!(ET_SpanSpanU8);
 impl_ref_clone_copy!(ET_SpanTensor);
 impl_ref_clone_copy!(ET_SpanU8);
+
+impl_ref_clone_copy!(ET_Device);

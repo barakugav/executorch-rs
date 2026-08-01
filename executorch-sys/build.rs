@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-// const EXECUTORCH_VERSION: &str = "1.2.0";
+// const EXECUTORCH_VERSION: &str = "1.3.1";
 
 fn main() {
     // TODO: verify on runtime we use the correct version of executorch
@@ -98,6 +98,8 @@ fn generate_bindings() {
         .opaque_type("ET_MemoryManager")
         .opaque_type("ET_OptionalTensorStorage")
         .opaque_type("ET_DumpGen")
+        .opaque_type("ET_BackendOption")
+        .opaque_type("ET_LoadBackendOptionsMap")
         .blocklist_item("ET_FreeableBuffer")
         .blocklist_item(".*_bindgen_ty_.*")
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()));

@@ -22,13 +22,12 @@ def main():
     parser.add_argument(
         "--skip-executorch-python",
         action="store_true",
-        help="Remove the existing executorch directory before cloning",
+        help="Skip installing the executorch Python package",
     )
     args = parser.parse_args()
 
-    if args.clean:
-        if DEV_EXECUTORCH_DIR.exists():
-            shutil.rmtree(DEV_EXECUTORCH_DIR)
+    if args.clean and DEV_EXECUTORCH_DIR.exists():
+        shutil.rmtree(DEV_EXECUTORCH_DIR)
 
     # TODO setup a venv here
 
@@ -50,7 +49,7 @@ def main():
                 "install",
                 "-r",
                 DEV_EXECUTORCH_DIR / "requirements-dev.txt",
-                "torch==2.11.0",
+                "torch==2.12.0",
                 "--extra-index-url",
                 "https://download.pytorch.org/whl/test/cpu",
             ]
@@ -72,7 +71,7 @@ def clone_executorch():
                 "--depth",
                 "1",
                 "--branch",
-                "v1.2.0",
+                "v1.3.1",
                 "https://github.com/pytorch/executorch.git",
                 ".",
             ],

@@ -25,7 +25,7 @@
 //! let memory_manager = MemoryManager::new(&allocator, Some(&mut planned_memory), None);
 //!
 //! let mut method = program
-//!     .load_method(c"forward", &memory_manager, None, None)
+//!     .load_method(c"forward", &memory_manager, None, None, None)
 //!     .unwrap();
 //!
 //! let input_array1 = ArrayStorage::new(array!(1.0_f32)).unwrap();
@@ -58,8 +58,10 @@ use std::ptr;
 
 use executorch_sys as sys;
 
+use crate::backend_options::LoadBackendOptionsMap;
 use crate::data_loader::DataLoader;
 use crate::data_map::{AbstractNamedDataMap, NamedDataMap};
+use crate::device::Device;
 use crate::evalue::{EValue, Tag};
 use crate::event_tracer::EventTracer;
 use crate::memory::MemoryManager;
@@ -144,6 +146,8 @@ impl<'a> Program<'a> {
     /// * `memory_manager` - The allocators to use during initialization and execution of the loaded method.
     /// * `event_tracer` - The event tracer to use for this method run.
     /// * `named_data_map` - An optional map of {name, blob} used to resolve data that is external to the PTE, if any.
+    /// * `backend_options` - An optional map of per-backend load-time options (RuntimeSpecs). Each
+    ///   backend will receive its corresponding options during initialization.
     ///
     /// # Returns
     ///
@@ -154,6 +158,7 @@ impl<'a> Program<'a> {
         memory_manager: &'b MemoryManager,
         event_tracer: Option<&'b mut EventTracer>,
         named_data_map: Option<&'b dyn NamedDataMap>,
+        backend_options: Option<&'b LoadBackendOptionsMap<'b>>,
     ) -> Result<Method<'b>> {
         let memory_manager = memory_manager.0.get();
         let event_tracer = event_tracer
@@ -168,6 +173,9 @@ impl<'a> Program<'a> {
         let named_data_map = sys::ET_NamedDataMapRef {
             ptr: named_data_map,
         };
+        let backend_options = backend_options
+            .map(|map| map.as_cpp_ptr())
+            .unwrap_or(ptr::null());
         // Safety: sys::executorch_Program_load_method writes to the pointer.
         let method = unsafe {
             try_c_new(|method| {
@@ -177,6 +185,7 @@ impl<'a> Program<'a> {
                     memory_manager,
                     event_tracer,
                     named_data_map,
+                    backend_options,
                     method,
                 )
             })?
@@ -425,6 +434,30 @@ impl MethodMeta<'_> {
             })?
         };
         Ok(size as usize)
+    }
+
+    /// Get the device placement for the specified memory-planned buffer.
+    ///
+    /// For CPU-only programs (no non_const_buffer_device in the PTE), all buffers
+    /// default to Device{CPU, 0}. For programs with device annotations, returns
+    /// the device type and index that the buffer should be allocated on.
+    ///
+    /// # Arguments
+    ///
+    /// * `index` - The index of the buffer to look up (0-based, same
+    ///   indexing as `memory_planned_buffer_size()`).
+    ///
+    /// # Returns
+    ///
+    /// The device on success, or an error on failure.
+    pub fn memory_planned_buffer_device(&self, index: usize) -> Result<Device> {
+        // Safety: sys::executorch_MethodMeta_memory_planned_buffer_device writes to the pointer.
+        let device = unsafe {
+            try_c_new(|device| {
+                sys::executorch_MethodMeta_memory_planned_buffer_device(&self.0, index, device)
+            })?
+        };
+        Ok(device.rs())
     }
 
     /// Check to see if a backend is used in this method.
@@ -731,9 +764,16 @@ mod tests {
 
         for i in 0..method_meta.num_memory_planned_buffers() {
             assert!(method_meta.memory_planned_buffer_size(i).is_ok());
+            assert!(method_meta
+                .memory_planned_buffer_device(i)
+                .unwrap()
+                .is_cpu());
         }
         assert!(method_meta
             .memory_planned_buffer_size(method_meta.num_memory_planned_buffers())
+            .is_err());
+        assert!(method_meta
+            .memory_planned_buffer_device(method_meta.num_memory_planned_buffers())
             .is_err());
 
         for i in 0..method_meta.num_backends() {
@@ -773,10 +813,27 @@ mod tests {
         let memory_manager = MemoryManager::new(&allocator, Some(&mut planned_memory), None);
 
         assert!(program
-            .load_method(c"non-existing-method", &memory_manager, None, None)
+            .load_method(c"non-existing-method", &memory_manager, None, None, None)
             .is_err());
         assert!(program
-            .load_method(c"forward", &memory_manager, None, None)
+            .load_method(c"forward", &memory_manager, None, None, None)
+            .is_ok());
+
+        // Backend options are accepted (and ignored by the delegate-free ADD model).
+        use crate::backend_options::{BackendOption, LoadBackendOptionsMap};
+        let opts = [BackendOption::new_int("num_threads", 2).unwrap()];
+        let mut backend_options = LoadBackendOptionsMap::new();
+        backend_options
+            .set_options("XnnpackBackend", &opts)
+            .unwrap();
+        assert!(program
+            .load_method(
+                c"forward",
+                &memory_manager,
+                None,
+                None,
+                Some(&backend_options)
+            )
             .is_ok());
     }
 
@@ -820,7 +877,7 @@ mod tests {
         let memory_manager = MemoryManager::new(&allocator, Some(&mut planned_memory), None);
 
         let mut method = program
-            .load_method(c"forward", &memory_manager, None, None)
+            .load_method(c"forward", &memory_manager, None, None, None)
             .unwrap();
         assert_eq!(method.inputs_size(), 2);
         assert!(method.get_attribute("non-existing-attr").is_err());

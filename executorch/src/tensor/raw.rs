@@ -3,6 +3,7 @@ use std::pin::Pin;
 
 use executorch_sys as sys;
 
+use crate::device::Device;
 use crate::memory::{Storable, Storage};
 use crate::tensor::{
     DimOrderType, Scalar, ScalarType, SizesType, StridesType, TensorAccessor, TensorAccessorInner,
@@ -155,6 +156,11 @@ impl<'a> RawTensor<'a> {
     /// Returns the type of the elements in the tensor (int32, float, bool, etc).
     pub fn scalar_type(&self) -> ScalarType {
         unsafe { sys::executorch_Tensor_scalar_type(self.as_cpp()) }.rs()
+    }
+
+    /// Returns the device on which this tensor's data resides.
+    pub fn device(&self) -> Device {
+        unsafe { sys::executorch_Tensor_device(self.as_cpp()) }.rs()
     }
 
     /// Returns the size in bytes of one element of the tensor.

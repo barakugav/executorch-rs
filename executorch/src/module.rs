@@ -15,6 +15,7 @@ use std::path::{Path, PathBuf};
 use executorch_sys as sys;
 use executorch_sys::cxx::UniquePtr;
 
+use crate::backend_options::LoadBackendOptionsMap;
 use crate::evalue::EValue;
 use crate::event_tracer::{EventTracer, EventTracerPtr};
 use crate::memory::{HierarchicalAllocator, MemoryAllocator};
@@ -171,13 +172,34 @@ impl<'a> Module<'a> {
     ///
     /// * `verification` - The type of verification to do before returning success.
     ///   Defaults to `ProgramVerification::Minimal`.
+    /// * `backend_options` - Optional per-delegate load-time options. When given, the Module
+    ///   deep-copies them into internal storage (readable back via
+    ///   [`backend_options`](Self::backend_options)), so the map may be dropped once this returns.
     ///
     /// # Returns
     ///
     /// An Error to indicate success or failure of the loading process.
-    pub fn load(&mut self, verification: Option<ProgramVerification>) -> Result<()> {
+    pub fn load(
+        &mut self,
+        verification: Option<ProgramVerification>,
+        backend_options: Option<&LoadBackendOptionsMap>,
+    ) -> Result<()> {
         let verification = verification.unwrap_or(ProgramVerification::Minimal).cpp();
-        sys::Module_load(self.0.as_mut().unwrap(), verification).rs()
+        let backend_options = backend_options
+            .map(|map| map.as_cpp_ptr())
+            .unwrap_or(core::ptr::null());
+        unsafe { sys::Module_load(self.0.as_mut().unwrap(), backend_options, verification) }.rs()
+    }
+
+    /// Returns the deep-copied LoadBackendOptionsMap most recently installed
+    /// via `load(LoadBackendOptionsMap, ...)`.
+    ///
+    /// If `load(LoadBackendOptionsMap, ...)` has never been called, returns a
+    /// default-constructed (empty, `size() == 0`) map.
+    pub fn backend_options(&self) -> &LoadBackendOptionsMap<'_> {
+        let ptr = sys::Module_backend_options(self.0.as_ref().unwrap());
+        // Safety: LoadBackendOptionsMap is #[repr(transparent)] over ET_LoadBackendOptionsMap
+        unsafe { &*(ptr as *const sys::ET_LoadBackendOptionsMap as *const LoadBackendOptionsMap) }
     }
 
     /// Checks if the program is loaded.
@@ -373,19 +395,21 @@ impl<'a> Module<'a> {
 }
 unsafe impl Send for Module<'_> {}
 
-#[repr(u32)]
-#[doc = " Enum to define loading behavior."]
+/// Enum to define loading behavior.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[repr(u32)]
 pub enum LoadMode {
-    #[doc = " Load the whole file as a buffer."]
+    /// Load the whole file as a buffer.
     File = sys::ET_ModuleLoadMode::ET_ModuleLoadMode_File as u32,
-    #[doc = " Use mmap to load pages into memory."]
+    /// Use mmap to load pages into memory.
     Mmap = sys::ET_ModuleLoadMode::ET_ModuleLoadMode_Mmap as u32,
-    #[doc = " Use memory locking and handle errors."]
+    /// Use memory locking and handle errors.
     MmapUseMlock = sys::ET_ModuleLoadMode::ET_ModuleLoadMode_MmapUseMlock as u32,
-    #[doc = " Use memory locking and ignore errors."]
+    /// Use memory locking and ignore errors.
     MmapUseMlockIgnoreErrors =
         sys::ET_ModuleLoadMode::ET_ModuleLoadMode_MmapUseMlockIgnoreErrors as u32,
+    /// Use mmap with madvise(MADV_WILLNEED | MADV_SEQUENTIAL) hints.
+    MmapUseMadvise = sys::ET_ModuleLoadMode::ET_ModuleLoadMode_MmapUseMadvise as u32,
 }
 impl IntoCpp for LoadMode {
     type CppType = sys::ET_ModuleLoadMode;
@@ -397,6 +421,7 @@ impl IntoCpp for LoadMode {
             LoadMode::MmapUseMlockIgnoreErrors => {
                 sys::ET_ModuleLoadMode::ET_ModuleLoadMode_MmapUseMlockIgnoreErrors
             }
+            LoadMode::MmapUseMadvise => sys::ET_ModuleLoadMode::ET_ModuleLoadMode_MmapUseMadvise,
         }
     }
 }
@@ -416,6 +441,7 @@ mod tests {
             Some(LoadMode::Mmap),
             Some(LoadMode::MmapUseMlock),
             Some(LoadMode::MmapUseMlockIgnoreErrors),
+            Some(LoadMode::MmapUseMadvise),
         ] {
             for verification in [
                 None,
@@ -430,15 +456,37 @@ mod tests {
                 let mut module = builder.build();
 
                 assert!(!module.is_loaded());
-                assert!(module.load(verification).is_ok());
+                assert!(module.load(verification, None).is_ok());
                 assert!(module.is_loaded());
             }
         }
 
         let mut module = Module::new("non-existing-file.pte2");
         assert!(!module.is_loaded());
-        assert!(module.load(None).is_err());
+        assert!(module.load(None, None).is_err());
         assert!(!module.is_loaded());
+    }
+
+    #[test]
+    fn backend_options() {
+        use crate::backend_options::{BackendOption, LoadBackendOptionsMap};
+
+        let mut module = Module::new(add_model_path());
+        assert!(module.backend_options().is_empty());
+
+        let opts = [BackendOption::new_int("num_threads", 2).unwrap()];
+        let mut map = LoadBackendOptionsMap::new();
+        map.set_options("XnnpackBackend", &opts).unwrap();
+        // The delegate-free ADD model ignores the options, but they are deep-copied and readable.
+        module.load(None, Some(&map)).unwrap();
+        assert!(module.is_loaded());
+
+        let installed = module.backend_options();
+        assert_eq!(installed.len(), 1);
+        let (id, got) = installed.get(0).unwrap();
+        assert_eq!(id, "XnnpackBackend");
+        assert_eq!(got[0].as_int(), Some(2));
+        assert!(installed.get(1).is_err());
     }
 
     #[test]
@@ -450,7 +498,7 @@ mod tests {
             .temp_allocator(temp_allocator)
             .build();
         assert!(!module.is_loaded());
-        assert!(module.load(None).is_ok());
+        assert!(module.load(None, None).is_ok());
         assert!(module.is_loaded());
     }
 
@@ -460,7 +508,7 @@ mod tests {
             .share_memory_arenas(true)
             .build();
         assert!(!module.is_loaded());
-        assert!(module.load(None).is_ok());
+        assert!(module.load(None, None).is_ok());
         assert!(module.is_loaded());
     }
 
