@@ -11,6 +11,8 @@
 #include "executorch/runtime/executor/program.h"
 #include "executorch/runtime/executor/memory_manager.h"
 #include "executorch/runtime/core/hierarchical_allocator.h"
+#include "executorch/runtime/backend/options.h"
+#include "executorch/runtime/backend/backend_options_map.h"
 #include "executorch/runtime/core/exec_aten/exec_aten.h"
 #include "executorch/runtime/core/exec_aten/util/tensor_util.h"
 #include "executorch/runtime/core/exec_aten/util/dim_order_util.h"
@@ -65,6 +67,13 @@ namespace
 
     static_assert(is_equal_layout<struct ET_Device, executorch::runtime::etensor::Device>());
     static_assert(std::is_trivially_move_constructible_v<executorch::runtime::etensor::Device>);
+
+    static_assert(is_equal_layout<struct ET_BackendOption, executorch::runtime::BackendOption>());
+    static_assert(std::is_trivially_move_constructible_v<executorch::runtime::BackendOption>);
+    static_assert(std::is_trivially_destructible_v<executorch::runtime::BackendOption>);
+    static_assert(is_equal_layout<struct ET_LoadBackendOptionsMap, executorch::runtime::LoadBackendOptionsMap>());
+    static_assert(std::is_trivially_move_constructible_v<executorch::runtime::LoadBackendOptionsMap>);
+    static_assert(std::is_trivially_destructible_v<executorch::runtime::LoadBackendOptionsMap>);
 
     static_assert(is_equal_layout<struct ET_TensorInfo, executorch::runtime::TensorInfo>());
     static_assert(std::is_trivially_move_constructible_v<executorch::runtime::TensorInfo>);
@@ -802,15 +811,17 @@ enum ET_Error executorch_Program_load_method(
     struct ET_MemoryManager *memory_manager,
     struct ET_EventTracerRefMut event_tracer,
     struct ET_NamedDataMapRef named_data_map,
+    const struct ET_LoadBackendOptionsMap *backend_options,
     struct ET_Method *out)
 {
     auto self_ = checked_reinterpret_cast<executorch::runtime::Program>(self);
     auto memory_manager_ = checked_reinterpret_cast<executorch::runtime::MemoryManager>(memory_manager);
     auto event_tracer_ = reinterpret_cast<executorch::runtime::EventTracer *>(event_tracer.ptr);
     auto named_data_map_ = reinterpret_cast<const executorch::runtime::NamedDataMap *>(named_data_map.ptr);
+    auto backend_options_ = checked_reinterpret_cast<const executorch::runtime::LoadBackendOptionsMap>(backend_options);
     auto out_ = checked_reinterpret_cast<executorch::runtime::Method>(out);
 
-    auto res = self_->load_method(method_name, memory_manager_, event_tracer_, named_data_map_);
+    auto res = self_->load_method(method_name, memory_manager_, event_tracer_, named_data_map_, backend_options_);
     if (!res.ok())
         return static_cast<ET_Error>(res.error());
     auto &method = res.get();
@@ -959,6 +970,133 @@ enum ET_Error executorch_MethodMeta_memory_planned_buffer_device(const struct ET
         return static_cast<ET_Error>(result.error());
     auto d = result.get();
     *device_out = ET_Device{static_cast<ET_DeviceType>(d.type()), static_cast<int8_t>(d.index())};
+    return ET_Error::ET_Error_Ok;
+}
+
+static const executorch::runtime::BackendOption *cast_backend_option(const struct ET_BackendOption *p)
+{
+    return checked_reinterpret_cast<const executorch::runtime::BackendOption>(p);
+}
+static enum ET_Error backend_option_new(struct ET_ArrayRefChar key, executorch::runtime::OptionValue value, struct ET_BackendOption *out)
+{
+    if (key.len >= executorch::runtime::kMaxOptionKeyLength)
+        return ET_Error::ET_Error_InvalidArgument;
+    auto *opt = new (out) executorch::runtime::BackendOption{};
+    std::memcpy(opt->key, key.data, key.len);
+    opt->key[key.len] = '\0';
+    opt->value = std::move(value);
+    return ET_Error::ET_Error_Ok;
+}
+enum ET_Error executorch_BackendOption_new_bool(struct ET_ArrayRefChar key, bool value, struct ET_BackendOption *out)
+{
+    return backend_option_new(key, executorch::runtime::OptionValue(value), out);
+}
+enum ET_Error executorch_BackendOption_new_int(struct ET_ArrayRefChar key, int value, struct ET_BackendOption *out)
+{
+    return backend_option_new(key, executorch::runtime::OptionValue(value), out);
+}
+enum ET_Error executorch_BackendOption_new_str(struct ET_ArrayRefChar key, struct ET_ArrayRefChar value, struct ET_BackendOption *out)
+{
+    if (value.len >= executorch::runtime::kMaxOptionValueLength)
+        return ET_Error::ET_Error_InvalidArgument;
+    std::array<char, executorch::runtime::kMaxOptionValueLength> value_arr{};
+    std::memcpy(value_arr.data(), value.data, value.len);
+    value_arr[value.len] = '\0';
+    auto value_ = executorch::runtime::OptionValue(value_arr);
+
+    return backend_option_new(key, value_, out);
+}
+const char *executorch_BackendOption_key(const struct ET_BackendOption *self)
+{
+    auto self_ = cast_backend_option(self);
+    return self_->key;
+}
+bool executorch_BackendOption_is_bool(const struct ET_BackendOption *self)
+{
+    auto self_ = cast_backend_option(self);
+    return std::holds_alternative<bool>(self_->value);
+}
+bool executorch_BackendOption_is_int(const struct ET_BackendOption *self)
+{
+    auto self_ = cast_backend_option(self);
+    return std::holds_alternative<int>(self_->value);
+}
+bool executorch_BackendOption_is_str(const struct ET_BackendOption *self)
+{
+    auto self_ = cast_backend_option(self);
+    return std::holds_alternative<std::array<char, executorch::runtime::kMaxOptionValueLength>>(self_->value);
+}
+enum ET_Error executorch_BackendOption_as_bool(const struct ET_BackendOption *self, bool *out)
+{
+    auto self_ = cast_backend_option(self);
+    if (auto *v = std::get_if<bool>(&self_->value))
+    {
+        *out = *v;
+        return ET_Error::ET_Error_Ok;
+    }
+    return ET_Error::ET_Error_InvalidArgument;
+}
+enum ET_Error executorch_BackendOption_as_int(const struct ET_BackendOption *self, int *out)
+{
+    auto self_ = cast_backend_option(self);
+    if (auto *v = std::get_if<int>(&self_->value))
+    {
+        *out = *v;
+        return ET_Error::ET_Error_Ok;
+    }
+    return ET_Error::ET_Error_InvalidArgument;
+}
+enum ET_Error executorch_BackendOption_as_str(const struct ET_BackendOption *self, const char **out)
+{
+    auto self_ = cast_backend_option(self);
+    if (auto *v = std::get_if<std::array<char, executorch::runtime::kMaxOptionValueLength>>(&self_->value))
+    {
+        *out = v->data();
+        return ET_Error::ET_Error_Ok;
+    }
+    return ET_Error::ET_Error_InvalidArgument;
+}
+
+static executorch::runtime::LoadBackendOptionsMap *cast_options_map(struct ET_LoadBackendOptionsMap *p)
+{
+    return checked_reinterpret_cast<executorch::runtime::LoadBackendOptionsMap>(p);
+}
+static const executorch::runtime::LoadBackendOptionsMap *cast_options_map(const struct ET_LoadBackendOptionsMap *p)
+{
+    return checked_reinterpret_cast<const executorch::runtime::LoadBackendOptionsMap>(p);
+}
+void executorch_LoadBackendOptionsMap_new(struct ET_LoadBackendOptionsMap *out)
+{
+    new (out) executorch::runtime::LoadBackendOptionsMap{};
+}
+enum ET_Error executorch_LoadBackendOptionsMap_set_options(struct ET_LoadBackendOptionsMap *self, struct ET_ArrayRefChar backend_id, const struct ET_BackendOption *options, size_t n_options)
+{
+    auto self_ = cast_options_map(self);
+
+    char backend_id_[64];
+    if (backend_id.len >= sizeof(backend_id_))
+        return ET_Error::ET_Error_InvalidArgument;
+    std::memcpy(backend_id_, backend_id.data, backend_id.len);
+    backend_id_[backend_id.len] = '\0';
+
+    auto *options_ = const_cast<executorch::runtime::BackendOption *>(cast_backend_option(options));
+    auto span = executorch::runtime::Span<executorch::runtime::BackendOption>(options_, n_options);
+    return static_cast<ET_Error>(self_->set_options(backend_id_, span));
+}
+size_t executorch_LoadBackendOptionsMap_size(const struct ET_LoadBackendOptionsMap *self)
+{
+    auto self_ = cast_options_map(self);
+    return self_->size();
+}
+enum ET_Error executorch_LoadBackendOptionsMap_entry_at(const struct ET_LoadBackendOptionsMap *self, size_t index, const char **backend_id_out, const struct ET_BackendOption **options_out, size_t *n_options_out)
+{
+    auto self_ = cast_options_map(self);
+    if (index >= self_->size())
+        return ET_Error::ET_Error_InvalidArgument;
+    auto entry = self_->entry_at(index);
+    *backend_id_out = entry.backend_id;
+    *options_out = checked_reinterpret_cast<struct ET_BackendOption>(entry.options.data());
+    *n_options_out = entry.options.size();
     return ET_Error::ET_Error_Ok;
 }
 bool executorch_MethodMeta_uses_backend(const struct ET_MethodMeta *self, const char *backend_name)

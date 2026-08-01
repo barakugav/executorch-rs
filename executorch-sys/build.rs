@@ -98,6 +98,8 @@ fn generate_bindings() {
         .opaque_type("ET_MemoryManager")
         .opaque_type("ET_OptionalTensorStorage")
         .opaque_type("ET_DumpGen")
+        .opaque_type("ET_BackendOption")
+        .opaque_type("ET_LoadBackendOptionsMap")
         .blocklist_item("ET_FreeableBuffer")
         .blocklist_item(".*_bindgen_ty_.*")
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()));

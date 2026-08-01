@@ -52,7 +52,8 @@ namespace executorch_rs
         std::unique_ptr<struct ET_MemoryAllocator> temp_allocator,
         bool share_memory_arenas);
 
-    ET_Error Module_load(executorch::extension::Module &self, ET_ProgramVerification verification);
+    ET_Error Module_load(executorch::extension::Module &self, const struct ET_LoadBackendOptionsMap *backend_options, ET_ProgramVerification verification);
+    const struct ET_LoadBackendOptionsMap &Module_backend_options(const executorch::extension::Module &self);
     bool Module_is_loaded(const executorch::extension::Module &self);
     ET_Error Module_num_methods(executorch::extension::Module &self, size_t *method_num_out);
     ET_Error Module_method_names(executorch::extension::Module &self, rust::Vec<rust::String> *method_names_out);

@@ -30,7 +30,7 @@ extern "C"
 
         /// Status indicating the executor is in an invalid state for a target
         /// operation
-        ET_Error_InvalidState = 0x2,
+        ET_Error_InvalidState = 0x02,
 
         /// Status indicating there are no more steps of execution to run
         ET_Error_EndOfMethod = 0x03,
@@ -376,6 +376,31 @@ extern "C"
     {
         enum ET_DeviceType type;
         int8_t index;
+    };
+
+    struct ET_BackendOption
+    {
+        char _blob1[64];
+        struct // OptionValue
+        {
+            union
+            {
+                bool _blob2;
+                int _blob3;
+                char _blob4[256];
+            };
+            uint8_t _blob5; // tag
+        };
+    };
+    struct ET_LoadBackendOptionsMap
+    {
+
+        struct
+        {
+            char _blob1[64];
+            size_t _blob2[2];
+        } _blob3[8]; // entries
+        size_t _blob4;
     };
     struct ET_TensorInfo
     {
@@ -804,6 +829,7 @@ extern "C"
         struct ET_MemoryManager *memory_manager,
         struct ET_EventTracerRefMut event_tracer,
         struct ET_NamedDataMapRef named_data_map,
+        const struct ET_LoadBackendOptionsMap *backend_options,
         struct ET_Method *out);
     enum ET_Error executorch_Program_get_method_name(const struct ET_Program *self, size_t method_index, const char **out);
     enum ET_Error executorch_Program_get_named_data_map(const struct ET_Program *self, struct ET_NamedDataMapRef *out);
@@ -834,6 +860,24 @@ extern "C"
     bool executorch_MethodMeta_uses_backend(const struct ET_MethodMeta *self, const char *backend_name);
     size_t executorch_MethodMeta_num_backends(const struct ET_MethodMeta *self);
     enum ET_Error executorch_MethodMeta_get_backend_name(const struct ET_MethodMeta *self, size_t index, const char **backend_name_out);
+
+    // ET_BackendOption
+    enum ET_Error executorch_BackendOption_new_bool(struct ET_ArrayRefChar key, bool value, struct ET_BackendOption *out);
+    enum ET_Error executorch_BackendOption_new_int(struct ET_ArrayRefChar key, int value, struct ET_BackendOption *out);
+    enum ET_Error executorch_BackendOption_new_str(struct ET_ArrayRefChar key, struct ET_ArrayRefChar value, struct ET_BackendOption *out);
+    const char *executorch_BackendOption_key(const struct ET_BackendOption *self);
+    bool executorch_BackendOption_is_bool(const struct ET_BackendOption *self);
+    bool executorch_BackendOption_is_int(const struct ET_BackendOption *self);
+    bool executorch_BackendOption_is_str(const struct ET_BackendOption *self);
+    enum ET_Error executorch_BackendOption_as_bool(const struct ET_BackendOption *self, bool *out);
+    enum ET_Error executorch_BackendOption_as_int(const struct ET_BackendOption *self, int *out);
+    enum ET_Error executorch_BackendOption_as_str(const struct ET_BackendOption *self, const char **out);
+
+    // ET_LoadBackendOptionsMap
+    void executorch_LoadBackendOptionsMap_new(struct ET_LoadBackendOptionsMap *out);
+    enum ET_Error executorch_LoadBackendOptionsMap_set_options(struct ET_LoadBackendOptionsMap *self, struct ET_ArrayRefChar backend_id, const struct ET_BackendOption *options, size_t n_options);
+    size_t executorch_LoadBackendOptionsMap_size(const struct ET_LoadBackendOptionsMap *self);
+    enum ET_Error executorch_LoadBackendOptionsMap_entry_at(const struct ET_LoadBackendOptionsMap *self, size_t index, const char **backend_id_out, const struct ET_BackendOption **options_out, size_t *n_options_out);
 
     // ET_TensorInfo
     struct ET_ArrayRefI32 executorch_TensorInfo_sizes(const struct ET_TensorInfo *self);

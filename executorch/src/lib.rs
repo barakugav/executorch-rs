@@ -151,6 +151,7 @@ pub const EXECUTORCH_CPP_VERSION: &str = executorch_sys::EXECUTORCH_CPP_VERSION;
 
 #[macro_use]
 mod private;
+pub mod backend_options;
 pub mod data_loader;
 pub mod data_map;
 pub mod device;

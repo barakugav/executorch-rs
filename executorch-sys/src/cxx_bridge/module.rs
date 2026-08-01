@@ -47,6 +47,9 @@ pub(crate) mod ffi {
         /// Redefinition of the [`ET_HierarchicalAllocator`](crate::ET_HierarchicalAllocator).
         type ET_HierarchicalAllocator = crate::ET_HierarchicalAllocator;
 
+        /// Maps backend IDs to their load-time options.
+        type ET_LoadBackendOptionsMap = crate::ET_LoadBackendOptionsMap;
+
         /// Constructs an instance by loading a program from a file with specified
         /// memory locking behavior.
         ///
@@ -69,17 +72,40 @@ pub(crate) mod ffi {
             share_memory_arenas: bool,
         ) -> UniquePtr<Module>;
 
-        /// Load the program if needed.
+        /// Load the program if needed, optionally with per-delegate load-time options.
         ///
         /// # Arguments
         ///
+        /// - `backend_options`: Per-delegate load-time options, or null. When non-null the Module
+        ///   deep-copies it into internal storage, so the caller may drop the map immediately after
+        ///   this returns.
         /// - `verification`: The type of verification to do before returning success.
         ///
         /// # Returns
         ///
         /// An ET_Error to indicate success or failure of the loading process.
+        ///
+        /// # Safety
+        ///
+        /// `backend_options` must be null or point to a valid `ET_LoadBackendOptionsMap`.
         #[namespace = "executorch_rs"]
-        fn Module_load(self_: Pin<&mut Module>, verification: ET_ProgramVerification) -> ET_Error;
+        unsafe fn Module_load(
+            self_: Pin<&mut Module>,
+            backend_options: *const ET_LoadBackendOptionsMap,
+            verification: ET_ProgramVerification,
+        ) -> ET_Error;
+
+        /// Returns the deep-copied LoadBackendOptionsMap most recently installed
+        /// via `load(LoadBackendOptionsMap, ...)`.
+        ///
+        /// If `load(LoadBackendOptionsMap, ...)` has never been called, returns a
+        /// default-constructed (empty, `size() == 0`) map.
+        ///
+        /// # Returns
+        ///
+        /// Const reference to the Module-owned LoadBackendOptionsMap.
+        #[namespace = "executorch_rs"]
+        fn Module_backend_options(self_: &Module) -> &ET_LoadBackendOptionsMap;
 
         /// Checks if the program is loaded.
         #[namespace = "executorch_rs"]
@@ -219,5 +245,10 @@ unsafe impl ExternType for crate::ET_HierarchicalAllocator {
 
 unsafe impl ExternType for crate::ET_ModuleLoadMode {
     type Id = type_id!("ET_ModuleLoadMode");
+    type Kind = cxx::kind::Trivial;
+}
+
+unsafe impl ExternType for crate::ET_LoadBackendOptionsMap {
+    type Id = type_id!("ET_LoadBackendOptionsMap");
     type Kind = cxx::kind::Trivial;
 }

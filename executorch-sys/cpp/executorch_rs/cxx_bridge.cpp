@@ -124,11 +124,20 @@ namespace executorch_rs
             share_memory_arenas);
     }
 
-    ET_Error Module_load(executorch::extension::Module &self, ET_ProgramVerification verification)
+    ET_Error Module_load(executorch::extension::Module &self, const struct ET_LoadBackendOptionsMap *backend_options, ET_ProgramVerification verification)
     {
         auto verification_ = static_cast<executorch::runtime::Program::Verification>(verification);
-        auto ret = self.load(verification_);
-        return static_cast<ET_Error>(ret);
+        if (backend_options == nullptr)
+        {
+            return static_cast<ET_Error>(self.load(verification_));
+        }
+        // Module::load deep-copies the map into Module-owned storage.
+        auto backend_options_ = checked_reinterpret_cast<const executorch::runtime::LoadBackendOptionsMap>(backend_options);
+        return static_cast<ET_Error>(self.load(*backend_options_, verification_));
+    }
+    const struct ET_LoadBackendOptionsMap &Module_backend_options(const executorch::extension::Module &self)
+    {
+        return *checked_reinterpret_cast<const struct ET_LoadBackendOptionsMap>(&self.backend_options());
     }
     bool Module_is_loaded(const executorch::extension::Module &self)
     {
