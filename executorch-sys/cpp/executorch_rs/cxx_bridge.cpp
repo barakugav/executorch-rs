@@ -102,7 +102,8 @@ namespace executorch_rs
         const ET_ModuleLoadMode load_mode,
         std::unique_ptr<executorch::runtime::EventTracer> event_tracer,
         std::unique_ptr<struct ET_MemoryAllocator> memory_allocator,
-        std::unique_ptr<struct ET_MemoryAllocator> temp_allocator)
+        std::unique_ptr<struct ET_MemoryAllocator> temp_allocator,
+        bool share_memory_arenas)
     {
         std::unique_ptr<executorch::runtime::MemoryAllocator> memory_allocator_(reinterpret_cast<executorch::runtime::MemoryAllocator *>(memory_allocator.release()));
         std::unique_ptr<executorch::runtime::MemoryAllocator> temp_allocator_(reinterpret_cast<executorch::runtime::MemoryAllocator *>(temp_allocator.release()));
@@ -119,7 +120,8 @@ namespace executorch_rs
             load_mode_,
             std::move(event_tracer),
             std::move(memory_allocator_),
-            std::move(temp_allocator_));
+            std::move(temp_allocator_),
+            share_memory_arenas);
     }
 
     ET_Error Module_load(executorch::extension::Module &self, ET_ProgramVerification verification)

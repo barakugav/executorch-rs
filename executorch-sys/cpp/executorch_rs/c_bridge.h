@@ -35,6 +35,9 @@ extern "C"
         /// Status indicating there are no more steps of execution to run
         ET_Error_EndOfMethod = 0x03,
 
+        /// Status indicating a resource has already been loaded.
+        ET_Error_AlreadyLoaded = 0x04,
+
         /*
          * Logical errors.
          */

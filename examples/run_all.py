@@ -42,7 +42,7 @@ for example in examples:
             ]
         case unknown:
             raise Exception(f"Unknown example directory: '{unknown}'")
-    print(f"Running example '{example.name}'")
+    print(f"\n=== Running example '{example.name}' ===")
     subprocess.check_call(
         [
             *["cargo", "run"],

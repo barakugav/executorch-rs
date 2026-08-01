@@ -37,6 +37,8 @@ def main():
             "runtime/core/**/*.h",
             "runtime/executor/**/*.h",
             "runtime/platform/**/*.h",
+            "runtime/backend/options.h",
+            "runtime/backend/backend_options_map.h",
             "extension/data_loader/**/*.h",
             "extension/memory_allocator/**/*.h",
             "extension/module/**/*.h",
@@ -50,6 +52,7 @@ def main():
         ]
         excludes = [
             "runtime/executor/platform_memory_allocator.h",
+            "runtime/executor/program_validation.h",
             "runtime/platform/compat_unistd.h",
             "runtime/core/exec_aten/util/tensor_shape_to_c_string.h",
             "runtime/core/defines.h",
