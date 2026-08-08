@@ -505,7 +505,7 @@ extern "C"
     };
     struct ET_HierarchicalAllocator
     {
-        size_t _blob[34];
+        size_t _blob[36];
     };
     struct ET_MemoryManager
     {
