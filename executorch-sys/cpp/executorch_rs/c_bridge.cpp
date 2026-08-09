@@ -200,6 +200,16 @@ void *executorch_MemoryAllocator_allocate(struct ET_MemoryAllocator *self, size_
     auto self_ = checked_reinterpret_cast<executorch::runtime::MemoryAllocator>(self);
     return self_->allocate(size, alignment);
 }
+size_t executorch_MemoryAllocator_used_size(const struct ET_MemoryAllocator *self)
+{
+    auto self_ = checked_reinterpret_cast<const executorch::runtime::MemoryAllocator>(self);
+    return self_->used_size();
+}
+size_t executorch_MemoryAllocator_free_size(const struct ET_MemoryAllocator *self)
+{
+    auto self_ = checked_reinterpret_cast<const executorch::runtime::MemoryAllocator>(self);
+    return self_->free_size();
+}
 struct ET_HierarchicalAllocator executorch_HierarchicalAllocator_new(struct ET_SpanSpanU8 buffers)
 {
     auto buffers_ = *checked_reinterpret_cast<executorch::runtime::Span<executorch::runtime::Span<uint8_t>>>(&buffers);

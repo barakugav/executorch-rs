@@ -51,6 +51,22 @@ pub trait MemoryAllocator<'a> {
             .not()
             .then(|| unsafe { std::slice::from_raw_parts_mut(ptr as *mut u8, size) })
     }
+
+    /// Returns the number of bytes currently allocated from this allocator. The
+    /// default implementation reports the bump cursor's offset from the base
+    /// (cur_ - begin_); subclasses backed by a different allocator should override
+    /// this to match their own accounting.
+    fn used_size(&self) -> usize {
+        unsafe { sys::executorch_MemoryAllocator_used_size(self._cpp_ptr()) }
+    }
+
+    /// Returns the number of bytes still available for allocation, not accounting
+    /// for any alignment padding a future allocation may require. The default
+    /// implementation reports end_ - cur_; subclasses should override to stay
+    /// consistent with [`used_size`](Self::used_size).
+    fn free_size(&self) -> usize {
+        unsafe { sys::executorch_MemoryAllocator_free_size(self._cpp_ptr()) }
+    }
 }
 /// An extension trait for [`MemoryAllocator`] that provides convenient methods to allocate memory for Rust types.
 pub trait MemoryAllocatorExt<'a>: MemoryAllocator<'a> {
@@ -548,6 +564,34 @@ mod tests {
             BufferMemoryAllocator::new(buffer)
         };
         test_memory_allocator(allocator_init, true);
+    }
+
+    #[test]
+    fn buffer_memory_allocator_size_accounting() {
+        let mut buffer: [u8; 1024] = [0; 1024];
+        let allocator = BufferMemoryAllocator::new(&mut buffer);
+        assert_eq!(allocator.used_size(), 0);
+        assert_eq!(allocator.free_size(), 1024);
+
+        allocator.allocate_raw(100, 1).unwrap();
+        assert_eq!(allocator.used_size(), 100);
+        assert_eq!(allocator.free_size(), 1024 - 100);
+
+        // Alignment padding counts as used.
+        allocator.allocate_raw(8, 64).unwrap();
+        assert!(allocator.used_size() >= 108);
+        assert_eq!(allocator.used_size() + allocator.free_size(), 1024);
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn malloc_memory_allocator_size_accounting_is_zero() {
+        // MallocMemoryAllocator constructs its base as MemoryAllocator(0, nullptr) and does not
+        // override used_size/free_size, so both are always 0 regardless of what it hands out.
+        let allocator = MallocMemoryAllocator::new();
+        allocator.allocate_raw(64, 8).unwrap();
+        assert_eq!(allocator.used_size(), 0);
+        assert_eq!(allocator.free_size(), 0);
     }
 
     #[cfg(feature = "std")]
