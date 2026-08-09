@@ -60,6 +60,7 @@ impl_ref_clone_copy!(ET_ArrayRefU8);
 impl_ref_clone_copy!(ET_ArrayRefUsizeType);
 
 // Span
+impl_ref_clone_copy!(ET_SpanDevice);
 impl_ref_clone_copy!(ET_SpanI64);
 impl_ref_clone_copy!(ET_SpanOptionalTensor);
 impl_ref_clone_copy!(ET_SpanSpanU8);

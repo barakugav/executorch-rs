@@ -4,6 +4,7 @@
 //! This enable using the library in embedded systems where dynamic memory allocation is not allowed, or when allocation
 //! is a performance bottleneck.
 
+use core::alloc::Layout;
 use core::ops::Not;
 use std::cell::UnsafeCell;
 use std::marker::{PhantomData, PhantomPinned};
@@ -11,6 +12,7 @@ use std::mem::MaybeUninit;
 use std::pin::Pin;
 use std::ptr;
 
+use crate::device::Device;
 use crate::util::Span;
 use executorch_sys as sys;
 
@@ -300,6 +302,10 @@ impl<'a> HierarchicalAllocator<'a> {
     ///   `buffers.size()` must be >= `MethodMeta::num_non_const_buffers()`.
     ///   `buffers[N].size()` must be >= `MethodMeta::non_const_buffer_size(N)`.
     pub fn new(buffers: &'a mut [Span<'a, u8>]) -> Self {
+        assert_eq!(
+            Layout::new::<Span<'a, u8>>(),
+            Layout::new::<sys::ET_SpanU8>()
+        );
         // Safety: the memory layout of [Span<u8>] and [sys::ET_SpanU8] is the same.
         let buffers = unsafe {
             std::mem::transmute::<&'a mut [Span<'a, u8>], &'a mut [sys::ET_SpanU8]>(buffers)
@@ -312,6 +318,66 @@ impl<'a> HierarchicalAllocator<'a> {
             unsafe { sys::executorch_HierarchicalAllocator_new(buffers) },
             PhantomData,
         )
+    }
+
+    /// Constructs a new hierarchical allocator with per-buffer device metadata.
+    ///
+    /// # Arguments
+    ///
+    /// * `buffers` - Same as [`new`](Self::new). May contain a mix of CPU and device pointers —
+    ///   HierarchicalAllocator only does pointer arithmetic, so device pointers are valid.
+    /// * `planned_buffer_devices` - One entry per buffer (same count as `buffers`), indicating the
+    ///   [`Device`] (type + index) for each buffer. Different buffers can target the same device
+    ///   type but different indices (e.g., `cuda:0` vs `cuda:1`). For CPU-only programs, use
+    ///   [`new`](Self::new) instead.
+    ///
+    /// # Panics
+    ///
+    /// The underlying Cpp constructor aborts the process if `planned_buffer_devices.len()` does not
+    /// equal `buffers.len()`.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure each buffer actually resides on the device its
+    /// `planned_buffer_devices` entry names.
+    pub unsafe fn new_with_devices(
+        buffers: &'a mut [Span<'a, u8>],
+        planned_buffer_devices: &'a [Device],
+    ) -> Self {
+        assert_eq!(
+            Layout::new::<Span<'a, u8>>(),
+            Layout::new::<sys::ET_SpanU8>()
+        );
+        // Safety: the memory layout of [Span<u8>] and [sys::ET_SpanU8] is the same.
+        let buffers = unsafe {
+            std::mem::transmute::<&'a mut [Span<'a, u8>], &'a mut [sys::ET_SpanU8]>(buffers)
+        };
+        let buffers = sys::ET_SpanSpanU8 {
+            data: buffers.as_mut_ptr(),
+            len: buffers.len(),
+        };
+        let devices = sys::ET_SpanDevice {
+            data: planned_buffer_devices.as_ptr().cast(),
+            len: planned_buffer_devices.len(),
+        };
+        Self(
+            unsafe { sys::executorch_HierarchicalAllocator_new_with_devices(buffers, devices) },
+            PhantomData,
+        )
+    }
+
+    /// Returns per-buffer device metadata. One entry per buffer, same count as the `buffers` passed
+    /// to the constructor. Each entry is a [`Device`] carrying both type and index, so callers can
+    /// distinguish e.g. `cuda:0` from `cuda:1`. Empty if no device metadata was provided (CPU-only
+    /// program).
+    pub fn planned_buffer_devices(&self) -> &[Device] {
+        let devices =
+            unsafe { sys::executorch_HierarchicalAllocator_planned_buffer_devices(&self.0) };
+        if devices.len == 0 {
+            return &[]; // guard against null pointer
+        }
+        // Safety: the span points into this allocator, which outlives the returned borrow.
+        unsafe { std::slice::from_raw_parts(devices.data.cast::<Device>(), devices.len) }
     }
 }
 impl Drop for HierarchicalAllocator<'_> {
@@ -371,6 +437,28 @@ impl<'a> MemoryManager<'a> {
             }),
             PhantomData,
         )
+    }
+
+    /// Returns per-buffer device metadata. One entry per planned memory buffer, same count as
+    /// `planned_memory` buffers. Empty if no device metadata was provided (CPU-only program) or if
+    /// `planned_memory` is [`None`].
+    ///
+    /// This is a thin wrapper around
+    /// [`HierarchicalAllocator::planned_buffer_devices`](HierarchicalAllocator::planned_buffer_devices).
+    pub fn planned_buffer_devices(&self) -> &[Device] {
+        let devices = unsafe { sys::executorch_MemoryManager_planned_buffer_devices(self.0.get()) };
+        if devices.len == 0 {
+            return &[]; // guard against null pointer
+        }
+        // Safety: the span points into the HierarchicalAllocator this manager borrows, which
+        // outlives the returned borrow.
+        unsafe { std::slice::from_raw_parts(devices.data.cast::<Device>(), devices.len) }
+    }
+
+    /// Returns true if any planned buffer has device metadata attached.
+    /// When false, the memory setup is CPU-only.
+    pub fn has_device_memory(&self) -> bool {
+        unsafe { sys::executorch_MemoryManager_has_device_memory(self.0.get()) }
     }
 }
 
@@ -666,6 +754,74 @@ mod tests {
             assert_eq!(arr.len(), sizes);
             assert!(arr.iter().enumerate().all(|(i, &x)| x == i as f32));
         }
+    }
+
+    #[test]
+    fn hierarchical_allocator_no_devices() {
+        let mut buf0 = [0_u8; 64];
+        let mut buf1 = [0_u8; 32];
+        let mut spans = [Span::from_slice(&mut buf0), Span::from_slice(&mut buf1)];
+        let allocator = HierarchicalAllocator::new(&mut spans);
+        assert!(allocator.planned_buffer_devices().is_empty());
+    }
+
+    #[test]
+    fn hierarchical_allocator_with_devices() {
+        use crate::device::{Device, DeviceType};
+
+        let mut buf0 = [0_u8; 64];
+        let mut buf1 = [0_u8; 32];
+        let mut spans = [Span::from_slice(&mut buf0), Span::from_slice(&mut buf1)];
+        let devices = [
+            Device::new(DeviceType::Cpu, 0),
+            Device::new(DeviceType::Cuda, 1),
+        ];
+        // Safety: the test never reads through the buffers, so the deliberately-wrong Cuda tag on
+        // buf1 is never dereferenced.
+        let allocator = unsafe { HierarchicalAllocator::new_with_devices(&mut spans, &devices) };
+        assert_eq!(allocator.planned_buffer_devices(), &devices[..]);
+        assert_eq!(allocator.planned_buffer_devices()[1].index(), 1);
+        assert_eq!(
+            allocator.planned_buffer_devices()[1].type_(),
+            DeviceType::Cuda
+        );
+    }
+
+    #[test]
+    fn memory_manager_no_planned_memory() {
+        let mut method_buf = [0_u8; 1024];
+        let method_allocator = BufferMemoryAllocator::new(&mut method_buf);
+        let manager = MemoryManager::new(&method_allocator, None, None);
+        assert!(manager.planned_buffer_devices().is_empty());
+        assert!(!manager.has_device_memory());
+    }
+
+    #[test]
+    fn memory_manager_planned_memory_without_devices() {
+        let mut method_buf = [0_u8; 1024];
+        let method_allocator = BufferMemoryAllocator::new(&mut method_buf);
+        let mut buf0 = [0_u8; 64];
+        let mut spans = [Span::from_slice(&mut buf0)];
+        let mut planned = HierarchicalAllocator::new(&mut spans);
+        let manager = MemoryManager::new(&method_allocator, Some(&mut planned), None);
+        assert!(manager.planned_buffer_devices().is_empty());
+        assert!(!manager.has_device_memory());
+    }
+
+    #[test]
+    fn memory_manager_planned_memory_with_devices() {
+        use crate::device::{Device, DeviceType};
+
+        let mut method_buf = [0_u8; 1024];
+        let method_allocator = BufferMemoryAllocator::new(&mut method_buf);
+        let mut buf0 = [0_u8; 64];
+        let mut spans = [Span::from_slice(&mut buf0)];
+        let devices = [Device::new(DeviceType::Cuda, 3)];
+        // Safety: the test never reads through the buffer, so the Cuda tag is never dereferenced.
+        let mut planned = unsafe { HierarchicalAllocator::new_with_devices(&mut spans, &devices) };
+        let manager = MemoryManager::new(&method_allocator, Some(&mut planned), None);
+        assert!(manager.has_device_memory());
+        assert_eq!(manager.planned_buffer_devices(), &devices[..]);
     }
 
     #[test]
