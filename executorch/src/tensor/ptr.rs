@@ -51,6 +51,9 @@ impl<S: Scalar> TensorPtr<'static, View<S>> {
     ///
     /// To create a mutable tensor from an array, use [`TensorPtrBuilder`].
     ///
+    /// The result is always a CPU tensor. To move it to a device, use
+    /// [`clone_to`](TensorPtr::clone_to).
+    ///
     /// # Errors
     ///
     /// Returns an error if the array is not dense, i.e. if the strides are not the standard layout strides of some
@@ -63,6 +66,9 @@ impl<S: Scalar> TensorPtr<'static, View<S>> {
     /// Create a one dimensional [`TensorPtr`] from a vector.
     ///
     /// To create a mutable tensor from a vector, use [`TensorPtrBuilder`].
+    ///
+    /// The result is always a CPU tensor. To move it to a device, use
+    /// [`clone_to`](TensorPtr::clone_to).
     pub fn from_vec(vec: Vec<S>) -> Self {
         TensorPtrBuilder::<View<S>>::from_vec(vec).build().unwrap()
     }
@@ -70,6 +76,14 @@ impl<S: Scalar> TensorPtr<'static, View<S>> {
     /// Create a new [`TensorPtr`] with data copied from a tensor.
     ///
     /// If the given tensor has a data type different from the target tensor dtype (`S`), the data will be casted.
+    ///
+    /// The result is always a CPU tensor. To move it to a device, use
+    /// [`clone_to`](TensorPtr::clone_to).
+    ///
+    /// # Panics
+    ///
+    /// The underlying Cpp function aborts the process if the source tensor is not a CPU tensor.
+    /// Use [`clone_to`](TensorPtr::clone_to) to move a device tensor back to the host first.
     pub fn copy_of<D: Data>(tensor: &TensorBase<'_, D>) -> Self {
         let tensor = unsafe { tensor.as_cpp().ptr.cast::<sys::Tensor>().as_ref().unwrap() };
         TensorPtr(sys::TensorPtr_clone(tensor, S::TYPE.cpp()), PhantomData)
@@ -79,6 +93,9 @@ impl<'a, S: Scalar> TensorPtr<'a, View<S>> {
     /// Create a new [`TensorPtr`] from an [`Array`](ndarray::Array).
     ///
     /// To create a mutable tensor from an array view, use [`TensorPtrBuilder`].
+    ///
+    /// The result is always a CPU tensor. To move it to a device, use
+    /// [`clone_to`](TensorPtr::clone_to).
     ///
     /// # Errors
     ///
@@ -94,6 +111,9 @@ impl<'a, S: Scalar> TensorPtr<'a, View<S>> {
     /// Create a one dimensional [`TensorPtr`] from a slice.
     ///
     /// To create a mutable tensor from a slice, use [`TensorPtrBuilder`].
+    ///
+    /// The result is always a CPU tensor. To move it to a device, use
+    /// [`clone_to`](TensorPtr::clone_to).
     pub fn from_slice(data: &'a [S]) -> Self {
         TensorPtrBuilder::<View<S>>::from_slice(data)
             .build()

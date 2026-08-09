@@ -499,7 +499,7 @@ enum ET_ScalarType executorch_Tensor_scalar_type(struct ET_TensorRef self)
 struct ET_Device executorch_Tensor_device(struct ET_TensorRef self)
 {
     auto self_ = cast_tensor(self);
-    auto d = self_->unsafeGetTensorImpl()->device();
+    auto d = self_->device();
     return ET_Device{static_cast<ET_DeviceType>(d.type()), static_cast<int8_t>(d.index())};
 }
 size_t executorch_Tensor_element_size(struct ET_TensorRef self)

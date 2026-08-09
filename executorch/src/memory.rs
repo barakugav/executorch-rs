@@ -412,7 +412,8 @@ impl<'a> MemoryManager<'a> {
     ///   Must outlive the Method that uses it. May be [`None`] if the Method does not use any memory-planned tensor data.
     ///   The sizes of the buffers in this HierarchicalAllocator must agree with the corresponding
     ///   `MethodMeta::num_memory_planned_buffers()` and `MethodMeta::memory_planned_buffer_size(N)` values,
-    ///   which are embedded in the Program.
+    ///   which are embedded in the Program. For device-aware programs, the per-buffer device metadata
+    ///   is owned by the [`HierarchicalAllocator`] as well.
     /// * `temp_allocator` - The allocator to use when allocating temporary data during kernel or delegate execution.
     ///   Must outlive the Method that uses it. May be [`None`] if the Method does not use kernels or delegates that
     ///   allocate temporary data. This allocator will be reset after every kernel or delegate call during execution.
