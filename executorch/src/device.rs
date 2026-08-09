@@ -86,6 +86,11 @@ impl PartialEq for Device {
     }
 }
 impl Eq for Device {}
+impl Default for Device {
+    fn default() -> Self {
+        Self::new(DeviceType::Cpu, 0)
+    }
+}
 
 const _: () = {
     assert!(size_of::<Device>() == size_of::<sys::ET_Device>());

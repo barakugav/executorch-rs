@@ -9,6 +9,7 @@ use super::{
     Data, DataMut, DataTyped, DimOrderType, Scalar, SizesType, StridesType, TensorBase, View,
     ViewMut,
 };
+use crate::device::Device;
 use crate::util::{IntoCpp, IntoRust};
 use crate::{Error, Result};
 
@@ -125,6 +126,32 @@ impl<D> TensorPtr<'_, D> {
         // Safety: the tensor is mutable, and we are the sole borrower.
         unsafe { TensorBase::from_inner_ref_mut(tensor) }
     }
+
+    /// Clones a TensorPtr's data onto the given target device, allocating and copying as needed.
+    ///
+    /// The transfer direction is inferred from the source and target device: host-to-device when
+    /// `target` is an accelerator, and device-to-host when `target` is CPU. Copies use the
+    /// DeviceAllocator registered for the accelerator side; a device-backed result owns its memory
+    /// and frees it via that allocator when destroyed.
+    ///
+    /// Source and target must differ in device domain: for a CPU-to-CPU copy use
+    /// [`copy_of`](TensorPtr::copy_of), and device-to-device transfers are not supported.
+    ///
+    /// # Safety
+    ///
+    /// With a non-CPU `target` the returned tensor points at device memory. The rest of this
+    /// crate's tensor API — [`as_data_ptr`](TensorBase::as_data_ptr), the `as_array*` conversions,
+    /// the tensor accessors — reads the buffer directly from the host and is only valid for CPU
+    /// tensors, so the caller must not use those accessors on such a result.
+    pub unsafe fn clone_to(&self, target: Device) -> TensorPtr<'static, View<D::Scalar>>
+    where
+        D: DataTyped,
+    {
+        TensorPtr(
+            sys::TensorPtr_clone_to(self.0.clone(), target.cpp()),
+            PhantomData,
+        )
+    }
 }
 unsafe impl<D> Send for TensorPtr<'_, D> {}
 
@@ -134,6 +161,7 @@ pub struct TensorPtrBuilder<'a, D: DataTyped> {
     data: TensorPtrBuilderData<'a, D>,
     strides: Option<UniquePtr<cxx::Vector<StridesType>>>,
     dynamism: sys::ET_TensorShapeDynamism,
+    device: Device,
 }
 enum TensorPtrBuilderData<'a, D: DataTyped> {
     Vec { data: Vec<D::Scalar>, offset: usize },
@@ -174,6 +202,7 @@ impl<D: DataTyped> TensorPtrBuilder<'static, D> {
                 }
             },
             dynamism: sys::ET_TensorShapeDynamism::ET_TensorShapeDynamism_STATIC,
+            device: Device::default(),
         }
     }
 
@@ -194,6 +223,7 @@ impl<D: DataTyped> TensorPtrBuilder<'static, D> {
             data: TensorPtrBuilderData::Vec { data, offset: 0 },
             strides: None,
             dynamism: sys::ET_TensorShapeDynamism::ET_TensorShapeDynamism_STATIC,
+            device: Device::default(),
         }
     }
 }
@@ -212,6 +242,7 @@ impl<'a, S: Scalar> TensorPtrBuilder<'a, View<S>> {
                     .map(|&s| s as StridesType),
             )),
             dynamism: sys::ET_TensorShapeDynamism::ET_TensorShapeDynamism_STATIC,
+            device: Device::default(),
         }
     }
 
@@ -225,6 +256,7 @@ impl<'a, S: Scalar> TensorPtrBuilder<'a, View<S>> {
             data: TensorPtrBuilderData::Slice(data),
             strides: None,
             dynamism: sys::ET_TensorShapeDynamism::ET_TensorShapeDynamism_STATIC,
+            device: Device::default(),
         }
     }
 
@@ -247,6 +279,7 @@ impl<'a, S: Scalar> TensorPtrBuilder<'a, View<S>> {
             strides: None,
             sizes: cxx_vec(sizes),
             dynamism: sys::ET_TensorShapeDynamism::ET_TensorShapeDynamism_STATIC,
+            device: Device::default(),
         }
     }
 }
@@ -268,6 +301,7 @@ impl<'a, S: Scalar> TensorPtrBuilder<'a, ViewMut<S>> {
                     .map(|&s| s as StridesType),
             )),
             dynamism: sys::ET_TensorShapeDynamism::ET_TensorShapeDynamism_STATIC,
+            device: Device::default(),
         }
     }
 
@@ -281,6 +315,7 @@ impl<'a, S: Scalar> TensorPtrBuilder<'a, ViewMut<S>> {
             data: TensorPtrBuilderData::SliceMut(data),
             strides: None,
             dynamism: sys::ET_TensorShapeDynamism::ET_TensorShapeDynamism_STATIC,
+            device: Device::default(),
         }
     }
 
@@ -303,6 +338,7 @@ impl<'a, S: Scalar> TensorPtrBuilder<'a, ViewMut<S>> {
             strides: None,
             sizes: cxx_vec(sizes),
             dynamism: sys::ET_TensorShapeDynamism::ET_TensorShapeDynamism_STATIC,
+            device: Device::default(),
         }
     }
 }
@@ -328,6 +364,23 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
     /// any index according to the sizes and strides is valid.
     pub unsafe fn strides(mut self, strides: impl IntoIterator<Item = StridesType>) -> Self {
         self.strides = Some(cxx_vec(strides));
+        self
+    }
+
+    /// Set the device on which the tensor's data resides. Defaults to CPU.
+    ///
+    /// This sets the Tensor's device location only — no data is allocated or copied. The caller is
+    /// responsible for ensuring the data buffer already lives on the requested device. To copy CPU
+    /// data to a device, use [`TensorPtr::clone_to`] instead.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure the data buffer actually resides on `device`. The rest of this
+    /// crate's tensor API — [`as_data_ptr`](TensorBase::as_data_ptr), the `as_array*` conversions,
+    /// the tensor accessors — reads the buffer directly from the host and is only valid for CPU
+    /// tensors, so tagging a tensor with a non-CPU device makes those accessors unsound to call.
+    pub unsafe fn device(mut self, device: Device) -> Self {
+        self.device = device;
         self
     }
 
@@ -397,6 +450,7 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
                 D::Scalar::TYPE.cpp(),
                 self.dynamism,
                 Box::new(sys::util::RustAny::new(Box::new(allocation_vec))),
+                self.device.cpp(),
             )
         };
         Ok(TensorPtr(tensor, PhantomData))
@@ -469,6 +523,7 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
                 D::Scalar::TYPE.cpp(),
                 self.dynamism,
                 Box::new(sys::util::RustAny::new(Box::new(allocation_vec))),
+                self.device.cpp(),
             )
         };
         Ok(TensorPtr(tensor, PhantomData))
@@ -515,6 +570,36 @@ macro_rules! tensor_ptr {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn builder_device_defaults_to_cpu() {
+        use crate::device::DeviceType;
+
+        let tensor = TensorPtrBuilder::<View<f32>>::from_vec(vec![1.0, 2.0, 3.0])
+            .build()
+            .unwrap();
+        let device = tensor.as_tensor().device();
+        assert_eq!(device.type_(), DeviceType::Cpu);
+        assert_eq!(device.index(), 0);
+        assert!(device.is_cpu());
+    }
+
+    #[test]
+    fn builder_device_explicit_cpu() {
+        use crate::device::{Device, DeviceType};
+
+        let builder = TensorPtrBuilder::<View<f32>>::from_vec(vec![1.0, 2.0, 3.0]);
+        // Safety: the data is a Rust Vec, which lives in host memory, matching the CPU device.
+        let builder = unsafe { builder.device(Device::new(DeviceType::Cpu, 0)) };
+        let tensor = builder.build().unwrap();
+        assert_eq!(tensor.as_tensor().device(), Device::new(DeviceType::Cpu, 0));
+        // Tagging the tensor CPU explicitly must not disturb the data.
+        #[cfg(feature = "ndarray")]
+        assert_eq!(
+            tensor.as_tensor().as_array::<ndarray::Ix1>().as_slice(),
+            Some(&[1.0_f32, 2.0, 3.0][..])
+        );
+    }
 
     #[cfg(feature = "ndarray")]
     #[test]
