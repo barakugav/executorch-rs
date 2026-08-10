@@ -63,8 +63,6 @@ def main():
             "extension/data_loader/mman.h",
             "extension/data_loader/mman_windows.h",
             "extension/module/bundled_module.h",  # TODO
-            "runtime/core/device_allocator.h",  # TODO
-            "runtime/core/device_memory_buffer.h",  # TODO
             "extension/flat_tensor/serialize/serialize.h",
             "**/test/**",
             "**/testing_util/**",
@@ -74,9 +72,7 @@ def main():
         for include in includes:
             files.update(glob.glob(include, root_dir=tmp_headers_dir, recursive=True))
         for exclude in excludes:
-            files.difference_update(
-                glob.glob(exclude, root_dir=tmp_headers_dir, recursive=True)
-            )
+            files.difference_update(glob.glob(exclude, root_dir=tmp_headers_dir, recursive=True))
         for f in files:
             dst = HEADERS_DIR / f
             if not dst.parent.exists():

@@ -67,6 +67,10 @@ namespace
 
     static_assert(is_equal_layout<struct ET_Device, executorch::runtime::etensor::Device>());
     static_assert(std::is_trivially_move_constructible_v<executorch::runtime::etensor::Device>);
+    static_assert(is_equal_layout<enum ET_DeviceType, executorch::runtime::etensor::DeviceType>());
+    static_assert(std::is_trivially_move_constructible_v<executorch::runtime::etensor::DeviceType>);
+    static_assert(is_equal_layout<int8_t, executorch::runtime::etensor::DeviceIndex>());
+    static_assert(std::is_trivially_move_constructible_v<executorch::runtime::etensor::DeviceIndex>);
 
     static_assert(is_equal_layout<struct ET_BackendOption, executorch::runtime::BackendOption>());
     static_assert(std::is_trivially_move_constructible_v<executorch::runtime::BackendOption>);
@@ -129,6 +133,7 @@ namespace
     //
     // static_assert(std::is_trivially_move_constructible_v<executorch::runtime::MemoryAllocator>);
 
+    static_assert(is_equal_layout<struct ET_SpanDevice, executorch::runtime::Span<const executorch::runtime::etensor::Device>>());
     static_assert(is_equal_layout<struct ET_HierarchicalAllocator, executorch::runtime::HierarchicalAllocator>());
     static_assert(std::is_trivially_move_constructible_v<executorch::runtime::HierarchicalAllocator>);
 
@@ -200,6 +205,16 @@ void *executorch_MemoryAllocator_allocate(struct ET_MemoryAllocator *self, size_
     auto self_ = checked_reinterpret_cast<executorch::runtime::MemoryAllocator>(self);
     return self_->allocate(size, alignment);
 }
+size_t executorch_MemoryAllocator_used_size(const struct ET_MemoryAllocator *self)
+{
+    auto self_ = checked_reinterpret_cast<const executorch::runtime::MemoryAllocator>(self);
+    return self_->used_size();
+}
+size_t executorch_MemoryAllocator_free_size(const struct ET_MemoryAllocator *self)
+{
+    auto self_ = checked_reinterpret_cast<const executorch::runtime::MemoryAllocator>(self);
+    return self_->free_size();
+}
 struct ET_HierarchicalAllocator executorch_HierarchicalAllocator_new(struct ET_SpanSpanU8 buffers)
 {
     auto buffers_ = *checked_reinterpret_cast<executorch::runtime::Span<executorch::runtime::Span<uint8_t>>>(&buffers);
@@ -209,6 +224,28 @@ struct ET_HierarchicalAllocator executorch_HierarchicalAllocator_new(struct ET_S
     auto self_ = checked_reinterpret_cast<executorch::runtime::HierarchicalAllocator>(&self);
     new (self_) executorch::runtime::HierarchicalAllocator(buffers_);
     return self;
+}
+struct ET_HierarchicalAllocator executorch_HierarchicalAllocator_new_with_devices(struct ET_SpanSpanU8 buffers, struct ET_SpanDevice planned_buffer_devices)
+{
+    auto buffers_ = *checked_reinterpret_cast<executorch::runtime::Span<executorch::runtime::Span<uint8_t>>>(&buffers);
+    ET_CHECK((void *)buffers_.begin() == (void *)buffers.data);
+    ET_CHECK(buffers_.size() == buffers.len);
+    auto devices_ = *checked_reinterpret_cast<executorch::runtime::Span<const executorch::runtime::etensor::Device>>(&planned_buffer_devices);
+    ET_CHECK((const void *)devices_.begin() == (const void *)planned_buffer_devices.data);
+    ET_CHECK(devices_.size() == planned_buffer_devices.len);
+    struct ET_HierarchicalAllocator self;
+    auto self_ = checked_reinterpret_cast<executorch::runtime::HierarchicalAllocator>(&self);
+    new (self_) executorch::runtime::HierarchicalAllocator(buffers_, devices_);
+    return self;
+}
+struct ET_SpanDevice executorch_HierarchicalAllocator_planned_buffer_devices(const struct ET_HierarchicalAllocator *self)
+{
+    auto self_ = checked_reinterpret_cast<const executorch::runtime::HierarchicalAllocator>(self);
+    auto devices = self_->planned_buffer_devices();
+    return ET_SpanDevice{
+        .data = reinterpret_cast<const struct ET_Device *>(devices.data()),
+        .len = devices.size(),
+    };
 }
 void executorch_HierarchicalAllocator_destructor(struct ET_HierarchicalAllocator *self)
 {
@@ -228,6 +265,20 @@ struct ET_MemoryManager executorch_MemoryManager_new(
     auto self_ = checked_reinterpret_cast<executorch::runtime::MemoryManager>(&self);
     new (self_) executorch::runtime::MemoryManager(method_allocator_, planned_memory_, temp_allocator_);
     return self;
+}
+struct ET_SpanDevice executorch_MemoryManager_planned_buffer_devices(const struct ET_MemoryManager *self)
+{
+    auto self_ = checked_reinterpret_cast<const executorch::runtime::MemoryManager>(self);
+    auto devices = self_->planned_buffer_devices();
+    return ET_SpanDevice{
+        .data = reinterpret_cast<const struct ET_Device *>(devices.data()),
+        .len = devices.size(),
+    };
+}
+bool executorch_MemoryManager_has_device_memory(const struct ET_MemoryManager *self)
+{
+    auto self_ = checked_reinterpret_cast<const executorch::runtime::MemoryManager>(self);
+    return self_->has_device_memory();
 }
 
 // Loaders
@@ -448,7 +499,7 @@ enum ET_ScalarType executorch_Tensor_scalar_type(struct ET_TensorRef self)
 struct ET_Device executorch_Tensor_device(struct ET_TensorRef self)
 {
     auto self_ = cast_tensor(self);
-    auto d = self_->unsafeGetTensorImpl()->device();
+    auto d = self_->device();
     return ET_Device{static_cast<ET_DeviceType>(d.type()), static_cast<int8_t>(d.index())};
 }
 size_t executorch_Tensor_element_size(struct ET_TensorRef self)

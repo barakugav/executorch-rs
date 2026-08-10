@@ -36,13 +36,6 @@ pub trait NamedDataMap {
         Ok(unsafe { TensorLayout::from_raw(layout) })
     }
 
-    //   ET_NODISCARD virtual Result<FreeableBuffer> get_data(
-    //       executorch::aten::string_view key) const = 0;
-    //   ET_NODISCARD virtual Error load_data_into(
-    //       executorch::aten::string_view key,
-    //       void* buffer,
-    //       size_t size) const = 0;
-
     /// Get the number of keys in the NamedDataMap.
     fn get_num_keys(&self) -> Result<u32> {
         // Safety: sys::executorch_NamedDataMap_get_num_keys writes to the pointer.

@@ -7,9 +7,7 @@ import sys
 import warnings
 from pathlib import Path
 
-DEV_EXECUTORCH_DIR = (
-    Path(__file__).parent.parent.resolve() / "etc" / ".dev-env" / "executorch"
-)
+DEV_EXECUTORCH_DIR = Path(__file__).parent.parent.resolve() / "etc" / ".dev-env" / "executorch"
 
 
 def main():
@@ -49,16 +47,14 @@ def main():
                 "install",
                 "-r",
                 DEV_EXECUTORCH_DIR / "requirements-dev.txt",
-                "torch==2.12.0",
+                "torch==2.13.0",
                 "--extra-index-url",
                 "https://download.pytorch.org/whl/test/cpu",
             ]
         )
     build_executorch_with_dev_cfg()
 
-    subprocess.check_call(
-        [sys.executable, "-m", "pip", "install", "huggingface_hub[cli]"]
-    )
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "huggingface_hub[cli]"])
 
 
 def clone_executorch():
@@ -71,7 +67,7 @@ def clone_executorch():
                 "--depth",
                 "1",
                 "--branch",
-                "v1.3.1",
+                "v1.4.0",
                 "https://github.com/pytorch/executorch.git",
                 ".",
             ],
@@ -94,12 +90,8 @@ def clone_executorch():
                 cwd=DEV_EXECUTORCH_DIR / "backends" / "apple" / "coreml" / "scripts",
             )
 
-    subprocess.check_call(
-        ["git", "submodule", "update", "--init", "--recursive"], cwd=DEV_EXECUTORCH_DIR
-    )
-    subprocess.check_call(
-        ["git", "submodule", "sync", "--recursive"], cwd=DEV_EXECUTORCH_DIR
-    )
+    subprocess.check_call(["git", "submodule", "update", "--init", "--recursive"], cwd=DEV_EXECUTORCH_DIR)
+    subprocess.check_call(["git", "submodule", "sync", "--recursive"], cwd=DEV_EXECUTORCH_DIR)
 
 
 def build_executorch_with_dev_cfg():

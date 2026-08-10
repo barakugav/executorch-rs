@@ -93,3 +93,8 @@ unsafe impl ExternType for crate::ET_MemoryAllocator {
     type Id = type_id!("ET_MemoryAllocator");
     type Kind = cxx::kind::Opaque;
 }
+
+unsafe impl ExternType for crate::ET_Device {
+    type Id = type_id!("ET_Device");
+    type Kind = cxx::kind::Trivial;
+}

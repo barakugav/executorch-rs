@@ -505,7 +505,7 @@ extern "C"
     };
     struct ET_HierarchicalAllocator
     {
-        size_t _blob[34];
+        size_t _blob[36];
     };
     struct ET_MemoryManager
     {
@@ -631,6 +631,11 @@ extern "C"
         uint8_t *data;
         size_t len;
     };
+    struct ET_SpanDevice
+    {
+        const struct ET_Device *data;
+        size_t len;
+    };
     struct ET_SpanSpanU8
     {
         struct ET_SpanU8 *data;
@@ -712,12 +717,19 @@ extern "C"
 
     struct ET_MemoryAllocator executorch_MemoryAllocator_new(uint32_t size, uint8_t *base_address);
     void *executorch_MemoryAllocator_allocate(struct ET_MemoryAllocator *self, size_t size, size_t alignment);
+    size_t executorch_MemoryAllocator_used_size(const struct ET_MemoryAllocator *self);
+    size_t executorch_MemoryAllocator_free_size(const struct ET_MemoryAllocator *self);
     struct ET_HierarchicalAllocator executorch_HierarchicalAllocator_new(struct ET_SpanSpanU8 buffers);
+    struct ET_HierarchicalAllocator executorch_HierarchicalAllocator_new_with_devices(struct ET_SpanSpanU8 buffers, struct ET_SpanDevice planned_buffer_devices);
+    struct ET_SpanDevice executorch_HierarchicalAllocator_planned_buffer_devices(
+        const struct ET_HierarchicalAllocator *self);
     void executorch_HierarchicalAllocator_destructor(struct ET_HierarchicalAllocator *self);
     struct ET_MemoryManager executorch_MemoryManager_new(
         struct ET_MemoryAllocator *method_allocator,
         struct ET_HierarchicalAllocator *planned_memory,
         struct ET_MemoryAllocator *temp_allocator);
+    struct ET_SpanDevice executorch_MemoryManager_planned_buffer_devices(const struct ET_MemoryManager *self);
+    bool executorch_MemoryManager_has_device_memory(const struct ET_MemoryManager *self);
 
     // Loaders
     struct ET_BufferDataLoader executorch_BufferDataLoader_new(const void *data, size_t size);
