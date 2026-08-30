@@ -466,7 +466,7 @@ pub(crate) fn emit_log(
 #[cfg(test)]
 mod tests {
 
-    #[ctor::ctor]
+    #[ctor::ctor(unsafe)]
     fn pal_init() {
         // Safety: we call pal_init once, before any other executorch operations, and before any thread is spawned
         unsafe { super::pal_init() };

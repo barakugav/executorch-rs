@@ -32,7 +32,7 @@ num-complex = { version = "0.4", default-features = false, optional = true }
 cfg-if = "1.0"
 
 [dev-dependencies]
-ctor = "0.6"
+ctor = "1.0"
 libc = "0.2"
 
 [features]
