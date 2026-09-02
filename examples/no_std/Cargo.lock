@@ -96,7 +96,7 @@ dependencies = [
 
 [[package]]
 name = "executorch"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "cfg-if",
  "executorch-sys",
@@ -105,7 +105,7 @@ dependencies = [
 
 [[package]]
 name = "executorch-sys"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "bindgen",
  "cc",
