@@ -9,8 +9,8 @@ use executorch::evalue::{IntoEValue, Tag};
 use executorch::module::Module;
 use executorch::ndarray::{ArrayView2, Ix1};
 use executorch::tensor::TensorPtr;
-use rand::distr::Distribution;
 use rand::SeedableRng;
+use rand::distr::Distribution;
 
 /// Simple program to greet a person
 #[derive(Parser, Debug)]
@@ -59,7 +59,7 @@ fn main() {
     let mut rng = if let Some(seed) = args.seed {
         rand::rngs::StdRng::seed_from_u64(seed)
     } else {
-        rand::rngs::StdRng::from_os_rng()
+        rand::make_rng()
     };
 
     let max_seq_len = model
