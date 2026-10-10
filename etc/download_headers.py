@@ -82,3 +82,40 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+"""
+To see the diff between executorch versions, use this command:
+
+git diff v1.4.0 v1.5.1 -- \
+    ':!.*' \
+    ':!backends/*' \
+    ':!extension/android/*' \
+    ':!extension/apple/*' \
+    ':!extension/benchmark/*' \
+    ':!extension/pybindings/*' \
+    ':!extension/llm/*' \
+    ':!kernels/*' \
+    ':!examples/*' \
+    ':!scripts/*' \
+    ':!codegen/*' \
+    ':!test/*' \
+    ':!*/test/*' \
+    ':!*_test.*' \
+    ':!*/testing_util/*' \
+    ':!docs/*' \
+    ':!website/*' \
+    ':!zephyr/*' \
+    ':!*.py' \
+    ':!*.pyi' \
+    ':!*.bzl' \
+    ':!*BUCK' \
+    ':!*TARGETS' \
+    ':!*.json' \
+    ':!*.swift' \
+    ':!*.swift' \
+    ':!CLAUDE.md' \
+    ':!CODEOWNERS' \
+    ':!CONTRIBUTING.md' \
+    ':!README-wheel.md' \
+    ':!README.md'
+"""

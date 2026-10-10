@@ -468,9 +468,9 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
                 dim_order,
                 strides,
                 D::Scalar::TYPE.cpp(),
+                self.device.cpp(),
                 self.dynamism,
                 Box::new(sys::util::RustAny::new(Box::new(allocation_vec))),
-                self.device.cpp(),
             )
         };
         Ok(TensorPtr(tensor, PhantomData))
@@ -541,9 +541,9 @@ impl<'a, D: DataTyped> TensorPtrBuilder<'a, D> {
                 dim_order,
                 strides,
                 D::Scalar::TYPE.cpp(),
+                self.device.cpp(),
                 self.dynamism,
                 Box::new(sys::util::RustAny::new(Box::new(allocation_vec))),
-                self.device.cpp(),
             )
         };
         Ok(TensorPtr(tensor, PhantomData))

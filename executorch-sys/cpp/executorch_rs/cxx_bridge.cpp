@@ -69,9 +69,9 @@ namespace executorch_rs
         std::unique_ptr<std::vector<uint8_t>> dim_order,
         std::unique_ptr<std::vector<int32_t>> strides,
         ET_ScalarType scalar_type,
+        struct ET_Device device,
         ET_TensorShapeDynamism dynamism,
-        rust::Box<executorch_rs::cxx_util::RustAny> allocation,
-        struct ET_Device device)
+        rust::Box<executorch_rs::cxx_util::RustAny> allocation)
     {
         // std::function must be copyable, so we need to wrap the allocation in a shared_ptr
         std::shared_ptr<rust::Box<executorch_rs::cxx_util::RustAny>> allocation_ptr =
@@ -83,11 +83,11 @@ namespace executorch_rs
             std::move(*dim_order),
             std::move(*strides),
             static_cast<executorch::aten::ScalarType>(scalar_type),
-            static_cast<executorch::aten::TensorShapeDynamism>(dynamism),
-            [allocation_ptr = allocation_ptr](void *) mutable {},
             executorch::aten::Device(
                 static_cast<executorch::aten::DeviceType>(device.type),
-                device.index));
+                device.index),
+            static_cast<executorch::aten::TensorShapeDynamism>(dynamism),
+            [allocation_ptr = allocation_ptr](void *) mutable {});
     }
 
     std::shared_ptr<executorch::aten::Tensor> TensorPtr_clone(

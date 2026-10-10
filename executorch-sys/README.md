@@ -4,14 +4,14 @@ For a general description of the project, see the the `executorch` crate.
 
 ## Build
 To build the library, you need to build the C++ library yourself first.
-Currently the supported Cpp executorch version is `1.4.1`.
+Currently the supported Cpp executorch version is `1.5.1`.
 The C++ library allow for great flexibility with many flags, customizing which modules, kernels, and extensions are built.
 Multiple static libraries are built, and the Rust library links to them.
 In the following example we build the C++ library with the necessary flags to run example `hello_world`:
 ```bash
 # Clone the C++ library
 cd ${EXECUTORCH_CPP_DIR}
-git clone --depth 1 --branch v1.4.1 https://github.com/pytorch/executorch.git .
+git clone --depth 1 --branch v1.5.1 https://github.com/pytorch/executorch.git .
 git submodule sync --recursive
 git submodule update --init --recursive
 
@@ -21,7 +21,7 @@ git submodule update --init --recursive
 # Build C++ library
 mkdir cmake-out && cd cmake-out
 cmake \
-    -DDEXECUTORCH_SELECT_OPS_LIST=aten::add.out \
+    -DEXECUTORCH_SELECT_OPS_LIST=aten::add.out \
     -DEXECUTORCH_BUILD_EXECUTOR_RUNNER=OFF \
     -DEXECUTORCH_BUILD_EXTENSION_RUNNER_UTIL=OFF \
     -DEXECUTORCH_BUILD_PORTABLE_OPS=ON \
