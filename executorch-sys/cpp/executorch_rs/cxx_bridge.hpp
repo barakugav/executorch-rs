@@ -35,9 +35,9 @@ namespace executorch_rs
         std::unique_ptr<std::vector<uint8_t>> dim_order,
         std::unique_ptr<std::vector<int32_t>> strides,
         ET_ScalarType scalar_type,
+        struct ET_Device device,
         ET_TensorShapeDynamism dynamism,
-        rust::Box<executorch_rs::cxx_util::RustAny> allocation,
-        struct ET_Device device);
+        rust::Box<executorch_rs::cxx_util::RustAny> allocation);
     std::shared_ptr<executorch::aten::Tensor> TensorPtr_clone(
         const executorch::aten::Tensor &tensor,
         ET_ScalarType scalar_type);

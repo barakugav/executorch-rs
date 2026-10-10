@@ -57,10 +57,10 @@ pub(crate) mod ffi {
         /// - `dim_order`: The order of the dimensions.
         /// - `strides`: The strides of the tensor, in units of elements (not bytes).
         /// - `scalar_type`: The scalar type of the tensor.
+        /// - `device`: The device on which `data` resides.
         /// - `dynamism`: The dynamism of the tensor.
         /// - `allocation`: A `Box<RustAny>` object that will be dropped when the tensor is dropped. Can be used to
         ///    manage the lifetime of the data buffer.
-        /// - `device`: The device on which `data` resides.
         ///
         /// Returns a shared pointer to the tensor.
         ///
@@ -75,9 +75,9 @@ pub(crate) mod ffi {
             dim_order: UniquePtr<CxxVector<u8>>,
             strides: UniquePtr<CxxVector<i32>>,
             scalar_type: ET_ScalarType,
+            device: ET_Device,
             dynamism: ET_TensorShapeDynamism,
             allocation: Box<RustAny>,
-            device: ET_Device,
         ) -> SharedPtr<Tensor>;
 
         /// Creates a TensorPtr that manages a new Tensor with the same properties
