@@ -69,6 +69,7 @@ The table below shows which version of the Rust crate is compatible with which C
 
 | Rust crate | C++ library |
 | ---------- | ----------- |
+| 0.13.x     | 1.5.1       |
 | 0.12.x     | 1.4.1       |
 | 0.11.x     | 1.3.1       |
 | 0.10.x     | 1.2.0       |
