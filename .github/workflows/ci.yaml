@@ -45,6 +45,7 @@ jobs:
             examples/raw_tensor
             examples/no_ndarray
             examples/no_std
+            examples/no_std_alloc
             examples/data_map
             examples/etdump
             examples/nano-gpt
@@ -144,6 +145,9 @@ jobs:
           : # python export_model.py
           cargo run
         working-directory: examples/no_std
+      - name: Run 'no_std_alloc' example
+        run: cargo run
+        working-directory: examples/no_std_alloc
       - name: Run 'data_map' example
         run: |
           : # python export_model.py

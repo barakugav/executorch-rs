@@ -1,0 +1,23 @@
+[package]
+publish = false
+name = "example-no-std-alloc"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+executorch = { path = "../../executorch/", default-features = false, features = [
+    "alloc",
+    "ndarray",
+] }
+libc = { version = "0.2", default-features = false }
+libc-print = "0.5"
+linked_list_allocator = "0.10"
+
+[build-dependencies]
+cc = "1.11"
+
+[profile.release]
+panic = "abort"
+
+[profile.dev]
+panic = "abort"

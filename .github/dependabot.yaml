@@ -9,6 +9,7 @@ updates:
       - examples/raw_tensor/
       - examples/no_ndarray/
       - examples/no_std/
+      - examples/no_std_alloc/
       - examples/nano-gpt/
       - examples/llama3/
     schedule:
