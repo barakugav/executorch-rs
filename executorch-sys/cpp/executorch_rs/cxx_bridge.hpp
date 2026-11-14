@@ -59,6 +59,7 @@ namespace executorch_rs
     ET_Error Module_load(executorch::extension::Module &self, const struct ET_LoadBackendOptionsMap *backend_options, ET_ProgramVerification verification);
     const struct ET_LoadBackendOptionsMap &Module_backend_options(const executorch::extension::Module &self);
     bool Module_is_loaded(const executorch::extension::Module &self);
+    ET_Error Module_format(executorch::extension::Module &self, ET_ModuleFormat *format_out);
     ET_Error Module_num_methods(executorch::extension::Module &self, size_t *method_num_out);
     ET_Error Module_method_names(executorch::extension::Module &self, rust::Vec<rust::String> *method_names_out);
     ET_Error Module_load_method(executorch::extension::Module &self, const std::string &method_name, ET_HierarchicalAllocator *planned_memory, executorch::runtime::EventTracer *event_tracer);

@@ -485,6 +485,11 @@ size_t executorch_Tensor_dim(struct ET_TensorRef self)
     auto self_ = cast_tensor(self);
     return self_->dim();
 }
+bool executorch_Tensor_has_layout_metadata(struct ET_TensorRef self)
+{
+    auto self_ = cast_tensor(self);
+    return self_->unsafeGetTensorImpl()->has_layout_metadata();
+}
 size_t executorch_Tensor_numel(struct ET_TensorRef self)
 {
     auto self_ = cast_tensor(self);
@@ -1209,6 +1214,12 @@ struct ET_ArrayRefChar executorch_TensorInfo_name(const struct ET_TensorInfo *se
         .data = name.data(),
         .len = name.size(),
     };
+}
+struct ET_Device executorch_TensorInfo_device(const struct ET_TensorInfo *self)
+{
+    auto self_ = checked_reinterpret_cast<executorch::runtime::TensorInfo>(self);
+    auto d = self_->device();
+    return ET_Device{static_cast<ET_DeviceType>(d.type()), static_cast<int8_t>(d.index())};
 }
 
 #if defined(EXECUTORCH_RS_ETDUMP)

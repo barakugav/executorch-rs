@@ -158,6 +158,17 @@ namespace executorch_rs
     {
         return self.is_loaded();
     }
+    static executorch::runtime::Error Module_format_(executorch::extension::Module &self, ET_ModuleFormat *format_out)
+    {
+        static_assert(static_cast<uint32_t>(executorch::extension::Module::Format::Pte) == ET_ModuleFormat_Pte);
+        static_assert(static_cast<uint32_t>(executorch::extension::Module::Format::Ptn) == ET_ModuleFormat_Ptn);
+        *format_out = static_cast<ET_ModuleFormat>(ET_UNWRAP(self.format()));
+        return executorch::runtime::Error::Ok;
+    }
+    ET_Error Module_format(executorch::extension::Module &self, ET_ModuleFormat *format_out)
+    {
+        return static_cast<ET_Error>(Module_format_(self, format_out));
+    }
     static executorch::runtime::Error Module_num_methods_(executorch::extension::Module &self, size_t *method_num_out)
     {
         *method_num_out = ET_UNWRAP(self.num_methods());

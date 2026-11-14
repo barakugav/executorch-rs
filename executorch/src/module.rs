@@ -207,6 +207,14 @@ impl<'a> Module<'a> {
         sys::Module_is_loaded(self.0.as_ref().unwrap())
     }
 
+    /// Loads the program if needed and returns its serialized format.
+    pub fn format(&mut self) -> Result<Format> {
+        // Safety: sys::Module_format writes to the pointer.
+        let format =
+            unsafe { try_c_new(|format| sys::Module_format(self.0.as_mut().unwrap(), format))? };
+        Ok(format.rs())
+    }
+
     /// Get the number of methods available in the loaded program.
     pub fn num_methods(&mut self) -> Result<usize> {
         // Safety: sys::Module_num_methods writes to the pointer.
@@ -426,6 +434,24 @@ impl IntoCpp for LoadMode {
     }
 }
 
+/// Serialized program format selected after loading.
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+pub enum Format {
+    /// The standard ExecuTorch program format (`.pte`).
+    Pte,
+    /// The experimental ExecuTorch Native program format (`.ptn`).
+    Ptn,
+}
+impl IntoRust for sys::ET_ModuleFormat {
+    type RsType = Format;
+    fn rs(self) -> Self::RsType {
+        match self {
+            sys::ET_ModuleFormat::ET_ModuleFormat_Pte => Format::Pte,
+            sys::ET_ModuleFormat::ET_ModuleFormat_Ptn => Format::Ptn,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -458,6 +484,7 @@ mod tests {
                 assert!(!module.is_loaded());
                 assert!(module.load(verification, None).is_ok());
                 assert!(module.is_loaded());
+                assert_eq!(module.format().unwrap(), Format::Pte);
             }
         }
 
@@ -500,6 +527,18 @@ mod tests {
         assert!(!module.is_loaded());
         assert!(module.load(None, None).is_ok());
         assert!(module.is_loaded());
+    }
+
+    #[test]
+    fn format() {
+        let mut module = Module::new(add_model_path());
+        assert!(!module.is_loaded());
+        assert_eq!(module.format().unwrap(), Format::Pte);
+        assert!(module.is_loaded());
+
+        let mut module = Module::new("non-existing-file.pte");
+        assert!(module.format().is_err());
+        assert!(!module.is_loaded());
     }
 
     #[test]
@@ -585,6 +624,7 @@ mod tests {
             assert_eq!(tinfo.dim_order(), &[0]);
             assert_eq!(tinfo.scalar_type(), ScalarType::Float);
             assert_eq!(tinfo.nbytes(), 4);
+            assert!(tinfo.device().is_cpu());
         }
 
         assert_eq!(method_meta.num_outputs(), 1);

@@ -183,6 +183,11 @@ impl<'a, D> TensorBase<'a, D> {
         self.0.dim()
     }
 
+    /// Returns `true` if non-scalar layout metadata has backing storage.
+    pub fn has_layout_metadata(&self) -> bool {
+        self.0.has_layout_metadata()
+    }
+
     /// Returns the number of elements in the tensor.
     pub fn numel(&self) -> usize {
         self.0.numel()
@@ -952,6 +957,7 @@ mod tests {
             assert_eq!(tensor.as_data_ptr(), data.as_ptr());
             assert!(tensor.device().is_cpu());
             assert_eq!(tensor.device().index(), 0);
+            assert!(tensor.has_layout_metadata());
         }
     }
 

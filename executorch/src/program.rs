@@ -539,6 +539,12 @@ impl TensorInfo<'_> {
         let chars = unsafe { sys::executorch_TensorInfo_name(&self.0).as_slice() };
         FfiChar::slice_to_ffi(chars)
     }
+
+    /// Returns the device the program places the tensor on. Tensors without a
+    /// device annotation are on the CPU.
+    pub fn device(&self) -> Device {
+        unsafe { sys::executorch_TensorInfo_device(&self.0) }.rs()
+    }
 }
 impl std::fmt::Debug for TensorInfo<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -548,6 +554,7 @@ impl std::fmt::Debug for TensorInfo<'_> {
             .field("dim_order", &self.dim_order())
             .field("scalar_type", &self.scalar_type())
             .field("nbytes", &self.nbytes())
+            .field("device", &self.device())
             .finish()
     }
 }
@@ -746,6 +753,7 @@ mod tests {
             assert_eq!(tinfo.scalar_type(), ScalarType::Float);
             assert!(tinfo.is_memory_planned());
             assert_eq!(tinfo.nbytes(), 4);
+            assert!(tinfo.device().is_cpu());
         }
 
         assert_eq!(method_meta.num_outputs(), 1);

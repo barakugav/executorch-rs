@@ -20,6 +20,7 @@ impl Copy for ET_ProgramHeaderStatus {}
 impl Copy for ET_ProgramVerification {}
 impl Copy for ET_MmapDataLoaderMlockConfig {}
 impl Copy for ET_ModuleLoadMode {}
+impl Copy for ET_ModuleFormat {}
 impl Copy for ET_DeviceType {}
 
 macro_rules! impl_ref_clone_copy {
