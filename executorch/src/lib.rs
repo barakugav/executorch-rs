@@ -132,7 +132,7 @@ pub mod __private {
         pub use std::boxed::Box;
         pub use std::vec::Vec;
     }
-    #[cfg(not(feature = "std"))]
+    #[cfg(all(feature = "alloc", not(feature = "std")))]
     pub mod alloc {
         extern crate alloc;
         pub use alloc::boxed::Box;
@@ -140,6 +140,7 @@ pub mod __private {
     }
 }
 
+#[cfg(feature = "alloc")]
 #[allow(unused_imports)]
 use crate::__private::alloc;
 
