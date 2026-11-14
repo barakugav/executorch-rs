@@ -146,3 +146,11 @@ extern "C" fn cpp_runtime_abort(msg: *const core::ffi::c_char) -> ! {
 /// `panic=abort` and never unwinds. Bare-metal targets (such as `thumbv7em-none-eabihf`) don't need this.
 #[unsafe(no_mangle)]
 extern "C" fn rust_eh_personality() {}
+
+/// Similar to `rust_eh_personality`, the precompiled `alloc` library references `_Unwind_Resume`, which is usually
+/// provided by `libgcc_s` on Linux (on macOS it is part of `libSystem`). It is never called as nothing unwinds.
+#[cfg(not(target_vendor = "apple"))]
+#[unsafe(no_mangle)]
+extern "C" fn _Unwind_Resume(_exception: *mut core::ffi::c_void) -> ! {
+    unsafe { libc::abort() }
+}
