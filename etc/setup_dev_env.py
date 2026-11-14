@@ -47,7 +47,7 @@ def main():
                 "install",
                 "-r",
                 DEV_EXECUTORCH_DIR / "requirements-dev.txt",
-                "torch==2.14.0",
+                "torch==2.15.0",
                 "--extra-index-url",
                 "https://download.pytorch.org/whl/test/cpu",
             ]
@@ -67,7 +67,7 @@ def clone_executorch():
                 "--depth",
                 "1",
                 "--branch",
-                "v1.5.1",
+                "v1.6.0",
                 "https://github.com/pytorch/executorch.git",
                 ".",
             ],
