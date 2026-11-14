@@ -63,12 +63,13 @@ See `example/hello_world` for a complete example.
 ## Build
 To use the library you must compile the C++ executorch library yourself, as there are many configurations that
 determines which modules, backends, and operations are supported. See the `executorch-sys` crate for more info.
-Currently the supported Cpp executorch version is `1.4.1`.
+Currently the supported Cpp executorch version is `1.6.0`.
 
 The table below shows which version of the Rust crate is compatible with which C++ ExecuTorch version:
 
 | Rust crate | C++ library |
 | ---------- | ----------- |
+| 0.14.x     | 1.6.0       |
 | 0.13.x     | 1.5.1       |
 | 0.12.x     | 1.4.1       |
 | 0.11.x     | 1.3.1       |
