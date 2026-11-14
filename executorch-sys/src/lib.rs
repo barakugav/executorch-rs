@@ -104,6 +104,11 @@
 //! Either link a C++ runtime library (for example using the `link-cplusplus` crate), or define these functions yourself.
 //! See the `examples/no_std` example.
 //!
+//! The C++ library must be compiled with int-sized enums, which is the default of common compilers and targets, but not
+//! of GCC for bare-metal ARM (for example `thumbv7em-none-eabihf`).
+//! Add `-fno-short-enums` to `CMAKE_C_FLAGS` and `CMAKE_CXX_FLAGS` if you are on one of these platforms.
+//! The C++ bridge of this crate is compiled with `-fno-short-enums` on these targets.
+//!
 //! ## Cargo Features
 //! By default the `std` feature is enabled.
 //! - `data-loader`:

@@ -153,6 +153,7 @@ namespace
     static_assert(std::is_trivially_move_constructible_v<et_timestamp_t>);
     static_assert(is_equal_layout<struct executorch_tick_ratio, et_tick_ratio_t>());
     static_assert(std::is_trivially_move_constructible_v<et_tick_ratio_t>);
+    // `et_pal_log_level_t` is an enum without a fixed underlying type, use -fno-short-enums on arm32 gcc
     static_assert(is_equal_layout<enum executorch_pal_log_level, et_pal_log_level_t>());
     static_assert(std::is_trivially_move_constructible_v<et_pal_log_level_t>);
     static_assert(is_equal_layout<struct ExecutorchPalImpl, executorch::runtime::PalImpl>());

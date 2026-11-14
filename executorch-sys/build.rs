@@ -68,6 +68,10 @@ fn common_cc(builder: &mut cc::Build) {
             builder.flag("-fno-exceptions").flag("-fno-rtti");
         }
     }
+    if arm_bare_metal() {
+        // GCC uses short enums by default for these targets, we always use 32 bit enums
+        builder.flag("-fno-short-enums");
+    }
     for define in cpp_defines() {
         builder.define(define, None);
     }
@@ -256,4 +260,9 @@ fn rustc_version() -> Option<u32> {
     }
     let minor = pieces.next()?.parse().ok()?;
     Some(minor)
+}
+
+fn arm_bare_metal() -> bool {
+    std::env::var("CARGO_CFG_TARGET_ARCH").unwrap() == "arm"
+        && std::env::var("CARGO_CFG_TARGET_OS").unwrap() == "none"
 }
