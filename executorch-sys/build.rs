@@ -60,8 +60,13 @@ fn build_cxx_bridge() {
 fn common_cc(builder: &mut cc::Build) {
     builder.cpp(true).std("c++17").cpp_link_stdlib(None); // linked via link-cplusplus crate
     if !cfg!(feature = "std") {
-        // TODO: cpp executorch doesnt support nostd yet
-        // builder.flag("-nostdlib");
+        // Without the std feature we can not assume a C++ runtime library is linked.
+        // Exceptions and RTTI require runtime support so we disable both. the cpp lib does not rely on either of them.
+        if builder.get_compiler().is_like_msvc() {
+            builder.flag("/EHs-c-").flag("/GR-");
+        } else {
+            builder.flag("-fno-exceptions").flag("-fno-rtti");
+        }
     }
     for define in cpp_defines() {
         builder.define(define, None);
