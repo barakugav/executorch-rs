@@ -1,0 +1,3 @@
+[env]
+# see `etc/setup_dev_env.py --build-no-std` and the README.md of this example.
+EXECUTORCH_RS_EXECUTORCH_LIB_DIR = { value = "../../etc/.dev-env/executorch/cmake-out-no-std", relative = true }
