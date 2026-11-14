@@ -65,11 +65,13 @@ jobs:
         id: cache-executorch-cpp-libs
         uses: actions/cache@v6
         with:
-          path: etc/.dev-env/executorch/cmake-out
+          path: |
+            etc/.dev-env/executorch/cmake-out
+            etc/.dev-env/executorch/cmake-out-no-std
           key: cache-executorch-cpp-libs-${{ runner.OS }}-${{ hashFiles('etc/setup_dev_env.py') }}
       - name: Setup dev env, install executorch and its deps
         if: steps.cache-executorch-cpp-libs.outputs.cache-hit != 'true'
-        run: python etc/setup_dev_env.py --skip-executorch-python
+        run: python etc/setup_dev_env.py --skip-executorch-python --build-no-std
 
       ############ Build ############
       - name: Build executorch-sys

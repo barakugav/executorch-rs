@@ -22,6 +22,11 @@ def main():
         action="store_true",
         help="Skip installing the executorch Python package",
     )
+    parser.add_argument(
+        "--build-no-std",
+        action="store_true",
+        help="Also build a variant without dependencies on the C++ standard library, used by the no_std example",
+    )
     args = parser.parse_args()
 
     if args.clean and DEV_EXECUTORCH_DIR.exists():
@@ -53,6 +58,8 @@ def main():
             ]
         )
     build_executorch_with_dev_cfg()
+    if args.build_no_std:
+        build_executorch_with_no_std_cfg()
 
     subprocess.check_call([sys.executable, "-m", "pip", "install", "huggingface_hub[cli]"])
 
@@ -126,6 +133,38 @@ def build_executorch_with_dev_cfg():
 
     subprocess.check_call(
         ["cmake", "--build", "cmake-out", "-j" + str(multiprocessing.cpu_count() + 1)],
+        cwd=DEV_EXECUTORCH_DIR,
+    )
+
+
+def build_executorch_with_no_std_cfg():
+    # A build without dependencies on the C++ standard library, used by the `no_std` example.
+    # - The `minimal` PAL doesn't use std::chrono or stderr
+    # - EXECUTORCH_OPTIMIZE_SIZE compiles (Release builds) with -fno-exceptions -fno-rtti
+    # - The selected ops list generates the `executorch_selected_kernels` library.
+    cmake_out_dir = DEV_EXECUTORCH_DIR / "cmake-out-no-std"
+    if not cmake_out_dir.exists():
+        cmake_out_dir.mkdir()
+    subprocess.check_call(
+        [
+            "cmake",
+            "-DCMAKE_BUILD_TYPE=Release",
+            f"-DPYTHON_EXECUTABLE={sys.executable}",
+            "-DEXECUTORCH_BUILD_EXECUTOR_RUNNER=OFF",
+            "-DEXECUTORCH_BUILD_EXTENSION_RUNNER_UTIL=OFF",
+            "-DEXECUTORCH_ENABLE_PROGRAM_VERIFICATION=ON",
+            "-DEXECUTORCH_ENABLE_LOGGING=ON",
+            "-DEXECUTORCH_PAL_DEFAULT=minimal",
+            "-DEXECUTORCH_OPTIMIZE_SIZE=ON",
+            "-DEXECUTORCH_BUILD_PORTABLE_OPS=ON",
+            "-DEXECUTORCH_SELECT_OPS_LIST=aten::add.out",
+            "..",
+        ],
+        cwd=cmake_out_dir,
+    )
+
+    subprocess.check_call(
+        ["cmake", "--build", "cmake-out-no-std", "-j" + str(multiprocessing.cpu_count() + 1)],
         cwd=DEV_EXECUTORCH_DIR,
     )
 
