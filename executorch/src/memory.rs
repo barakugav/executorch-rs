@@ -587,7 +587,7 @@ impl<T: Storable> Storage<T> {
 /// - `storage!(T)` creates a single storage for type `T`, `Pin<&mut Storage<T>>`.
 /// - `storage!(T, [N])` creates an array on the stack, `Pin<&mut [Storage<T>, N]>`.
 /// - `storage!(T, (N))` creates a vector on the heap, `Pin<Box<[Storage<T>]>>`. Usually converted to
-///   `Pin<&mut [Storage<T>, N]>` with [`as_mut()`](Pin::as_mut).
+///   `Pin<&mut [Storage<T>, N]>` with [`as_mut()`](Pin::as_mut). Requires the `alloc` feature.
 ///
 /// ```rust,ignore
 /// let tensor_impl: TensorImpl = ...;
@@ -607,16 +607,16 @@ impl<T: Storable> Storage<T> {
 #[macro_export]
 macro_rules! storage {
     ($t:ty) => {
-        core::pin::pin!($crate::memory::Storage::<$t>::default())
+        ::core::pin::pin!($crate::memory::Storage::<$t>::default())
     };
     ($t:ty, [$n:expr]) => {
-        core::pin::pin!([0; $n].map(|_| $crate::memory::Storage::<$t>::default()))
+        ::core::pin::pin!([0; $n].map(|_| $crate::memory::Storage::<$t>::default()))
     };
     ($t:ty, ($n:expr)) => {{
         let n = $n;
         let mut vec = $crate::__private::alloc::Vec::with_capacity(n);
         vec.resize_with(n, || $crate::memory::Storage::<$t>::default());
-        std::pin::Pin::from(vec.into_boxed_slice())
+        ::core::pin::Pin::from(vec.into_boxed_slice())
     }};
 }
 

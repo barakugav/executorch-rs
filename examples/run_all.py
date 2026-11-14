@@ -20,6 +20,7 @@ for example in examples:
             "hello_world"
             | "no_ndarray"
             | "no_std"
+            | "no_std_alloc"
             | "raw_tensor"
             | "data_map"
             | "etdump"

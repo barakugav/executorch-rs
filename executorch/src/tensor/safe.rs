@@ -1402,6 +1402,14 @@ mod tests {
         assert!(TensorImplMut::from_slice(&[2, 3], &mut [0; 6], &[0, 1], &[1, 2]).is_err());
         assert!(TensorImplMut::from_slice(&[2, 3], &mut [0; 12], &[1, 0], &[2, 4]).is_err());
 
+        let (sizes, dim_order, strides) = ([2, 3, 4], [2, 0, 1], [3, 1, 6]);
+        assert!(TensorImpl::from_slice(&sizes, &[0; 24], &dim_order, &strides).is_ok());
+        assert!(TensorImplMut::from_slice(&sizes, &mut [0; 24], &dim_order, &strides).is_ok());
+
+        // Overlapping elements
+        assert!(TensorImplMut::from_slice(&[2, 2], &mut [0; 4], &[0, 1], &[1, 1]).is_err());
+        assert!(TensorImplMut::from_slice(&[2], &mut [0; 2], &[0], &[0]).is_err());
+
         // Too small slice
         assert!(TensorImpl::from_slice(&[2, 3], &[0; 5], &[0, 1], &[3, 1]).is_err());
         assert!(TensorImplMut::from_slice(&[2, 3], &mut [0; 5], &[0, 1], &[3, 1]).is_err());

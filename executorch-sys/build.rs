@@ -60,8 +60,17 @@ fn build_cxx_bridge() {
 fn common_cc(builder: &mut cc::Build) {
     builder.cpp(true).std("c++17").cpp_link_stdlib(None); // linked via link-cplusplus crate
     if !cfg!(feature = "std") {
-        // TODO: cpp executorch doesnt support nostd yet
-        // builder.flag("-nostdlib");
+        // Without the std feature we can not assume a C++ runtime library is linked.
+        // Exceptions and RTTI require runtime support so we disable both. the cpp lib does not rely on either of them.
+        if builder.get_compiler().is_like_msvc() {
+            builder.flag("/EHs-c-").flag("/GR-");
+        } else {
+            builder.flag("-fno-exceptions").flag("-fno-rtti");
+        }
+    }
+    if arm_bare_metal() {
+        // GCC uses short enums by default for these targets, we always use 32 bit enums
+        builder.flag("-fno-short-enums");
     }
     for define in cpp_defines() {
         builder.define(define, None);
@@ -251,4 +260,9 @@ fn rustc_version() -> Option<u32> {
     }
     let minor = pieces.next()?.parse().ok()?;
     Some(minor)
+}
+
+fn arm_bare_metal() -> bool {
+    std::env::var("CARGO_CFG_TARGET_ARCH").unwrap() == "arm"
+        && std::env::var("CARGO_CFG_TARGET_OS").unwrap() == "none"
 }

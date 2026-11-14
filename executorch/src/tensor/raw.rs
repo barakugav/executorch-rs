@@ -587,7 +587,7 @@ impl<'a> RawTensorImpl<'a> {
                 for (i, stride) in strides.iter().enumerate() {
                     order_buf[i] = (i, *stride as isize);
                 }
-                order_buf.sort_by_key(|&(_, stride)| stride.abs());
+                order_buf.sort_unstable_by_key(|&(i, stride)| (stride.abs(), i));
                 let order = order_buf.iter().take(sizes.len()).map(|&(i, _)| i);
 
                 // There is overlap if, when iterating through the dimensions in order of

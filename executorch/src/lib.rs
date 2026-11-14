@@ -95,9 +95,9 @@
 //! - `std`:
 //!   Enable the standard library. This feature is enabled by default, but can be disabled to build [`executorch`](crate)
 //!   in a `no_std` environment.
-//!   See the `examples/no_std` example.
+//!   See the `examples/no_std` example, and the `executorch-sys` crate for the required configuration of the
+//!   C++ library.
 //!   Also includes the `alloc` feature.
-//!   NOTE: no_std is still WIP, see <https://github.com/pytorch/executorch/issues/4561>
 //! - `alloc`:
 //!   Enable allocations.
 //!   When this feature is disabled, all methods that require allocations will not be compiled.
@@ -132,7 +132,7 @@ pub mod __private {
         pub use std::boxed::Box;
         pub use std::vec::Vec;
     }
-    #[cfg(not(feature = "std"))]
+    #[cfg(all(feature = "alloc", not(feature = "std")))]
     pub mod alloc {
         extern crate alloc;
         pub use alloc::boxed::Box;
@@ -140,6 +140,7 @@ pub mod __private {
     }
 }
 
+#[cfg(feature = "alloc")]
 #[allow(unused_imports)]
 use crate::__private::alloc;
 
