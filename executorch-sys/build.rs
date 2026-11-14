@@ -66,6 +66,10 @@ fn common_cc(builder: &mut cc::Build) {
     for define in cpp_defines() {
         builder.define(define, None);
     }
+    if std::env::var("CARGO_CFG_TARGET_ARCH").unwrap() == "arm" {
+        // GCC notes about an ABI change in GCC 7.1, irrelevant as everything is built with the same compiler
+        builder.flag_if_supported("-Wno-psabi");
+    }
 }
 
 fn generate_bindings() {

@@ -8,7 +8,11 @@
 
 #include "executorch/extension/memory_allocator/malloc_memory_allocator.h"
 
+// module.h uses its own deprecated `debug_buffer_` member internally
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #include "executorch/extension/module/module.h"
+#pragma GCC diagnostic pop
 #if defined(EXECUTORCH_RS_MODULE)
 #include "executorch-sys/src/cxx_bridge/module.rs.h"
 #endif

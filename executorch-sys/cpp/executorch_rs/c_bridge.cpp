@@ -363,7 +363,7 @@ enum ET_Error executorch_NamedDataMap_get_tensor_layout(
     auto out_ = checked_reinterpret_cast<executorch::runtime::TensorLayout>(out);
     if (!res.ok())
         return static_cast<ET_Error>(res.error());
-    memcpy(out_, &res.get(), sizeof(executorch::runtime::TensorLayout));
+    memcpy(static_cast<void *>(out_), &res.get(), sizeof(executorch::runtime::TensorLayout));
     return ET_Error::ET_Error_Ok;
 }
 enum ET_Error executorch_NamedDataMap_get_num_keys(struct ET_NamedDataMapRef self, uint32_t *out)
@@ -1253,7 +1253,7 @@ bool executorch_register_pal(ExecutorchPalImpl impl)
         impl.init,
         impl.abort,
         impl.current_ticks,
-        reinterpret_cast<pal_ticks_to_ns_multiplier_method>(impl.ticks_to_ns_multiplier),
+        reinterpret_cast<pal_ticks_to_ns_multiplier_method>(reinterpret_cast<void (*)()>(impl.ticks_to_ns_multiplier)),
         reinterpret_cast<pal_emit_log_message_method>(impl.emit_log_message),
         impl.allocate,
         impl.free,
