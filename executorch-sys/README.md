@@ -76,6 +76,23 @@ you should set the matching environment variables that `cc` reads during `cargo 
 (for example `CFLAGS=-DET_MIN_LOG_LEVEL=Debug CXXFLAGS=-DET_MIN_LOG_LEVEL=Debug`),
 see the [cc docs](https://docs.rs/cc/latest/cc/).
 
+## no_std
+When the `std` feature is disabled, the crate does not link any C++ standard library (libstdc++, libc++), and its
+C++ bridge is compiled with `-fno-exceptions -fno-rtti`.
+The C++ library should be compiled without dependencies on the C++ standard library as well:
+- `-DEXECUTORCH_PAL_DEFAULT=minimal`: the default platform abstraction layer (PAL) uses `std::chrono` and
+  others. The PAL functions can be overridden at runtime, see `executorch::platform::register_platform_impl`.
+- `-DEXECUTORCH_OPTIMIZE_SIZE=ON` with `-DCMAKE_BUILD_TYPE=Release`: compiles with `-fno-exceptions -fno-rtti`.
+- Some kernels (for example `rand` and `randn`) use the C++ standard library, so only the used kernels should be linked.
+  Select the operators with `EXECUTORCH_SELECT_OPS_LIST`,
+  link the generated `executorch_selected_kernels` library with `+whole-archive`, and link the kernels library
+  (for example `portable_kernels`) without it.
+
+The C++ code still references a few functions that are usually defined by the C++ runtime library,
+such as `operator delete` (referenced by virtual destructors, but never called), so we must resolve them.
+Either link a C++ runtime library (for example using the `link-cplusplus` crate), or define these functions yourself.
+See the `examples/no_std` example.
+
 
 ## Cargo Features
 - `data-loader`
@@ -113,6 +130,6 @@ see the [cc docs](https://docs.rs/cc/latest/cc/).
 - `std`
 
     Enable the standard library. This feature is enabled by default, but can be disabled to build `executorch` in a `no_std` environment.
-    NOTE: no_std is still WIP, see https://github.com/pytorch/executorch/issues/4561
+    See the `no_std` section above.
 
 By default the `std` feature is enabled.
