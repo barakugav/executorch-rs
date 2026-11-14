@@ -148,6 +148,11 @@ impl<'a> RawTensor<'a> {
         unsafe { sys::executorch_Tensor_dim(self.as_cpp()) }
     }
 
+    /// Returns `true` if non-scalar layout metadata has backing storage.
+    pub fn has_layout_metadata(&self) -> bool {
+        unsafe { sys::executorch_Tensor_has_layout_metadata(self.as_cpp()) }
+    }
+
     /// Returns the number of elements in the tensor.
     pub fn numel(&self) -> usize {
         unsafe { sys::executorch_Tensor_numel(self.as_cpp()) }

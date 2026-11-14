@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-// const EXECUTORCH_VERSION: &str = "1.5.1";
+// const EXECUTORCH_VERSION: &str = "1.6.0";
 
 fn main() {
     // TODO: verify on runtime we use the correct version of executorch
@@ -65,6 +65,10 @@ fn common_cc(builder: &mut cc::Build) {
     }
     for define in cpp_defines() {
         builder.define(define, None);
+    }
+    if std::env::var("CARGO_CFG_TARGET_ARCH").unwrap() == "arm" {
+        // GCC notes about an ABI change in GCC 7.1, irrelevant as everything is built with the same compiler
+        builder.flag_if_supported("-Wno-psabi");
     }
 }
 

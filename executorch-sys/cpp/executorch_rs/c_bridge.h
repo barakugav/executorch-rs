@@ -188,6 +188,17 @@ extern "C"
         ET_ModuleLoadMode_MmapUseMadvise,
     };
 
+    /**
+     * Serialized program format selected after loading.
+     */
+    enum ET_ModuleFormat : uint32_t
+    {
+        /// The standard ExecuTorch program format (.pte).
+        ET_ModuleFormat_Pte,
+        /// The experimental ExecuTorch Native program format (.ptn).
+        ET_ModuleFormat_Ptn,
+    };
+
     enum ET_Tag : uint32_t
     {
         ET_Tag_None,
@@ -330,20 +341,28 @@ extern "C"
     };
     struct ET_FreeableBuffer
     {
-        union
+        // data_ (std::variant of PointerData, UInt64Data or LegacyUInt64Data)
+        struct
         {
-            struct
+            union
             {
-                size_t _blob1[2];
+                struct
+                {
+                    size_t _blob1[2];
+                };
+                struct
+                {
+                    uint64_t _blob2;
+                    size_t _blob3;
+                };
             };
-            struct
-            {
-                uint64_t _blob2;
-                size_t _blob3;
-            };
+            // variant index
+            uint8_t _blob4;
         };
-        uint8_t _blob4;
-        size_t _blob5[2];
+        // free_fn_context_
+        size_t _blob5;
+        // size_
+        uint64_t _blob6;
     };
     struct ET_Program
     {
@@ -415,6 +434,8 @@ extern "C"
         bool _blob3;
         // nbytes_
         size_t _blob4;
+        // device_
+        struct ET_Device _blob5;
     };
     struct ET_MethodMeta
     {
@@ -778,6 +799,7 @@ extern "C"
     size_t executorch_Tensor_nbytes(struct ET_TensorRef self);
     size_t executorch_Tensor_size(struct ET_TensorRef self, size_t dim);
     size_t executorch_Tensor_dim(struct ET_TensorRef self);
+    bool executorch_Tensor_has_layout_metadata(struct ET_TensorRef self);
     size_t executorch_Tensor_numel(struct ET_TensorRef self);
     enum ET_ScalarType executorch_Tensor_scalar_type(struct ET_TensorRef self);
     struct ET_Device executorch_Tensor_device(struct ET_TensorRef self);
@@ -898,6 +920,7 @@ extern "C"
     bool executorch_TensorInfo_is_memory_planned(const struct ET_TensorInfo *self);
     size_t executorch_TensorInfo_nbytes(const struct ET_TensorInfo *self);
     struct ET_ArrayRefChar executorch_TensorInfo_name(const struct ET_TensorInfo *self);
+    struct ET_Device executorch_TensorInfo_device(const struct ET_TensorInfo *self);
 
 #if defined(EXECUTORCH_RS_ETDUMP)
     // ET_DumpGen

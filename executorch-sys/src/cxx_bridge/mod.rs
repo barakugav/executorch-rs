@@ -9,7 +9,7 @@ pub use core::ffi::{
 mod module;
 #[cfg(feature = "module")]
 pub use module::ffi::{
-    EventTracer, Module, Module_backend_options, Module_execute, Module_is_loaded,
+    EventTracer, Module, Module_backend_options, Module_execute, Module_format, Module_is_loaded,
     Module_is_method_loaded, Module_load, Module_load_method, Module_method_meta,
     Module_method_names, Module_new, Module_num_methods, Module_unload_method,
 };

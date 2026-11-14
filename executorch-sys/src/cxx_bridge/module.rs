@@ -31,6 +31,9 @@ pub(crate) mod ffi {
         /// Enum to define loading behavior.
         type ET_ModuleLoadMode = crate::ET_ModuleLoadMode;
 
+        /// Serialized program format selected after loading.
+        type ET_ModuleFormat = crate::ET_ModuleFormat;
+
         /// A specification of `ArrayRef<EValue>`.
         type ET_ArrayRefEValue = crate::ET_ArrayRefEValue;
 
@@ -110,6 +113,17 @@ pub(crate) mod ffi {
         /// Checks if the program is loaded.
         #[namespace = "executorch_rs"]
         fn Module_is_loaded(self_: &Module) -> bool;
+
+        /// Loads the program if needed and returns its serialized format.
+        ///
+        /// # Safety
+        ///
+        /// The `format_out` is valid only if the function returns `ET_Error::Ok`.
+        #[namespace = "executorch_rs"]
+        unsafe fn Module_format(
+            self_: Pin<&mut Module>,
+            format_out: *mut ET_ModuleFormat,
+        ) -> ET_Error;
 
         /// Get the number of methods available in the loaded program.
         ///
@@ -245,6 +259,11 @@ unsafe impl ExternType for crate::ET_HierarchicalAllocator {
 
 unsafe impl ExternType for crate::ET_ModuleLoadMode {
     type Id = type_id!("ET_ModuleLoadMode");
+    type Kind = cxx::kind::Trivial;
+}
+
+unsafe impl ExternType for crate::ET_ModuleFormat {
+    type Id = type_id!("ET_ModuleFormat");
     type Kind = cxx::kind::Trivial;
 }
 

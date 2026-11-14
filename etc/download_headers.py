@@ -86,7 +86,7 @@ if __name__ == "__main__":
 """
 To see the diff between executorch versions, use this command:
 
-git diff v1.4.0 v1.5.1 -- \
+git diff v1.5.1 v1.6.0 -- \
     ':!.*' \
     ':!backends/*' \
     ':!extension/android/*' \

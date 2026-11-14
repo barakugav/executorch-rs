@@ -363,7 +363,7 @@ enum ET_Error executorch_NamedDataMap_get_tensor_layout(
     auto out_ = checked_reinterpret_cast<executorch::runtime::TensorLayout>(out);
     if (!res.ok())
         return static_cast<ET_Error>(res.error());
-    memcpy(out_, &res.get(), sizeof(executorch::runtime::TensorLayout));
+    memcpy(static_cast<void *>(out_), &res.get(), sizeof(executorch::runtime::TensorLayout));
     return ET_Error::ET_Error_Ok;
 }
 enum ET_Error executorch_NamedDataMap_get_num_keys(struct ET_NamedDataMapRef self, uint32_t *out)
@@ -484,6 +484,11 @@ size_t executorch_Tensor_dim(struct ET_TensorRef self)
 {
     auto self_ = cast_tensor(self);
     return self_->dim();
+}
+bool executorch_Tensor_has_layout_metadata(struct ET_TensorRef self)
+{
+    auto self_ = cast_tensor(self);
+    return self_->unsafeGetTensorImpl()->has_layout_metadata();
 }
 size_t executorch_Tensor_numel(struct ET_TensorRef self)
 {
@@ -1210,6 +1215,12 @@ struct ET_ArrayRefChar executorch_TensorInfo_name(const struct ET_TensorInfo *se
         .len = name.size(),
     };
 }
+struct ET_Device executorch_TensorInfo_device(const struct ET_TensorInfo *self)
+{
+    auto self_ = checked_reinterpret_cast<executorch::runtime::TensorInfo>(self);
+    auto d = self_->device();
+    return ET_Device{static_cast<ET_DeviceType>(d.type()), static_cast<int8_t>(d.index())};
+}
 
 #if defined(EXECUTORCH_RS_ETDUMP)
 // ET_DumpGen
@@ -1242,7 +1253,7 @@ bool executorch_register_pal(ExecutorchPalImpl impl)
         impl.init,
         impl.abort,
         impl.current_ticks,
-        reinterpret_cast<pal_ticks_to_ns_multiplier_method>(impl.ticks_to_ns_multiplier),
+        reinterpret_cast<pal_ticks_to_ns_multiplier_method>(reinterpret_cast<void (*)()>(impl.ticks_to_ns_multiplier)),
         reinterpret_cast<pal_emit_log_message_method>(impl.emit_log_message),
         impl.allocate,
         impl.free,

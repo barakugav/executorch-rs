@@ -1,7 +1,7 @@
 import torch
 from executorch.exir import EdgeCompileConfig, to_edge
 from model import GPT
-from torch.export import export, export_for_training
+from torch.export import export
 from torch.nn.attention import SDPBackend
 
 # Load the model.
@@ -25,9 +25,7 @@ dynamic_shape = ({1: torch.export.Dim("token_dim", max=model.config.block_size)}
 # Trace the model, converting it to a portable intermediate representation.
 # The torch.no_grad() call tells PyTorch to exclude training-specific logic.
 with torch.nn.attention.sdpa_kernel([SDPBackend.MATH]), torch.no_grad():
-    m = export_for_training(
-        model, example_inputs, dynamic_shapes=dynamic_shape
-    ).module()
+    m = export(model, example_inputs, dynamic_shapes=dynamic_shape).module()
     traced_model = export(m, example_inputs, dynamic_shapes=dynamic_shape)
 
 # Convert the model into a runnable ExecuTorch program.

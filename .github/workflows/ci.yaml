@@ -53,7 +53,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
-          python-version: 3.12
+          python-version: 3.13
           activate-environment: true
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Install Python requirements
@@ -216,7 +216,7 @@ jobs:
             executorch
             executorch-sys
 
-      - uses: cargo-bins/cargo-binstall@v1.25.2
+      - uses: cargo-bins/cargo-binstall@v1.27.0
       - name: Install cross dependencies
         run: |
           if [[ "${{ matrix.target }}" == *"android"* ]]; then
