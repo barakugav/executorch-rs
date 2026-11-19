@@ -73,6 +73,9 @@ jobs:
       - name: Setup dev env, install executorch and its deps
         if: steps.cache-executorch-cpp-libs.outputs.cache-hit != 'true'
         run: python etc/setup_dev_env.py --skip-executorch-python --build-no-std
+      - name: Remove cloned ExecuTorch C++ sources to enforce vendored headers
+        if: steps.cache-executorch-cpp-libs.outputs.cache-hit != 'true'
+        run: find etc/.dev-env/executorch -mindepth 1 -maxdepth 1 ! -name 'cmake-out*' -exec rm -rf {} +
 
       ############ Build ############
       - name: Build executorch-sys
