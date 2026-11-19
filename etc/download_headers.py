@@ -56,7 +56,6 @@ def main():
             "runtime/executor/program_validation.h",
             "runtime/platform/compat_unistd.h",
             "runtime/core/exec_aten/util/tensor_shape_to_c_string.h",
-            "runtime/core/defines.h",
             "runtime/core/portable_type/c10/c10/util/overflows.h",
             "runtime/core/function_ref.h",
             "extension/data_loader/file_descriptor_data_loader.h",
